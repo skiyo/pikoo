@@ -1,0 +1,35 @@
+# Credentials, runtime state and personal data
+.env
+.env.*
+!.env.example
+config.env
+private/
+*.pem
+*.key
+*.log
+*.jsonl
+credentials*
+config.local.*
+*.nvs.bin
+**/USER.md
+**/MEMORY.md
+# Build and external dependencies
+node_modules/
+build/
+managed_components/
+.venv/
+__pycache__/
+.pytest_cache/
+.DS_Store
+sdkconfig
+sdkconfig.old
+# Training input and output: explicit reviewed releases only
+training/data/
+training/runs/
+training/vendor/
+*.wav
+*.pcm
+*.aiff
+*.tflite
+
+firmware/build-host/

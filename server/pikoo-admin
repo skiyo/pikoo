@@ -1,0 +1,32 @@
+#!/bin/bash
+set -euo pipefail
+export PATH=/opt/pikoo/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+cmd=${1:-status}
+shift || true
+case "$cmd" in
+ status)
+  systemctl --no-pager --full status pikoo mihomo nginx pikoo-cert-renew.timer || true
+  curl -fsS http://127.0.0.1:3101/api/health | python3 -c 'import json,sys; x=json.load(sys.stdin); print(json.dumps({k:x.get(k) for k in ["ok","status","realtimeProvider","realtimeModel","voiceClients","frontendMemory","backend"]},ensure_ascii=False,indent=2))'
+  openssl x509 -in /etc/letsencrypt/live/203.0.113.10/cert.pem -noout -dates
+  ;;
+ start|stop|restart) systemctl "$cmd" pikoo ;;
+ logs) journalctl -u pikoo -u mihomo -n 80 --no-pager ;;
+ check)
+  cd /var/lib/pikoo
+  exec runuser -u pikoo -- /opt/pikoo/node/bin/node /opt/pikoo/app/provider-check.mjs
+  ;;
+ pair|devices|revoke)
+  cd /var/lib/pikoo
+  exec runuser -u pikoo -- env HOME=/var/lib/pikoo QWAUDIO_CONFIG_DIR=/var/lib/pikoo/qwaudio PATH="$PATH" /opt/pikoo/app/node_modules/.bin/qwenaudio gateway "$cmd" "$@"
+  ;;
+ backup)
+  install -d -m 700 /var/backups/pikoo
+  file=/var/backups/pikoo/pikoo-$(date +%Y%m%d-%H%M%S).tar.gz
+  systemctl stop pikoo
+  trap 'systemctl start pikoo' EXIT
+  umask 077
+  tar -czf "$file" -C / var/lib/pikoo/qwaudio etc/mihomo/config.yaml etc/nginx/nginx.conf etc/nginx/conf.d/pikoo.conf etc/systemd/system/pikoo.service etc/systemd/system/mihomo.service etc/systemd/system/pikoo-firewall.service etc/systemd/system/pikoo-cert-renew.service etc/systemd/system/pikoo-cert-renew.timer etc/letsencrypt etc/pikoo-firewall.nft usr/local/sbin/pikoo-admin opt/pikoo/app/host.mjs opt/pikoo/app/google-live-compat.mjs opt/pikoo/app/memory-timeout.mjs opt/pikoo/app/provider-check.mjs
+  echo "$file"
+  ;;
+ *) echo 'Usage: pikoo-admin {status|start|stop|restart|logs|pair|devices|revoke|check|backup}' >&2; exit 2 ;;
+esac

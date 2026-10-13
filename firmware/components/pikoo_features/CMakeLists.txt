@@ -1,0 +1,5 @@
+file(GLOB FEATURES "tensorflow/lite/experimental/microfrontend/lib/*.cc")
+list(FILTER FEATURES EXCLUDE REGEX "(_test|_main|memmap).*\\.cc$")
+idf_component_register(SRCS ${FEATURES} "kissfft/kiss_fft.cc" "kissfft/tools/kiss_fftr.cc" INCLUDE_DIRS "." "kissfft")
+target_compile_definitions(${COMPONENT_LIB} PRIVATE FIXED_POINT=16)
+target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-error)

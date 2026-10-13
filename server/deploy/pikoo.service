@@ -1,0 +1,27 @@
+[Unit]
+Description=Pikoo realtime voice and memory gateway
+After=network-online.target mihomo.service
+Wants=network-online.target mihomo.service
+[Service]
+Type=simple
+User=pikoo
+Group=pikoo
+WorkingDirectory=/var/lib/pikoo
+Environment=HOME=/var/lib/pikoo
+Environment=PATH=/opt/pikoo/node/bin:/usr/local/bin:/usr/bin:/bin
+Environment=QWAUDIO_CONFIG_DIR=/var/lib/pikoo/qwaudio
+Environment=NODE_OPTIONS=--max-old-space-size=640
+ExecStart=/opt/pikoo/node/bin/node /opt/pikoo/app/host.mjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=90
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/pikoo
+MemoryHigh=900M
+MemoryMax=1100M
+[Install]
+WantedBy=multi-user.target

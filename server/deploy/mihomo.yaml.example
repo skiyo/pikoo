@@ -1,0 +1,66 @@
+# 脱敏模板，需填写自己的节点资料和本机控制密钥。pikoo UID 必须与实际系统一致。
+mixed-port: 7897
+allow-lan: false
+bind-address: 127.0.0.1
+mode: rule
+log-level: warning
+ipv6: false
+external-controller: 127.0.0.1:9090
+secret: REPLACE_LOCAL_CONTROLLER_SECRET
+profile:
+  store-selected: true
+tun:
+  enable: true
+  device: pikoo-tun
+  stack: system
+  auto-route: true
+  auto-detect-interface: true
+  include-uid:
+  - 994
+  route-exclude-address:
+  - 127.0.0.0/8
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+  - 169.254.0.0/16
+  - 100.64.0.0/10
+  - 203.0.113.10/32
+  dns-hijack:
+  - any:53
+proxies:
+- name: 🇯🇵日本东京1号
+  server: REPLACE_SERVER
+  port: 55000
+  ports: 55000-56000
+  mport: 55000-56000
+  udp: true
+  skip-cert-verify: false
+  sni: REPLACE_SNI
+  type: hysteria2
+  password: REPLACE_PASSWORD
+  fingerprint: REPLACE_FINGERPRINT
+proxy-groups:
+- name: Pikoo-Google
+  type: select
+  proxies:
+  - 🇯🇵日本东京1号
+rules:
+- IP-CIDR,203.0.113.10/32,DIRECT,no-resolve
+- IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+- IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+- IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+- IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+- MATCH,Pikoo-Google
+dns:
+  enable: true
+  listen: 127.0.0.1:1053
+  ipv6: false
+  enhanced-mode: redir-host
+  default-nameserver:
+  - 223.5.5.5
+  - 119.29.29.29
+  proxy-server-nameserver:
+  - 223.5.5.5
+  - 119.29.29.29
+  nameserver:
+  - https://1.1.1.1/dns-query#Pikoo-Google

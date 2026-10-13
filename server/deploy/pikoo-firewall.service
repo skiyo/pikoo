@@ -1,0 +1,11 @@
+[Unit]
+Description=Pikoo inbound firewall
+After=network-pre.target
+Before=mihomo.service pikoo.service nginx.service
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/nft -f /etc/pikoo-firewall.nft
+ExecStop=/usr/sbin/nft delete table inet pikoo_guard
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target

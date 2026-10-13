@@ -1,0 +1,539 @@
+{
+  "status": "synthetic-only-not-child-validated",
+  "threshold": 0.9,
+  "model_sha256": "3231bce008281864fd107e188b3986beee2392d2a8836d36ecf799d345890990",
+  "splits": {
+    "validation": {
+      "positive_clips": 5,
+      "negative_clips": 38,
+      "recall": 0.8,
+      "false_positive_clips": 1,
+      "details": [
+        {
+          "label": 1,
+          "text": "你好皮酷",
+          "score": 0.99609375,
+          "detected": true
+        },
+        {
+          "label": 1,
+          "text": "你好皮酷",
+          "score": 0.9843750000000001,
+          "detected": true
+        },
+        {
+          "label": 1,
+          "text": "你好皮酷",
+          "score": 0.99609375,
+          "detected": true
+        },
+        {
+          "label": 1,
+          "text": "你好皮酷",
+          "score": 0.9820312499999999,
+          "detected": true
+        },
+        {
+          "label": 1,
+          "text": "你好皮酷",
+          "score": 0.8468749999999999,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好皮球",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好皮皮",
+          "score": 0.98828125,
+          "detected": true
+        },
+        {
+          "label": 0,
+          "text": "你好小酷",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好小智",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好朋友",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好苹果",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "皮酷",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "小皮酷",
+          "score": 0.875,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "皮球在哪里",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "这条皮裤很好看",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好皮卡丘",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你真酷",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "不要哭",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "我喜欢这只小狗",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "给我讲一个故事",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "今天星期几",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "我们去公园玩吧",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "爸爸妈妈回来了",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "我想听恐龙的故事",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "现在几点钟",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "请你停一下",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "我还没有说完",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "一加一等于几",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "这是什么颜色",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "我们吃饭吧",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "外面正在下雨",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "小兔子蹦蹦跳跳",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "明天我想去动物园",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你可以帮我吗",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "谢谢你再见",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "别说话了",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "哥哥和弟弟一起玩",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "请打开窗户",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "这个球是蓝色的",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "早上好",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "晚上好",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "晚安做个好梦",
+          "score": 0.80078125,
+          "detected": false
+        }
+      ]
+    },
+    "test": {
+      "positive_clips": 5,
+      "negative_clips": 38,
+      "recall": 1.0,
+      "false_positive_clips": 0,
+      "details": [
+        {
+          "label": 1,
+          "text": "你好皮酷",
+          "score": 0.99609375,
+          "detected": true
+        },
+        {
+          "label": 1,
+          "text": "你好皮酷",
+          "score": 0.99609375,
+          "detected": true
+        },
+        {
+          "label": 1,
+          "text": "你好皮酷",
+          "score": 0.99609375,
+          "detected": true
+        },
+        {
+          "label": 1,
+          "text": "你好皮酷",
+          "score": 0.99609375,
+          "detected": true
+        },
+        {
+          "label": 1,
+          "text": "你好皮酷",
+          "score": 0.99609375,
+          "detected": true
+        },
+        {
+          "label": 0,
+          "text": "你好皮球",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好皮皮",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好小酷",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好小智",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好朋友",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好苹果",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "皮酷",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "小皮酷",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "皮球在哪里",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "这条皮裤很好看",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你好皮卡丘",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你真酷",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "不要哭",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "我喜欢这只小狗",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "给我讲一个故事",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "今天星期几",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "我们去公园玩吧",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "爸爸妈妈回来了",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "我想听恐龙的故事",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "现在几点钟",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "请你停一下",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "我还没有说完",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "一加一等于几",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "这是什么颜色",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "我们吃饭吧",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "外面正在下雨",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "小兔子蹦蹦跳跳",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "明天我想去动物园",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "你可以帮我吗",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "谢谢你再见",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "别说话了",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "哥哥和弟弟一起玩",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "请打开窗户",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "这个球是蓝色的",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "早上好",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "晚上好",
+          "score": 0.80078125,
+          "detected": false
+        },
+        {
+          "label": 0,
+          "text": "晚安做个好梦",
+          "score": 0.80078125,
+          "detected": false
+        }
+      ]
+    }
+  }
+}

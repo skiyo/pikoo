@@ -1,0 +1,26 @@
+{
+  "status": "experimental",
+  "data": "local synthetic Chinese voices; no real child voices in this run",
+  "samples": {
+    "train": 2200,
+    "validation": 63,
+    "test": 63
+  },
+  "epochs": 18,
+  "metrics": {
+    "validation": {
+      "positive_count": 5,
+      "negative_count": 58,
+      "window_recall_at_0.9": 0.8,
+      "window_false_positive_rate_at_0.9": 0.0
+    },
+    "test": {
+      "positive_count": 5,
+      "negative_count": 58,
+      "window_recall_at_0.9": 1.0,
+      "window_false_positive_rate_at_0.9": 0.0
+    }
+  },
+  "bytes": 25128,
+  "sha256": "3231bce008281864fd107e188b3986beee2392d2a8836d36ecf799d345890990"
+}

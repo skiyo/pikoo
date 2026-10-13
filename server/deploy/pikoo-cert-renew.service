@@ -1,0 +1,7 @@
+[Unit]
+Description=Renew Pikoo six-day IP certificate
+After=network-online.target mihomo.service nginx.service
+[Service]
+Type=oneshot
+Environment=HTTPS_PROXY=http://127.0.0.1:7897
+ExecStart=/opt/pikoo/certbot/bin/certbot renew --quiet --no-random-sleep-on-renew
