@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {createHash} from 'node:crypto';
 import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,10 +9,12 @@ const dir=path.dirname(fileURLToPath(import.meta.url));
 const port=Number(process.env.PIKOO_SIM_PORT||8787),origin=`http://127.0.0.1:${port}`;
 const config=process.env.PIKOO_SIM_CONFIG?JSON.parse(fs.readFileSync(process.env.PIKOO_SIM_CONFIG,'utf8')):null;
 if(config){const u=new URL(config.endpoint);if(u.protocol!=='wss:'||u.username||u.password)throw new Error('endpoint must be a credential-free wss URL');if(!config.token||/[\r\n]/.test(config.token))throw new Error('invalid device token');}
-const assets={'/':'index.html','/app.mjs':'app.mjs','/session.mjs':'session.mjs','/capture.js':'capture.js','/style.css':'style.css'};
+const wakeModel=process.env.PIKOO_WAKE_PYTHON?fs.readFileSync(process.env.PIKOO_WAKE_MODEL||path.resolve(dir,'../../training/models/nihao_pikoo.tflite')):null;
+const wakeInfo=wakeModel?{label:process.env.PIKOO_WAKE_LABEL||'合成语音基线',bytes:wakeModel.length,sha256:createHash('sha256').update(wakeModel).digest('hex')}:null;
+const assets={'/':'index.html','/app.mjs':'app.mjs','/session.mjs':'session.mjs','/capture.js':'capture.js','/style.css':'style.css','/wake-test':'wake-test.html','/wake-test.mjs':'wake-test.mjs','/wake-test.css':'wake-test.css'};
 const server=http.createServer((req,res)=>{
  if(req.headers.host!==`127.0.0.1:${port}`){res.writeHead(403).end();return;}
- if(req.url==='/mode'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({mode:config?'live':'mock',wake:!!process.env.PIKOO_WAKE_PYTHON}));return;}
+ if(req.url==='/mode'){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(JSON.stringify({mode:config?'live':'mock',wake:!!process.env.PIKOO_WAKE_PYTHON,wakeModel:wakeInfo}));return;}
  const name=assets[req.url];if(!name){res.writeHead(404).end();return;}
  res.setHeader('Cache-Control','no-store');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'");
  res.setHeader('Content-Type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':'text/javascript');res.end(fs.readFileSync(path.join(dir,name)));

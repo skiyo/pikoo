@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pikoo · 家庭唤醒测试</title><link rel="stylesheet" href="/wake-test.css">
+<main><header><span>PIKOO · 本机实验室</span><span class="tag">音频不上传云端 · 不保存录音</span></header>
+<h1>每一个人的“你好皮酷”。</h1><p class="intro">成人和儿童分别测试，看看谁能叫醒 Pikoo，以及普通聊天会不会叫错。</p>
+<p id="model">正在确认当前模型…</p>
+<section class="panel"><div class="setup"><label>现在由谁测试？<select id="person"><option value="adult-a">成人 A（爸爸）</option><option value="adult-b">成人 B（妈妈）</option><option value="child-a">儿童 A（哥哥）</option><option value="child-b">儿童 B（弟弟）</option></select></label><button id="mic">开启麦克风</button><button id="endmic" class="secondary" disabled>关闭麦克风</button></div>
+<div id="stage" aria-live="polite">先开启麦克风，再选择一种测试。</div><p id="hint">只在当前电脑运行。请在浏览器弹窗中允许麦克风。</p>
+<div class="meters"><label>麦克风音量<meter id="volume" min="0" max="1" value="0"></meter></label><label>唤醒匹配分数 <b id="score">0.00</b><meter id="meter" min="0" max="1" high="0.9" optimum="1" value="0"></meter></label></div>
+<p class="note">唤醒阈值 0.90；分数不是准确率。电脑麦克风的效果也不等于板载麦克风效果。</p>
+<div class="actions"><button id="positive" disabled>开始 20 次唤醒测试</button><button id="negative" class="secondary" disabled>开始普通聊天测试</button><button id="stop" class="secondary" disabled>结束这次测试</button></div>
+<div class="instructions"><p><strong>唤醒测试：</strong>距麦克风 1 米，用平常音量说话。页面每轮提示一次，提示出现后说“你好皮酷”，然后等下一轮。20 轮约 2 分钟，每个人目标至少 18 次成功。</p><p><strong>普通聊天测试：</strong>正常聊天或播放背景声，不说唤醒词；每次检测到唤醒都计为误触发。先试 5 分钟，最终仍需更长时间的家庭环境测试。</p></div></section>
+<section class="panel"><div class="result-head"><h2>四个人，分别看结果</h2><button id="export" class="secondary">保存测试结果</button></div><div class="table-wrap"><table><thead><tr><th>测试者</th><th>已测轮次</th><th>成功唤醒</th><th>普通聊天时长</th><th>误触发次数</th></tr></thead><tbody id="results"></tbody></table></div><p class="note">结果只保留在当前页面，刷新前请保存。中途退出的轮次不计分，重复测试按实际轮次累积。</p></section>
+<p class="footer">当前训练包含真实儿童普通讲话负样本；成人及儿童的真人唤醒正样本仍需验证。触摸唤醒不计入本测试成绩。</p></main><script type="module" src="/wake-test.mjs"></script></html>
