@@ -54,6 +54,20 @@ class ChildMandarinTest(unittest.TestCase):
             self.assertEqual(rows, [])
             self.assertEqual(excluded, {'wake_phrase_or_homophone': 1})
 
+    def test_missing_audio_requires_explicit_skip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'data.tar'
+            with tarfile.open(path,'w') as tar:
+                data=json.dumps(dict(speaker_id='one',age=4,text='一起玩')).encode()
+                info=tarfile.TarInfo('data/orphan.json');info.size=len(data)
+                tar.addfile(info,io.BytesIO(data))
+            with tarfile.open(path) as tar, self.assertRaisesRegex(ValueError,'no matching WAV'):
+                inventory(tar,'train')
+            with tarfile.open(path) as tar:
+                rows,excluded=inventory(tar,'train',skip_missing_audio=True)
+            self.assertEqual(rows,[])
+            self.assertEqual(excluded,{'missing_audio':1})
+
 
 if __name__ == '__main__':
     unittest.main()

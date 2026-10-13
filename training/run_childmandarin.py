@@ -5,6 +5,7 @@ Download archives first. This script never publishes or replaces the public mode
 import argparse
 from datetime import datetime, timezone
 import json
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -42,12 +43,20 @@ def main():
         if bool(a.idf_path)!=bool(a.idf_tools):
             raise ValueError('Provide both --idf-path and --idf-tools for private firmware verification')
         # Expected exact archive sizes from pinned revision metadata, not partial downloads.
-        for filename,size in [('train.tar',3875289600),('dev.tar',441251840),('test.tar',475832832)]:
+        record('verify-archives')
+        expected = [
+            ('train.tar',3875289600,'22c724113a5037c9d72076f87f7170f79f01b78960baa3d1b6c835fca2e244b2'),
+            ('dev.tar',441251840,'079e94e4a34c808b40f57860bf28321c296bef1627d413d005f6bcd3373128bb'),
+            ('test.tar',475832832,'51c2bc127524d09f16712a4b9942cd82fa9e0396f22036d0447c246e3766e5eb')]
+        for filename,size,digest in expected:
             if (a.archives/filename).stat().st_size!=size:
                 raise ValueError('Incomplete pinned archive: '+filename)
+            with (a.archives/filename).open('rb') as f:
+                if hashlib.file_digest(f,'sha256').hexdigest()!=digest:
+                    raise ValueError('Pinned archive checksum mismatch: '+filename)
         children=output/'children'; combined=output/'manifest.json'; model=output/'model'
         run('import',python('import_childmandarin.py','--archives',a.archives,'--output',children,
-            '--permission-record',a.permission_record))
+            '--permission-record',a.permission_record,'--skip-missing-audio'))
         run('merge',python('merge_manifests.py',scripts/'data/synthetic/manifest.json',
             children/'manifest.json','--output',combined))
         run('train',python('train.py','--upstream',a.upstream,'--manifest',combined,

@@ -7,7 +7,7 @@
 | 来源 | 用途 | 当前状态 |
 |---|---|---|
 | macOS 本地普通话合成声音 | 打通特征、训练、INT8 转换和设备集成 | 已训练；音频不提交 |
-| [BAAI/ChildMandarin](https://huggingface.co/datasets/BAAI/ChildMandarin/blob/main/README.md) | 3–5 岁真实普通话儿童声学分布、普通聊天负样本 | 账号已获授权，CLI 下载中；尚未完成童声训练 |
+| [BAAI/ChildMandarin](https://huggingface.co/datasets/BAAI/ChildMandarin/blob/main/README.md) | 3–5 岁真实普通话儿童声学分布、普通聊天负样本 | 已授权下载并校验；7,137 条样本完成私密候选训练，流式评估中 |
 | [ChildTalk](https://github.com/NKU-HLT/ChildTalk) | 后续更丰富的儿童/照护者场景 | 备选，未取得、未训练 |
 | 经监护人同意的家庭短句 | 实际“你好皮酷”正样本和近似词负样本 | 尚未采集；仅本地保存 |
 
@@ -54,6 +54,8 @@ bash training/download_childmandarin.sh
 ```
 
 脚本设置 `HF_ENDPOINT=https://hf-mirror.com`、禁用 Xet 并清空该进程的代理环境变量。**这不保证绕过系统 TUN**：实际检查发现大文件会重定向至 `us.aws.cdn.hf.co`。若使用透明代理，应为镜像及实际存储域名配置 DIRECT，并检查连接记录；不能仅凭环境变量认定没有消耗代理流量。断点文件保留在忽略目录内。
+
+固定版本的三个包已逐一校验 SHA-256。训练包有 1 条 JSON 标注缺少同名 WAV；流水线只在精确版本的大小和 SHA-256 均匹配后启用 `--skip-missing-audio`，将其排除并写入导入报告。通用导入默认仍拒绝缺失音频，避免把损坏下载静默当作正常数据。
 
 目前固定版本为 `67a5579247989e071911b2e8d72952c2afd43ca3`，三包共 4,792,374,272 字节。下载完后运行：
 

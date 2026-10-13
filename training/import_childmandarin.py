@@ -18,7 +18,7 @@ from pathlib import Path, PurePosixPath
 from import_children import import_data, WAKE_HOMOPHONES
 
 
-def inventory(archive, split):
+def inventory(archive, split, skip_missing_audio=False):
     members = {}
     for member in archive.getmembers():
         path = PurePosixPath(member.name)
@@ -47,7 +47,10 @@ def inventory(archive, split):
             continue
         audio_name = name[:-5] + '.wav'
         if audio_name not in members:
-            raise ValueError('Annotation has no matching WAV')
+            if not skip_missing_audio:
+                raise ValueError('Annotation has no matching WAV')
+            excluded['missing_audio'] += 1
+            continue
         wav_member = members[audio_name]
         if not 44 <= wav_member.size <= 2_000_000:
             excluded['audio_size'] += 1
@@ -65,7 +68,7 @@ def inventory(archive, split):
     return rows, dict(excluded)
 
 
-def import_archives(root, output, rights, train_limit=20, eval_limit=10):
+def import_archives(root, output, rights, train_limit=20, eval_limit=10, skip_missing_audio=False):
     if train_limit < 1 or eval_limit < 1:
         raise ValueError('Sample limits must be positive')
     if not rights.is_file():
@@ -77,7 +80,9 @@ def import_archives(root, output, rights, train_limit=20, eval_limit=10):
         for filename, split in [('train.tar', 'train'), ('dev.tar', 'validation'), ('test.tar', 'test')]:
             source = root / filename
             with tarfile.open(source, 'r:*') as archive:
-                rows, excluded = inventory(archive, split)
+                rows, excluded = inventory(archive, split, skip_missing_audio)
+                if not rows:
+                    raise ValueError('No eligible annotated audio in split')
                 groups = defaultdict(list)
                 for row in rows:
                     speaker = row['speaker']
@@ -127,9 +132,11 @@ def main():
     p.add_argument('--permission-record', type=Path, required=True)
     p.add_argument('--train-per-speaker', type=int, default=20)
     p.add_argument('--eval-per-speaker', type=int, default=10)
+    p.add_argument('--skip-missing-audio', action='store_true',
+                   help='Only after checking archive integrity; count and exclude orphan annotations')
     a = p.parse_args(); os.umask(0o077)
     print(json.dumps(import_archives(a.archives, a.output, a.permission_record,
-        a.train_per_speaker, a.eval_per_speaker), ensure_ascii=False, indent=2))
+        a.train_per_speaker, a.eval_per_speaker, a.skip_missing_audio), ensure_ascii=False, indent=2))
 
 
 if __name__ == '__main__':
