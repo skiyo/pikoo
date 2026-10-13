@@ -34,7 +34,7 @@ def dataset(manifest,root,seed=42):
         clips[digest]=row['split']
         pcm=load(root/row['path'])
         # Each source is partitioned BEFORE augmentation.
-        repeats=(32 if row['label'] else 5) if row['split']=='train' else 1
+        repeats=(32 if row['label'] else (1 if row.get('real_child') else 5)) if row['split']=='train' else 1
         for n in range(repeats):
             x=pcm.copy()
             if row['split']=='train':
@@ -43,6 +43,11 @@ def dataset(manifest,root,seed=42):
                 if rng.random()<.5:
                     delay=int(rng.uniform(.03,.12)*16000);x[delay:]+=x[:-delay]*rng.uniform(.05,.25)
                 x+=rng.normal(0,rng.uniform(0,150),len(x))
+            # Sample ordinary speech throughout the clip, not only the last words.
+            # Validation uses a fixed central window; streaming evaluation uses ALL audio.
+            if not row['label'] and len(x)>32000:
+                start=int(rng.integers(0,len(x)-32000+1)) if row['split']=='train' else (len(x)-32000)//2
+                x=x[start:start+32000]
             # Wake phrase ends just before the prediction window ends.
             x=np.pad(x,(4800,int(rng.uniform(0,.12)*16000)))
             spec=features(np.clip(x,-32768,32767).astype(np.int16))
@@ -64,7 +69,7 @@ def main():
     tf.keras.utils.set_random_seed(42);tf.config.threading.set_intra_op_parallelism_threads(4);tf.config.threading.set_inter_op_parallelism_threads(2)
     a.output.mkdir(parents=True,exist_ok=True)
     manifest=json.loads(a.manifest.read_text());cache=a.output/'features.npz'
-    fingerprint=hashlib.sha256(b'pikoo-features-v2'+a.manifest.read_bytes())
+    fingerprint=hashlib.sha256(b'pikoo-features-v3-child-windows'+a.manifest.read_bytes())
     for row in manifest:fingerprint.update(hashlib.sha256((a.manifest.parent/row['path']).read_bytes()).digest())
     cache_key=fingerprint.hexdigest();keyfile=a.output/'features.sha256'
     if cache.exists() and keyfile.exists() and keyfile.read_text()==cache_key:
@@ -86,13 +91,23 @@ def main():
     streaming=utils.to_streaming_inference(model,config,modes.Modes.STREAM_INTERNAL_STATE_INFERENCE)
     archive=tf.keras.export.ExportArchive();archive.track(streaming);archive.add_endpoint(name='serve',fn=streaming.call,input_signature=[tf.TensorSpec(streaming.input.shape,tf.float32)])
     archive.write_out(str(a.output/'saved'),verbose=False)
+    # Calibrate across the training pool, including newly imported child speech,
+    # rather than the first manifest entries (which can all be synthetic).
+    calibration_rng=np.random.default_rng(43);calibration_indices=[]
+    for label in (0,1):
+        pool=np.flatnonzero(y==label)
+        calibration_indices.extend(calibration_rng.choice(pool,min(50,len(pool)),replace=False).tolist())
+    calibration_rng.shuffle(calibration_indices)
     def representative():
-        for sample in x[:100]:
+        for sample in x[calibration_indices]:
             for i in range(0,198,3):yield [sample[None,i:i+3,:].astype(np.float32)]
     converter=tf.lite.TFLiteConverter.from_saved_model(str(a.output/'saved'))
     converter.optimizations=[tf.lite.Optimize.DEFAULT];converter._experimental_variable_quantization=True
     converter.target_spec.supported_ops=[tf.lite.OpsSet.TFLITE_BUILTINS_INT8];converter.inference_input_type=tf.int8;converter.inference_output_type=tf.uint8;converter.representative_dataset=representative
     binary=converter.convert();(a.output/'nihao_pikoo.tflite').write_bytes(binary)
+    from check_esp32_model import check
+    compatibility=check(a.output/'nihao_pikoo.tflite',Path(__file__).parents[1]/'firmware/main/wake_model.cpp')
+    (a.output/'esp32-static-check.json').write_text(json.dumps(compatibility,indent=2)+'\n')
     model_json={'type':'micro','wake_word':'你好皮酷','author':'Pikoo contributors','model':'nihao_pikoo.tflite','trained_languages':['zh'],'version':2,'micro':{'probability_cutoff':.90,'sliding_window_size':5,'feature_step_size':10,'tensor_arena_size':262144,'minimum_esphome_version':'2024.7'},'status':'experimental-not-hardware-validated'}
     (a.output/'nihao_pikoo.json').write_text(json.dumps(model_json,ensure_ascii=False,indent=2)+'\n')
     report.update(bytes=len(binary),sha256=hashlib.sha256(binary).hexdigest())

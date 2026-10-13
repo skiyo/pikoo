@@ -7,7 +7,7 @@
 | 来源 | 用途 | 当前状态 |
 |---|---|---|
 | macOS 本地普通话合成声音 | 打通特征、训练、INT8 转换和设备集成 | 已训练；音频不提交 |
-| [BAAI/ChildMandarin](https://huggingface.co/datasets/BAAI/ChildMandarin/blob/main/README.md) | 3–5 岁真实普通话儿童声学分布、普通聊天负样本 | 需要账号申请；未取得、未训练 |
+| [BAAI/ChildMandarin](https://huggingface.co/datasets/BAAI/ChildMandarin/blob/main/README.md) | 3–5 岁真实普通话儿童声学分布、普通聊天负样本 | 账号已获授权，CLI 下载中；尚未完成童声训练 |
 | [ChildTalk](https://github.com/NKU-HLT/ChildTalk) | 后续更丰富的儿童/照护者场景 | 备选，未取得、未训练 |
 | 经监护人同意的家庭短句 | 实际“你好皮酷”正样本和近似词负样本 | 尚未采集；仅本地保存 |
 
@@ -43,6 +43,37 @@ training/.venv/bin/python training/evaluate.py \
 
 ## 导入真实中文童声
 
+### ChildMandarin 固定版本下载及本地任务
+
+已验证的下载客户端为 `huggingface_hub==2.2.0`（提供 `hf` 命令）。先通过数据集访问审批，再把只读 Token 存入本机权限为 `600` 的私密文件；不要把 Token 写在命令行参数、仓库或文档里。
+
+```sh
+export HF_TOKEN_PATH=/private/huggingface-read-token
+export HF_HOME=/private/huggingface-cache
+bash training/download_childmandarin.sh
+```
+
+脚本设置 `HF_ENDPOINT=https://hf-mirror.com`、禁用 Xet 并清空该进程的代理环境变量。**这不保证绕过系统 TUN**：实际检查发现大文件会重定向至 `us.aws.cdn.hf.co`。若使用透明代理，应为镜像及实际存储域名配置 DIRECT，并检查连接记录；不能仅凭环境变量认定没有消耗代理流量。断点文件保留在忽略目录内。
+
+目前固定版本为 `67a5579247989e071911b2e8d72952c2afd43ca3`，三包共 4,792,374,272 字节。下载完后运行：
+
+```sh
+cmake -S training/micro_check -B training/runs/micro-check-build
+cmake --build training/runs/micro-check-build -j 4
+python training/run_childmandarin.py \
+  --archives training/data/childmandarin-original/new_data \
+  --permission-record /private/dataset-permission.json \
+  --upstream training/vendor/micro-wake-word \
+  --micro-check training/runs/micro-check-build/pikoo_micro_check \
+  --output training/runs/childmandarin-v1
+```
+
+Micro 检查依赖已由 ESP-IDF 固定并下载的 `esp-tflite-micro@1.4.1` 组件，先按固件文档完成配置。任务保留原始官方 train/dev/test 划分，按说话人固定哈希抽样（训练每人最多 20 条，验证/测试每人最多 10 条）。读取随 WAV 附带的 JSON 年龄和 speaker 元数据，拒绝说话人跨集合、危险归档路径和音频格式错误；排除目标词及同音词。年龄、时长、文件哈希和实际去重数量写入私密导入报告。
+
+训练继续采用小型 MixedNet；真实儿童普通讲话作为负样本，长负样本在训练时随机取窗，最终流式评估覆盖所选完整录音。固定 0.90 阈值比较公开基线与私密候选模型，不按测试结果反复调整阈值。`job-status.json` 记录任务阶段，`comparison.json` 记录按来源、年龄分组的结果；未完成时不能视为通过。任务不自动替换公开模型，不发布童声录音或衍生权重。
+
+### 通用人工审核导入
+
 先由数据使用者取得访问权并下载到本机私密目录。按官方工具解包，保存完整许可/授权记录。审核音频与元数据，建立 `child-index.example.csv` 格式的私密索引，保留官方 speaker 和 split 映射；不要凭文件名猜测孩子身份或年龄。
 
 ```sh
@@ -66,3 +97,20 @@ python3 training/merge_manifests.py \
 先用成人录音验证流程。孩子愿意参与时，每人每次约 2–3 分钟：自然说“你好皮酷”，换语速、音量和 0.5/1/2 米距离，每次少量短句，中间留安静间隔；另录自然聊天和“你好皮球”等近似词。不同日期、房间和录制设备分开记录。两个孩子分别统计，不合并成一个儿童平均值。录音用匿名编号，不把姓名写入文件名，默认不上传任何平台。
 
 最终验收仍需每人 1 米 20 次至少 18 次成功，以及 8 小时家庭背景声误唤醒不超过 1 次。短片段误触发率不能换算成已经通过 8 小时测试。
+
+## ESP32 模型预算与验证
+
+训练数据大小不等于部署模型大小。每次导出必须通过 `check_esp32_model.py`：模型不超过 **64 KiB**，输入为 INT8 `[1,3,40]`，输出为单个量化概率，不含浮点张量，所有算子均已在固件注册。固件构建也执行 64 KiB 上限检查。
+
+2026-10-13 对现有公开合成基线实测：文件 **25,128 字节**；同版本 TFLM 的主机参考实现完成 **300 次推理、3 次重置**，主机 tensor arena 使用 **13,088 字节**；ESP32-S3 交叉编译通过，应用二进制 **3,111,488 字节**（6 MiB 应用分区仍余约 51%）。这些不是板上内存/延迟测量；固件仍预留 256 KiB arena，ESP-NN 内核、PSRAM、音频及显示的并行峰值需实机确认。
+
+```sh
+python training/check_esp32_model.py --model /private/nihao_pikoo.tflite \
+  --output training/runs/esp32-static-check.json
+training/runs/micro-check-build/pikoo_micro_check /private/nihao_pikoo.tflite
+# 用私密候选编译，无需覆盖或提交公开模型：
+idf.py -C firmware -B /private/pikoo-firmware-build \
+  -DPIKOO_WAKE_MODEL=/private/nihao_pikoo.tflite build
+```
+
+模拟器可通过 `PIKOO_WAKE_MODEL=/private/nihao_pikoo.tflite` 选择私密模型。主机 TFLM 测试使用参考内核，能够暴露设备解释器不支持的模型结构，但不能代替 ESP32-S3 的 ESP-NN 内核实测。到板需记录实际 arena、剩余内部 RAM/PSRAM、推理耗时（每 30ms 输入需及时处理）、任务栈余量和音频缓冲溢出次数。

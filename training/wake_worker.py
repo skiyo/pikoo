@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import tensorflow as tf
 from pymicro_features import MicroFrontend
-model=Path(__file__).parent/'models/nihao_pikoo.tflite'
+model=Path(os.environ.get('PIKOO_WAKE_MODEL',str(Path(__file__).parent/'models/nihao_pikoo.tflite')))
 i=tf.lite.Interpreter(model_path=str(model),num_threads=1);i.allocate_tensors()
 input_info=i.get_input_details()[0];output_info=i.get_output_details()[0]
 f=MicroFrontend();frames=[];scores=[];last_detection=0

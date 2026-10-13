@@ -1,0 +1,86 @@
+{
+  "status": "static-check-passed",
+  "bytes": 25128,
+  "flash_budget_bytes": 65536,
+  "sha256": "3231bce008281864fd107e188b3986beee2392d2a8836d36ecf799d345890990",
+  "input_shape": [
+    1,
+    3,
+    40
+  ],
+  "input_type": "int8",
+  "feature_step_ms": 10,
+  "inference_interval_ms": 30,
+  "operators": [
+    {
+      "name": "CALL_ONCE",
+      "version": 1
+    },
+    {
+      "name": "VAR_HANDLE",
+      "version": 1
+    },
+    {
+      "name": "RESHAPE",
+      "version": 1
+    },
+    {
+      "name": "READ_VARIABLE",
+      "version": 1
+    },
+    {
+      "name": "CONV_2D",
+      "version": 3
+    },
+    {
+      "name": "CONCATENATION",
+      "version": 2
+    },
+    {
+      "name": "DEPTHWISE_CONV_2D",
+      "version": 3
+    },
+    {
+      "name": "STRIDED_SLICE",
+      "version": 2
+    },
+    {
+      "name": "ASSIGN_VARIABLE",
+      "version": 1
+    },
+    {
+      "name": "AVERAGE_POOL_2D",
+      "version": 2
+    },
+    {
+      "name": "FULLY_CONNECTED",
+      "version": 4
+    },
+    {
+      "name": "LOGISTIC",
+      "version": 2
+    },
+    {
+      "name": "QUANTIZE",
+      "version": 1
+    }
+  ],
+  "configured_tensor_arena_bytes": 262144,
+  "hardware_status": "Pending ESP32-S3 allocation, timing and concurrent audio/display tests",
+  "host_runtime": {
+    "status": "host-tflm-passed",
+    "invocations": 300,
+    "resets": 3,
+    "host_arena_used_bytes": 13088,
+    "arena_budget_bytes": 262144,
+    "esp32_hardware_verified": false
+  },
+  "esp_idf_build": {
+    "version": "5.5.5",
+    "target": "esp32s3",
+    "status": "passed",
+    "application_bytes": 3111488,
+    "application_partition_bytes": 6291456
+  },
+  "tested_date": "2026-10-13"
+}
