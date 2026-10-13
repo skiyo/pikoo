@@ -7,8 +7,9 @@ from pathlib import Path
 import numpy as np
 import tensorflow as tf
 from pymicro_features import MicroFrontend
+from streaming_runtime import interpreter as create_interpreter,quantize
 model=Path(os.environ.get('PIKOO_WAKE_MODEL',str(Path(__file__).parent/'models/nihao_pikoo.tflite')))
-i=tf.lite.Interpreter(model_path=str(model),num_threads=1);i.allocate_tensors()
+i=create_interpreter(model);i.allocate_tensors()
 input_info=i.get_input_details()[0];output_info=i.get_output_details()[0]
 f=MicroFrontend();frames=[];scores=[];last_detection=0;last_score_time=0
 print(json.dumps({'type':'ready','modelSha256':hashlib.sha256(model.read_bytes()).hexdigest()}),flush=True)
@@ -20,7 +21,7 @@ while True:
     frames.append(r.features)
     if len(frames)<3:continue
     scale,zero=input_info['quantization']
-    x=np.clip(np.rint(np.asarray(frames)/scale+zero),-128,127).astype(np.int8)[None,...]
+    x=quantize(frames,scale,zero)[None,...]
     frames=[];i.set_tensor(input_info['index'],x);i.invoke()
     scale,zero=output_info['quantization'];score=(int(i.get_tensor(output_info['index']).flat[0])-zero)*scale
     scores=(scores+[score])[-5:]

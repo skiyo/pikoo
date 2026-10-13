@@ -7,9 +7,10 @@ from pathlib import Path
 import numpy as np
 import tensorflow as tf
 from pymicro_features import MicroFrontend
+from streaming_runtime import interpreter as create_interpreter,quantize
 
 def predict(model,pcm):
-    interpreter=tf.lite.Interpreter(model_path=str(model),num_threads=1)
+    interpreter=create_interpreter(model)
     interpreter.allocate_tensors();inp=interpreter.get_input_details()[0];out=interpreter.get_output_details()[0]
     if inp['shape'].tolist()!=[1,3,40]:raise ValueError(f"Unexpected input shape {inp['shape']}")
     frontend=MicroFrontend();pending=[];prob=[]
@@ -18,7 +19,7 @@ def predict(model,pcm):
         if not r.features:continue
         pending.append(r.features)
         if len(pending)<3:continue
-        scale,zero=inp['quantization'];x=np.clip(np.rint(np.array(pending)/scale+zero),-128,127).astype(np.int8)[None,...]
+        scale,zero=inp['quantization'];x=quantize(pending,scale,zero)[None,...]
         pending=[];interpreter.set_tensor(inp['index'],x);interpreter.invoke()
         oscale,ozero=out['quantization'];prob.append((int(interpreter.get_tensor(out['index']).flat[0])-ozero)*oscale)
     rolling=np.convolve(prob,np.ones(5)/5,'valid') if len(prob)>=5 else np.array([0.])

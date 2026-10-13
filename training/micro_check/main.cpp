@@ -9,9 +9,10 @@
 #include <iostream>
 #include <iterator>
 #include <vector>
+#include <array>
 
 int main(int argc, char **argv) {
-  if (argc != 2) return 2;
+  if (argc != 2 && argc != 3) return 2;
   std::ifstream file(argv[1], std::ios::binary);
   std::vector<char> bytes((std::istreambuf_iterator<char>(file)), {});
   flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size());
@@ -30,6 +31,27 @@ int main(int argc, char **argv) {
   if (interpreter.AllocateTensors() != kTfLiteOk) return 4;
   auto input = interpreter.input(0);
   if (input->type != kTfLiteInt8 || input->bytes != 120) return 5;
+  if (argc == 3) {
+    std::ifstream fixture(argv[2], std::ios::binary);
+    std::vector<char> features((std::istreambuf_iterator<char>(fixture)), {});
+    if (features.empty() || features.size()%120) return 8;
+    std::array<float,3> peaks{};
+    for (int round=0;round<3;++round) {
+      if (interpreter.Reset()!=kTfLiteOk) return 6;
+      std::array<float,5> scores{};size_t count=0;
+      for (size_t offset=0;offset<features.size();offset+=120) {
+        std::copy_n(features.data()+offset,120,input->data.int8);
+        if (interpreter.Invoke()!=kTfLiteOk) return 7;
+        auto out=interpreter.output(0);
+        int raw=out->type==kTfLiteUInt8?int(out->data.uint8[0]):int(out->data.int8[0]);
+        scores[count++%5]=(raw-out->params.zero_point)*out->params.scale;
+        if(count>=5) {float sum=0;for(float score:scores)sum+=score;peaks[round]=std::max(peaks[round],sum/5);}
+      }
+    }
+    std::cout << "{\"host_arena_used_bytes\":" << interpreter.arena_used_bytes()
+              << ",\"peaks\":[" << peaks[0] << "," << peaks[1] << "," << peaks[2] << "]}\n";
+    return 0;
+  }
   for (int round = 0; round < 3; ++round) {
     if (interpreter.Reset() != kTfLiteOk) return 6;
     for (int n = 0; n < 100; ++n) {

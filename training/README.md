@@ -2,6 +2,35 @@
 
 目标是普通话本地唤醒，不识别家庭成员。公开仓库里的模型是合成普通话实验模型，**真实童声样本数为 0**。不能用合成音色的成绩声称儿童唤醒已经达标。
 
+## 当前私密候选：第 5 版
+
+第 5 版在本机保留，模型 **45,128 字节**，仍低于 64 KiB 预算。正常音量合成留出测试 **52/54**，低音量 **52/54**，20dB 白噪声 **51/54**，10dB 白噪声 **39/54**，单次回声 **53/54**。每种条件下，168 条合成普通讲话/近似词和 410 条真实儿童普通讲话均未误触发。不同条件共享原始录音，不能合并成独立样本或换算成每小时误唤醒率。较强噪声仍漏唤醒，真人家庭和实板尚未验收。
+
+本轮修正了正样本结束对齐，把窗口扩展至 399 帧（约 4 秒）、采用 6 层时间卷积，并加入负样本的因果前缀，抑制一句话未说完时提前触发。原有失败集已视为开发数据；第 4 版曾在小留出集很好，但扩大开发回归有 15/197 误触发，因此被替代。第 5 版在这批开发集上命中 74/77、误触发 0/197；这个成绩不作为盲测。
+
+训练音色七种，验证 Sandy，测试 Shelley 与 Rocko（包括剔除旧 Rocko 训练录音）。儿童数据训练/验证/测试分别为 6,337 / 390 / 410 条，说话人与波形互斥。第 4 版测试结果见过后退为回归数据；第 5 版使用新语速、前后文、168 条更丰富负样本，候选仅按验证结果选定，冻结模型和清单哈希后评分。
+
+桌面默认优化算子与 Micro 参考内核曾出现分数差异。现统一使用 TensorFlow Lite `BUILTIN_REF`、float32 和设备相同的半值向外取整量化，重新评分所选模型；权重和 0.90 阈值保持不变。6 组相同特征流的参考/Micro 分数与 3 次重置检查通过；Micro arena 主机使用 21,712 字节，ESP32-S3 编译通过。ESP-NN 内核的实机表现仍需到板检查。
+
+复现本轮数据和训练（授权录音路径保持私密）：
+
+```sh
+python training/prepare_iteration.py --output training/data/iteration-v2 \
+  --children training/runs/childmandarin-v1/children/manifest.json \
+  --original training/data/synthetic/manifest.json --challenge training/runs/self-test-v1/manifest.json
+python training/prepare_followup.py --previous training/data/iteration-v2/manifest.json \
+  --challenge training/runs/self-test-v1/manifest.json --output training/data/iteration-v5
+python training/train.py --upstream training/vendor/micro-wake-word \
+  --manifest training/data/iteration-v5/manifest.json --output training/runs/iteration-v5 \
+  --epochs 35 --window-frames 399 --positive-repeats 8 --negative-repeats 4 \
+  --hard-negative-repeats 16 --min-snr 5 --negative-prefixes \
+  --filters 32 --first-filters 24 --kernels 5,9,13,21,31,43 --defer-test
+```
+
+`evaluate_iteration.py` 显式选择 validation 或 test；候选选择阶段只用 validation。测试只在选定候选之后执行，完整结果记录来源、条件与模型 SHA-256。`verify_micro_parity.py` 校验与固件同版本 Micro 参考内核的实际分数；仅编译成功不代表正确识别语音。已使用的挑战集通过 `self_test.py --development-set` 标为开发回归，不能冒充新的盲测。
+
+本机当前试用页为 `http://127.0.0.1:8792/wake-test`，依然需要爸爸、妈妈、两个孩子各自实测。受限儿童录音与衍生权重、含权重的固件不上传公共仓库。
+
 ## 数据来源与准入
 
 | 来源 | 用途 | 当前状态 |

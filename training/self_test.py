@@ -50,6 +50,7 @@ def modify(pcm,condition,rng):
 def main():
     p=argparse.ArgumentParser();p.add_argument('--candidate',type=Path,required=True)
     p.add_argument('--baseline',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--development-set',action='store_true',help='Known challenge has been used for development; do not call this a blind test')
     a=p.parse_args();os.umask(0o077);a.output.mkdir(parents=True,exist_ok=True)
     audio=a.output/'audio';audio.mkdir(exist_ok=True)
     original=json.loads((Path(__file__).parent/'data/synthetic/manifest.json').read_text())
@@ -110,14 +111,15 @@ def main():
             'wake_detected':sum(r['kind']=='positive' and r['detected'][model] for r in group),
             'negative_clips':sum(r['kind']=='negative' for r in group),
             'false_positive_clips':sum(r['kind']=='negative' and r['detected'][model] for r in group)} for model in hashes}
-    report=dict(status='synthetic-challenge-only-not-human-validation',threshold=.9,models=hashes,
+    report=dict(status='development-regression-not-blind' if a.development_set else 'synthetic-challenge-only-not-human-validation',threshold=.9,models=hashes,
         generated_clips=generated_clips,excluded_original_duplicates=len(excluded),base_clips=len(rows),
-        unique_synthesis_voices=len(VOICES),unseen_synthesis_voices=[v for v in VOICES if v not in used_voices],
+        unique_synthesis_voices=len(VOICES),unseen_synthesis_voices=None if a.development_set else [v for v in VOICES if v not in used_voices],
         positive_clips=sum(r['kind']=='positive' for r in rows),negative_clips=sum(r['kind']=='negative' for r in rows),
         homophone_clips=sum(r['kind']=='homophone' for r in rows),conditions=summaries,clean_by_voice=voice_summary,
         limitations=['No real adults or child wake phrases','Augmented copies are not independent speakers',
             'Additive noise and single echo are simulations, not microphone/acoustic tests',
-            'Homophones are diagnostic and excluded from false-positive pass/fail','Fixed threshold; models not tuned on this challenge'],details=details)
+            'Homophones are diagnostic and excluded from false-positive pass/fail',
+            'Known challenge used for development; not blind evidence' if a.development_set else 'Fixed threshold; models not tuned on this challenge'],details=details)
     for model,path in [('baseline',a.baseline),('candidate',a.candidate)]:
         assert hashlib.sha256(path.read_bytes()).hexdigest()==hashes[model],'Model changed during test'
     (a.output/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
