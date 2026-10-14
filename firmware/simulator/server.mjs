@@ -1,11 +1,12 @@
 import http from 'node:http';
-import {createHash} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
 import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {WebSocketServer,WebSocket} from '../../server/node_modules/ws/wrapper.mjs';
 import {attachEyes} from './eyes-stream.mjs';
+import {socketRoute} from './socket-route.mjs';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const port=Number(process.env.PIKOO_SIM_PORT||8787),origin=`http://127.0.0.1:${port}`;
 function loadConfig(){
@@ -18,7 +19,7 @@ function loadConfig(){
 const config=loadConfig();
 const wakeModel=process.env.PIKOO_WAKE_PYTHON?fs.readFileSync(process.env.PIKOO_WAKE_MODEL||path.resolve(dir,'../../training/models/nihao_pikoo.tflite')):null;
 const wakeInfo=wakeModel?{label:process.env.PIKOO_WAKE_LABEL||'合成语音基线',bytes:wakeModel.length,sha256:createHash('sha256').update(wakeModel).digest('hex')}:null;
-const assets={'/':'index.html','/app.mjs':'app.mjs','/session.mjs':'session.mjs','/capture.js':'capture.js','/style.css':'style.css','/wake-test':'wake-test.html','/wake-test.mjs':'wake-test.mjs','/wake-test.css':'wake-test.css'};
+const assets={'/':'index.html','/app.mjs':'app.mjs','/session.mjs':'session.mjs','/conversation-storage.mjs':'conversation-storage.mjs','/capture.js':'capture.js','/style.css':'style.css','/wake-test':'wake-test.html','/wake-test.mjs':'wake-test.mjs','/wake-test.css':'wake-test.css'};
 Object.assign(assets,{'/dualeye':'dualeye.html','/dualeye.css':'dualeye.css','/eyes.mjs':'eyes.mjs','/visual-state.mjs':'visual-state.mjs','/soak.mjs':'soak.mjs'});
 const server=http.createServer((req,res)=>{
  if(req.headers.host!==`127.0.0.1:${port}`){res.writeHead(403).end();return;}
@@ -33,9 +34,10 @@ const eyeSockets=new WebSocketServer({noServer:true,maxPayload:1024});
 eyeSockets.on('connection',ws=>attachEyes(ws,{binary:process.env.PIKOO_EYES_BINARY}));
 let wakeBusy=false;
 server.on('upgrade',(req,socket,head)=>{
- if(!['/device','/wake','/eyes'].includes(req.url)||req.headers.origin!==origin||req.headers.host!==`127.0.0.1:${port}`){socket.destroy();return;}
- const target=req.url==='/eyes'?eyeSockets:req.url==='/wake'?wakeSockets:sockets;
- target.handleUpgrade(req,socket,head,ws=>target.emit('connection',ws));
+ const route=socketRoute(req.url,origin);
+ if(!route||req.headers.origin!==origin||req.headers.host!==`127.0.0.1:${port}`){socket.destroy();return;}
+ const target=route.path==='/eyes'?eyeSockets:route.path==='/wake'?wakeSockets:sockets;
+ target.handleUpgrade(req,socket,head,ws=>target.emit('connection',ws,route));
 });
 wakeSockets.on('connection',ws=>{
  if(!process.env.PIKOO_WAKE_PYTHON||wakeBusy){ws.close(1013);return;}
@@ -49,12 +51,12 @@ wakeSockets.on('connection',ws=>{
  ws.on('message',(data,isBinary)=>{if(!ready)return;if(!isBinary||data.length%320||data.length>4096||worker.stdin.writableLength>64000){ws.close(1009);return;}worker.stdin.write(data);});
  ws.on('close',()=>{worker.stdin.end();worker.kill();});
 });
-sockets.on('connection',client=>{
+sockets.on('connection',(client,route)=>{
  let remote,timers=new Set(),seq=0,lastId='mock-0';
  const emit=e=>{if(client.readyState===WebSocket.OPEN)client.send(JSON.stringify({event_id:`mock-${++seq}`,...e}));};
  const later=(fn,ms)=>{const timer=setTimeout(()=>{timers.delete(timer);fn();},ms);timers.add(timer);};
  if(config){
-   const endpoint=new URL(config.endpoint);endpoint.searchParams.set('sessionId',`sim-${Date.now()}`);
+   const endpoint=new URL(config.endpoint);endpoint.searchParams.set('sessionId',route?.conversationId||`sim-${randomUUID()}`);
    remote=new WebSocket(endpoint,{headers:{Authorization:`Bearer ${config.token}`,Origin:new URL(config.endpoint.replace(/^wss:/,'https:')).origin},maxPayload:256*1024,handshakeTimeout:15000});
    const pending=[];
    client.on('message',d=>{if(remote.readyState===WebSocket.OPEN)remote.send(d.toString());else if(pending.length<4)pending.push(d.toString());});

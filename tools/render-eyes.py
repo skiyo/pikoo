@@ -8,17 +8,17 @@ root = Path(__file__).resolve().parents[1]
 output = root / 'docs/images/dualeye'
 output.mkdir(parents=True, exist_ok=True)
 states = [
- ('boot', '启动', '半睁眼 · 温暖环形提示'),
- ('idle', '待机', '放松眼睑 · 轻微扫视'),
+ ('boot', '启动', '闭眼启动 · 温暖环形提示'),
+ ('idle', '待机', '未唤醒闭眼 · 轻微呼吸'),
  ('connecting', '连接', '睁大眼睛 · 暖色连接提示'),
  ('listening', '倾听', '视线居中 · 响应输入音量'),
  ('thinking', '思考', '轻微向上看 · 低幅度运动'),
  ('speaking', '说话', '播放音量驱动 · 平滑变化'),
- ('muted', '静音', '半闭眼 · 降低饱和度'),
+ ('muted', '静音', '闭眼静音 · 降低饱和度'),
  ('offline', '离线', '低幅度提示 · 原因见网页'),
  ('occupied', '会话占用', '侧向视线 · 等待明确接管'),
  ('auth_error', '凭证错误', '克制提示 · 需要重新配对'),
- ('happy', '开心', '微笑眼睑 · 演示表情'),
+ ('happy', '开心', '弯弯笑眼 · 演示表情'),
  ('drowsy', '困倦', '低垂眼睑 · 演示表情'),
  ('curious', '疑惑', '上看侧瞥 · 演示表情'),
 ]

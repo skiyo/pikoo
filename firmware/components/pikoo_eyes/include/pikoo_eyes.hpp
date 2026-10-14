@@ -16,7 +16,7 @@ struct Input {
   float level = 0, gaze_x = 0, gaze_y = 0;
 };
 struct Pose {
-  float x = 0, y = 0, open = .82f, pupil = 32, tilt = 0,
+  float x = 0, y = 0, open = 0, pupil = 49, tilt = 0,
         smile = 0, blink = 0, saturation = 1, ring = 0;
   State state = State::Idle;
   double time_ms = 0;

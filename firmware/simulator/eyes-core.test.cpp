@@ -21,10 +21,17 @@ int main(){
   pose.x=std::numeric_limits<float>::quiet_NaN();assert(!render(pose,0,a.data(),EyePixels));
  }
  assert(seen.size()==StateCount);
+ // Awake eyeballs fill the disc at the top/bottom; no persistent black bars.
+ Animator awake;auto listening=awake.update({State::Listening,1000});assert(render(listening,0,a.data(),EyePixels));
+ auto bright=[](uint16_t c){return ((c>>11)&31)>24&&((c>>5)&63)>50;};
+ assert(bright(a[20*240+120])&&bright(a[220*240+120]));
+ Animator sleeping;auto idle_pose=sleeping.update({State::Idle,1000});assert(idle_pose.open==0&&idle_pose.blink==0);
+
  Animator animator;auto idle=animator.update({State::Idle,1000});auto initial=animator.update({State::Listening,1050});assert(initial.open==idle.open);
- auto middle=animator.update({State::Listening,1160});assert(middle.open>idle.open&&middle.open<.98f);
- auto end=animator.update({State::Listening,1270});assert(std::abs(end.open-.98f)<.001);
+ assert(idle.open==0&&idle.blink==0);
+ auto middle=animator.update({State::Listening,1160});assert(middle.open>idle.open&&middle.open<1);
+ auto end=animator.update({State::Listening,1270});assert(std::abs(end.open-1)<.001);
  double previous=-1,blinkStart=-1;bool blinking=false;int count=0;
- animator.reset();for(int ms=0;ms<60000;ms++){auto p=animator.update({State::Idle,double(ms),42});bool now=p.blink>0;if(now&&!blinking){blinkStart=ms;if(previous>=0){assert(ms-previous>=3000&&ms-previous<=5000);}previous=ms;count++;}if(!now&&blinking)assert(ms-blinkStart>=149&&ms-blinkStart<=151);blinking=now;}
+ animator.reset();for(int ms=0;ms<60000;ms++){auto p=animator.update({State::Listening,double(ms),42});bool now=p.blink>0;if(now&&!blinking){blinkStart=ms;if(previous>=0){assert(ms-previous>=3000&&ms-previous<=5000);}previous=ms;count++;}if(!now&&blinking)assert(ms-blinkStart>=149&&ms-blinkStart<=151);blinking=now;}
  assert(count>=14);std::cout<<"13 deterministic states, bounds, crop, binocular gaze, 220ms transition and 3..5s/150ms blink passed\n";
 }

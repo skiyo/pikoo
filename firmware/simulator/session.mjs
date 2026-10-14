@@ -1,12 +1,15 @@
 export class DeviceSession {
-  constructor({send,stopAudio,playAudio,stateChanged,now=()=>Date.now()}) {
+  constructor({send,stopAudio,playAudio,stateChanged,now=()=>Date.now(),conversationId=null,newConversationId=()=>`pikoo-${globalThis.crypto.randomUUID()}`,conversationChanged=()=>{}}) {
     Object.assign(this,{send,stopAudio,playAudio,stateChanged,now});
+    Object.assign(this,{conversationId,newConversationId,conversationChanged});
+    this.eventPrefix=`sim-${globalThis.crypto.randomUUID()}`;
     this.state='idle';this.ready=false;this.muted=false;this.announced=new Set();this.responses=new Map();this.invalid=new Set();this.epoch=0;this.lastActivity=now();this.counter=0;
   }
-  event(type,fields={}) { return {type,event_id:`sim-${++this.counter}`,...fields}; }
+  event(type,fields={}) { return {type,event_id:`${this.eventPrefix}-${++this.counter}`,...fields}; }
   stateTo(s) { if(this.state!==s){this.state=s;this.stateChanged(s);} }
   wake(takeover=false) {
     if(this.muted)return;
+    if(!this.conversationId){this.conversationId=this.newConversationId();this.conversationChanged(this.conversationId);}
     this.clear(false);this.invalid.clear();this.ready=false;this.lastActivity=this.now();this.stateTo('connecting');
     return this.event('session.hello',{protocol:{min:'7.0.0',max:'7.0.0'},client:{type:'esp32-simulator',version:'0.1.0',instance_id:'pikoo-desktop-simulator'},capabilities:['input.audio','input.text','playback.receipts','session.heartbeat','session.takeover'],locale:'zh-CN',time_zone:'Asia/Shanghai',connection:{voice_enabled:true,input_enabled:true,output_enabled:true,text_only:false,takeover}});
   }
@@ -37,7 +40,7 @@ export class DeviceSession {
   clear(receipts) {this.epoch++;this.stopAudio();for(const id of this.announced)this.invalid.add(id);this.announced.clear();for(const id of this.responses.keys()){this.invalid.add(id);if(receipts)this.send(this.event('playback.cancelled',{responseId:id,reason:'user_cancel'}));}this.responses.clear();}
   cancel() {if(!this.ready)return;this.clear(true);this.send(this.event('response.cancel'));this.ready=false;this.stateTo('connecting');this.lastActivity=this.now();}
   disconnect(code=1000) {this.clear(false);this.ready=false;this.stateTo(this.muted?'muted':[4001,4002].includes(code)?'occupied':code===4003?'auth_error':'offline');}
-  stop() {this.clear(true);this.ready=false;this.stateTo(this.muted?'muted':'idle');}
-  setMuted(value) {this.muted=value;this.stop();}
+  stop({endConversation=true}={}) {this.clear(true);this.ready=false;if(endConversation){this.conversationId=null;this.conversationChanged(null);}this.stateTo(this.muted?'muted':'idle');}
+  setMuted(value) {this.muted=value;this.stop({endConversation:false});}
   idleDue() {return this.ready&&!this.responses.size&&this.now()-this.lastActivity>=30000;}
 }
