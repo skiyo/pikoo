@@ -1,0 +1,8 @@
+Vendored feature extraction from rhasspy/pymicro-features
+Revision: 96bd69cfad79aa67697e176570d3dd87052c3def
+
+TensorFlow microfrontend source retains its Apache-2.0 license and
+Copyright 2018-2019 The TensorFlow Authors headers.
+KissFFT source retains its BSD-3-Clause copyright and conditions.
+Pikoo added the ESP-IDF CMakeLists.txt integration. Algorithm source
+and third-party copyrights are not claimed as Pikoo-authored work.

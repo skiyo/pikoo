@@ -8,7 +8,7 @@ import {DeviceSession} from './session.mjs';
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 test('real local WebSocket: origin guard and late audio after cancellation',async()=>{
  const reserve=net.createServer();reserve.listen(0,'127.0.0.1');await once(reserve,'listening');const port=reserve.address().port;await new Promise(r=>reserve.close(r));
- const child=spawn(process.execPath,[new URL('./server.mjs',import.meta.url).pathname],{env:{...process.env,PIKOO_SIM_PORT:String(port),PIKOO_SIM_CONFIG:'',PIKOO_WAKE_PYTHON:''},stdio:['ignore','pipe','pipe']});
+ const child=spawn(process.execPath,[new URL('./server.mjs',import.meta.url).pathname],{env:{...process.env,PIKOO_SIM_PORT:String(port),PIKOO_SIM_CONFIG:'',PIKOO_WAKE_PYTHON:'',PIKOO_WAKE_MODEL:''},stdio:['ignore','pipe','pipe']});
  let ws;
  try{
   await Promise.race([once(child.stdout,'data'),delay(5000).then(()=>{throw Error('mock startup timeout')})]);

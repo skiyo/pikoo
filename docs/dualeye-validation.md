@@ -1,3 +1,5 @@
+> Historical record / 历史记录：2026-10-13–2026-10-14. [English summary](validation-summary.md) · [中文摘要](validation-summary.zh-CN.md). Later changes do not inherit earlier acceptance automatically.
+
 # 双眼模拟器实际验收记录
 
 日期：2026-10-14。环境：本机 Mac arm64、Node.js24.15、Apple Clang，ESP-IDF5.5.5 / Xtensa ESP32-S3 工具链。当前为本机开发预览，不是实板交付。一次慢客户端测试因固定150ms等待在并行负载下超时，改为等待实际帧完成（上限5秒）后13项全部通过；不把测试等待当作绘制时延指标。

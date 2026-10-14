@@ -1,6 +1,6 @@
 # “你好皮酷”训练与中文童声
 
-目标是普通话本地唤醒，不识别家庭成员。公开仓库里的模型是合成普通话实验模型，**真实童声样本数为 0**。不能用合成音色的成绩声称儿童唤醒已经达标。
+目标是普通话本地唤醒，不识别家庭成员。当前公开文件树不分发模型权重，保留历史模型卡及汇总结果；早期公开基线为合成普通话实验模型，**真实童声样本数为 0**。不能用合成音色的成绩声称儿童唤醒已经达标。
 
 ## 当前私密候选：第 5 版
 
@@ -29,7 +29,7 @@ python training/train.py --upstream training/vendor/micro-wake-word \
 
 `evaluate_iteration.py` 显式选择 validation 或 test；候选选择阶段只用 validation。测试只在选定候选之后执行，完整结果记录来源、条件与模型 SHA-256。`verify_micro_parity.py` 校验与固件同版本 Micro 参考内核的实际分数；仅编译成功不代表正确识别语音。已使用的挑战集通过 `self_test.py --development-set` 标为开发回归，不能冒充新的盲测。
 
-本机当前试用页为 `http://127.0.0.1:8792/wake-test`，依然需要爸爸、妈妈、两个孩子各自实测。受限儿童录音与衍生权重、含权重的固件不上传公共仓库。
+本机当前试用页为 `http://127.0.0.1:8793/wake-test`，依然需要爸爸、妈妈、两个孩子各自实测。受限儿童录音与衍生权重、含权重的固件不上传公共仓库。
 
 ## 数据来源与准入
 
@@ -68,7 +68,7 @@ training/.venv/bin/python training/evaluate.py \
 
 特征为 16kHz 单声道 PCM16 → 30ms 窗、10ms 步长、40 维 microfrontend 特征。MixedNet 每 3 帧推理一次，5 次滑动平均，实验阈值 0.90。先按说话人/录音组划分数据，再增强；缓存用清单和音频内容哈希校验。训练集可增加噪声、混响、语速和音量变化。独立测试集不参与训练和阈值选择。
 
-训练输出含受限数据时 `report.json.restricted_data=true`，不得将模型复制到公开目录。本次发布的合成模型人工审核后单独纳入版本管理。现有实验模型见 [模型卡](models/MODEL_CARD.md)。
+训练输出含受限数据时 `report.json.restricted_data=true`，不得将模型复制到公开目录。早期合成权重已从当前分支移除，历史提交仍有权重且未授予 Apache-2.0 模型许可；本机副本保留。后续模型需明确训练及发布授权。历史实验模型见 [模型卡](models/MODEL_CARD.md)。
 
 ## 导入真实中文童声
 
@@ -142,7 +142,7 @@ python3 training/merge_manifests.py \
 ```sh
 python training/self_test.py \
   --candidate training/runs/childmandarin-v1/model/nihao_pikoo.tflite \
-  --baseline training/models/nihao_pikoo.tflite \
+  --baseline /private/retained-baseline.tflite \
   --output training/runs/self-test-v1
 ```
 

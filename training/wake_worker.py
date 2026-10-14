@@ -8,7 +8,9 @@ import numpy as np
 import tensorflow as tf
 from pymicro_features import MicroFrontend
 from streaming_runtime import interpreter as create_interpreter,quantize
-model=Path(os.environ.get('PIKOO_WAKE_MODEL',str(Path(__file__).parent/'models/nihao_pikoo.tflite')))
+if not os.environ.get('PIKOO_WAKE_MODEL'):
+    raise SystemExit('Set PIKOO_WAKE_MODEL to an authorized local model. No model weights are distributed.')
+model=Path(os.environ['PIKOO_WAKE_MODEL'])
 i=create_interpreter(model);i.allocate_tensors()
 input_info=i.get_input_details()[0];output_info=i.get_output_details()[0]
 f=MicroFrontend();frames=[];scores=[];last_detection=0;last_score_time=0

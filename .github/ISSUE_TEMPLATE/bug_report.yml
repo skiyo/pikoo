@@ -1,0 +1,26 @@
+name: Bug report / 缺陷报告
+description: Report reproducible, sanitized behavior / 提供可复现、脱敏的信息
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: "Do not include keys, tokens, recordings or private conversations. Report security vulnerabilities privately through the Security tab. / 不要包含凭证、录音或私人对话，漏洞请私密报告。"
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment / 环境
+      description: Commit, OS, runtime versions, simulator or board model and PCB revision.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction / 复现步骤
+      description: Include expected and actual behavior, with sanitized errors.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Verification type / 验证类型
+      description: Distinguish simulation, synthetic audio, real microphone and real hardware. Do not attach private audio.

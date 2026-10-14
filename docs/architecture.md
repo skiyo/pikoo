@@ -1,0 +1,43 @@
+# Architecture
+
+**English** | [简体中文](architecture.zh-CN.md) · [Home](../README.md)
+
+Pikoo separates the local device, realtime server and offline training environment. The desktop simulator exercises the device-facing protocol while reusing the same eye renderer planned for the board.
+
+## Module boundaries
+
+| Module | Input → output | Responsibility |
+|---|---|---|
+| `firmware/components/pikoo_core` | PCM, GCP events, user actions → bounded audio/session state | Shared protocol, playback generations, cancellation and resampling |
+| `firmware/components/pikoo_eyes` | State, time, seed, gaze, level → two RGB565 frames | Original animation; no ESP-IDF dependency or dynamic allocation |
+| `firmware/main` | Board peripherals and core state → capture/play/display | Historical 1.83-EN integration; DualEye implementation pending |
+| `firmware/simulator` | Explicit browser actions → local graphics/wake and optional remote session | WebAudio/canvas UI, Node relay, C++ process and Python wake worker |
+| `server` | Authenticated GCP session → realtime provider and memory tools | Fixed upstream composition plus compatibility adapters |
+| `training` | Authorized local audio → INT8 model and evaluation reports | Offline preparation, training, streaming evaluation and Micro compatibility |
+
+## Conversation and audio
+
+1. Standby keeps audio local to the wake model; the UI shows closed eyes. Opening a page does not start capture.
+2. Explicit wake connects to the server. Capture is uploaded only after voice readiness; microphone permission is a separate user action.
+3. GCP 7 uses JSON/Base64 mono PCM16: 16 kHz upstream, 24 kHz downstream. The firmware baseline resamples output to 16 kHz; browser playback uses its audio context.
+4. The player reports completion only after buffered audio drains. Cancellation, interruption and disconnection clear playback and reject late chunks for old responses.
+5. Muting stops capture/upload. Thirty seconds of idle conversation returns to standby. The device does not infer speaker identity.
+
+The simulator binds only to `127.0.0.1`, checks Host/Origin and keeps remote tokens in its Node process. `/device` carries audio/session events; `/eyes` is a separate local frame channel with acknowledgement and latest-frame backpressure. A renderer failure does not stop the voice path. Browser AEC is not evidence of ESP32 AEC performance. See [GCP details](gcp7.md) and [eye implementation](dualeye.md).
+
+## State and persistence
+
+- Device: Wi-Fi and revocable device token in NVS; no Google key or household profile. The development firmware has not enabled encrypted NVS/Flash or secure boot.
+- Server: provider credentials, persona, shared Markdown memory, summaries and session journal/history in private persistent storage. Deployment templates are in `server/deploy/`.
+- Browser: only an opaque conversation ID and timestamp in tab-scoped session storage, expiring after 24 hours since the last connection; no credentials or transcripts are stored there.
+- Training computer: authorized datasets, recordings, model weights and detailed reports stay private and outside published artifacts.
+
+Reusing the conversation ID lets the server inject saved recent text into a new provider connection before voice readiness. The fixed upstream implementation limits this to recent messages (approximately 40 messages / 3,500 characters); it is not Gemini native audio-session resumption. Untranscribed speech cannot be recovered, and old audio is not replayed. Explicit End clears the ID; idle, mute and temporary disconnection preserve it.
+
+## Provider and memory integration
+
+`qwen-audio-agent@2.0.1` supplies the gateway, authentication and memory/session machinery. Pikoo's `host.mjs` composes it with Gemini Live compatibility and text-call timeout adapters without rewriting installed upstream files. Gemini Live handles conversation; a configured text model handles memory extraction and summaries. This is an external service with separate availability and terms.
+
+`memory-timeout.mjs` extends the long-term-memory text timeout to 45 seconds by default; the independent session-summary call retains its upstream timeout. A timeout was observed in acceptance testing, so automatic extraction/summary stability remains pending. Text-context recovery and long-term memory are separate capabilities.
+
+Training is not required to serve a conversation. A future public model must meet the 64 KiB weight budget and documented source rights. Current public sources provide the pipeline but no weights.

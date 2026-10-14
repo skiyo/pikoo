@@ -8,7 +8,7 @@ import {WebSocketServer,WebSocket} from '../../server/node_modules/ws/wrapper.mj
 import {attachEyes} from './eyes-stream.mjs';
 import {socketRoute} from './socket-route.mjs';
 const dir=path.dirname(fileURLToPath(import.meta.url));
-const port=Number(process.env.PIKOO_SIM_PORT||8787),origin=`http://127.0.0.1:${port}`;
+const port=Number(process.env.PIKOO_SIM_PORT||8793),origin=`http://127.0.0.1:${port}`;
 function loadConfig(){
  if(!process.env.PIKOO_SIM_CONFIG)return null;
  let value,u;try{value=JSON.parse(fs.readFileSync(process.env.PIKOO_SIM_CONFIG,'utf8'));u=new URL(value.endpoint);}catch{throw new Error('私密服务器配置无法读取或格式错误，请检查配置文件。');}
@@ -17,8 +17,12 @@ function loadConfig(){
  return value;
 }
 const config=loadConfig();
-const wakeModel=process.env.PIKOO_WAKE_PYTHON?fs.readFileSync(process.env.PIKOO_WAKE_MODEL||path.resolve(dir,'../../training/models/nihao_pikoo.tflite')):null;
-const wakeInfo=wakeModel?{label:process.env.PIKOO_WAKE_LABEL||'合成语音基线',bytes:wakeModel.length,sha256:createHash('sha256').update(wakeModel).digest('hex')}:null;
+let wakeModel=null;
+if(process.env.PIKOO_WAKE_PYTHON||process.env.PIKOO_WAKE_MODEL){
+  if(!process.env.PIKOO_WAKE_PYTHON||!process.env.PIKOO_WAKE_MODEL)throw new Error('Local wake requires PIKOO_WAKE_PYTHON and PIKOO_WAKE_MODEL. No model weights are distributed; see docs/getting-started.md.');
+  try{wakeModel=fs.readFileSync(process.env.PIKOO_WAKE_MODEL);}catch{throw new Error('Local wake model is missing or unreadable. Set PIKOO_WAKE_MODEL to an authorized local file.');}
+}
+const wakeInfo=wakeModel?{label:process.env.PIKOO_WAKE_LABEL||'Local wake model',bytes:wakeModel.length,sha256:createHash('sha256').update(wakeModel).digest('hex')}:null;
 const assets={'/':'index.html','/app.mjs':'app.mjs','/session.mjs':'session.mjs','/conversation-storage.mjs':'conversation-storage.mjs','/capture.js':'capture.js','/style.css':'style.css','/wake-test':'wake-test.html','/wake-test.mjs':'wake-test.mjs','/wake-test.css':'wake-test.css'};
 Object.assign(assets,{'/dualeye':'dualeye.html','/dualeye.css':'dualeye.css','/eyes.mjs':'eyes.mjs','/visual-state.mjs':'visual-state.mjs','/soak.mjs':'soak.mjs'});
 const server=http.createServer((req,res)=>{

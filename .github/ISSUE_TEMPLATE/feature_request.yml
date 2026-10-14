@@ -1,0 +1,23 @@
+name: Feature request / 功能建议
+description: Describe a concrete use case / 说明具体使用场景
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Use case / 使用场景
+      description: What would this help you do? Avoid personal information.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior / 期望行为
+      description: Describe the behavior, relevant module, constraints and alternatives.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Success criteria / 成功标准
+      description: How could the result be verified on the simulator or hardware?

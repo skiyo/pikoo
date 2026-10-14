@@ -14,5 +14,6 @@
     "tensor_arena_size": 262144,
     "minimum_esphome_version": "2024.7"
   },
-  "status": "experimental-not-hardware-validated"
+  "status": "historical-experimental-weights-removed",
+  "distribution": "No weights in the current tree; historical weights have no Apache-2.0 model grant."
 }

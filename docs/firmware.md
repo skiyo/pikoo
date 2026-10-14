@@ -19,7 +19,7 @@ cd /path/to/esp-idf
 . ./export.sh
 cd /path/to/pikoo/firmware
 idf.py set-target esp32s3
-idf.py build
+idf.py -DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite build
 ```
 
 下载官方 GitHub 工具失败时可设置 `IDF_GITHUB_ASSETS=dl.espressif.com/github_assets` 使用乐鑫镜像。本次 Mac arm64 已编译出应用、bootloader、分区表和空 SR 模型分区；不是硬件烧录成功的证明。模型在应用中嵌入，未启用 ESP-SR WakeNet。

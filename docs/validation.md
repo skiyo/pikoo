@@ -1,3 +1,5 @@
+> Historical record / 历史记录：2026-10-13–2026-10-14. [English summary](validation-summary.md) · [中文摘要](validation-summary.zh-CN.md). Later changes do not inherit earlier acceptance automatically.
+
 ## 当前状态：第 5 版研究候选
 
 正常音量合成留出测试 52/54，低音量 52/54，20dB 白噪声 51/54，10dB 白噪声 39/54，回声 53/54；各条件的负样本为 0/578（168 合成、410 儿童日常讲话）。较强噪声仍漏唤醒，真人与实板尚未验证。已使用的旧失败集仅作开发回归：74/77、误触发 0/197。

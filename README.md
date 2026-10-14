@@ -1,55 +1,109 @@
 # Pikoo
 
-USB 常供电、带表情屏幕的家庭语音伙伴。设备负责本地唤醒、音频和显示；独立服务器负责中文对话、家庭共享记忆和摘要。首版不做声纹识别、摄像头、电机或手机 App。
+**English** | [简体中文](README.zh-CN.md)
 
-**当前是可编译的开发预览，不是已通过实机验收的成品。** 当前目标板为已购买、尚未到货的 **ESP32-S3-DualEye-LCD-1.28**。已有原创双眼图形组件、桌面语音/唤醒模拟器和脱敏服务器部署材料；现有板级固件仍是1.83-EN基线，双眼板驱动尚待接入。公开仓库保留早期25KB唤醒基线，本机试用加载45,128字节的V5受限模型；模型权重、家庭录音和受限儿童语料不分发。
+A DIY voice pet with expressive dual eyes, local Mandarin wake-word detection, realtime conversation, and shared memory. Built for ESP32-S3, with a desktop simulator you can try before connecting hardware.
 
-双眼试用入口 `http://127.0.0.1:8793/dualeye`：见 [双眼设计与启动说明](docs/dualeye.md) 和 [本轮实际验收记录](docs/dualeye-validation.md)。
+![Pikoo dual-eye simulator concept](docs/images/dualeye/simulator.jpg)
 
-![Pikoo 双眼模拟器](docs/images/dualeye/simulator.jpg)
+*Simulator concept preview, not a photograph of a finished device. The two eye displays are rendered at 240 × 240 pixels each.*
 
-## 快速试用模拟器
+## Features
 
-使用 Node.js 24 LTS（24.15+）：
+- Original cartoon eyes: closed-eye standby, coordinated gaze, blinking, listening and speaking expressions.
+- Local “你好皮酷” (“Hello Pikoo”) wake-word pipeline; standby audio stays on the device or local computer.
+- Continuous Mandarin conversation, playback cancellation, interruption handling, and reconnection.
+- Server-managed persona, shared Markdown memory, and session-summary integration.
+- A portable C++ RGB565 eye renderer shared by the simulator and firmware.
+- USB provisioning and independently revocable device credentials; no provider key in firmware.
 
-```sh
-cd server
-npm ci --ignore-scripts
-cd ..
-node firmware/simulator/server.mjs
-```
+## Project status
 
-打开 `http://127.0.0.1:8787`。默认使用本地测试音验证唤醒按钮、播放、打断、静音和断网恢复；不需要 Google Key。它模拟应用行为和 GCP 协议，不模拟 ESP32 电气、I2S、AEC 或真实扬声器延迟。
+**Development preview. Hardware acceptance is pending.**
 
-启用实验语音唤醒：按照 [训练说明](training/README.md) 安装 Python 环境，再设置 `PIKOO_WAKE_PYTHON=/absolute/path/to/venv/bin/python` 启动。勾选麦克风后，待机音频仅进入本机模型，不上传服务器、不保存录音。模型启动需要几秒。点击唤醒始终可用。
-
-连接真实服务：在仓库外建立权限为 `600` 的 JSON 文件，包含 `endpoint`（`wss://你的服务器/api/realtime`）与独立签发的 `token`。设置 `PIKOO_SIM_CONFIG=/absolute/private/config.json` 启动。凭证只留在本机服务端，浏览器不会收到它。默认不会抢占其他设备；占用时需明确点击接管。仅监听 `127.0.0.1`。
-
-## 工程入口
-
-| 路径 | 内容 |
+| Area | Current status |
 |---|---|
-| `server/` | 固定 qwen-audio-agent 2.0.1、Gemini 兼容适配、systemd/Nginx/mihomo 模板 |
-| `firmware/` | ESP-IDF 5.5.5、微雪 BSP 2.0.0、LVGL、ESP-SR AEC、TFLite Micro |
-| `firmware/simulator/` | 浏览器设备模拟器、本地唤醒接口、真实 WSS 连接 |
-| `firmware/components/pikoo_eyes/` | 原创、无平台依赖的双眼 RGB565 绘制核心 |
-| `training/` | 合成数据生成、模型训练/量化、流式评估、中文童声导入 |
-| `tools/` | 核心测试、USB 配置和烧录工具 |
-| `docs/` | 协议、采购、构建、部署和实际验收记录 |
+| Desktop simulator | Dual-eye graphics, offline demo, optional live-server and local-wake integration implemented |
+| Server | Deployment templates, Gemini compatibility adapters, device authentication and recent-text context recovery implemented |
+| Dual-eye renderer | Native checks and ESP32-S3 cross-compilation passed |
+| Firmware | Existing 1.83-EN integration baseline; DualEye board drivers still pending |
+| Wake word | Training and evaluation tools available; model weights are not included in the current tree |
+| Automatic memory | Integration exists; long-session extraction/summary timeout remains an unresolved acceptance item |
+| Physical device | Audio channels, AEC, wake accuracy, natural interruption, enclosure and endurance await real-board testing |
 
-## 开发检查
+The local V5 research candidate is 45,128 bytes. Its synthesized-speech results and host checks are **not** evidence of child-voice or hardware acceptance. See [actual validation records](docs/validation-summary.md).
 
-```sh
-./tools/test-core.sh
-bash tools/test-eyes.sh
-node --test firmware/simulator/*.test.mjs
-(cd server && npm test)
-python3 -m unittest discover -s tools -p 'test_*.py'
-python3 -m unittest discover -s training -p 'test_*.py'
+## Architecture
+
+```mermaid
+flowchart LR
+    Mic[Microphone] --> Local[Local audio processing and wake word]
+    Local --> Device[ESP32 firmware or desktop simulator]
+    Device -->|GCP 7 / WSS: 16 kHz PCM16| Server[Pikoo server]
+    Server -->|GCP 7 / WSS: 24 kHz PCM| Device
+    Server <-->|Live audio and events| Gemini[Gemini Live external service]
+    Server <-->|Persona, memory and recent text| Store[(Private persistent state)]
+    Device --> Eyes[Portable C++ eye renderer]
+    Eyes --> Screens[Two 240 x 240 displays]
+    Train[Offline training and evaluation] -.->|Local model file| Local
 ```
 
-当前双眼板开发边界见 [双眼说明](docs/dualeye.md)。历史1.83-EN固件构建和USB配置见 [开发与硬件说明](docs/firmware.md)；该构建产物不能直接烧录到已购双眼板。另备USB-C数据线、稳定5V电源和匹配扬声器，向商家确认是否随板附带。
+The device listens, wakes, plays audio and displays expressions. The server manages conversations and memory. Provider keys and household information remain in private server storage. Training runs separately from the online voice path. Read [how the modules cooperate](docs/architecture.md).
 
-家庭资料、API Key、代理订阅、设备凭证、私人录音、模型训练原始数据不提交。训练代码和通用人设模板可公开，使用受限语料训练出的模型默认留在本地。来源和许可证见 [THIRD_PARTY.md](THIRD_PARTY.md)。
+Reconnection restores recent saved text with the same conversation identifier. It does not resume the original audio stream or guarantee unlimited history. Explicitly ending a conversation starts a new topic on the next connection.
 
-详细通过项、失败项和待验收项见 [实际测试记录](docs/validation.md)。
+## Device
+
+The target is **Waveshare ESP32-S3-DualEye-LCD-1.28**: two 1.28-inch round displays, 16 MB Flash and 8 MB PSRAM. The first prototype uses USB power and a suitable speaker. See the [hardware guide](docs/hardware.md) for official documentation, audio hardware and bring-up requirements.
+
+**Do not flash the existing 1.83-EN firmware onto the DualEye board.**
+
+## Quick start: offline simulator
+
+Install [Node.js 24 LTS](https://nodejs.org/en/download) or newer and a C++17 compiler. On macOS, install Xcode Command Line Tools; on Linux, install a C++ toolchain such as `build-essential`.
+
+```sh
+git clone https://github.com/skiyo/pikoo.git
+cd pikoo
+(cd server && npm ci --ignore-scripts)
+bash tools/start-dualeye.sh
+```
+
+Open **http://127.0.0.1:8793/dualeye**. The launcher compiles the eye renderer. Use the expression controls and wake/session button; the offline response is a test tone, not an AI conversation. Opening the page does not enable the microphone or connect to a remote server. The current simulator UI uses Chinese labels.
+
+Stop with Ctrl+C or `bash tools/stop-dualeye.sh`. On macOS, the start/stop `.command` files in `tools/` provide double-click entry points.
+
+The demo needs no model, key, private configuration, Python or ESP-IDF. To add a real server or your own authorized wake model, follow [Getting started](docs/getting-started.md). The original simulator home at `/` and wake test page at `/wake-test` remain available; wake testing requires a configured model.
+
+## Modules and documentation
+
+| Path | Purpose |
+|---|---|
+| [`server/`](server/README.md) | Relay composition, provider adapters, deployment and private persistence |
+| [`firmware/`](docs/development.md) | ESP-IDF firmware baseline, audio/session core and USB configuration |
+| [`firmware/components/pikoo_eyes/`](docs/dualeye.md) | Platform-independent eye renderer |
+| [`firmware/simulator/`](docs/getting-started.md) | Local browser UI, drawing process, wake worker and WSS client |
+| [`training/`](training/README.md) | Training, quantization, dataset import and streaming evaluation |
+| [`tools/`](docs/development.md) | Launch, checks, flashing and provisioning tools |
+
+Start with [Architecture](docs/architecture.md), [Hardware](docs/hardware.md), [Getting started](docs/getting-started.md), and [Development](docs/development.md). Historical technical and test records retain their original Chinese text; the [English validation summary](docs/validation-summary.md) explains their dates and limits.
+
+## Open-source software and references
+
+Pikoo builds on qwen-audio-agent, ESP-IDF, ESP-SR, TensorFlow Lite Micro, microWakeWord, microfrontend/KissFFT, LVGL and Waveshare board components. Muse Gadget SDK inspired simulator organization and animation pacing; Pikoo's character and drawing code are original, with no Jollybot assets or copied Muse implementation.
+
+See [Third-party software and attribution](THIRD_PARTY.md) for versions, sources, licenses and the distinction between vendored code, dependencies and design references. Gemini is an external service, not an open-source component; users provide their own credentials and must check applicable availability, pricing and service terms.
+
+## Contributing
+
+Bug reports, documentation improvements, graphics and hardware bring-up contributions are welcome. Read [CONTRIBUTING](CONTRIBUTING.md), run `bash tools/check.sh`, and use the issue/PR templates. Report vulnerabilities privately using [SECURITY](SECURITY.md).
+
+Next milestones: DualEye board drivers and audio mapping; physical AEC and interruption testing; a redistributable wake model; household and endurance validation.
+
+## License and privacy
+
+Pikoo-authored code, graphics and documentation are licensed under [Apache-2.0](LICENSE). Third-party components retain their own licenses and notices; see [NOTICE](NOTICE) and [THIRD_PARTY](THIRD_PARTY.md).
+
+**No wake-model weights are distributed in the current tree.** Existing research weights use sources whose redistribution rights have not been established. Historical Git commits retain an early experimental model; it is not granted an Apache-2.0 model license by this repository. See the [model card](training/models/MODEL_CARD.md).
+
+Never commit keys, device tokens, proxy subscriptions, household profiles, raw conversations, recordings or restricted datasets/models. Future model releases require documented training and distribution rights.

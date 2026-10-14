@@ -1,4 +1,11 @@
-# nihao_pikoo / synthetic-v1
+# Historical model card: nihao_pikoo / synthetic-v1
+
+**English** | [简体中文](MODEL_CARD.zh-CN.md)
+
+The 25,128-byte synthetic-v1 experimental weights were removed from the current public tree on 2026-10-14 because redistribution rights for the macOS synthetic-voice sources have not been established. The historical Git commits retain them; no Apache-2.0 model license is granted. This card and aggregate evaluation reports are retained as historical evidence. No real-child or physical-board acceptance was established. The local V5 candidate is also private and is not included. Future public models require documented source and distribution rights.
+
+## Original record (Chinese; 2026-10-13)
+
 
 状态：实验，未通过硬件或真实儿童验收。用途：本地个人研究、固件集成和故障测试。不是商用或儿童可靠性承诺。
 

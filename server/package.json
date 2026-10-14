@@ -12,5 +12,16 @@
   },
   "dependencies": {
     "qwen-audio-agent": "2.0.1"
+  },
+  "description": "Pikoo realtime voice gateway composition and deployment adapters",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/skiyo/pikoo.git",
+    "directory": "server"
+  },
+  "homepage": "https://github.com/skiyo/pikoo",
+  "bugs": {
+    "url": "https://github.com/skiyo/pikoo/issues"
   }
 }

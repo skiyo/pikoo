@@ -47,7 +47,7 @@ test('render crash closes only its channel; pose validation rejects unknown stat
 test('missing renderer preserves device audio and eye origin guard',async()=>{
  const reserve=net.createServer();reserve.listen(0,'127.0.0.1');await once(reserve,'listening');const port=reserve.address().port;await new Promise(r=>reserve.close(r));
  const origin=`http://127.0.0.1:${port}`;
- const child=spawn(process.execPath,[new URL('./server.mjs',import.meta.url).pathname],{env:{...process.env,PIKOO_SIM_PORT:String(port),PIKOO_SIM_CONFIG:'',PIKOO_WAKE_PYTHON:'',PIKOO_EYES_BINARY:'/missing/pikoo-eyes'},stdio:['ignore','pipe','pipe']});
+ const child=spawn(process.execPath,[new URL('./server.mjs',import.meta.url).pathname],{env:{...process.env,PIKOO_SIM_PORT:String(port),PIKOO_SIM_CONFIG:'',PIKOO_WAKE_PYTHON:'',PIKOO_WAKE_MODEL:'',PIKOO_EYES_BINARY:'/missing/pikoo-eyes'},stdio:['ignore','pipe','pipe']});
  let eyes,device;try{
   await Promise.race([once(child.stdout,'data'),delay(5000).then(()=>{throw Error('startup timeout');})]);
   const page=await fetch(`${origin}/dualeye`);assert.equal(page.status,200);assert.match(page.headers.get('content-security-policy'),/connect-src 'self'/);

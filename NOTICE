@@ -1,0 +1,24 @@
+Pikoo
+Copyright 2026 Pikoo contributors
+
+Pikoo-authored source code, original eye graphics and project documentation
+are licensed under the Apache License, Version 2.0. See LICENSE.
+Third-party components and model/data terms are separate; see THIRD_PARTY.md.
+
+The vendored firmware/components/pikoo_features source is derived from
+rhasspy/pymicro-features, revision 96bd69cfad79aa67697e176570d3dd87052c3def.
+TensorFlow microfrontend: Copyright 2018-2019 The TensorFlow Authors.
+Apache-2.0 license and original source notices are retained.
+Pikoo added ESP-IDF CMake integration; the original algorithm is not claimed
+as Pikoo-authored code.
+
+KissFFT: Copyright (c) 2003-2010, Mark Borgerding.
+BSD-3-Clause conditions and disclaimer are retained in the vendored source
+headers and firmware/components/pikoo_features/kissfft/COPYING.
+
+Installed dependencies retain their upstream licenses and attribution.
+Binary distributors must include notices for the dependencies they bundle.
+No Muse code or Jollybot assets are incorporated.
+No wake-model weights are included in the current source tree.
+
+This NOTICE is informational and does not modify any license.
