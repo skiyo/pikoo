@@ -8,3 +8,4 @@ Pikoo 自有代码采用 Apache-2.0（见 LICENSE）；模型与语料使用限�
 - ESP-IDF、ESP-TFLite-Micro、ESP-SR、微雪 BSP、LVGL 等由组件管理器安装，固定版本与内容哈希见 `firmware/dependencies.lock`。组件各自的许可证（包括 ESP-SR 预编译库许可及字体许可）继续适用，发布固件时附带许可证包，不能统一声称全部第三方代码为 Apache。
 - ChildMandarin、ChildTalk 没有随仓库分发；获取与使用必须遵守各自申请协议。真实家庭录音不上传。
 - macOS 合成声音由本机系统提供；仓库不分发其音频。实验模型只用于本地研发，商业用途需另行核实语音来源和衍生模型权利。
+- 双眼界面参考 [Muse Gadget SDK 模拟器](https://github.com/facebookincubator/muse-gadget-sdk/blob/main/esp32/simulator/README.md) 的组织方式与动画节奏；未复制其代码或 Jollybot 角色/素材。`pikoo_eyes` 和双眼网页均为 Pikoo 原创代码，生成的状态设计图来自同一原创绘制核心；按本仓库 Apache-2.0 许可。

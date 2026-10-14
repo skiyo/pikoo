@@ -17,6 +17,7 @@ jobs:
         working-directory: server
       - run: npm test
         working-directory: server
+      - run: bash tools/test-eyes.sh
       - run: node --test firmware/simulator/*.test.mjs
       - run: ./tools/test-core.sh
       - run: python -m unittest discover -s tools -p 'test_*.py'

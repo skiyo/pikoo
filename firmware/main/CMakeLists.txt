@@ -1,4 +1,4 @@
-idf_component_register(SRCS "main.cpp" "board_audio.cpp" "wake_model.cpp" INCLUDE_DIRS "." REQUIRES pikoo_core pikoo_features nvs_flash esp_wifi esp_netif esp_event esp_timer json mbedtls esp_driver_i2s esp_driver_gpio esp_driver_uart)
+idf_component_register(SRCS "main.cpp" "board_audio.cpp" "wake_model.cpp" INCLUDE_DIRS "." REQUIRES pikoo_core pikoo_features pikoo_eyes nvs_flash esp_wifi esp_netif esp_event esp_timer json mbedtls esp_driver_i2s esp_driver_gpio esp_driver_uart)
 target_compile_features(${COMPONENT_LIB} PUBLIC cxx_std_17)
 set(PIKOO_WAKE_MODEL "${PROJECT_DIR}/../training/models/nihao_pikoo.tflite" CACHE FILEPATH "Local wake model; restricted models must not be published")
 file(SIZE "${PIKOO_WAKE_MODEL}" PIKOO_WAKE_MODEL_BYTES)

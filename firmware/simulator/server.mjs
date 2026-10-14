@@ -5,13 +5,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {WebSocketServer,WebSocket} from '../../server/node_modules/ws/wrapper.mjs';
+import {attachEyes} from './eyes-stream.mjs';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const port=Number(process.env.PIKOO_SIM_PORT||8787),origin=`http://127.0.0.1:${port}`;
-const config=process.env.PIKOO_SIM_CONFIG?JSON.parse(fs.readFileSync(process.env.PIKOO_SIM_CONFIG,'utf8')):null;
-if(config){const u=new URL(config.endpoint);if(u.protocol!=='wss:'||u.username||u.password)throw new Error('endpoint must be a credential-free wss URL');if(!config.token||/[\r\n]/.test(config.token))throw new Error('invalid device token');}
+function loadConfig(){
+ if(!process.env.PIKOO_SIM_CONFIG)return null;
+ let value,u;try{value=JSON.parse(fs.readFileSync(process.env.PIKOO_SIM_CONFIG,'utf8'));u=new URL(value.endpoint);}catch{throw new Error('私密服务器配置无法读取或格式错误，请检查配置文件。');}
+ if(u.protocol!=='wss:'||u.username||u.password)throw new Error('endpoint must be a credential-free wss URL');
+ if(typeof value.token!=='string'||!value.token||/[\r\n]/.test(value.token))throw new Error('invalid device token');
+ return value;
+}
+const config=loadConfig();
 const wakeModel=process.env.PIKOO_WAKE_PYTHON?fs.readFileSync(process.env.PIKOO_WAKE_MODEL||path.resolve(dir,'../../training/models/nihao_pikoo.tflite')):null;
 const wakeInfo=wakeModel?{label:process.env.PIKOO_WAKE_LABEL||'合成语音基线',bytes:wakeModel.length,sha256:createHash('sha256').update(wakeModel).digest('hex')}:null;
 const assets={'/':'index.html','/app.mjs':'app.mjs','/session.mjs':'session.mjs','/capture.js':'capture.js','/style.css':'style.css','/wake-test':'wake-test.html','/wake-test.mjs':'wake-test.mjs','/wake-test.css':'wake-test.css'};
+Object.assign(assets,{'/dualeye':'dualeye.html','/dualeye.css':'dualeye.css','/eyes.mjs':'eyes.mjs','/visual-state.mjs':'visual-state.mjs','/soak.mjs':'soak.mjs'});
 const server=http.createServer((req,res)=>{
  if(req.headers.host!==`127.0.0.1:${port}`){res.writeHead(403).end();return;}
  if(req.url==='/mode'){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(JSON.stringify({mode:config?'live':'mock',wake:!!process.env.PIKOO_WAKE_PYTHON,wakeModel:wakeInfo}));return;}
@@ -21,10 +29,12 @@ const server=http.createServer((req,res)=>{
 });
 const sockets=new WebSocketServer({noServer:true,maxPayload:256*1024});
 const wakeSockets=new WebSocketServer({noServer:true,maxPayload:4096});
+const eyeSockets=new WebSocketServer({noServer:true,maxPayload:1024});
+eyeSockets.on('connection',ws=>attachEyes(ws,{binary:process.env.PIKOO_EYES_BINARY}));
 let wakeBusy=false;
 server.on('upgrade',(req,socket,head)=>{
- if(!['/device','/wake'].includes(req.url)||req.headers.origin!==origin||req.headers.host!==`127.0.0.1:${port}`){socket.destroy();return;}
- const target=req.url==='/wake'?wakeSockets:sockets;
+ if(!['/device','/wake','/eyes'].includes(req.url)||req.headers.origin!==origin||req.headers.host!==`127.0.0.1:${port}`){socket.destroy();return;}
+ const target=req.url==='/eyes'?eyeSockets:req.url==='/wake'?wakeSockets:sockets;
  target.handleUpgrade(req,socket,head,ws=>target.emit('connection',ws));
 });
 wakeSockets.on('connection',ws=>{
@@ -35,13 +45,14 @@ wakeSockets.on('connection',ws=>{
  worker.stdout.on('data',d=>{lines+=d.toString();let n;while((n=lines.indexOf('\n'))>=0){const line=lines.slice(0,n);lines=lines.slice(n+1);try{const event=JSON.parse(line);if(event.type==='ready')ready=true;if(ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(event));}catch{}}if(lines.length>8192){worker.kill();ws.close(1011);}});
  worker.on('error',()=>ws.close(1011));worker.on('exit',()=>{wakeBusy=false;ws.close();});
  worker.stdin.on('error',()=>{});
+ ws.on('error',()=>worker.kill());
  ws.on('message',(data,isBinary)=>{if(!ready)return;if(!isBinary||data.length%320||data.length>4096||worker.stdin.writableLength>64000){ws.close(1009);return;}worker.stdin.write(data);});
  ws.on('close',()=>{worker.stdin.end();worker.kill();});
 });
 sockets.on('connection',client=>{
- let remote,timers=[],seq=0,lastId='mock-0';
+ let remote,timers=new Set(),seq=0,lastId='mock-0';
  const emit=e=>{if(client.readyState===WebSocket.OPEN)client.send(JSON.stringify({event_id:`mock-${++seq}`,...e}));};
- const later=(fn,ms)=>timers.push(setTimeout(fn,ms));
+ const later=(fn,ms)=>{const timer=setTimeout(()=>{timers.delete(timer);fn();},ms);timers.add(timer);};
  if(config){
    const endpoint=new URL(config.endpoint);endpoint.searchParams.set('sessionId',`sim-${Date.now()}`);
    remote=new WebSocket(endpoint,{headers:{Authorization:`Bearer ${config.token}`,Origin:new URL(config.endpoint.replace(/^wss:/,'https:')).origin},maxPayload:256*1024,handshakeTimeout:15000});
@@ -67,5 +78,6 @@ sockets.on('connection',client=>{
    });
  }
  client.on('close',()=>{remote?.close();timers.forEach(clearTimeout);});
+ client.on('error',()=>{remote?.terminate();timers.forEach(clearTimeout);});
 });
 server.listen(port,'127.0.0.1',()=>console.log(`Pikoo ${config?'live':'mock'} simulator: ${origin}`));
