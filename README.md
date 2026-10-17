@@ -26,10 +26,10 @@ A DIY voice pet with expressive dual eyes, local Mandarin wake-word detection, r
 | Desktop simulator | Dual-eye graphics, offline demo, optional live-server and local-wake integration implemented |
 | Server | Deployment templates, Gemini compatibility adapters, device authentication and recent-text context recovery implemented |
 | Dual-eye renderer | Native checks and ESP32-S3 cross-compilation passed |
-| Firmware | Existing 1.83-EN integration baseline; DualEye board drivers still pending |
+| Firmware | DualEye display, audio, BOOT controls and USB deployment implemented; real voice acceptance in progress |
 | Wake word | Training and evaluation tools available; model weights are not included in the current tree |
 | Automatic memory | Integration exists; long-session extraction/summary timeout remains an unresolved acceptance item |
-| Physical device | Audio channels, AEC, wake accuracy, natural interruption, enclosure and endurance await real-board testing |
+| Physical device | USB, displays and short speaker test checked; sustained voice, AEC, wake accuracy and endurance remain under validation |
 
 The local V5 research candidate is 45,128 bytes. Its synthesized-speech results and host checks are **not** evidence of child-voice or hardware acceptance. See [actual validation records](docs/validation-summary.md).
 
@@ -56,7 +56,7 @@ Reconnection restores recent saved text with the same conversation identifier. I
 
 The target is **Waveshare ESP32-S3-DualEye-LCD-1.28**: two 1.28-inch round displays, 16 MB Flash and 8 MB PSRAM. The first prototype uses USB power and a suitable speaker. See the [hardware guide](docs/hardware.md) for official documentation, audio hardware and bring-up requirements.
 
-**Do not flash the existing 1.83-EN firmware onto the DualEye board.**
+Use the [DualEye firmware guide](docs/firmware.md). The historical 1.83-EN target is separate and must never be flashed onto DualEye.
 
 ## Quick start: offline simulator
 
@@ -98,7 +98,7 @@ See [Third-party software and attribution](THIRD_PARTY.md) for versions, sources
 
 Bug reports, documentation improvements, graphics and hardware bring-up contributions are welcome. Read [CONTRIBUTING](CONTRIBUTING.md), run `bash tools/check.sh`, and use the issue/PR templates. Report vulnerabilities privately using [SECURITY](SECURITY.md).
 
-Next milestones: DualEye board drivers and audio mapping; physical AEC and interruption testing; a redistributable wake model; household and endurance validation.
+Next milestones: sustained real-device voice; physical AEC and interruption testing; a redistributable wake model; household and endurance validation. See the [dated hardware record](docs/device-validation.md).
 
 ## License and privacy
 

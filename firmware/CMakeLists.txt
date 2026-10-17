@@ -1,3 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
+set(PROJECT_VER "0.2.0-dev")
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(pikoo)
+file(WRITE "${CMAKE_BINARY_DIR}/pikoo-board.json" "{\"board\":\"waveshare-dualeye-1.28\",\"flash_bytes\":16777216,\"layout\":1}\n")

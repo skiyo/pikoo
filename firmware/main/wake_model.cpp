@@ -1,6 +1,7 @@
 #include "wake_model.hpp"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/micro/micro_resource_variable.h"
@@ -12,6 +13,10 @@ extern "C" {
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <atomic>
+static std::atomic<uint32_t> inference_max{0}, inference_count{0};
+uint32_t wake_max_inference_us(){return inference_max.load();}
+uint32_t wake_inference_count(){return inference_count.load();}
 extern const unsigned char
     model_start[] asm("_binary_nihao_pikoo_tflite_start");
 static FrontendState frontend{};
@@ -106,7 +111,12 @@ bool wake_feed(const int16_t *pcm, size_t count) {
       continue;
     }
     slices = 0;
-    if (interpreter->Invoke() != kTfLiteOk)
+    auto started=esp_timer_get_time();
+    auto result=interpreter->Invoke();
+    auto elapsed=static_cast<uint32_t>(esp_timer_get_time()-started);
+    inference_max=std::max(inference_max.load(),elapsed);
+    ++inference_count;
+    if (result != kTfLiteOk)
       continue;
     auto out = interpreter->output(0);
     float p = ((out->type == kTfLiteUInt8 ? int(out->data.uint8[0])

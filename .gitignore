@@ -33,3 +33,5 @@ training/vendor/
 *.tflite
 
 firmware/build-host/
+firmware/build-*/
+firmware/boards/legacy183/build*/

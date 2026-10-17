@@ -13,7 +13,7 @@ int main(int argc,char **argv) {
   Animator animator;
   auto draw=[&](Input input) {
     Pose p=animator.update(input);
-    if(!render(p,0,pixels.data(),EyePixels) || !render(p,1,pixels.data()+EyePixels,EyePixels)) return false;
+    if(!render_fast(p,0,pixels.data(),EyePixels) || !render_fast(p,1,pixels.data()+EyePixels,EyePixels)) return false;
     for(std::size_t j=0;j<pixels.size();j++) { bytes[j*2]=pixels[j]&255; bytes[j*2+1]=pixels[j]>>8; }
     return true;
   };

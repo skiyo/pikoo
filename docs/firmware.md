@@ -1,54 +1,64 @@
-# 硬件、编译与 USB 交付
+# DualEye firmware and USB deployment
 
-**本文件描述历史1.83-EN板级固件基线。当前已购目标为 ESP32-S3-DualEye-LCD-1.28，新的图形核心可复用，但板级驱动与实板验证尚未完成。不要把下列固件直接烧录到双眼板。** 当前试用、双眼图形组件与到板工作见 [双眼设计说明](dualeye.md)。
+English | [简体中文](firmware.zh-CN.md)
 
-## 采购
+The default target is **ESP32-S3-DualEye-LCD-1.28, non-touch**. The previous 1.83 project is retained in `firmware/boards/legacy183/`; never flash it to DualEye. Compilation, simulator tests and physical acceptance are separate.
 
-历史基线为微雪 ESP32-S3-Touch-LCD-1.83-EN，无电池版，SKU32791；现已改用用户购买的双眼板。两种板型的引脚和音频通道映射不能混用。另备USB-C数据线、稳定5V电源和保护壳/桌面支架；最终声学外壳到板后确定。
+## Build
 
-[微雪官方硬件与原理图入口](https://docs.waveshare.net/ESP32-S3-Touch-LCD-1.83/)。到货核对具体 PCB 版本后再上电。
-
-## 固定环境
-
-ESP-IDF v5.5.5（提交 `b774170ff46c393eeb5e495ea37936038d3f4f4f`），目标 ESP32-S3。BSP 2.0.0、ESP-SR 2.5.3、ESP-TFLite-Micro 1.4.1；其余依赖由 `main/idf_component.yml` 和 `dependencies.lock` 固定。不要丢弃 lock 文件进行无审查升级。
+Use ESP-IDF **5.5.5**. Dependencies are pinned: ESP-SR 2.5.3, ESP-TFLite-Micro 1.4.1, esp_codec_dev 1.5.11, esp_lcd_gc9a01 2.0.4 and esp_websocket_client 1.8.0. No wake weights are distributed.
 
 ```sh
-git clone --branch v5.5.5 --recursive https://github.com/espressif/esp-idf.git /path/to/esp-idf
-cd /path/to/esp-idf
-./install.sh esp32s3
-. ./export.sh
-cd /path/to/pikoo/firmware
-idf.py set-target esp32s3
-idf.py -DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite build
+. /path/to/esp-idf/export.sh
+./tools/build-device.sh /absolute/private/authorized-model.tflite
 ```
 
-下载官方 GitHub 工具失败时可设置 `IDF_GITHUB_ASSETS=dl.espressif.com/github_assets` 使用乐鑫镜像。本次 Mac arm64 已编译出应用、bootloader、分区表和空 SR 模型分区；不是硬件烧录成功的证明。模型在应用中嵌入，未启用 ESP-SR WakeNet。
+The script uses an isolated configuration in `firmware/build-dualeye/`, 240 MHz CPU and 8 MB octal PSRAM. Wake files are limited to 64 KiB; inference arena, AFE and frame buffers consume additional runtime RAM. Builds containing restricted weights remain local and ignored by Git.
 
-## USB 配置与烧录
+## USB deployment
 
-在已激活的 ESP-IDF 环境中：
+On macOS double-click `tools/Pikoo-USB.command`. It finds an active IDF environment, `PIKOO_IDF_PATH`, a workspace toolchain, or `~/esp/esp-idf`. It does not terminate other processes. Connect one board only. The assistant offers first installation, upgrade, status, factory recovery and private configuration changes.
 
 ```sh
-cd /path/to/pikoo
-python tools/flash.py --port /dev/cu.usbmodemYOURDEVICE --dry-run
-python tools/flash.py --port /dev/cu.usbmodemYOURDEVICE
-python tools/configure.py --port /dev/cu.usbmodemYOURDEVICE --output /private/pikoo.nvs.bin
+python tools/device.py install --port PORT --backup /private/factory-backup --config /private/config.json --dry-run
+python tools/device.py install --port PORT --backup /private/factory-backup --config /private/config.json
+python tools/device.py upgrade --port PORT
+python tools/device.py configure --port PORT --config /private/config.json
+python tools/device.py diagnose --port PORT --command status
+python tools/device.py restore --port PORT --backup /private/factory-backup
 ```
 
-配置工具交互输入 2.4GHz Wi-Fi、WSS 地址和独立设备 token；密码/token 不回显。不写 Google Key、家庭资料。NVS 位于 `0x9000`，大小 `0x10000`；固件刷写工具根据构建产物读取地址，不覆盖 NVS。配置镜像含凭证，权限 600，不上传 GitHub。开发版尚未启用 Flash/NVS 加密和安全启动，有物理读取条件的人可能取得设备凭证。
+Private JSON fields: `ssid`, `password`, `endpoint`, `token`. The endpoint is `wss://HOST/api/realtime` without query parameters. Issue one revocable device token per board. Never store provider API keys or family facts in firmware. Private inputs use mode 600 files in mode 700 directories. This developer workflow does not enable secure boot or flash/NVS encryption; physical flash access may expose device credentials.
 
-可用 `--config /private/config.json` 非交互配置，键为 `ssid,password,endpoint,token`。设备 token 从管理员签发的直连码 `#d.` 后取出并 URL 解码；不要把整条配对 URL 填作 token。首次未配置时屏幕提示 USB 配置，不循环崩溃。固件重刷保留配置；重配会覆盖整个设备 NVS 分区，先保存需要的配置。
+First installation migrates the partition layout. It requires `factory-full.bin` (exactly 16 MiB) and `manifest.json` with `full_backup_sha256`, then verifies the backup against the device before writing. It prepares private NVS before writing bootloader, partition table, application, SR resources and NVS in one operation. It never erases the whole chip or changes eFuses. Factory recovery restores and verifies the full 16 MiB.
 
-恢复：USB 进入板商文档中的下载模式，重刷同一套构建产物，再写入新签发凭证。旧凭证通过服务器 `pikoo-admin revoke ID` 撤销。首版不提供 OTA。
+Layout: NVS `0x9000`, 64 KiB; application `0x20000`, 6 MiB; SR resources `0x620000`, 4 MiB. Upgrade compares actual device/build partition tables and updates only the application. Reconfiguration replaces NVS and clears the conversation identifier. No OTA is included.
 
-## 音频实现与到板验证顺序
+## Interaction
 
-硬件录放统一 16kHz。上行 PCM16 单声道、JSON/Base64；下行 24kHz 经过 63-tap FIR 2/3 重采样。采集、AFE/唤醒、播放和 UI 独立任务，上传队列/下行 PCM/网络队列有上限；溢出关闭本次连接再重连。取消先关功放、换播放代次并清队列，再发送取消和播放回执。结束回执采用 I2S 写入后 50ms 的保守 DMA 上界（4×10ms + 余量），不在收到 `audio.done` 时立即发送。该时序到板后必须测量。
+| Input | Action |
+|---|---|
+| BOOT press | Wake from standby; locally stop a speaking/thinking response |
+| Double press | End conversation and close eyes |
+| Hold 2 seconds | Toggle mute; while occupied, confirm takeover instead |
+| RESET | Restart with configuration and a valid conversation identifier |
 
-ES7210 四通道 16bit TDM 暂映射为 MIC1、MIC2、参考 ADC3、忽略 ADC4；I2S 使用两个 32bit slot 保持 64 BCLK/LRCK，ES8311 取各 slot 高 16bit。AFE 输入描述 `MMRN`，AEC 打开，WebRTC 降噪，关闭重复 WakeNet。此映射基于 BSP/原理图，尚未用实机录音确认。
+A first press does not wait for double-click detection. Release BOOT for normal startup; use the official BOOT/RESET procedure for recovery download mode. Standby keeps eyes closed and sends no ambient audio. Upload starts after the ready tone drains. Mute stops I2S input, ADC, inference and upload. Thirty seconds without user speech or playback ends the conversation. Network reconnection preserves its identifier; explicit end/idle expiry clears it. The identifier expires after 24 hours. Restoration recovers recent text context, never interrupted audio.
 
-到板先核实电源/PMIC、BCLK/LRCK、32bit 高低半字顺序和通道，再播放低音量测试音，分通道录音确认环回，最后标定 AEC 延迟和增益。未经这些检查，不能把“集成 AEC”当作“回声消除可用”。还需测 TFLM 内部状态兼容性、arena 实际占用、PSRAM 推理时延、DMA 下溢和取消停声时间。
+## Audio, graphics and diagnostics
 
-待机不发送环境音；本地醒来后等 TLS/语音就绪再提示，之后开始上行。当前提示音与上传时序仍需在实机确保提示音不被误判。静音开关停止网络上传和模型处理，但不等同于物理断开麦克风电源。TLS 信任 CA、验证证书，先 SNTP 校时；不固定短期 IP 证书指纹。
+Original Pikoo integration uses two GC9A01 panels with PSRAM rendering and an internal DMA strip. Target animation is 20 fps; measured results are recorded separately. SPI2 uses MOSI42/SCLK41/DC45; left CS47/RST48/BL46, right CS38/RST8/BL39. I2C SDA11/SCL10; I2S MCLK12/BCLK13/WS14, ADC data15/DAC data16; amplifier9; BOOT0.
 
-全双工、1 米童声唤醒、自然插话、30 分钟实机通话、8 小时误唤醒与 72 小时稳定性仍待板子和真实家庭环境测试。
+The schematic connects the physical microphone to ES7210 MIC1 and attenuated amplifier-output reference to MIC3. The [ES7210 datasheet](https://files.waveshare.com/wiki/common/ES7210_DS.pdf), Figure 2e and register 0x12, explains why ordinary ADC12 stereo does not contain MIC3. Levels and echo cancellation require physical validation. ESP-SR uses `MR` and WakeNet is disabled. The audio wire uses two 32-clock stereo slots at 16 kHz; ADC TDM I²S is packed in the order ADC1/ADC3/ADC2/ADC4, with ADC1 and ADC3 unpacked as microphone/reference. The DAC receives PCM16 in the upper half of each slot. Downstream 24 kHz PCM uses the shared streaming FIR resampler. Four 10 ms DMA descriptors use a conservative 50 ms drain bound. Cancellation immediately gates PA, invalidates the playback generation and rejects late response audio.
+
+Keep one USB connection open for endurance observation:
+
+```sh
+python tools/monitor.py --port PORT --private-log /private/device.log
+```
+
+Opening a fresh USB serial connection may restart the board. Commands: `status`, `wake`, `stop`, `end`, `mute`, `unmute`, `takeover`, `tone`, `volume low`, `volume normal`, `volume higher`, `rotate 90`, `rotate 270`. Short tones are available only in standby. Default DAC is -24 dB; allowed range is -50 to -18 dB. Stop immediately if the speaker heats up.
+
+Metrics exclude credentials, transcripts and family facts: uptime/reset reason, heap/internal/PSRAM, frame rate, microphone/reference/output levels, I2S errors, upload frames, reconnects and wake inference time. USB controls do not add public GCP events.
+
+References: [Waveshare non-touch source, pinned commit](https://github.com/waveshareteam/ESP32-S3-DualEye-Touch-LCD-1.28/tree/f16371ca7b7d4e17de6d6f6ea293981b37c0ca51/example/ESP32-S3-DualEye-LCD-1.28/ESP-IDF-5.5.1), [official board documentation](https://docs.waveshare.net/ESP32-S3-DualEye-LCD-1.28/). Integration and artwork are original; Espressif panel/codec drivers retain their licenses. No vendor player or Jollybot assets are copied. See [physical validation](device-validation.md) and the [historical 1.83 notes](firmware-legacy183.md).

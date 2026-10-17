@@ -4,3 +4,5 @@
 bool wake_init();
 bool wake_feed(const int16_t *pcm, size_t count);
 void wake_reset();
+uint32_t wake_max_inference_us();
+uint32_t wake_inference_count();

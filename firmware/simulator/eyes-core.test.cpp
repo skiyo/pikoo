@@ -1,4 +1,7 @@
 #include "pikoo_eyes.hpp"
+#ifdef PIKOO_EYES_FAST_TEST
+#define render render_fast
+#endif
 #include <array>
 #include <cassert>
 #include <cmath>

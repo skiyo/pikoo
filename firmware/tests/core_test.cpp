@@ -1,8 +1,34 @@
 #include "pikoo_core.hpp"
+#include "pikoo_button.hpp"
+#include "pikoo_audio_slots.hpp"
 #include <cassert>
 #include <iostream>
 int main() {
   using namespace pikoo;
+  int16_t mapped_mic=0,mapped_ref=0;
+  es7210_mr(int32_t(0x80017fffu),mapped_mic,mapped_ref);
+  assert(mapped_mic==-32767&&mapped_ref==32767);
+  es7210_mr(int32_t(0x7fff8000u),mapped_mic,mapped_ref);
+  assert(mapped_mic==32767&&mapped_ref==-32768);
+  assert(dac_slot(-32768)==INT32_MIN&&dac_slot(32767)==int32_t(0x7fff0000));
+  // A continuously replenished microphone stream cannot starve incoming audio
+  // or cancellation handling, even when the producer is faster than the link.
+  unsigned sent=0;
+  assert(pump_bounded(2,[]{return true;},[&]{++sent;})==2);
+  assert(sent==2);
+  // Mechanical bounce cannot wake twice; a press need not wait for double-click.
+  Button button;
+  assert(button.update(true,0)==Button::None);
+  assert(button.update(false,5)==Button::None);
+  assert(button.update(true,10)==Button::None);
+  assert(button.update(true,35)==Button::Press);
+  assert(button.update(false,80)==Button::None);
+  assert(button.update(false,105)==Button::None);
+  assert(button.update(true,140)==Button::None);
+  assert(button.update(true,165)==Button::Double);
+  assert(button.update(true,2164)==Button::None);
+  assert(button.update(true,2165)==Button::Hold);
+  assert(button.update(true,3000)==Button::None);
   int16_t samples[480] = {};
   Playback p(1000);
   Playback::Chunk c;
@@ -69,6 +95,27 @@ int main() {
     if (got[i - 1] < 0 && got[i] >= 0)
       ++crosses;
   assert(crosses >= 991 && crosses <= 995);
+  // Independent dense convolution checks both polyphase branches, including
+  // ring-buffer wraparound and zero insertion, on a broadband input.
+  std::array<double,63> kernel{};
+  double weight=0;
+  for(int k=0;k<63;k++) {
+    double x=k-31,fc=.15;
+    kernel[k]=(x==0?2*fc:std::sin(2*M_PI*fc*x)/(M_PI*x))*
+      (.42-.5*std::cos(2*M_PI*k/62)+.08*std::cos(4*M_PI*k/62));
+    weight+=kernel[k];
+  }
+  for(auto &v:kernel)v*=2/weight;
+  std::vector<int16_t> broadband(2048);uint32_t seed=37;
+  for(auto &v:broadband){seed=1664525u*seed+1013904223u;v=int(seed>>16)-32768;}
+  Resampler polyphase;
+  auto filtered=polyphase.process(broadband.data(),broadband.size());
+  for(size_t i=0;i<filtered.size();i++) {
+    double value=0;int pos=int(i*3);
+    for(int k=0;k<63&&k<=pos;k++)if((pos-k)%2==0)value+=kernel[k]*broadband[(pos-k)/2];
+    auto dense=int(std::clamp(value,-32768.,32767.));
+    assert(std::abs(int(filtered[i])-dense)<=2);
+  }
   // Late completion from a disconnected connection cannot complete new
   // playback.
   p.append("old", samples, 480);

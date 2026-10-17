@@ -33,4 +33,6 @@ class Animator {
 // Caller supplies a 115200-byte RGB565 buffer per eye (PSRAM on the board).
 // Returns false for invalid buffers, side or pose. Corners outside the disc are black.
 bool render(const Pose &pose, int side, uint16_t *pixels, std::size_t count);
+// Scanline implementation for MCU frame budgets; same original geometry/palette.
+bool render_fast(const Pose &pose, int side, uint16_t *pixels, std::size_t count);
 } // namespace pikoo::eyes

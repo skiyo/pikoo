@@ -1,2 +1,2 @@
-idf_component_register(SRCS "eyes.cpp" INCLUDE_DIRS "include")
+idf_component_register(SRCS "eyes.cpp" "eyes_fast.cpp" INCLUDE_DIRS "include")
 target_compile_features(${COMPONENT_LIB} PUBLIC cxx_std_17)

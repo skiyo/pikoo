@@ -15,6 +15,6 @@ This page summarizes dated historical evidence, not fresh acceptance of every la
 
 ## Still pending
 
-Real microphone household wake testing, separate adult/child target-word results, real speaker quality, natural interruption latency, DualEye display/audio drivers, actual AEC reference mapping, board FPS/peak resources, enclosure acoustics, 8-hour false-wake testing and 72-hour endurance. Successful simulation or compilation does not substitute for these checks.
+Real microphone household wake testing, separate adult/child target-word results, real speaker quality, natural interruption latency, actual AEC reference mapping, enclosure acoustics, 8-hour false-wake testing and 72-hour endurance. DualEye bring-up is now tracked in the [2026-10-17 device record](device-validation.md); it is not complete acceptance. Successful simulation or compilation does not substitute for these checks.
 
 For the open-source documentation/startup revision, see [repository publication checks](open-source-validation.md). That report records fresh checks separately from the historical voice and hardware evidence.

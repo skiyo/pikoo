@@ -24,6 +24,6 @@ Having an ADC and codec does not establish working echo cancellation. Bring-up m
 
 ## Firmware compatibility
 
-The checked-in BSP remains `waveshare/esp32_s3_touch_lcd_1_83@2.0.0`, an older **1.83-EN baseline**. Its pin mapping and firmware images are not DualEye support. **Do not flash those images onto this board.** The portable eye component has compiled for ESP32-S3, but the two display drivers and audio bring-up are still pending. See [legacy firmware notes](firmware.md).
+The default firmware now targets non-touch DualEye, with two GC9A01 displays, ES8311/ES7210 audio and BOOT controls. Display and short speaker bring-up are checked; full voice/AEC acceptance is ongoing. See the [firmware guide](firmware.md) and [actual validation](device-validation.md). The old 1.83-EN BSP remains a separate [historical target](firmware-legacy183.md); never flash those images to DualEye.
 
 Acceptance still requires real-board display timing, audio quality, AEC, wake-word accuracy, natural interruption, resource measurements, network/power recovery and long-duration operation.

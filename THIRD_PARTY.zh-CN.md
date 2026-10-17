@@ -12,13 +12,15 @@ Pikoo 原创代码、双眼图形和项目文档采用 Apache-2.0。安装依赖
 |---|---|---|---|
 | [qwen-audio-agent](https://github.com/QwenAudio/qwen-audio-agent/tree/v2.0.1) | 2.0.1 | 安装的服务器依赖，提供鉴权、Provider 和记忆/会话框架；Pikoo 适配独立 | Apache-2.0，保留上游声明 |
 | [ESP-IDF](https://github.com/espressif/esp-idf/tree/v5.5.5) | 5.5.5 / `b774170ff46c393eeb5e495ea37936038d3f4f4f` | 固件框架依赖 | 框架 Apache-2.0；内含其他独立许可 |
-| [ESP-SR](https://github.com/espressif/esp-sr) | 2.5.3 | 历史基线 AFE/AEC 依赖，关闭内置 WakeNet | ESPRESSIF MIT License，限 ESPRESSIF 产品；不能简写为通用 MIT 或 Pikoo Apache-2.0 |
+| [ESP-SR](https://github.com/espressif/esp-sr) | 2.5.3 | 双眼及历史基线的 AFE/AEC 依赖，关闭内置 WakeNet | ESPRESSIF MIT License，限 ESPRESSIF 产品；不能简写为通用 MIT 或 Pikoo Apache-2.0 |
 | [ESP-TFLite-Micro](https://github.com/espressif/esp-tflite-micro) | 1.4.1 | INT8 嵌入式推理依赖 | Apache-2.0，加内含第三方声明 |
 | [microWakeWord](https://github.com/OHF-Voice/micro-wake-word) | `4665173cd35f1cff9a61e06fc427f124766c488e` | 单独安装的训练代码，不整库搬入 | Apache-2.0，模型/数据另行授权 |
 | [pymicro-features](https://github.com/rhasspy/pymicro-features/tree/96bd69cfad79aa67697e176570d3dd87052c3def) / TensorFlow microfrontend | 引用提交 `96bd69cfad79aa67697e176570d3dd87052c3def`；Python 2.0.2 | `pikoo_features` 引用源码及桌面特征依赖 | Apache-2.0；保留 TensorFlow 版权头；新增 Pikoo ESP-IDF CMake 集成 |
 | [KissFFT](https://github.com/mborgerding/kissfft) | 随固定特征实现的源码 | microfrontend 引用 FFT | 源码保留 BSD-3-Clause 和 Mark Borgerding 版权 |
 | [LVGL](https://github.com/lvgl/lvgl) | 9.6.0~1 | 历史固件界面；原创双眼核心不依赖 LVGL | 核心 MIT；可选库/字体各有许可 |
 | [微雪 BSP](https://components.espressif.com/components/waveshare/esp32_s3_touch_lcd_1_83/versions/2.0.0) | 2.0.0 | 安装的旧 1.83-EN 集成，不是双眼驱动 | BSP Apache-2.0，依赖许可保留 |
+| [esp_codec_dev](https://github.com/espressif/esp-adf-libs/tree/master/esp_codec_dev) | 1.5.11 | 安装的 ES8311/ES7210 编解码依赖 | Apache-2.0 |
+| [esp_lcd_gc9a01](https://components.espressif.com/components/espressif/esp_lcd_gc9a01/versions/2.0.4) | 2.0.4 | 安装的双圆屏驱动；板级集成为 Pikoo 原创 | Apache-2.0 |
 | [ESP-NN](https://github.com/espressif/esp-nn) | 1.4.1 | 固件锁定的优化推理依赖，实机表现待测 | Apache-2.0 |
 | [ws](https://github.com/websockets/ws) | 锁文件 8.22.0 | 模拟器使用的 Node WebSocket 依赖 | MIT |
 | [TensorFlow](https://github.com/tensorflow/tensorflow) | 2.18.1 | 可选训练/推理依赖 | Apache-2.0，加内含第三方声明 |

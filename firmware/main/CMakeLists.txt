@@ -1,4 +1,4 @@
-idf_component_register(SRCS "main.cpp" "board_audio.cpp" "wake_model.cpp" INCLUDE_DIRS "." REQUIRES pikoo_core pikoo_features pikoo_eyes nvs_flash esp_wifi esp_netif esp_event esp_timer json mbedtls esp_driver_i2s esp_driver_gpio esp_driver_uart)
+idf_component_register(SRCS "main.cpp" "board_audio.cpp" "board_display.cpp" "wake_model.cpp" INCLUDE_DIRS "." REQUIRES pikoo_core pikoo_features pikoo_eyes nvs_flash esp_wifi esp_netif esp_event esp_timer json mbedtls esp_driver_i2s esp_driver_i2c esp_driver_spi esp_driver_gpio esp_driver_usb_serial_jtag esp_lcd app_update tcp_transport)
 target_compile_features(${COMPONENT_LIB} PUBLIC cxx_std_17)
 set(PIKOO_WAKE_MODEL "" CACHE FILEPATH "Local wake model; restricted models must not be published")
 if(NOT PIKOO_WAKE_MODEL OR NOT EXISTS "${PIKOO_WAKE_MODEL}")

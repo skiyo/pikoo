@@ -10,6 +10,14 @@
 #include <vector>
 
 namespace pikoo {
+// A producer may refill a queue while it is consumed. Always return control to
+// receive/cancel handling instead of draining an indefinitely nonempty stream.
+template<class Pop,class Consume>
+unsigned pump_bounded(unsigned limit,Pop pop,Consume consume) {
+  unsigned count=0;
+  while(count<limit&&pop()){consume();++count;}
+  return count;
+}
 // Platform-neutral code shared by ESP32 and desktop fault-injection tests.
 class Playback {
 public:
@@ -150,10 +158,15 @@ public:
       for (int up = 0; up < 2; ++up) {
         history_[cursor_] = up == 0 ? pcm[i] : 0;
         if (phase_ == 0) {
-          double v = 0;
-          for (size_t k = 0; k < 63; ++k)
-            v += taps_[k] * history_[(cursor_ + 63 - k) % 63];
-          out.push_back(static_cast<int16_t>(std::clamp(v, -32768.0, 32767.0)));
+          float v = 0;
+          // Half the interpolated history is zero. Select the active phase,
+          // and wrap by subtraction instead of dividing inside every FIR tap.
+          size_t at = (cursor_ + 63 - up) % 63;
+          for (size_t k = up; k < 63; k += 2) {
+            v += taps_[k] * history_[at];
+            at = at >= 2 ? at - 2 : at + 61;
+          }
+          out.push_back(static_cast<int16_t>(std::clamp(v, -32768.f, 32767.f)));
         }
         cursor_ = (cursor_ + 1) % 63;
         phase_ = (phase_ + 1) % 3;
@@ -162,7 +175,7 @@ public:
   }
 
 private:
-  std::array<double, 63> taps_{};
+  std::array<float, 63> taps_{};
   std::array<int16_t, 63> history_{};
   size_t cursor_ = 0, phase_ = 0;
 };

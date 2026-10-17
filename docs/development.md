@@ -6,7 +6,7 @@
 
 Use Node.js 24+, a C++17 compiler, Bash and Python 3.11 for host development. Install Node dependencies with `(cd server && npm ci --ignore-scripts)`. Optional wake/training packages are pinned in `training/requirements.txt`; ESP-IDF 5.5.5 and components are pinned in `firmware/dependencies.lock`. Do not silently refresh lockfiles or upgrade upstream packages.
 
-The original eye renderer has no ESP-IDF dependency. The firmware's full BSP remains the historical 1.83-EN integration; DualEye drivers and real AEC are pending. Changes to simulator protocol behavior should maintain parity with device cancellation, playback drain and privacy requirements.
+The original eye renderer has no ESP-IDF dependency. The default firmware now targets non-touch DualEye; the 1.83-EN project is isolated under `firmware/boards/legacy183/`. Real voice and AEC acceptance are tracked separately. Changes to simulator protocol behavior should maintain parity with device cancellation, playback drain and privacy requirements.
 
 ## Checks
 
@@ -24,7 +24,7 @@ For targeted work use `bash tools/test-eyes.sh`, `bash tools/test-core.sh`, `nod
 
 Build desktop graphics using `bash tools/build-eyes.sh`. Tests produce ignored artifacts under `firmware/build-host/`. For the historical firmware, use ESP-IDF 5.5.5 and explicitly provide `-DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite`; see [firmware notes](firmware.md). The missing-model error and 64 KiB limit are intentional. No public firmware binary is currently supplied.
 
-`tools/configure.py` and `tools/flash.py` provide USB provisioning and flashing for supported build artifacts. Do not use the old board mapping on DualEye. Configuration contains secrets; store it outside Git, revoke replaced tokens, and follow the board's official download-mode instructions.
+`tools/Pikoo-USB.command` and `tools/device.py` provide partition-checked DualEye installation, upgrades, diagnostics and recovery. See [firmware](firmware.md). Do not use the old board mapping on DualEye. Configuration contains secrets; store it outside Git, revoke replaced tokens, and follow the board's official download-mode instructions.
 
 ## Documentation and releases
 
