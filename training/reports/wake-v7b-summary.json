@@ -205,5 +205,49 @@
   "detector_confirmation_study": {
     "scope": "validation only, V7E, unchanged threshold 0.90",
     "consecutive_windows_1_to_5": "did not remove all validation false wakes; not adopted"
+  },
+  "local_trial_mode_device_check": {
+    "source_commit": "e56222f",
+    "manual_session_start_blocked": true,
+    "neural_trigger_stayed_local": true,
+    "cloud_upload_samples": 0,
+    "reconnects": 0,
+    "automatic_expiry_observed_seconds": 300.85,
+    "raw_audio_saved": false,
+    "restored_normal_standby": true
+  },
+  "real_child_desktop_loudspeaker_development": {
+    "source_commit": "e56222f",
+    "clips": 20,
+    "distinct_corpus_speakers": 20,
+    "false_wake_clips": 0,
+    "wake_errors": 0,
+    "wake_queue_drops": 0,
+    "note": "Ordinary child speech from development validation, replayed through desktop loudspeaker; not live child target-word acceptance or independent blind test."
+  },
+  "bounded_device_runtime": {
+    "status": "30-minute-board-uptime-with-wake-graphics-and-bounded-synthetic-tests",
+    "uptime_seconds": 1800.464,
+    "resets_observed": 0,
+    "wake_calls": 59510,
+    "wake_errors": 0,
+    "wake_dropped": 0,
+    "rx_errors": 0,
+    "tx_errors": 0,
+    "uploaded_samples": 0,
+    "inference_max_us": 8014,
+    "heap_free_start": 7892343,
+    "heap_free_end": 7891495,
+    "fps_min": 0.6,
+    "fps_max": 18.4,
+    "fault_log_matches": 0,
+    "limitations": [
+      "Includes explicit end/mute/trace/synthetic replay; not 30 minutes natural conversation",
+      "No measured total CPU utilization or hardware temperature",
+      "Not eight-hour false-wake or 72-hour endurance acceptance",
+      "Later local-trial guard image requires its own runtime checks"
+    ],
+    "source_commit": "874ca69",
+    "firmware_sha256": "b45993220f7d0ae5f89c5c1da388cde35452a943b720dfb3d0aa5132f204eb8e"
   }
 }
