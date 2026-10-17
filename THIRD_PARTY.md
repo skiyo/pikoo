@@ -26,6 +26,7 @@ Versions below describe the current pinned integration, not a claim that all com
 | [TensorFlow](https://github.com/tensorflow/tensorflow) | 2.18.1 | Optional training/inference dependency | Apache-2.0 plus bundled third-party notices |
 | [NumPy](https://github.com/numpy/numpy) | 2.0.2 | Optional training dependency | BSD-3-Clause core plus bundled dependencies |
 | [Apache Arrow / PyArrow](https://github.com/apache/arrow) | 19.0.1 | Optional importer for the pinned MInDS-14 Parquet data | Apache-2.0; retain bundled dependency notices |
+| [FFmpeg](https://ffmpeg.org/legal.html) | Optional external CLI; local experiment used 8.1 | Offline pitch/tempo processing in a separate process; no binary or library bundled | Build-dependent LGPL/GPL; the observed Homebrew build reports GPL-3.0-or-later |
 | [PyYAML](https://github.com/yaml/pyyaml) | 6.0.2 | Optional training configuration dependency | MIT |
 | [webrtcvad-wheels](https://github.com/daanzu/py-webrtcvad-wheels) | 2.0.14 | Optional voice-activity dependency | MIT wrapper; bundled WebRTC VAD retains upstream BSD-style terms |
 | [Node.js](https://github.com/nodejs/node) | Runtime requirement 24+ | Server/simulator runtime; not bundled in Pikoo | MIT and bundled dependency notices |

@@ -26,6 +26,7 @@ Pikoo 原创代码、双眼图形和项目文档采用 Apache-2.0。安装依赖
 | [TensorFlow](https://github.com/tensorflow/tensorflow) | 2.18.1 | 可选训练/推理依赖 | Apache-2.0，加内含第三方声明 |
 | [NumPy](https://github.com/numpy/numpy) | 2.0.2 | 可选训练依赖 | 核心 BSD-3-Clause，加内含依赖许可 |
 | [Apache Arrow / PyArrow](https://github.com/apache/arrow) | 19.0.1 | 固定版本 MInDS-14 Parquet 的可选导入器 | Apache-2.0，保留内含依赖声明 |
+| [FFmpeg](https://ffmpeg.org/legal.html) | 可选外部工具；本次使用 8.1 | 独立进程处理音高和语速，不附带二进制或链接其库 | 具体构建决定 LGPL/GPL；本次 Homebrew 构建声明 GPL-3.0-or-later |
 | [PyYAML](https://github.com/yaml/pyyaml) | 6.0.2 | 可选训练配置依赖 | MIT |
 | [webrtcvad-wheels](https://github.com/daanzu/py-webrtcvad-wheels) | 2.0.14 | 可选语音活动依赖 | 封装 MIT，内含 WebRTC VAD 保留上游 BSD 类条款 |
 | [Node.js](https://github.com/nodejs/node) | 运行要求 24+ | 服务器/模拟器运行环境，不随项目打包 | MIT 及内含依赖声明 |

@@ -1,0 +1,139 @@
+{
+  "date": "2026-10-17",
+  "status": "V8D-development-gate-passed-hardware-child-trials-pending",
+  "selected_candidate": "V8D",
+  "board_update": "pending",
+  "family_audio_used_for_training_tuning_quantization_or_selection": false,
+  "family_recording_policy_reconfirmed": "evaluation only; no new household training collection",
+  "real_child_target_positive_recordings": 0,
+  "synthetic_variant_validation_limits": "20 target clips are correlated variants from two held-out synthetic voice identities, not 20 real children. All real child clips here are ordinary-speech negatives.",
+  "threshold": 0.9,
+  "rolling_inferences": 5,
+  "versions": {
+    "V8": {
+      "sha256": "b3112fe890bddbf6ff0aae97e8379f2039a81e06f2e737d0b77bc011d81b0c6c",
+      "bytes": 45128,
+      "original_development_validation": {
+        "targets": 46,
+        "hits": 46,
+        "non_targets": 455,
+        "false_wakes": 2
+      },
+      "pitch_tempo_development_validation": {
+        "targets": 20,
+        "hits": 18,
+        "non_targets": 20,
+        "false_wakes": 1
+      },
+      "real_child_non_target_validation": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 1
+      },
+      "passed_predefined_software_gate": false
+    },
+    "V8B": {
+      "sha256": "54d84a2cf55074a394f58c2678d66c52672ffd5d480c97f6f4ef8ad7fa4ab8ad",
+      "bytes": 45128,
+      "original_development_validation": {
+        "targets": 46,
+        "hits": 46,
+        "non_targets": 455,
+        "false_wakes": 3
+      },
+      "pitch_tempo_development_validation": {
+        "targets": 20,
+        "hits": 19,
+        "non_targets": 20,
+        "false_wakes": 0
+      },
+      "real_child_non_target_validation": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 2
+      },
+      "passed_predefined_software_gate": false
+    },
+    "V8C": {
+      "sha256": "a13f8b24542eea9aa5df31ba095347ec4fe927d692981f2155aa630125d2d1a5",
+      "bytes": 45128,
+      "original_development_validation": {
+        "targets": 46,
+        "hits": 46,
+        "non_targets": 455,
+        "false_wakes": 6
+      },
+      "pitch_tempo_development_validation": {
+        "targets": 20,
+        "hits": 19,
+        "non_targets": 20,
+        "false_wakes": 0
+      },
+      "real_child_non_target_validation": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 3
+      },
+      "passed_predefined_software_gate": false
+    },
+    "V8D": {
+      "sha256": "dbeee42e45cd0b80fe4130058fe93639af181a11821b43fb9999bf8a20cce247",
+      "bytes": 45128,
+      "original_development_validation": {
+        "targets": 46,
+        "hits": 46,
+        "non_targets": 455,
+        "false_wakes": 0
+      },
+      "pitch_tempo_development_validation": {
+        "targets": 20,
+        "hits": 19,
+        "non_targets": 20,
+        "false_wakes": 0
+      },
+      "real_child_non_target_validation": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "passed_predefined_software_gate": true
+    }
+  },
+  "baseline_V7B_on_same_pitch_tempo_validation": {
+    "targets": 20,
+    "hits": 5,
+    "non_targets": 20,
+    "false_wakes": 0
+  },
+  "training_negative_mining": {
+    "status": "training-only-hard-negative-prefixes",
+    "model_sha256": "54d84a2cf55074a394f58c2678d66c52672ffd5d480c97f6f4ef8ad7fa4ab8ad",
+    "scored_training_negatives": 7542,
+    "scored_validation_or_test": 0,
+    "minimum_score": 0.3,
+    "selected_prefixes": 173,
+    "real_child_prefixes": 130,
+    "household_recordings_used": 0
+  },
+  "google_child_voice_probe": {
+    "http_status": 400,
+    "voice_created": false,
+    "reason": "safety-policy rejection",
+    "bypass_retries": 0
+  },
+  "tests": "29 training regression tests passed before final evidence recording",
+  "household_guided_trial": "Interrupted by user; per-trial participants not recorded; not individual adult/child acceptance; no raw recording saved.",
+  "host_micro_parity": {
+    "status": "host-micro-parity-passed",
+    "cases": 6,
+    "resets_per_case": 3,
+    "esp32_hardware_validated": false,
+    "arena_used_bytes": [
+      21712
+    ]
+  }
+}

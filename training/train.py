@@ -45,7 +45,7 @@ def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative
             if not 0<end<=len(pcm):raise ValueError('Invalid labeled wake end')
             pcm=pcm[:end]  # The following sentence must not become a positive window.
         # Each source is partitioned BEFORE augmentation.
-        repeats=(positive_repeats if row['label'] else (1 if row.get('real_child') else hard_negative_repeats if row.get('hard_negative') else negative_repeats)) if row['split']=='train' else 1
+        repeats=(positive_repeats if row['label'] else (hard_negative_repeats if row.get('hard_negative') else 1 if row.get('real_child') else negative_repeats)) if row['split']=='train' else 1
         for n in range(repeats):
             x=pcm.copy()
             # Every causal prefix of a negative utterance is negative too. A
@@ -117,7 +117,7 @@ def main():
     manifest=json.loads(a.manifest.read_text());cache=a.output/'features.npz'
     validate_training_manifest(manifest)
     feature_config={'window_frames':a.window_frames,'positive_repeats':a.positive_repeats,'negative_repeats':a.negative_repeats,'hard_negative_repeats':a.hard_negative_repeats,'min_snr':a.min_snr,'negative_prefixes':a.negative_prefixes,'pcm_context':a.pcm_context,'acoustic_augmentation':a.acoustic_augmentation,'acoustic_probability':a.acoustic_probability}
-    fingerprint=hashlib.sha256(b'pikoo-features-v4-aligned-relative-noise'+json.dumps(feature_config,sort_keys=True).encode()+a.manifest.read_bytes())
+    fingerprint=hashlib.sha256(b'pikoo-features-v5-mined-child-hard-negatives'+json.dumps(feature_config,sort_keys=True).encode()+a.manifest.read_bytes())
     for row in manifest:fingerprint.update(hashlib.sha256((a.manifest.parent/row['path']).read_bytes()).digest())
     cache_key=fingerprint.hexdigest();keyfile=a.output/'features.sha256'
     if cache.exists() and keyfile.exists() and keyfile.read_text()==cache_key:
