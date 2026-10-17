@@ -7,6 +7,20 @@ export function liveSchema(value) {
   if (!value || typeof value !== 'object') return value;
   return Object.fromEntries(Object.entries(value).filter(([key])=>key!=='additionalProperties').map(([key,child])=>[key,liveSchema(child)]));
 }
+// Optional server-side tuning; keep automatic detection and natural barge-in.
+// https://ai.google.dev/api/live#AutomaticActivityDetection
+export function liveInputConfig(base = {}, env = process.env) {
+  const sensitivity=String(env.PIKOO_GOOGLE_LIVE_START_SENSITIVITY || '').trim().toLowerCase();
+  const padding=env.PIKOO_GOOGLE_LIVE_PREFIX_PADDING_MS;
+  if(!sensitivity && padding===undefined)return base;
+  if(sensitivity && !['low','high'].includes(sensitivity))throw new Error('Invalid Google Live speech sensitivity');
+  const ms=padding===undefined?undefined:Number(padding);
+  if(ms!==undefined && (!Number.isInteger(ms)||ms<20||ms>1000))throw new Error('Invalid Google Live speech padding');
+  return {...base,automaticActivityDetection:{...base.automaticActivityDetection,
+    ...(sensitivity?{startOfSpeechSensitivity:`START_SENSITIVITY_${sensitivity.toUpperCase()}`} : {}),
+    ...(ms!==undefined?{prefixPaddingMs:ms}:{}),
+  }};
+}
 export function wrapGoogleProtocol(base) {
   let input = null;
   const list = x => !x ? [] : Array.isArray(x) ? x : [x];
@@ -69,6 +83,6 @@ export const pikooGoogleLiveProvider = {
   createProtocol: () => wrapGoogleProtocol(googleLiveProvider.createProtocol()),
   buildSession(args) {
     const session=googleLiveProvider.buildSession(args);
-    return {...session,tools:session.tools.map(tool=>({...tool,functionDeclarations:tool.functionDeclarations.map(fn=>({...fn,parameters:liveSchema(fn.parameters)}))}))};
+    return {...session,realtimeInputConfig:liveInputConfig(session.realtimeInputConfig),tools:session.tools.map(tool=>({...tool,functionDeclarations:tool.functionDeclarations.map(fn=>({...fn,parameters:liveSchema(fn.parameters)}))}))};
   },
 };

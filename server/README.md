@@ -56,6 +56,8 @@ pikoo-admin backup
 
 `google-live-compat.mjs` 修正 Gemini 工具 Schema、输入转写完成事件及插话事件顺序，原版包文件不改写。`memory-timeout.mjs` 在组装入口仅替换长期记忆模块的文本调用，把固定 10 秒上限改为默认 45 秒（可配置 1–60 秒）；保留原版纠错/删除后的学习边界。**会话摘要的独立调用仍沿用原版上限**。调整上限不等于长会话自动记忆已重新验收。
 
+双眼设备调试中，较高播放音量下曾在安静测试里出现服务端取消回答。可在 systemd 服务环境中设置 `PIKOO_GOOGLE_LIVE_START_SENSITIVITY=low`、`PIKOO_GOOGLE_LIVE_PREFIX_PADDING_MS=180`，重启后对新会话生效。它们使用 [Google 官方活动检测参数](https://ai.google.dev/api/live#AutomaticActivityDetection)，保留自动检测和自然插话；不配置则保留上游默认行为。前者支持 `low` / `high`，后者支持 20–1000 毫秒。降低敏感度可能影响轻声和短句插话，必须配合真实人声验证，不能替代硬件 AEC。Pikoo 自定义参数必须进入进程环境（例如 systemd drop-in），不能只依赖上游配置文件识别它们。
+
 先区分网络超时、地区限制、凭证错误和额度不足。地区错误先检查实际运行 UID 的代理出口，不靠盲目轮换模型解决。未开通付费，不自动切换收费服务。查看日志前注意其中可能有会话内容；提交 issue 前脱敏。
 
 2026-10-13 `npm audit` 报告上游依赖 MCP SDK 1.30.0 的 OAuth 凭证泄露风险（已修复版本 ≥1.31.0，但固定上游包未提供自动修复）。当前配置 `AGENT_PROTOCOL=none` 且未配置 MCP OAuth 客户端，不启用受影响流程。升级依赖前做适配/记忆回归，不宣称审计零告警。

@@ -417,7 +417,9 @@ void playback_task(void *) {
       board::silence();
       ESP_LOGI("diag","short tone finished; mic_peak=%.5f ref_peak=%.5f playback_stack_free=%u; human sound/heat check required",board::microphone_peak(),board::reference_peak(),unsigned(uxTaskGetStackHighWaterMark(nullptr)));
     }
-    board::playback_idle();
+    const bool keep_output_ready=awake.load()&&!muted.load();
+    if(keep_output_ready)board::prepare_playback(board::generation());
+    board::playback_idle(keep_output_ready);
     pikoo::Playback::Chunk chunk;
     bool have = false, started = false;
     {
@@ -802,16 +804,21 @@ extern "C" void app_main() {
   ESP_ERROR_CHECK(board::audio_init());
   config_ready=true;
   auto afe_config =
-      afe_config_init("MR", nullptr, AFE_TYPE_VC, AFE_MODE_LOW_COST);
+      afe_config_init("MR", nullptr, AFE_TYPE_FD, AFE_MODE_LOW_COST);
   afe_config->wakenet_init = false;
   afe_config->vad_model_name = nullptr;
   afe_config->vad_init = true;
   afe_config->aec_init = true;
-  afe_config->ns_init = true;
+  afe_config->aec_mode = AEC_MODE_FD_LOW_COST;
+  afe_config->vad_mute_playback = false;
+  // FD already performs nonlinear echo suppression. An additional WebRTC NS
+  // stage is discouraged by ESP-SR's config check for recognition input.
+  afe_config->ns_init = false;
   afe_config->afe_ns_mode = AFE_NS_MODE_WEBRTC;
   afe_config->memory_alloc_mode = AFE_MEMORY_ALLOC_MORE_PSRAM;
   afe_config->afe_perferred_core = 0;
   afe_config->afe_perferred_priority = 7;
+  ESP_LOGI("pikoo","AEC type=%d mode=%d filter=%d nlp=%d",int(afe_config->afe_type),int(afe_config->aec_mode),afe_config->aec_filter_length,int(afe_config->aec_nlp_level));
   afe = esp_afe_handle_from_config(afe_config);
   afe_data = afe->create_from_config(afe_config);
   afe_config_free(afe_config);

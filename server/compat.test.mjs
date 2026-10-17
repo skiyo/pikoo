@@ -1,6 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { liveSchema,pikooGoogleLiveProvider } from './google-live-compat.mjs';
+import { liveSchema,liveInputConfig,pikooGoogleLiveProvider } from './google-live-compat.mjs';
+test('optional speech detection tuning preserves interruption and rejects invalid settings',()=>{
+ const base={activityHandling:'START_OF_ACTIVITY_INTERRUPTS',automaticActivityDetection:{disabled:false,silenceDurationMs:600}};
+ assert.equal(liveInputConfig(base,{}),base);
+ const out=liveInputConfig(base,{PIKOO_GOOGLE_LIVE_START_SENSITIVITY:'low',PIKOO_GOOGLE_LIVE_PREFIX_PADDING_MS:'180'});
+ assert.equal(out.activityHandling,'START_OF_ACTIVITY_INTERRUPTS');
+ assert.deepEqual(out.automaticActivityDetection,{disabled:false,silenceDurationMs:600,startOfSpeechSensitivity:'START_SENSITIVITY_LOW',prefixPaddingMs:180});
+ assert.equal(base.automaticActivityDetection.startOfSpeechSensitivity,undefined);
+ assert.throws(()=>liveInputConfig(base,{PIKOO_GOOGLE_LIVE_START_SENSITIVITY:'off'}));
+ assert.throws(()=>liveInputConfig(base,{PIKOO_GOOGLE_LIVE_PREFIX_PADDING_MS:'NaN'}));
+});
 test('Gemini schema retains tool constraints and never mutates the original',()=>{
  const input={type:'object',additionalProperties:false,required:['edits'],properties:{edits:{type:'array',items:{type:'object',additionalProperties:false,required:['old_text'],properties:{old_text:{type:'string'},new_text:{type:'string'}}}}}};
  const copy=structuredClone(input);const output=liveSchema(input);

@@ -24,12 +24,23 @@ int main() {
     buffered.reset();assert(buffered.append("short",block,100));
     assert(!buffered.take(first,2880,300));buffered.done("short");
     assert(buffered.take(first,2880,301));
-    buffered.reset();assert(buffered.append("stalled",block,100));
+    buffered.reset();assert(buffered.append("stalled",block,240));
     assert(!buffered.take(first,2880,500));assert(buffered.take(first,2880,700));
     buffered.reset();assert(buffered.append("cancelled",block,100));
     assert(!buffered.take(first,2880,800));buffered.cancel();
     assert(!buffered.take(first,2880,1000));
     assert(buffered.append("new",block,100));assert(!buffered.take(first,2880,1000));
+    // Reproduce a second turn: a single-sample prefix arrives 315 ms before
+    // the real PCM. It must not start the speaker and create an audible gap.
+    buffered.reset();assert(buffered.append("prefix",block,1));
+    assert(!buffered.take(first,2880,0));
+    assert(!buffered.take(first,2880,200));
+    assert(!buffered.take(first,2880,314));
+    assert(buffered.append("prefix",block,1440));
+    assert(buffered.append("prefix",block,1440));
+    assert(buffered.take(first,2880,315));assert(first.pcm.size()==1);
+    assert(buffered.started(first));
+    assert(buffered.take(first,2880,315));assert(first.pcm.size()==1440);
   }
   // A continuously replenished microphone stream cannot starve incoming audio
   // or cancellation handling, even when the producer is faster than the link.

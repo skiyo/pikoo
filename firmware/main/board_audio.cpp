@@ -86,10 +86,12 @@ void capture_enabled(bool enabled) {
 bool capture(int16_t *mr,size_t frames) {
   std::lock_guard<std::mutex> lock(rx_mutex);
   if(!collecting) return false;
-  if(frames>256)return false;
-  int32_t raw[512];
+  // Full-duplex AFE consumes 512 frames (VC used 256). Keep its larger
+  // interleaved capture block off the audio task's stack.
+  static std::array<int32_t,1024> raw{};
+  if(frames>raw.size()/2)return false;
   size_t bytes=0;
-  if(i2s_channel_read(rx,raw,frames*8,&bytes,100)!=ESP_OK||bytes!=frames*8){++read_errors;return false;}
+  if(i2s_channel_read(rx,raw.data(),frames*8,&bytes,100)!=ESP_OK||bytes!=frames*8){++read_errors;return false;}
   float m=0,r=0;
   for(size_t i=0;i<frames;i++){
     pikoo::es7210_mr(raw[2*i],mr[2*i],mr[2*i+1]);
@@ -103,8 +105,13 @@ bool capture(int16_t *mr,size_t frames) {
 void silence(){++epoch;gpio_set_level(Amp,0);amp_on=false;out_level=0;}
 uint32_t generation(){return epoch.load();}
 void drain(){vTaskDelay(pdMS_TO_TICKS(50));}
-void playback_idle(){if(esp_timer_get_time()-last_write>60000){gpio_set_level(Amp,0);amp_on=false;out_level=0;}}
-bool play(const int16_t *mono,size_t samples,uint32_t expected) {
+void playback_idle(bool keep_ready){
+  if(esp_timer_get_time()-last_write>60000){
+    out_level=0;
+    if(!keep_ready){gpio_set_level(Amp,0);amp_on=false;}
+  }
+}
+bool prepare_playback(uint32_t expected) {
   if(expected!=generation()) return false;
   if(primed!=expected){
     std::array<int32_t,320> zeros{};
@@ -123,6 +130,10 @@ bool play(const int16_t *mono,size_t samples,uint32_t expected) {
     }
     last_write=esp_timer_get_time();
   }
+  return expected==generation();
+}
+bool play(const int16_t *mono,size_t samples,uint32_t expected) {
+  if(!prepare_playback(expected))return false;
   for(size_t i=0;i<samples;i+=160){
     if(expected!=generation()){gpio_set_level(Amp,0);amp_on=false;return false;}
     size_t count=std::min<size_t>(160,samples-i);int32_t stereo[320];float power=0;

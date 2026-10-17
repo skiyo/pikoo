@@ -8,7 +8,8 @@ esp_err_t audio_init();
 // Interleaved physical microphone / DAC reference, two 16-bit channels.
 bool capture(int16_t *mr, size_t frames);
 void capture_enabled(bool enabled);
-void playback_idle();
+void playback_idle(bool keep_ready=false);
+bool prepare_playback(uint32_t epoch);
 float microphone_level();
 float reference_level();
 float microphone_peak();

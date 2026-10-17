@@ -63,6 +63,10 @@ public:
       return false;
     auto &response=responses_.at(queue_.front().id);
     if(initial_samples&&!response.started&&!response.done&&response.remaining<initial_samples) {
+      // Some responses begin with a one-sample silent marker hundreds of ms
+      // before speech. It cannot sustain playback: start the fallback timer
+      // only once at least 10 ms of PCM is available. Keep the marker queued.
+      if(response.remaining<std::min<size_t>(initial_samples,240))return false;
       if(!response.buffering){response.buffering=true;response.buffered_at=now_ms;}
       if(now_ms<response.buffered_at||now_ms-response.buffered_at<200)return false;
     }
