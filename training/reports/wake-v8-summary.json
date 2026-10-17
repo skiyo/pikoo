@@ -2,7 +2,28 @@
   "date": "2026-10-17",
   "status": "V8D-development-gate-passed-hardware-child-trials-pending",
   "selected_candidate": "V8D",
-  "board_update": "pending",
+  "board_update": {
+    "model": "V8D",
+    "firmware_source_commit": "1fb83b0",
+    "model_sha256": "dbeee42e45cd0b80fe4130058fe93639af181a11821b43fb9999bf8a20cce247",
+    "application_sha256": "e67f98ffba3eb250fa15499dbcd0d126074b92e06c11712b357783422126c840",
+    "device_flash_digest_verification": "passed",
+    "nvs_replaced": false,
+    "startup_observation": {
+      "uptime_ms": 89186,
+      "state": 0,
+      "muted": 0,
+      "wake_test": 0,
+      "wake_calls": 2952,
+      "wake_errors": 0,
+      "wake_dropped": 0,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "uploaded_samples": 0,
+      "wake_max_us": 7039
+    },
+    "real_child_wake_accepted": false
+  },
   "family_audio_used_for_training_tuning_quantization_or_selection": false,
   "family_recording_policy_reconfirmed": "evaluation only; no new household training collection",
   "real_child_target_positive_recordings": 0,
@@ -135,5 +156,16 @@
     "arena_used_bytes": [
       21712
     ]
+  },
+  "local_tts_probe": {
+    "model": "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-4bit",
+    "hf_revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+    "runtime": "mlx-audio 0.5.9",
+    "download": "CLI domestic ModelScope mirror; LFS hashes checked against pinned HF metadata",
+    "runtime_network": "disabled during synthesis",
+    "reference_or_household_audio_used": false,
+    "probe_clips_generated": 2,
+    "label_screen": "Google ASR returned a different near-phrase for both; excluded pending review",
+    "clips_added_to_V8D_training": 0
   }
 }

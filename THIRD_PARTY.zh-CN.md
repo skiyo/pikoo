@@ -27,6 +27,8 @@ Pikoo 原创代码、双眼图形和项目文档采用 Apache-2.0。安装依赖
 | [NumPy](https://github.com/numpy/numpy) | 2.0.2 | 可选训练依赖 | 核心 BSD-3-Clause，加内含依赖许可 |
 | [Apache Arrow / PyArrow](https://github.com/apache/arrow) | 19.0.1 | 固定版本 MInDS-14 Parquet 的可选导入器 | Apache-2.0，保留内含依赖声明 |
 | [FFmpeg](https://ffmpeg.org/legal.html) | 可选外部工具；本次使用 8.1 | 独立进程处理音高和语速，不附带二进制或链接其库 | 具体构建决定 LGPL/GPL；本次 Homebrew 构建声明 GPL-3.0-or-later |
+| [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) / [MLX 模型](https://huggingface.co/mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-4bit) | VoiceDesign 4-bit `5c390979e4b93af5f2932f90742ca99c7dd04687` | 本机纯文本合成试验，无参考声音；未进入 V8D 训练 | 模型及代码 Apache-2.0；本仓库不附带权重 |
+| [MLX-Audio](https://github.com/Blaizzy/mlx-audio) / [MLX](https://github.com/ml-explore/mlx) | 0.5.9 / 0.32.4 | 可选独立 Apple Silicon 语音合成试验环境 | MIT；依赖保留各自声明 |
 | [PyYAML](https://github.com/yaml/pyyaml) | 6.0.2 | 可选训练配置依赖 | MIT |
 | [webrtcvad-wheels](https://github.com/daanzu/py-webrtcvad-wheels) | 2.0.14 | 可选语音活动依赖 | 封装 MIT，内含 WebRTC VAD 保留上游 BSD 类条款 |
 | [Node.js](https://github.com/nodejs/node) | 运行要求 24+ | 服务器/模拟器运行环境，不随项目打包 | MIT 及内含依赖声明 |
