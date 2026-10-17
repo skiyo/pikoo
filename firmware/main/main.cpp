@@ -648,7 +648,9 @@ void controls_task(void *) {
       if(c=='\r'||c=='\n') {
         command[used]=0;
         if(!strcmp(command,"status")) diagnostics();
-        else if(!strcmp(command,"wake test on")&&!awake&&!uploading&&(visual_state==State::Idle||visual_state==State::Muted))wake_test_until_ms=now()+300000;
+        // Enter only after the session task has published a fully muted state,
+        // so a concurrent wake cannot race the test's network-isolation gate.
+        else if(!strcmp(command,"wake test on")&&muted&&!awake&&!uploading&&visual_state==State::Muted)wake_test_until_ms=now()+300000;
         else if(!strcmp(command,"wake test off"))wake_test_until_ms=0;
         else if(!strcmp(command,"wake trace")&&visual_state==State::Idle&&!muted)wake_trace_start();
         else if(!strcmp(command,"wake capture")&&visual_state==State::Idle&&!muted)wake_capture_start();
