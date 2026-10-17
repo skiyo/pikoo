@@ -27,6 +27,8 @@
 #include "mbedtls/base64.h"
 #include "nvs_flash.h"
 #include "pikoo_core.hpp"
+#include "pikoo_interaction.hpp"
+#include "eye_state.hpp"
 #include "wake_model.hpp"
 #include <atomic>
 #include <cstring>
@@ -41,6 +43,8 @@ namespace {
 using State = pikoo::Session::State;
 pikoo::Playback playback;
 pikoo::Session session;
+pikoo::Interaction interaction;
+std::atomic<bool> voice_connected{false};
 std::mutex play_mutex, in_mutex, out_mutex;
 std::deque<std::string> incoming, outgoing;
 std::atomic<bool> wifi_ready{false}, uploading{false}, awake{false},
@@ -166,6 +170,7 @@ void gate_off() {
   xQueueReset(upload_queue);
 }
 void end_socket() {
+  voice_connected=false;
   gate_off();
   active = false;
   awake = false;
@@ -203,6 +208,7 @@ void socket_event(void *, esp_event_base_t, int32_t id, void *data) {
     return;
   }
   if (id == WEBSOCKET_EVENT_DISCONNECTED || id == WEBSOCKET_EVENT_CLOSED) {
+    voice_connected=false;
     if (e && e->close_status_code)
       close_code = e->close_status_code;
     net_down = true;
@@ -211,6 +217,7 @@ void socket_event(void *, esp_event_base_t, int32_t id, void *data) {
     return;
   }
   if (id == WEBSOCKET_EVENT_ERROR) {
+    voice_connected=false;
     if (e) {
       int status = e->error_handle.esp_ws_handshake_status_code;
       if (status == 401 || status == 403)
@@ -317,7 +324,7 @@ void hello() {
   cJSON_AddStringToObject(client, "version", "0.1.0");
   cJSON_AddStringToObject(client, "instance_id", device_id.c_str());
   auto caps = cJSON_AddArrayToObject(o, "capabilities");
-  for (auto c : {"input.audio", "playback.receipts", "session.heartbeat",
+  for (auto c : {"input.audio", "input.text", "playback.receipts", "session.heartbeat",
                  "session.takeover"})
     cJSON_AddItemToArray(caps, cJSON_CreateString(c));
   cJSON_AddStringToObject(o, "locale", "zh-CN");
@@ -346,8 +353,22 @@ void receive(const std::string &raw) {
     auto rate = cJSON_GetObjectItem(o, "inputSampleRate");
     if (!cJSON_IsNumber(rate) || rate->valueint != 16000) {
       fail_queue(4);
-    } else {
+    } else if (!session.ready) {
       session.voice_ready(now());
+      voice_connected=true;
+      if(interaction.greeting_pending()) {
+        auto greeting=event("conversation.item.create");
+        auto parts=cJSON_AddArrayToObject(greeting,"parts");
+        auto part=cJSON_CreateObject();
+        cJSON_AddStringToObject(part,"type","text");
+        cJSON_AddStringToObject(part,"text","你好皮酷");
+        cJSON_AddItemToArray(parts,part);
+        if(send(greeting)) {
+          interaction.greeting_sent();
+          session.state=State::Thinking;
+          ESP_LOGI("pikoo","wake greeting submitted");
+        }
+      }
       tone_request = true;
       // Playback task opens upload only after the ready tone has drained.
       // Reset retry backoff only after a stable connection, not mere readiness.
@@ -385,6 +406,7 @@ void receive(const std::string &raw) {
     ESP_LOGW("pikoo","gateway error code=%s",code.substr(0,80).c_str());
   } else if (type == "response.started") {
     ESP_LOGI("pikoo","audio response announced");
+    interaction.response(field(o,"turnId"),id);
     std::lock_guard<std::mutex> lock(play_mutex);
     if (session.ready)
       playback.announce(id);
@@ -397,13 +419,20 @@ void receive(const std::string &raw) {
     ESP_LOGI("pikoo","audio response complete");
     std::lock_guard<std::mutex> lock(play_mutex);
     playback.done(id);
+    if(!playback.busy())interaction.drained(id);
   } else if (type == "playback.clear") {
     ESP_LOGI("pikoo","audio playback clear");
     clear_audio(true);
     if (session.ready)
       session.state = State::Listening;
-  } else if (type == "transcript.delta" || type == "transcript.final")
+  } else if (type == "transcript.delta" || type == "transcript.final") {
     session.last_activity = now();
+    if(active&&session.ready&&interaction.transcript(field(o,"role"),type=="transcript.final",
+        field(o,"content"),field(o,"turnId"),now())) {
+      gate_off();
+      ESP_LOGI("pikoo","farewell recognized; waiting for playback drain");
+    }
+  }
   cJSON_Delete(o);
 }
 void playback_task(void *) {
@@ -597,14 +626,16 @@ void graphics_task(void *) {
   pikoo::eyes::Animator animator;
   while(true) {
     auto started=now(); auto state=visual_state.load();
-    pikoo::eyes::Input input{};input.state=static_cast<pikoo::eyes::State>(int(state)+1);
-    // Eyes has Boot first, followed by the same nine Session states.
+    pikoo::eyes::Input input{};input.state=pikoo::eye_state(state);
+    if(!voice_connected&&(state==State::Listening||state==State::Thinking||state==State::Speaking))
+      input.state=pikoo::eyes::State::Offline;
     input.time_ms=started;input.level=std::min(1.f,(state==State::Speaking?board::output_level():board::microphone_level())*8);
     const char *label="";
     if(!config_ready) {input.state=pikoo::eyes::State::Boot;label="USB SETUP";}
     else if(local_wake_test())label=state==State::Muted?"TEST MIC OFF":"WAKE TEST";
     else if(state==State::Muted) label="MIC OFF";
     else if(state==State::Offline)label="OFFLINE";
+    else if(state==State::Connecting)label="CONNECTING";
     else if(state==State::Occupied)label="HOLD TO TAKE";
     else if(state==State::AuthError)label="PAIR AGAIN";
     if(display_ready) board::display_frame(animator.update(input),label);
@@ -680,9 +711,10 @@ void controls_task(void *) {
 }
 void session_task(void *) {
   while (true) {
-    if(tone_complete.exchange(false)&&active&&session.ready&&!muted) uploading=true;
+    if(tone_complete.exchange(false)&&active&&session.ready&&!muted&&!interaction.closing()) uploading=true;
     if (stop_request.exchange(false)) {
       end_socket();
+      interaction.reset();
       if(finish_request.exchange(false)) forget_conversation();
       muted ? session.mute() : session.stop();
       next_retry = 0;
@@ -694,11 +726,13 @@ void session_task(void *) {
     if (wake_request.exchange(false) && !muted && !active &&
         session.state!=State::AuthError && (session.state!=State::Occupied||takeover)) {
       next_retry = 0;
+      interaction.wake();
       begin();
     }
     if (cancel_request.exchange(false) && active) {
       clear_audio(true);
       gate_off();
+      voice_connected=false;
       send(event("response.cancel"));
       session.ready = false;
       session.state = State::Connecting;
@@ -712,9 +746,13 @@ void session_task(void *) {
     }
     if (net_down.exchange(false) && active) {
       int code = close_code;
+      bool farewell=interaction.closing();
       end_socket();
       session.ready = false;
-      if (code == 4002 || code == 4001)
+      if(farewell) {
+        forget_conversation();interaction.reset();session.stop();next_retry=0;
+        ESP_LOGI("pikoo","farewell disconnected; standby");
+      } else if (code == 4002 || code == 4001)
         session.state = State::Occupied;
       else if (code == 4003)
         session.state = State::AuthError;
@@ -758,6 +796,7 @@ void session_task(void *) {
           cJSON_AddStringToObject(o, "responseId",
                                   field(r, "responseId").c_str());
           send(o);
+          if(field(r,"type")=="playback.ended")interaction.drained(field(r,"responseId"));
           cJSON_Delete(r);
           session.last_activity = now();
         }
@@ -781,10 +820,13 @@ void session_task(void *) {
     if (session.ready && !playing && session.state == State::Speaking) {
       session.state = State::Listening;
     }
-    if (session.idle_due(now(), playing)) {
+    if (interaction.finish_due(now(),playing)||session.idle_due(now(), playing)) {
+      bool farewell=interaction.closing();
       end_socket();
       forget_conversation();
+      interaction.reset();next_retry=0;
       session.stop();
+      ESP_LOGI("pikoo","conversation ended reason=%s; standby",farewell?"farewell":"idle");
     }
     publish_state();
     vTaskDelay(pdMS_TO_TICKS(10));

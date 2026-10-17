@@ -1,9 +1,35 @@
 #include "pikoo_core.hpp"
 #include "pikoo_button.hpp"
 #include "pikoo_audio_slots.hpp"
+#include "pikoo_interaction.hpp"
+#include "eye_state.hpp"
 #include <cassert>
 #include <iostream>
 int main() {
+  using namespace pikoo;
+  Interaction flow;
+  flow.wake();assert(flow.greeting_pending());flow.greeting_sent();
+  // Transport reconnects and provider rebuilds never call wake().
+  assert(!flow.greeting_pending());
+  for(auto text:{"再见！","皮酷，再见。","拜拜","好了，再见","晚安皮酷"})assert(is_farewell(text));
+  for(auto text:{"不要说再见","再见是什么意思","你会说再见吗","故事里他说再见","再见之后呢","你好皮酷"})assert(!is_farewell(text));
+  assert(!flow.transcript("assistant",true,"再见","t",0));
+  assert(!flow.transcript("user",false,"再见","t",0));
+  flow.response("old","old-response");flow.drained("old-response");
+  assert(flow.transcript("user",true,"再见","bye-turn",100));
+  assert(flow.closing()&&!flow.finish_due(200,false));
+  flow.drained("old-response");assert(!flow.finish_due(200,false));
+  flow.response("bye-turn","bye-response");
+  flow.drained("bye-response");assert(!flow.finish_due(200,true));
+  assert(flow.finish_due(200,false));
+  flow.reset();assert(!flow.closing()&&!flow.greeting_pending());
+  flow.wake();flow.response("fast","fast-response");flow.drained("fast-response");
+  assert(flow.transcript("user",true,"拜拜","fast",100));assert(flow.finish_due(101,false));
+  flow.reset();flow.transcript("user",true,"再见","timeout",100);
+  assert(!flow.finish_due(20099,false));assert(flow.finish_due(20100,true));
+  assert(eye_state(Session::State::Speaking)==eyes::State::Speaking);
+  assert(eye_state(Session::State::Thinking)==eyes::State::Thinking);
+  assert(eye_state(Session::State::Connecting)==eyes::State::Connecting);
   using namespace pikoo;
   int16_t mapped_mic=0,mapped_ref=0;
   es7210_mr(int32_t(0x80017fffu),mapped_mic,mapped_ref);

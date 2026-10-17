@@ -29,6 +29,9 @@ int main(){
  auto bright=[](uint16_t c){return ((c>>11)&31)>24&&((c>>5)&63)>50;};
  assert(bright(a[20*240+120])&&bright(a[220*240+120]));
  Animator sleeping;auto idle_pose=sleeping.update({State::Idle,1000});assert(idle_pose.open==0&&idle_pose.blink==0);
+ for(auto state:{State::Boot,State::Idle,State::Connecting,State::Muted,State::Offline,State::Occupied,State::AuthError}){
+  Animator closed;auto p=closed.update({state,3200});assert(p.open==0&&p.blink==0);
+ }
 
  Animator animator;auto idle=animator.update({State::Idle,1000});auto initial=animator.update({State::Listening,1050});assert(initial.open==idle.open);
  assert(idle.open==0&&idle.blink==0);

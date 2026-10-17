@@ -12,7 +12,7 @@ window.addEventListener('pikoo:test-volume',e=>{if(gain)gain.gain.value=e.detail
 const labels={idle:'休息中',connecting:'连接中',listening:'我在听',speaking:'正在回答',thinking:'想一想',muted:'麦克风已关闭',offline:'网络断开',occupied:'其他设备正在使用',auth_error:'请重新配对'};
 function log(s){$('log').textContent=`${new Date().toLocaleTimeString()} ${s}\n`+$('log').textContent.slice(0,6000);}
 let tabStorage;try{tabStorage=globalThis.sessionStorage;}catch{}
-const session=new DeviceSession({conversationId:loadConversation(tabStorage),conversationChanged:id=>saveConversation(tabStorage,id),send:e=>{if(ws?.readyState===1)ws.send(JSON.stringify(e));},stopAudio:()=>{for(const s of sources){s.stop();}sources.clear();next=0;},playAudio:(b64,onStart)=>new Promise((resolve,reject)=>{
+const session=new DeviceSession({conversationId:loadConversation(tabStorage),conversationChanged:id=>saveConversation(tabStorage,id),ended:()=>{close();$('hint').textContent='已告别，回到待机';},send:e=>{if(ws?.readyState===1)ws.send(JSON.stringify(e));},stopAudio:()=>{for(const s of sources){s.stop();}sources.clear();next=0;},playAudio:(b64,onStart)=>new Promise((resolve,reject)=>{
  const raw=Uint8Array.from(atob(b64),x=>x.charCodeAt(0));if(raw.length%2){reject();return;}
  if(!context){reject();return;}const pcm=new DataView(raw.buffer),buf=context.createBuffer(1,raw.length/2,24000),data=buf.getChannelData(0);
  for(let i=0;i<data.length;i++)data[i]=pcm.getInt16(i*2,true)/32768;
@@ -20,10 +20,10 @@ const session=new DeviceSession({conversationId:loadConversation(tabStorage),con
  const at=Math.max(context.currentTime,next);next=at+buf.duration;const timer=setTimeout(onStart,Math.max(0,(at-context.currentTime)*1000));
  source.onended=()=>{clearTimeout(timer);sources.delete(source);$('screen').dataset.audioEnded=String(++audioEnded);resolve();};source.start(at);$('screen').dataset.audioChunks=String(++audioChunks);
 }),stateChanged:s=>{$('status').textContent=labels[s];$('screen').dataset.state=s;$('takeover').hidden=s!=='occupied';$('hint').textContent=s==='listening'?'准备好了，请说话':s==='idle'?(session.conversationId?'待机中，唤醒后可以接着聊':'点击唤醒开始'):'Pikoo 桌面模拟器';$('text').disabled=!session.ready;$('form').querySelector('button').disabled=!session.ready;$('cancel').disabled=!session.ready;window.dispatchEvent(new CustomEvent('pikoo:state',{detail:s}));log(labels[s]);}});
-function connect(){clearTimeout(retry);if(session.muted)return;continuingConversation=!!session.conversationId;const hello=session.wake(takeover);saveConversation(tabStorage,session.conversationId);takeover=false;const socket=ws=new WebSocket(`ws://${location.host}/device?conversationId=${encodeURIComponent(session.conversationId)}`);
+function connect(resume=false){clearTimeout(retry);if(session.muted)return;continuingConversation=!!session.conversationId;const hello=session.wake(takeover,{resume});saveConversation(tabStorage,session.conversationId);takeover=false;const socket=ws=new WebSocket(`ws://${location.host}/device?conversationId=${encodeURIComponent(session.conversationId)}`);
  connectTimer=setTimeout(()=>{if(socket===ws&&!session.ready)socket.close();},30000);
  socket.onopen=()=>socket.send(JSON.stringify(hello));socket.onmessage=e=>{if(socket!==ws)return;const m=JSON.parse(e.data);if(m.type.startsWith('transcript.')&&(m.content||m.text))log(m.content||m.text);session.receive(m);if(m.type==='voice.ready'){retries=0;clearTimeout(connectTimer);if(continuingConversation){$('hint').textContent='已重新连接，可以接着刚才的话题';log('重新连接本次对话；旧音频已清空');}}};
- socket.onclose=e=>{if(socket!==ws)return;session.disconnect(e.code);if(!session.muted&&![4001,4002,4003].includes(e.code))retry=setTimeout(connect,Math.min(30000,1000*2**Math.min(retries++,5))+Math.random()*500);};}
+ socket.onclose=e=>{if(socket!==ws)return;session.disconnect(e.code);if(socket===ws&&!session.muted&&![4001,4002,4003].includes(e.code))retry=setTimeout(()=>connect(true),Math.min(30000,1000*2**Math.min(retries++,5))+Math.random()*500);};}
 function close(){clearTimeout(retry);clearTimeout(connectTimer);const old=ws;ws=null;old?.close();}
 $('wake').onclick=async()=>{await outputContext().resume();if(!session.ready){close();connect();}};
 $('takeover').onclick=()=>{takeover=true;close();connect();};
@@ -95,7 +95,7 @@ $('mic').onchange=async()=>{
   await stopMic();$('notice').textContent='未能开启麦克风，请检查浏览器权限与输入设备。';log('未能开启麦克风');
  }
 };
-setInterval(()=>{if(session.idleDue()){session.stop({endConversation:false});close();}},250);
+setInterval(()=>{session.tick();if(session.idleDue()){session.stop();close();}},250);
 fetch('/mode').then(r=>r.json()).then(x=>{wakeAvailable=x.wake;$('notice').textContent=x.wake?'已加载实验唤醒功能，开启麦克风后说“你好皮酷”。待机录音不出本机。':'默认不采集麦克风。模拟模式只播放测试音。';$('mode').textContent=x.mode==='live'?'真实服务器 · 等待唤醒':'本地故障模拟';});
 session.stateTo('idle');
 $('text').disabled=true;$('form').querySelector('button').disabled=true;$('cancel').disabled=true;

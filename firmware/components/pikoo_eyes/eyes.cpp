@@ -37,18 +37,19 @@ Pose target(const Input &i) {
   switch (i.state) {
     case State::Boot: p.open=0; p.ring=.6f; break;
     case State::Idle: p.open=0; p.y=std::sin(seconds*.7f)*.7f; break;
-    case State::Connecting: p.pupil=53; p.ring=.7f; break;
+    case State::Connecting: p.open=0; p.pupil=53; p.ring=.7f; break;
     case State::Listening: p.pupil=50+level*4; p.ring=.2f+level*.15f; break;
     case State::Thinking: p.y-=12; p.x+=std::sin(seconds*1.5f)*3; p.pupil=47; p.ring=.3f; break;
     case State::Speaking: p.pupil=50+level*4; p.y-=level*2; p.ring=.2f+level*.3f; break;
     case State::Muted: p.open=0; p.saturation=.08f; break;
-    case State::Offline: p.x-=5; p.pupil=46; p.saturation=.65f; p.ring=.25f; break;
-    case State::Occupied: p.x+=15; p.pupil=46; p.ring=.25f; break;
-    case State::AuthError: p.tilt=.08f; p.pupil=46; p.saturation=.5f; p.ring=.45f; break;
+    case State::Offline: p.open=0; p.x-=5; p.pupil=46; p.saturation=.65f; p.ring=.25f; break;
+    case State::Occupied: p.open=0; p.x+=15; p.pupil=46; p.ring=.25f; break;
+    case State::AuthError: p.open=0; p.tilt=.08f; p.pupil=46; p.saturation=.5f; p.ring=.45f; break;
     case State::Happy: p.smile=1; p.pupil=52; p.ring=.3f; break;
     case State::Drowsy: p.open=.28f; p.y+=5; p.pupil=46; break;
     case State::Curious: p.x+=12; p.y-=7; p.pupil=55; p.tilt=.08f; break;
   }
+  if(p.open==0)p.blink=0;
   return p;
 }
 }

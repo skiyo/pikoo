@@ -22,7 +22,7 @@ test('real local WebSocket: origin guard and late audio after cancellation',asyn
   const s=new DeviceSession({send:e=>ws.send(JSON.stringify(e)),stopAudio:()=>{},stateChanged:()=>{},playAudio:async(_,start)=>{played++;start();await delay(100);}});
   ws.on('open',()=>ws.send(JSON.stringify(s.wake())));
   ws.on('message',raw=>{const e=JSON.parse(raw);if(cancelled&&e.type==='audio.delta'&&e.responseId===oldId)late++;
-   s.receive(e);if(e.type==='voice.ready'&&!cancelled)s.text('本地测试');
+   s.receive(e);
    if(e.type==='audio.delta'&&!cancelled){oldId=e.responseId;cancelled=true;s.cancel();afterCancel=played;}
   });
   const until=Date.now()+5000;while(!cancelled&&Date.now()<until)await delay(20);
