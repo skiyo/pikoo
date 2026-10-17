@@ -9,6 +9,19 @@ AVAILABLE = importlib.util.find_spec('numpy') is not None
 
 @unittest.skipUnless(AVAILABLE, 'Optional synthesis runtime is not installed')
 class GoogleCorpusTest(unittest.TestCase):
+    def test_mixed_targets_preserve_speaker_splits_and_negative_labels(self):
+        from generate_google import jobs
+        from review_google_corpus import normalize
+        rows=jobs(True)
+        for split in ('train','validation','test'):
+            self.assertTrue(any(r['split']==split and r['label'] and 'Pikoo' in r['text'] for r in rows))
+        self.assertEqual({r['pronunciation'] for r in rows if r['label']},{'mandarin-pi2-ku4','mixed-pi1-ku1'})
+        self.assertEqual(normalize('你好Pikoo'),normalize('你好批枯'))
+        self.assertNotEqual(normalize('你好Pikoo'),normalize('你好'))
+        self.assertNotEqual(normalize('你好Pikoo'),normalize('你好屁股'))
+        self.assertEqual(normalize('你好Pikoo'),normalize('你好，披哭。'))
+        for wrong in ['你好皮狗','你好皮克','你好皮球','你好比酷','你好PQ']:
+            self.assertNotEqual(normalize('你好Pikoo'),normalize(wrong))
     def test_synthetic_voice_identities_do_not_cross_splits(self):
         from generate_google import jobs
         rows = jobs()

@@ -1,0 +1,2 @@
+# Optional offline prosody augmentation, workstation only.
+praat-parselmouth==0.4.7

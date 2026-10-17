@@ -38,18 +38,30 @@ STYLES = [
 NEGATIVES = ['你好皮球', '你好朋友', '给我讲一个故事', '皮球在哪里']
 
 
-def jobs():
+def jobs(mixed_pronunciation=False,phonetic_spelling=False):
     """Assign voice identities to splits before any generation or augmentation."""
     rows = []
     for split, voices in VOICES.items():
         for voice in voices:
-            for label, texts in [(1, ['你好皮酷'] * 4), (0, NEGATIVES)]:
+            targets=['你好皮酷','你好Pikoo','你好，Pikoo','你好皮酷'] if mixed_pronunciation else ['你好皮酷']*4
+            if phonetic_spelling:targets=['你好皮酷','你好批枯','你好披哭','你好皮酷']
+            for label, texts in [(1, targets), (0, NEGATIVES)]:
                 for index, text in enumerate(texts):
                     style = ('Speak standard Mainland Mandarin Chinese. Read only '
                              'the exact supplied Chinese text, addressing a small pet robot. '
                              + STYLES[index])
+                    pronunciation='mixed-pi1-ku1' if 'Pikoo' in text or text in {'你好批枯','你好披哭'} else 'mandarin-pi2-ku4' if label else 'non-target'
+                    if 'Pikoo' in text:
+                        style=('Read the Chinese greeting 你好 then the English pet name Pikoo, '
+                               'pronounced PEE-koo, two clear level syllables, not pie-co and not pee-go. '
+                               'Do not translate Pikoo into a Chinese word or add any extra words. '+STYLES[index])
+                    elif pronunciation=='mixed-pi1-ku1':
+                        style=('Read the exact Chinese text. The robot name 批枯 / 披哭 is pronounced pī kū, '
+                               'both first tones, two clear level syllables, equivalent to English PEE-koo. '
+                               'Do not substitute a different name or add words. '+STYLES[index])
                     rows.append(dict(split=split, voice=voice, speaker='gemini:' + voice,
                                      group='gemini:' + voice, text=text, label=label,
+                                     pronunciation=pronunciation,
                                      style=style, source='Google-Gemini-TTS-synthetic',
                                      real_child=False, synthetic=True,
                                      source_terms='https://ai.google.dev/gemini-api/terms'))
@@ -143,6 +155,8 @@ def main():
     p.add_argument('--childlike-voices', nargs='*', default=[], help='Synthetic youthful delivery only; never labeled real children')
     p.add_argument('--items-per-voice', choices=[4, 8], type=int, default=8)
     p.add_argument('--voices', nargs='*', help='Optional explicit voice ordering; split assignment never changes')
+    p.add_argument('--mixed-pronunciation',action='store_true',help='Include English Pikoo / pi1-ku1 as an accepted target alongside Mandarin')
+    p.add_argument('--phonetic-spelling',action='store_true',help='Constrain pi1-ku1 using exact Chinese homophone text instead of ambiguous Latin spelling')
     a = p.parse_args()
     os.umask(0o077)
     key = None
@@ -162,7 +176,7 @@ def main():
     next_request = [0.0]
 
     def selected_jobs():
-        all_rows = jobs()
+        all_rows = jobs(a.mixed_pronunciation,a.phonetic_spelling)
         if a.voices:
             if len(set(a.voices)) != len(a.voices) or any(v not in {r['voice'] for r in all_rows} for v in a.voices):
                 raise ValueError('Unknown or duplicate voice')
@@ -236,6 +250,7 @@ def main():
             (a.output / 'last-api-error.json').write_text(json.dumps({
                 'code': error.code, 'status': details.get('status'), 'details': details.get('details', []),
                 'message': str(details.get('message', '')).replace(key, '[REDACTED]'),
+                'safe_error_body':json.loads(json.dumps(decoded).replace(key,'[REDACTED]')),
                 'retry_after': error.headers.get('Retry-After')}, indent=2))
             raise RuntimeError(f'Gemini TTS HTTP {error.code}; stop and inspect quota/network') from None
         (audio / (digest[:24] + '.response-meta.json')).write_text(json.dumps({

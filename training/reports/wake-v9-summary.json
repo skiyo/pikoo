@@ -1,0 +1,254 @@
+{
+  "date": "2026-10-17",
+  "status": "all-V9-candidates-failed-development-gate-no-device-update",
+  "threshold": 0.9,
+  "rolling_inferences": 5,
+  "model_budget_bytes": 65536,
+  "active_board_model": "V8D",
+  "family_audio_used_for_training_tuning_quantization_or_selection": false,
+  "protected_household_hashes_checked": 8,
+  "real_child_target_positive_recordings": 0,
+  "limitations": [
+    "Streaming development scores reuse known validation data, not a blind test.",
+    "Real Chinese child clips are ordinary-speech negatives, not child wake targets.",
+    "PSOLA pitch shaping and fictional childlike voices cannot establish natural child or English-name pronunciation coverage.",
+    "Historical macOS development regression remains; V9B/C remove those training positives but retain V8D checkpoint lineage.",
+    "Short negative clips do not demonstrate the eight-hour false-wake target.",
+    "No new V9 family recording evaluation or firmware deployment was performed."
+  ],
+  "development_gate": {
+    "threshold": 0.9,
+    "rolling_inferences": 5,
+    "household_data_used_for_selection": false,
+    "primary_new_targets_min_recall": 0.9,
+    "each_new_pronunciation_and_style_min_recall": 0.9,
+    "old_original_target_min_hits": 44,
+    "old_original_targets": 46,
+    "validation_non_target_false_wakes_max": 0,
+    "new_pitch_tempo_min_recall": 0.9,
+    "firmware_max_bytes": 65536,
+    "real_child_target_acceptance": "pending; synthetic is not real child evidence"
+  },
+  "versions": {
+    "V9A": {
+      "bytes": 45128,
+      "sha256": "b97b062efa99da37d9de51c7a96d3727621902313e710c79bb98720408d242ae",
+      "passed_development_gate": false,
+      "flashed": false,
+      "streaming_validation": {
+        "targets": 216,
+        "hits": 198,
+        "non_targets": 565,
+        "false_wakes": 4
+      },
+      "by_source": {
+        "ChildMandarin": {
+          "targets": 0,
+          "hits": 0,
+          "non_targets": 390,
+          "false_wakes": 0
+        },
+        "Google-Gemini-TTS-synthetic": {
+          "targets": 4,
+          "hits": 4,
+          "non_targets": 4,
+          "false_wakes": 0
+        },
+        "Qwen3-TTS-synthetic-local": {
+          "targets": 25,
+          "hits": 24,
+          "non_targets": 15,
+          "false_wakes": 1
+        },
+        "known-self-test-v1-validation": {
+          "targets": 15,
+          "hits": 15,
+          "non_targets": 39,
+          "false_wakes": 1
+        },
+        "macOS-aligned-v2": {
+          "targets": 27,
+          "hits": 27,
+          "non_targets": 22,
+          "false_wakes": 1
+        },
+        "pitch-tempo-augmented-Google-TTS": {
+          "targets": 20,
+          "hits": 19,
+          "non_targets": 20,
+          "false_wakes": 0
+        },
+        "pitch-tempo-augmented-Qwen3-TTS": {
+          "targets": 125,
+          "hits": 109,
+          "non_targets": 75,
+          "false_wakes": 1
+        }
+      },
+      "initialization": "V8D historical checkpoint; historical training lineage retained",
+      "current_training_positives": "Google and reviewed local Qwen synthetic audio",
+      "household_evaluation_performed": false
+    },
+    "V9B": {
+      "bytes": 45128,
+      "sha256": "de79459b6bb1871314137adfac308f45cf90e8c6b1389f9f2f1434f588e5e875",
+      "passed_development_gate": false,
+      "flashed": false,
+      "streaming_validation": {
+        "targets": 103,
+        "hits": 88,
+        "non_targets": 490,
+        "false_wakes": 1
+      },
+      "by_source": {
+        "ChildMandarin": {
+          "targets": 0,
+          "hits": 0,
+          "non_targets": 390,
+          "false_wakes": 0
+        },
+        "Google-Gemini-TTS-synthetic": {
+          "targets": 4,
+          "hits": 4,
+          "non_targets": 4,
+          "false_wakes": 0
+        },
+        "Google-TTS-level-tone-synthetic": {
+          "targets": 2,
+          "hits": 2,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "Qwen3-TTS-synthetic-local": {
+          "targets": 25,
+          "hits": 11,
+          "non_targets": 15,
+          "false_wakes": 0
+        },
+        "known-self-test-v1-validation": {
+          "targets": 15,
+          "hits": 14,
+          "non_targets": 39,
+          "false_wakes": 0
+        },
+        "macOS-aligned-v2": {
+          "targets": 27,
+          "hits": 27,
+          "non_targets": 22,
+          "false_wakes": 1
+        },
+        "pitch-tempo-augmented-Google-TTS": {
+          "targets": 20,
+          "hits": 20,
+          "non_targets": 20,
+          "false_wakes": 0
+        },
+        "pitch-tempo-augmented-Google-level-tone": {
+          "targets": 10,
+          "hits": 10,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "initialization": "V8D historical checkpoint; historical training lineage retained",
+      "current_training_positives": "Google TTS and prosody/pitch/tempo derivatives only",
+      "household_evaluation_performed": false
+    },
+    "V9C": {
+      "bytes": 62640,
+      "sha256": "ed7c75772e621b9c94d9fa29b995fd1c9d655e457c84a6213d75fb557b70e92e",
+      "passed_development_gate": false,
+      "flashed": false,
+      "streaming_validation": {
+        "targets": 103,
+        "hits": 87,
+        "non_targets": 498,
+        "false_wakes": 2
+      },
+      "by_source": {
+        "ChildMandarin": {
+          "targets": 0,
+          "hits": 0,
+          "non_targets": 390,
+          "false_wakes": 0
+        },
+        "Google-Gemini-TTS-synthetic": {
+          "targets": 4,
+          "hits": 4,
+          "non_targets": 4,
+          "false_wakes": 0
+        },
+        "Google-TTS-incomplete-prefix": {
+          "targets": 0,
+          "hits": 0,
+          "non_targets": 8,
+          "false_wakes": 2
+        },
+        "Google-TTS-level-tone-synthetic": {
+          "targets": 2,
+          "hits": 2,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "Qwen3-TTS-synthetic-local": {
+          "targets": 25,
+          "hits": 12,
+          "non_targets": 15,
+          "false_wakes": 0
+        },
+        "known-self-test-v1-validation": {
+          "targets": 15,
+          "hits": 14,
+          "non_targets": 39,
+          "false_wakes": 0
+        },
+        "macOS-aligned-v2": {
+          "targets": 27,
+          "hits": 25,
+          "non_targets": 22,
+          "false_wakes": 0
+        },
+        "pitch-tempo-augmented-Google-TTS": {
+          "targets": 20,
+          "hits": 20,
+          "non_targets": 20,
+          "false_wakes": 0
+        },
+        "pitch-tempo-augmented-Google-level-tone": {
+          "targets": 10,
+          "hits": 10,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "initialization": "V8D historical checkpoint; historical training lineage retained",
+      "current_training_positives": "Google TTS and prosody/pitch/tempo derivatives only",
+      "household_evaluation_performed": false,
+      "host_micro_parity": {
+        "status": "host-micro-parity-passed",
+        "model_sha256": "ed7c75772e621b9c94d9fa29b995fd1c9d655e457c84a6213d75fb557b70e92e",
+        "runtime": "TFLite BUILTIN_REF; float32 half-away quantization matching firmware",
+        "cases": 6,
+        "resets_per_case": 3,
+        "score_tolerance": 0.02,
+        "esp32_hardware_validated": false,
+        "arena_used_bytes": [
+          26704
+        ]
+      }
+    }
+  },
+  "services": {
+    "nvidia_nim": "excluded by user; zero synthesis requests; local credential file removed",
+    "magpie": "excluded",
+    "google": "free TTS request-per-day quota exhausted; no paid fallback or continued polling",
+    "next_google_retry_not_before": "2026-10-18T08:00:00+08:00; retry once after reset, stop if still limited"
+  },
+  "next_steps": [
+    "Collect independently generated, content-checked Mandarin and mixed-name Google speech after quota reset.",
+    "Add more independently generated adult and childlike styles; synthetic age is not verified.",
+    "Train and validate without household audio; freeze a passing candidate before human evaluation.",
+    "Complete adult and child hardware acceptance separately."
+  ],
+  "tests": "36 training regression tests passed; host Micro parity checks six clips with three resets each; no V9 hardware acceptance"
+}

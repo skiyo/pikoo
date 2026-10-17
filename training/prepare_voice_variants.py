@@ -17,7 +17,7 @@ import wave
 
 
 PROFILES = [(2., .9), (4., 1.), (6., 1.15), (8., 1.), (5., .8)]
-ALLOWED_SOURCES = {'Google-Gemini-TTS-synthetic'}
+ALLOWED_SOURCES = {'Google-Gemini-TTS-synthetic','Qwen3-TTS-synthetic-local','Google-TTS-level-tone-synthetic'}
 
 
 def validate(rows, root, protected):
@@ -67,6 +67,7 @@ def main():
     parser.add_argument('--manifest', type=Path, required=True)
     parser.add_argument('--protected-hashes', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--sources',nargs='+',choices=sorted(ALLOWED_SOURCES),default=['Google-Gemini-TTS-synthetic'])
     args = parser.parse_args()
     os.umask(0o077)
     rows = json.loads(args.manifest.read_text())
@@ -82,7 +83,7 @@ def main():
     for row in rows:
         source = (args.manifest.parent / row['path']).resolve()
         original.append({**row, 'path': os.path.relpath(source, args.output.resolve())})
-        if row.get('source') not in ALLOWED_SOURCES:
+        if row.get('source') not in args.sources:
             continue
         if not row.get('synthetic') or row.get('real_child'):
             raise ValueError('Only explicit synthetic TTS is eligible for pitch variants')
@@ -97,7 +98,7 @@ def main():
             transform(ffmpeg, source, output, semitones, tempo)
             variants.append({**row, 'path': str(output.relative_to(args.output)),
                 'sha256': hashlib.sha256(output.read_bytes()).hexdigest(),
-                'source': 'pitch-tempo-augmented-Google-TTS', 'synthetic': True,
+                'source': 'pitch-tempo-augmented-'+{'Google-Gemini-TTS-synthetic':'Google-TTS','Qwen3-TTS-synthetic-local':'Qwen3-TTS','Google-TTS-level-tone-synthetic':'Google-level-tone'}[row['source']], 'synthetic': True,
                 'real_child': False, 'augmentation': identity,
                 'label_scope': 'synthetic surrogate, not real child target speech'})
     combined = original + variants

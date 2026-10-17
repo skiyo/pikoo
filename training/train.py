@@ -26,7 +26,7 @@ def load(path):
 def validate_training_manifest(manifest):
     # External acceptance recordings must never enter training, validation,
     # feature caches, or representative data for quantization.
-    if any(row.get('evaluation_only') for row in manifest):
+    if any(row.get('evaluation_only') or str(row.get('source','')).startswith('private-') for row in manifest):
         raise ValueError('evaluation_only recordings require a separate evaluation manifest')
 
 def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative_repeats=5,hard_negative_repeats=5,min_snr=10,negative_prefixes=False,pcm_context=False,acoustic_augmentation=False,acoustic_probability=1.):
@@ -104,6 +104,10 @@ def main():
     p.add_argument('--acoustic-augmentation',action='store_true',help='Synthetic band limits, early reflections, and -28 to +2dB gain; no household recordings')
     p.add_argument('--learning-rate',type=float,default=.001,help='Optimizer rate; use validation only to choose it')
     p.add_argument('--acoustic-probability',type=float,default=1.,help='Fraction of augmented training examples using acoustic simulation; others retain the baseline distribution')
+    p.add_argument('--protected-hashes',type=Path,help='Reject household waveforms by content, including renamed files, before cache/quantization')
+    p.add_argument('--widen-from',type=Path,help='Narrow checkpoint; preserve its function while adding independently initialized channels')
+    p.add_argument('--source-filters',type=int,default=32)
+    p.add_argument('--source-first-filters',type=int,default=24)
     a=p.parse_args()
     os.umask(0o077)
     if a.window_frames%3 or a.window_frames<150 or min(a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.filters,a.first_filters)<1 or not 0<=a.min_snr<35 or not 0<a.negative_weight<=16 or not 0<a.learning_rate<=.01 or not 0<=a.acoustic_probability<=1:raise ValueError('Invalid training dimensions')
@@ -116,9 +120,13 @@ def main():
     a.output.mkdir(parents=True,exist_ok=True)
     manifest=json.loads(a.manifest.read_text());cache=a.output/'features.npz'
     validate_training_manifest(manifest)
+    protected=set(json.loads(a.protected_hashes.read_text())['audio_sha256'].values()) if a.protected_hashes else set()
     feature_config={'window_frames':a.window_frames,'positive_repeats':a.positive_repeats,'negative_repeats':a.negative_repeats,'hard_negative_repeats':a.hard_negative_repeats,'min_snr':a.min_snr,'negative_prefixes':a.negative_prefixes,'pcm_context':a.pcm_context,'acoustic_augmentation':a.acoustic_augmentation,'acoustic_probability':a.acoustic_probability}
     fingerprint=hashlib.sha256(b'pikoo-features-v5-mined-child-hard-negatives'+json.dumps(feature_config,sort_keys=True).encode()+a.manifest.read_bytes())
-    for row in manifest:fingerprint.update(hashlib.sha256((a.manifest.parent/row['path']).read_bytes()).digest())
+    for row in manifest:
+        digest=hashlib.sha256((a.manifest.parent/row['path']).read_bytes()).digest()
+        if digest.hex() in protected:raise ValueError('Protected household recording cannot enter training or quantization')
+        fingerprint.update(digest)
     cache_key=fingerprint.hexdigest();keyfile=a.output/'features.sha256'
     if cache.exists() and keyfile.exists() and keyfile.read_text()==cache_key:
         data=np.load(cache);sets={s:(data[s+'_x'],data[s+'_y']) for s in ['train','validation','test']}
@@ -128,6 +136,17 @@ def main():
     print('sets', {s:len(v[1]) for s,v in sets.items()},flush=True)
     flags=SimpleNamespace(pointwise_filters=','.join([str(a.filters)]*len(kernels)),repeat_in_block=','.join(['1']*len(kernels)),mixconv_kernel_sizes=','.join('['+str(k)+']' for k in kernels),residual_connection=','.join(['0']*len(kernels)),first_conv_filters=a.first_filters,first_conv_kernel_size=3,stride=3,spatial_attention=0,pooled=1,max_pool=0)
     model=mixednet.model(flags,(a.window_frames,40),None)
+    widening=None
+    if a.widen_from:
+        if a.resume_weights:raise ValueError('Choose resume or widening, not both')
+        source_flags=SimpleNamespace(**vars(flags));source_flags.pointwise_filters=','.join([str(a.source_filters)]*len(kernels));source_flags.first_conv_filters=a.source_first_filters
+        source_model=mixednet.model(source_flags,(a.window_frames,40),None);source_model.load_weights(a.widen_from)
+        from widen import warm_start_wider
+        warm_start_wider(model,source_model)
+        fixture=sets['train'][0][:8]
+        difference=float(np.max(np.abs(model(fixture,training=False).numpy()-source_model(fixture,training=False).numpy())))
+        if difference>1e-5:raise ValueError('Widening changed the original function')
+        widening={'source_sha256':hashlib.sha256(a.widen_from.read_bytes()).hexdigest(),'initial_max_probability_difference':difference,'source_filters':a.source_filters,'source_first_filters':a.source_first_filters}
     if a.resume_weights:model.load_weights(a.resume_weights)
     model.compile(optimizer=tf.keras.optimizers.Adam(a.learning_rate),loss='binary_crossentropy',metrics=['accuracy'])
     x,y=sets['train'];vx,vy=sets['validation'];tx,ty=sets['test']
@@ -138,6 +157,9 @@ def main():
     if a.resume_weights:report['resume_weights_sha256']=hashlib.sha256(a.resume_weights.read_bytes()).hexdigest()
     report['class_weights']=weights
     report['learning_rate']=a.learning_rate
+    report['training_manifest_sha256']=hashlib.sha256(a.manifest.read_bytes()).hexdigest()
+    report['protected_household_hashes_checked']=len(protected)
+    if widening:report['widening']=widening
     for split,xx,yy in [('validation',vx,vy),('test',tx,ty)]:
         if split=='test' and a.defer_test:continue
         pred=model.predict(xx,verbose=0).reshape(-1);report['metrics'][split]={'positive_count':int(sum(yy==1)),'negative_count':int(sum(yy==0)),'window_recall_at_0.9':float(np.mean(pred[yy==1]>=.9)),'window_false_positive_rate_at_0.9':float(np.mean(pred[yy==0]>=.9))}
@@ -163,6 +185,10 @@ def main():
     compatibility=check(a.output/'nihao_pikoo.tflite',Path(__file__).parents[1]/'firmware/main/wake_model.cpp')
     (a.output/'esp32-static-check.json').write_text(json.dumps(compatibility,indent=2)+'\n')
     model_json={'type':'micro','wake_word':'你好皮酷','author':'Pikoo contributors','model':'nihao_pikoo.tflite','trained_languages':['zh'],'version':2,'micro':{'probability_cutoff':.90,'sliding_window_size':5,'feature_step_size':10,'tensor_arena_size':262144,'minimum_esphome_version':'2024.7'},'status':'experimental-not-hardware-validated'}
+    if any(r.get('pronunciation')=='mixed-pi1-ku1' and r['label'] and r['split']=='train' for r in manifest):
+        model_json['trained_languages']=['zh','en']
+        model_json['accepted_pronunciations']=['你好皮酷 / pi2-ku4','你好 Pikoo / pi1-ku1']
+        model_json['language_scope']='Mandarin greeting with a mixed English pet name; not general English wake support'
     (a.output/'nihao_pikoo.json').write_text(json.dumps(model_json,ensure_ascii=False,indent=2)+'\n')
     report.update(bytes=len(binary),sha256=hashlib.sha256(binary).hexdigest())
     (a.output/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n');print(json.dumps(report,ensure_ascii=False),flush=True)

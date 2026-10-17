@@ -13,14 +13,19 @@ import os
 from pathlib import Path
 import re
 import time
+from urllib.error import HTTPError
 from urllib.request import build_opener, ProxyHandler, Request
 import wave
 import numpy as np
 
 
 def normalize(text):
+    text = re.sub(r'pikoo|piku|pee[- ]koo', '皮酷', text, flags=re.IGNORECASE)
     text = text.translate(str.maketrans('庫褲給講個裡哪兒', '库裤给讲个里哪儿'))
-    return re.sub(r'[^\u4e00-\u9fff]', '', text).replace('皮裤', '皮酷').replace('皮库', '皮酷')
+    text=re.sub(r'[^\u4e00-\u9fff]', '', text)
+    # ASR spelling cannot establish lexical tone. The accepted name covers the
+    # pi/ku syllables with natural intonation; gu, gou, ke and qiu stay distinct.
+    return re.sub(r'[皮披批匹癖痞屁坯][酷裤库枯哭苦窟]', '皮酷', text)
 
 
 def main():
@@ -31,18 +36,26 @@ def main():
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--model', default='gemini-3.8-flash', choices=['gemini-3.8-flash', 'gemini-2.5-flash'])
     p.add_argument('--interval', type=float, default=15, help='Seconds between ASR requests')
+    p.add_argument('--allow-local-synthetic',action='store_true',help='Explicitly permit hash-checked fictional local Qwen TTS; never reference audio')
+    p.add_argument('--protected-hashes',type=Path,help='Required protected household hash ledger when local synthesis is enabled')
     a = p.parse_args()
     if a.interval < 0:
         raise ValueError('interval must be nonnegative')
     os.umask(0o077)
     rows = json.loads(a.manifest.read_text())
+    if a.allow_local_synthetic and not a.protected_hashes:raise ValueError('Local synthetic review requires a household exclusion ledger')
+    protected=set(json.loads(a.protected_hashes.read_text())['audio_sha256'].values()) if a.protected_hashes else set()
     for row in rows:
-        if row.get('source') != 'Google-Gemini-TTS-synthetic' or not row.get('synthetic') or row.get('evaluation_only'):
-            raise ValueError('Only generated Google TTS may be uploaded for review')
+        allowed={'Google-Gemini-TTS-synthetic'}
+        if a.allow_local_synthetic:allowed.add('Qwen3-TTS-synthetic-local')
+        if row.get('source') not in allowed or not row.get('synthetic') or row.get('evaluation_only') or row.get('reference_audio_used') or row.get('family_inputs_used') or row.get('real_child'):
+            raise ValueError('Only generated fictional TTS without reference/household audio may be uploaded for review')
         path = (a.manifest.parent / row['path']).resolve()
         if not path.is_relative_to(a.manifest.parent.resolve()):
             raise ValueError('Generated audio path escapes corpus directory')
-        if hashlib.sha256(path.read_bytes()).hexdigest() != row['sha256']:
+        digest=hashlib.sha256(path.read_bytes()).hexdigest()
+        if digest in protected:raise ValueError('Protected household audio must not be uploaded')
+        if digest != row['sha256']:
             raise ValueError('Synthetic audio hash mismatch')
     key = next(line.split('=', 1)[1].strip().strip('\"\'') for line in a.key_file.read_text().splitlines()
                if line.startswith(('GOOGLE_API_KEY=', 'GEMINI_API_KEY=')))
@@ -72,7 +85,7 @@ def main():
             w.setparams((1, 2, 16000, 0, 'NONE', 'not compressed'))
             w.writeframes(np.concatenate(audio).tobytes())
         payload = {'contents': [{'parts': [
-            {'text': 'Transcribe the Mandarin speech in this recording verbatim. It contains '
+            {'text': 'Transcribe the speech verbatim, including any Chinese-English mixed speech and English names. Do not correct words or infer intended names. It contains '
                 + str(len(group)) + ' separate utterances separated by silence. Return a JSON array '
                 'of strings, one string per utterance. Do not add explanations or merge repeats.'},
             {'inlineData': {'mimeType': 'audio/wav', 'data': base64.b64encode(out.getvalue()).decode()}}]}],
@@ -81,8 +94,16 @@ def main():
             payload['generationConfig']['thinkingConfig'] = {'thinkingBudget': 0}
         request = Request('https://generativelanguage.googleapis.com/v1beta/models/' + a.model + ':generateContent',
             data=json.dumps(payload).encode(), headers={'x-goog-api-key': key, 'Content-Type': 'application/json'})
-        with opener.open(request, timeout=55) as response:
-            data = json.load(response)
+        try:
+            with opener.open(request, timeout=55) as response:
+                data = json.load(response)
+        except HTTPError as error:
+            try:
+                decoded=json.loads(error.read()).get('error',{})
+                safe={'code':error.code,'status':decoded.get('status'),'details':decoded.get('details',[]),'retry_after':error.headers.get('Retry-After')}
+                a.output.with_name('review-api-error.json').write_text(json.dumps(safe,indent=2)+'\n')
+            except (ValueError,OSError):pass
+            raise RuntimeError(f'Synthetic review HTTP {error.code}; stopped without further requests') from None
         text = ''.join(p.get('text', '') for p in data['candidates'][0]['content']['parts'])
         transcripts = json.loads(text)
         if not isinstance(transcripts, list) or len(transcripts) != len(group) or not all(isinstance(t, str) for t in transcripts):
