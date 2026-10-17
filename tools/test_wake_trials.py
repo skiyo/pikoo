@@ -1,6 +1,9 @@
 import importlib.util
+import os
 from pathlib import Path
+import signal
 import unittest
+from unittest.mock import Mock, call
 
 spec = importlib.util.spec_from_file_location('wake_trials', Path(__file__).with_name('wake-trials.py'))
 module = importlib.util.module_from_spec(spec)
@@ -24,6 +27,31 @@ class WakeTrialTest(unittest.TestCase):
             with self.subTest(command=command):
                 with self.assertRaisesRegex(ValueError, 'never simulate a wake'):
                     monitor.command(command)
+
+    def test_window_close_restores_standby_and_signal_handlers(self):
+        for number in [signal.SIGHUP, signal.SIGTERM]:
+            with self.subTest(signal=number):
+                monitor = Mock()
+                previous = signal.getsignal(number)
+                with self.assertRaises(KeyboardInterrupt):
+                    with module.trial_session(monitor):
+                        os.kill(os.getpid(), number)
+                self.assertEqual(monitor.mock_calls,
+                                 [call.command('wake test off'), call.settle(False)])
+                self.assertEqual(signal.getsignal(number), previous)
+
+    def test_result_write_or_disable_failure_still_restores_standby(self):
+        monitor = Mock()
+        with self.assertRaises(OSError):
+            with module.trial_session(monitor):
+                raise OSError('result disk unavailable')
+        monitor.settle.assert_called_once_with(False)
+        monitor = Mock()
+        monitor.command.side_effect = OSError('command unavailable')
+        with self.assertRaises(OSError):
+            with module.trial_session(monitor):
+                pass
+        monitor.settle.assert_called_once_with(False)
 
 
 if __name__ == '__main__':

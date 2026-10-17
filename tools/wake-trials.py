@@ -5,9 +5,11 @@ No raw recording, model training, or simulated wake commands. macOS spoken
 instructions play only while the board is muted. The user says the wake phrase.
 """
 import argparse
+from contextlib import contextmanager
 import json
 import math
 import os
+import signal
 from pathlib import Path
 import socket
 import subprocess
@@ -61,6 +63,33 @@ def summarize(rows, expected):
             'met_target': len(rows) == expected and hits >= target and clean}
 
 
+@contextmanager
+def trial_session(monitor):
+    """Restore standby on window close, interruption, or result-write failure."""
+    signals = [signal.SIGHUP, signal.SIGTERM]
+    previous = {number: signal.getsignal(number) for number in signals}
+
+    def interrupted(number, frame):
+        raise KeyboardInterrupt
+
+    for number in signals:
+        signal.signal(number, interrupted)
+    try:
+        yield
+    finally:
+        # A second close signal must not interrupt the bounded cleanup itself.
+        for number in signals:
+            signal.signal(number, signal.SIG_IGN)
+        try:
+            try:
+                monitor.command('wake test off')
+            finally:
+                monitor.settle(False)
+        finally:
+            for number, handler in previous.items():
+                signal.signal(number, handler)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--socket', type=Path, required=True)
@@ -106,52 +135,55 @@ def main():
     print('本工具开启本地评测，只统计唤醒，不连接语音服务器。不会保存录音或训练模型。')
     if not a.ready:
         input('准备好后按回车开始；现在不方便可直接关闭窗口。')
-    try:
-        monitor.settle(True)
-        say('开始唤醒测试。每次短音后，只说一次，你好皮酷。')
-        for number in range(1, a.trials + 1):
+    with trial_session(monitor):
+        try:
             monitor.settle(True)
-            monitor.command('wake test on')
-            if monitor.state().get('wake_test') != 1:
-                raise RuntimeError('固件未启用本地评测隔离；请先升级相应固件')
-            say(f'第{number}次，准备。')
-            time.sleep(.8)  # Let computer speech/reverberation finish while still muted.
-            monitor.settle(False)
-            time.sleep(1)
-            before = monitor.state()
-            start = time.monotonic()
-            subprocess.run(['/usr/bin/afplay', '/System/Library/Sounds/Pop.aiff'], check=True)
-            peak = 0.
-            after = before
-            while time.monotonic() - start < 6:
-                after = monitor.state()
-                peak = max(peak, after.get('wake_peak', 0))
-                if after['wake_hits'] > before['wake_hits']:
-                    break
-                time.sleep(.08)
-            detected = after['wake_hits'] > before['wake_hits']
-            elapsed = round((time.monotonic() - start) * 1000)
-            monitor.settle(True)
-            report['trials'].append({'trial': number, 'detected': detected,
-                'time_after_cue_ms': elapsed, 'peak_score': peak,
-                'wake_error_delta': after['wake_errors'] - before['wake_errors'],
-                'wake_drop_delta': after['wake_dropped'] - before['wake_dropped'],
-                'uploaded_sample_delta': after['uploaded_samples'] - before['uploaded_samples'],
-                'rebooted': after['uptime_ms'] < before['uptime_ms']})
+            say('开始唤醒测试。每次短音后，只说一次，你好皮酷。')
+            for number in range(1, a.trials + 1):
+                monitor.settle(True)
+                monitor.command('wake test on')
+                if monitor.state().get('wake_test') != 1:
+                    raise RuntimeError('固件未启用本地评测隔离；请先升级相应固件')
+                say(f'第{number}次，准备。')
+                time.sleep(.8)  # Let computer speech/reverberation finish while still muted.
+                monitor.settle(False)
+                time.sleep(1)
+                before = monitor.state()
+                start = time.monotonic()
+                subprocess.run(['/usr/bin/afplay', '/System/Library/Sounds/Pop.aiff'], check=True)
+                peak = 0.
+                after = before
+                while time.monotonic() - start < 6:
+                    after = monitor.state()
+                    peak = max(peak, after.get('wake_peak', 0))
+                    if after['wake_hits'] > before['wake_hits']:
+                        break
+                    time.sleep(.08)
+                detected = after['wake_hits'] > before['wake_hits']
+                elapsed = round((time.monotonic() - start) * 1000)
+                monitor.settle(True)
+                report['trials'].append({'trial': number, 'detected': detected,
+                    'time_after_cue_ms': elapsed, 'peak_score': peak,
+                    'wake_error_delta': after['wake_errors'] - before['wake_errors'],
+                    'wake_drop_delta': after['wake_dropped'] - before['wake_dropped'],
+                    'uploaded_sample_delta': after['uploaded_samples'] - before['uploaded_samples'],
+                    'rebooted': after['uptime_ms'] < before['uptime_ms']})
+                save()
+                if after['uploaded_samples'] != before['uploaded_samples'] or after.get('wake_test') != 1:
+                    raise RuntimeError('本地评测隔离中断，已停止测试')
+                print(f'{number}/{a.trials}：' + ('识别到了' if detected else '本次未识别'), flush=True)
+                say('识别到了。' if detected else '这次未识别。')
+            report['status'] = 'real-person-trials-complete'
+            say('本轮测试结束。设备即将恢复正常待机。')
+        finally:
             save()
-            if after['uploaded_samples'] != before['uploaded_samples'] or after.get('wake_test') != 1:
-                raise RuntimeError('本地评测隔离中断，已停止测试')
-            print(f'{number}/{a.trials}：' + ('识别到了' if detected else '本次未识别'), flush=True)
-            say('识别到了。' if detected else '这次未识别。')
-        report['status'] = 'real-person-trials-complete'
-        say('本轮测试结束。设备即将恢复正常待机。')
-    finally:
-        save()
-        monitor.command('wake test off')
-        monitor.settle(False)
     print(json.dumps(report['summary'], ensure_ascii=False, indent=2))
     print('已经恢复正常待机。结果只保存在本机。')
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print('\n测试已中止；已尝试恢复普通待机。未完成的测试不计为通过。')
+        sys.exit(130)

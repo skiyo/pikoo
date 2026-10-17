@@ -249,5 +249,17 @@
     ],
     "source_commit": "874ca69",
     "firmware_sha256": "b45993220f7d0ae5f89c5c1da388cde35452a943b720dfb3d0aa5132f204eb8e"
+  },
+  "guided_trial_tool_cleanup": {
+    "device_firmware_source_commit": "e56222f",
+    "interruption_signals_tested": [
+      "SIGHUP",
+      "SIGTERM"
+    ],
+    "restored_unmuted_standby": true,
+    "cloud_upload_delta": 0,
+    "human_trials_started": false,
+    "raw_audio_saved": false,
+    "unit_regressions": "result-save failure and local-mode-disable failure still attempt standby restoration"
   }
 }
