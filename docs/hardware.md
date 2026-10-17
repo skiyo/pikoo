@@ -22,6 +22,8 @@ Prepare one matching speaker and cable, a USB-C **data** cable, stable 5 V USB s
 
 Having an ADC and codec does not establish working echo cancellation. Bring-up must verify microphone/reference channels, clocks, sample packing, playback reference delay and gain against the actual board schematic and recordings. Then test whether a person can interrupt while Pikoo speaks without its own speaker triggering speech detection. The enclosure and playback volume affect the result.
 
+Connect the speaker only to the socket marked **SPK / speaker**, using the correct matching lead. The battery socket is a different connection. The prototype uses USB power; do not connect a speaker to the battery socket.
+
 ## Firmware compatibility
 
 The default firmware now targets non-touch DualEye, with two GC9A01 displays, ES8311/ES7210 audio and BOOT controls. Display and short speaker bring-up are checked; full voice/AEC acceptance is ongoing. See the [firmware guide](firmware.md) and [actual validation](device-validation.md). The old 1.83-EN BSP remains a separate [historical target](firmware-legacy183.md); never flash those images to DualEye.
