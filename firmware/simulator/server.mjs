@@ -74,7 +74,9 @@ sockets.on('connection',(client,route)=>{
    client.on('message',d=>{let e;try{e=JSON.parse(d);}catch{return;}
      if(e.type==='session.hello'){emit({type:'session.ready',protocol_version:'7.0.0'});later(()=>emit({type:'voice.ready',inputSampleRate:16000}),150);}
      if(e.type==='conversation.item.create'){
-       lastId=`response-${++seq}`;const id=lastId;emit({type:'response.started',responseId:id});
+       lastId=`response-${++seq}`;const id=lastId,turnId=`turn-${seq}`;
+       emit({type:'transcript.final',role:'user',content:(e.parts||[]).filter(p=>p.type==='text').map(p=>p.text).join(''),turnId});
+       emit({type:'response.started',responseId:id,turnId});
        emit({type:'transcript.final',role:'assistant',text:'这是本地模拟回答：正在验证播放、打断和状态切换。'});
        for(let i=0;i<30;i++)later(()=>emit({type:'audio.delta',sampleRate:24000,responseId:id,audio:audio()}),i*80);
        later(()=>emit({type:'audio.done',responseId:id}),2400);

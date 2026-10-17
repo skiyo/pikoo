@@ -69,3 +69,19 @@ Existing real child corpus rows are ordinary-speech **negatives**, with no natur
 After training-only mining selected 173 non-target prefixes (130 derived from child corpus training recordings), V8D passed the predefined software gate and was flashed with digest verification. The wake threshold remains 0.90. Fresh individual adult and child trials remain pending. See [V8 development evidence](../training/reports/wake-v8-summary.json).
 
 随后仅从训练集筛出 173 个困难负样本前缀（其中 130 个派生自儿童训练录音），V8D 通过既定软件门槛，已烧入并校验；阈值仍为 0.90。成人及儿童的新一轮实测仍待完成，不能把合成变体成绩当成儿童验收。
+
+## Conversation lifecycle follow-up / 会话交互修复（2026-10-17）
+
+Behavior and limitations: [English](conversation-lifecycle.md) | [简体中文](conversation-lifecycle.zh-CN.md).
+
+Firmware source `dc94618` was built with ESP-IDF 5.5.5 and the unchanged private V8D model, then upgraded in the application partition with device digest verification. Wi-Fi, credentials and screen rotation were preserved.
+
+| Check | Actual evidence |
+|---|---|
+| Wake is the first utterance | A USB **manual** wake, without a second spoken/text input, produced a real authenticated server answer: 22 audio chunks, followed by listening with upload enabled; this does not measure neural wake accuracy |
+| Audio after greeting | The device continued uploading after the answer; no RX/TX or wake inference errors were observed in the short run. A ready-tone cancellation race found during the first run was fixed before the final flash |
+| Goodbye logic | Portable C++ and local real-WebSocket integration verify final-user-only matching, farewell playback drain before close, a 20-second stall fallback and no greeting repetition on recovery |
+| Acoustic goodbye | Computer-generated `皮酷，再见` did **not** produce a recognized farewell in the board run. The eventual close was the ordinary 30-second inactivity timeout, not a successful goodbye test. Human spoken goodbye remains pending |
+| Eyes and connectivity | Both C++ renderers verify closed poses for connecting/offline/muted/occupied/auth error; explicit session-to-renderer mapping corrects swapped speaking/thinking states. Physical visual confirmation of this change remains pending |
+
+真人唤醒、儿童识别率、实机自然插话及长期运行不因本轮通过软件检查而改变验收状态。本轮没有保存麦克风录音；电脑合成音只用于交互测试，没有加入训练数据。当前设备已回闭眼待机，可再次尝试唤醒后直接回应、说“再见”后结束。
