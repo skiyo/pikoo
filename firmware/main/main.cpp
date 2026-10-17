@@ -51,6 +51,7 @@ std::atomic<bool> wifi_ready{false}, uploading{false}, awake{false},
 std::atomic<int> close_code{0}, overflow_reason{0};
 std::atomic<uint32_t> send_max_us{0},send_last_us{0};
 std::atomic<uint32_t> resample_max_us{0},receive_max_us{0};
+std::atomic<uint32_t> playback_gaps{0},playback_gap_max_us{0};
 void fail_queue(int reason){overflow_reason=reason;overflow=true;}
 std::atomic<uint64_t> speech_at{0};
 std::atomic<uint32_t> stream_epoch{0};
@@ -114,7 +115,7 @@ bool send(cJSON *o) {
   auto s = stringify(o);
   if (ws && esp_websocket_client_is_connected(ws)) {
     auto started=esp_timer_get_time();
-    int sent=esp_websocket_client_send_text(ws,s.data(),s.size(),pdMS_TO_TICKS(500));
+    int sent=esp_websocket_client_send_text(ws,s.data(),s.size(),pdMS_TO_TICKS(1000));
     auto elapsed=static_cast<uint32_t>(esp_timer_get_time()-started);send_last_us=elapsed;send_max_us=std::max(send_max_us.load(),elapsed);
     if(sent==int(s.size()))return true;
     net_down=true;
@@ -344,10 +345,14 @@ void receive(const std::string &raw) {
               &size, reinterpret_cast<const unsigned char *>(b64.data()),
               b64.size()) == 0 &&
           size % 2 == 0) {
+        static std::string logged_id;
+        static unsigned logged_chunks=0;
+        if(logged_id!=id){logged_id=id;logged_chunks=0;}
         std::lock_guard<std::mutex> lock(play_mutex);
         if (!playback.rejected(id) &&
             !playback.append(id, pcm.data(), size / 2))
           fail_queue(5);
+        if(logged_chunks++<6)ESP_LOGI("pikoo","audio rx chunk=%u samples=%u queued=%u",logged_chunks,unsigned(size/2),unsigned(playback.queued()));
         session.last_activity = now();
         session.state = State::Speaking;
       }
@@ -359,6 +364,7 @@ void receive(const std::string &raw) {
     if(code.empty())code=field(cJSON_GetObjectItem(o,"error"),"code");
     ESP_LOGW("pikoo","gateway error code=%s",code.substr(0,80).c_str());
   } else if (type == "response.started") {
+    ESP_LOGI("pikoo","audio response announced");
     std::lock_guard<std::mutex> lock(play_mutex);
     if (session.ready)
       playback.announce(id);
@@ -368,9 +374,11 @@ void receive(const std::string &raw) {
              session.ready) {
     session.state = State::Thinking;
   } else if (type == "audio.done") {
+    ESP_LOGI("pikoo","audio response complete");
     std::lock_guard<std::mutex> lock(play_mutex);
     playback.done(id);
   } else if (type == "playback.clear") {
+    ESP_LOGI("pikoo","audio playback clear");
     clear_audio(true);
     if (session.ready)
       session.state = State::Listening;
@@ -382,6 +390,8 @@ void playback_task(void *) {
   pikoo::Resampler converter;
   uint32_t current = UINT32_MAX;
   std::string response;
+  int64_t last_block=0;
+  unsigned logged_gaps=0;
   struct Pending {
     std::string id;
     size_t samples;
@@ -412,7 +422,7 @@ void playback_task(void *) {
     bool have = false, started = false;
     {
       std::lock_guard<std::mutex> lock(play_mutex);
-      have = playback.take(chunk);
+      have = playback.take(chunk,24000*120/1000,now());
       if (have)
         started = playback.started(chunk);
     }
@@ -421,6 +431,7 @@ void playback_task(void *) {
         converter.reset();
         current = chunk.epoch;
         response = chunk.id;
+        last_block=0;logged_gaps=0;
       }
       const auto generation = board::generation();
       {
@@ -428,16 +439,21 @@ void playback_task(void *) {
         if (chunk.epoch != playback.epoch())
           continue;
       }
-      if (started)
-        receipt("playback.started", chunk.id);
       // Convert only 10 ms at a time. Converting a whole server chunk before
       // feeding I2S creates a silence gap whenever it exceeds the DMA depth.
       bool played=true;
       for(size_t pos=0;pos<chunk.pcm.size();pos+=240) {
+        auto entered=esp_timer_get_time();
+        if(last_block&&entered-last_block>45000){
+          auto gap=uint32_t(entered-last_block);++playback_gaps;playback_gap_max_us=std::max(playback_gap_max_us.load(),gap);
+          if(logged_gaps++<5)ESP_LOGW("pikoo","audio supply gap us=%lu",(unsigned long)gap);
+        }
         auto conversion_started=esp_timer_get_time();
         auto output=converter.process(chunk.pcm.data()+pos,std::min<size_t>(240,chunk.pcm.size()-pos));
         resample_max_us=std::max(resample_max_us.load(),uint32_t(esp_timer_get_time()-conversion_started));
         if(!board::play(output.data(),output.size(),generation)){played=false;break;}
+        last_block=esp_timer_get_time();
+        if(started){ESP_LOGI("pikoo","audio first block queued samples=%u",unsigned(chunk.pcm.size()));receipt("playback.started",chunk.id);started=false;}
       }
       if (played) {
         pending.push_back(
@@ -563,7 +579,9 @@ void control_action(pikoo::Button::Action action) {
   }
 }
 void diagnostics() {
-  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu",
+  wifi_ap_record_t ap{};
+  int rssi=esp_wifi_sta_get_ap_info(&ap)==ESP_OK?ap.rssi:0;
+  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu volume_db=%d dac_reg=%d rssi=%d playback_gaps=%lu playback_gap_max_us=%lu",
     board::Name,esp_app_get_description()->version,int(visual_state.load()),int(wifi_ready.load()),int(muted.load()),int(uploading.load()),
     (unsigned long)upload_count.load(),(unsigned long)reconnect_count.load(),unsigned(esp_get_free_heap_size()),unsigned(esp_get_minimum_free_heap_size()),
     unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),board::display_fps(),board::microphone_level(),board::reference_level(),board::output_level(),
@@ -572,7 +590,7 @@ void diagnostics() {
     unsigned(capture_handle?uxTaskGetStackHighWaterMark(capture_handle):0),unsigned(process_handle?uxTaskGetStackHighWaterMark(process_handle):0),
     board::microphone_peak(),board::reference_peak(),(unsigned long)received_audio_count.load(),
     (unsigned long)captured_samples.load(),(unsigned long)processed_samples.load(),(unsigned long)uploaded_samples.load(),processed_level.load(),
-    (unsigned long)board::display_render_us(),(unsigned long)board::display_transfer_us(),(unsigned long)send_last_us.load(),(unsigned long)send_max_us.load(),(unsigned long)resample_max_us.load(),(unsigned long)receive_max_us.load());
+    (unsigned long)board::display_render_us(),(unsigned long)board::display_transfer_us(),(unsigned long)send_last_us.load(),(unsigned long)send_max_us.load(),(unsigned long)resample_max_us.load(),(unsigned long)receive_max_us.load(),board::volume_db(),board::volume_register(),rssi,(unsigned long)playback_gaps.load(),(unsigned long)playback_gap_max_us.load());
 }
 void controls_task(void *) {
   pikoo::Button button;char command[32]{};size_t used=0;
@@ -595,7 +613,8 @@ void controls_task(void *) {
         else if(!strcmp(command,"tone")&&visual_state==State::Idle&&now()-last_tone>5000){last_tone=now();diagnostic_tone=true;}
         else if(!strcmp(command,"volume low"))board::set_volume(-36);
         else if(!strcmp(command,"volume normal"))board::set_volume(-24);
-        else if(!strcmp(command,"volume higher"))board::set_volume(-18);
+        else if(!strcmp(command,"volume higher"))board::set_volume(-12);
+        else if(!strcmp(command,"volume louder"))board::set_volume(-6);
         else if(!strcmp(command,"rotate 90")||!strcmp(command,"rotate 270")) {
           int angle=!strcmp(command,"rotate 90")?90:270;
           board::display_rotation(angle);nvs_handle_t n;

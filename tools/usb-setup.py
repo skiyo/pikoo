@@ -28,11 +28,11 @@ action={'1':'install','2':'upgrade','3':'diagnose','4':'restore','5':'configure'
 if not action:raise SystemExit('无效选择')
 args=[sys.executable,str(root/'tools/device.py'),action,'--port',ports[0]]
 if choice=='6':
-    level=input('音量：1 低 / 2 正常 / 3 提高 [2]: ').strip() or '2'
-    command={'1':'volume low','2':'volume normal','3':'volume higher'}.get(level)
+    level=input('音量：1 低 / 2 正常 / 3 提高 / 4 较大 [2]: ').strip() or '2'
+    command={'1':'volume low','2':'volume normal','3':'volume higher','4':'volume louder'}.get(level)
     if not command:raise SystemExit('无效选择')
     args+=['--command',command]
-    print('本次运行生效，重启恢复保守音量；如发热请立即断电。')
+    print('音量会保存，重启保留；如出现破音请降低音量。')
 if choice=='7':
     angle=input('方向：90 或 270 [90]: ').strip() or '90'
     if angle not in ('90','270'):raise SystemExit('无效方向')

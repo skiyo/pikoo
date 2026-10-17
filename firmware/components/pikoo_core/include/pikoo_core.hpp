@@ -58,9 +58,14 @@ public:
       reject(id);
     }
   }
-  bool take(Chunk &out) {
+  bool take(Chunk &out,size_t initial_samples=0,uint64_t now_ms=0) {
     if (queue_.empty())
       return false;
+    auto &response=responses_.at(queue_.front().id);
+    if(initial_samples&&!response.started&&!response.done&&response.remaining<initial_samples) {
+      if(!response.buffering){response.buffering=true;response.buffered_at=now_ms;}
+      if(now_ms<response.buffered_at||now_ms-response.buffered_at<200)return false;
+    }
     out = std::move(queue_.front());
     queue_.pop_front();
     queued_ -= out.pcm.size();
@@ -122,6 +127,8 @@ private:
     size_t remaining = 0;
     bool done = false;
     bool started = false;
+    bool buffering = false;
+    uint64_t buffered_at = 0;
   };
   size_t limit_, queued_ = 0;
   uint32_t epoch_ = 0;

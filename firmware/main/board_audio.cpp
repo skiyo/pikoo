@@ -6,6 +6,7 @@
 #include "driver/i2s_std.h"
 #include "esp_codec_dev_defaults.h"
 #include "esp_timer.h"
+#include "nvs.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <algorithm>
@@ -21,9 +22,10 @@ static std::atomic<float> mic_level{0}, ref_level{0}, out_level{0};
 static std::atomic<float> mic_max{0}, ref_max{0};
 static std::atomic<uint32_t> read_errors{0}, write_errors{0};
 static std::atomic<int64_t> last_write{0};
+static std::atomic<bool> amp_on{false};
 static uint32_t primed=UINT32_MAX;
 static std::mutex rx_mutex;
-static int volume=-24;
+static std::atomic<int> volume{-24},volume_reg{-1};
 esp_err_t audio_init() {
   gpio_config_t g{};g.pin_bit_mask=1ULL<<Amp;g.mode=GPIO_MODE_OUTPUT;
   ESP_ERROR_CHECK(gpio_config(&g));gpio_set_level(Amp,0);
@@ -59,7 +61,14 @@ esp_err_t audio_init() {
   esp_codec_dev_sample_info_t fs{};fs.sample_rate=16000;fs.channel=2;fs.bits_per_sample=16;
   ESP_ERROR_CHECK(dac->set_fs(dac,&fs));
   fs.channel=4;ESP_ERROR_CHECK(adc->set_fs(adc,&fs));
-  ESP_ERROR_CHECK(dac->enable(dac,true));ESP_ERROR_CHECK(dac->set_vol(dac,volume));
+  nvs_handle_t saved;
+  if(nvs_open("pikoo",NVS_READONLY,&saved)==ESP_OK){
+    int32_t level=-24;
+    if(nvs_get_i32(saved,"volume_db",&level)==ESP_OK&&level>=-50&&level<=-6)volume=level;
+    nvs_close(saved);
+  }
+  ESP_ERROR_CHECK(dac->enable(dac,true));ESP_ERROR_CHECK(dac->set_vol(dac,volume.load()));
+  int reg=-1;if(dac->get_reg(dac,0x32,&reg)==ESP_OK)volume_reg=reg;
   ESP_ERROR_CHECK(adc->enable(adc,true));
   // enable() reapplies the codec's defaults; channel gains must follow it.
   ESP_ERROR_CHECK(adc->set_mic_gain(adc,0));
@@ -91,10 +100,10 @@ bool capture(int16_t *mr,size_t frames) {
   ref_max=std::max(ref_max.load(),ref_level.load());
   return true;
 }
-void silence(){++epoch;gpio_set_level(Amp,0);out_level=0;}
+void silence(){++epoch;gpio_set_level(Amp,0);amp_on=false;out_level=0;}
 uint32_t generation(){return epoch.load();}
 void drain(){vTaskDelay(pdMS_TO_TICKS(50));}
-void playback_idle(){if(esp_timer_get_time()-last_write>60000){gpio_set_level(Amp,0);out_level=0;}}
+void playback_idle(){if(esp_timer_get_time()-last_write>60000){gpio_set_level(Amp,0);amp_on=false;out_level=0;}}
 bool play(const int16_t *mono,size_t samples,uint32_t expected) {
   if(expected!=generation()) return false;
   if(primed!=expected){
@@ -102,9 +111,20 @@ bool play(const int16_t *mono,size_t samples,uint32_t expected) {
     for(int i=0;i<6;i++){size_t n=0;if(i2s_channel_write(tx,zeros.data(),sizeof(zeros),&n,100)!=ESP_OK){++write_errors;return false;}}
     drain();if(expected!=generation()) return false;primed=expected;
   }
-  gpio_set_level(Amp,1);
+  if(!amp_on){
+    // Enable the amplifier while I2S is still silent. Do not spend its
+    // settling interval on the first phoneme of the response.
+    gpio_set_level(Amp,1);amp_on=true;
+    std::array<int32_t,320> zeros{};
+    for(int i=0;i<3;i++){
+      if(expected!=generation()){gpio_set_level(Amp,0);amp_on=false;return false;}
+      size_t n=0;
+      if(i2s_channel_write(tx,zeros.data(),sizeof(zeros),&n,100)!=ESP_OK||n!=sizeof(zeros)){++write_errors;silence();return false;}
+    }
+    last_write=esp_timer_get_time();
+  }
   for(size_t i=0;i<samples;i+=160){
-    if(expected!=generation()){gpio_set_level(Amp,0);return false;}
+    if(expected!=generation()){gpio_set_level(Amp,0);amp_on=false;return false;}
     size_t count=std::min<size_t>(160,samples-i);int32_t stereo[320];float power=0;
     for(size_t j=0;j<count;j++){stereo[2*j]=stereo[2*j+1]=pikoo::dac_slot(mono[i+j]);power+=float(mono[i+j])*mono[i+j];}
     out_level=std::sqrt(power/count)/32768.f;
@@ -121,5 +141,14 @@ float reference_peak(){return ref_max.exchange(0);}
 float output_level(){return out_level;}
 uint32_t capture_errors(){return read_errors;}
 uint32_t playback_errors(){return write_errors;}
-esp_err_t set_volume(int db){if(db < -50 || db > -18) return ESP_ERR_INVALID_ARG;volume=db;return dac->set_vol(dac,db);}
+esp_err_t set_volume(int db){
+  if(db < -50 || db > -6)return ESP_ERR_INVALID_ARG;
+  auto result=dac->set_vol(dac,db);if(result!=ESP_OK)return result;
+  volume=db;int reg=-1;if(dac->get_reg(dac,0x32,&reg)==ESP_OK)volume_reg=reg;
+  nvs_handle_t saved;
+  if(nvs_open("pikoo",NVS_READWRITE,&saved)==ESP_OK){nvs_set_i32(saved,"volume_db",db);nvs_commit(saved);nvs_close(saved);}
+  return ESP_OK;
+}
+int volume_db(){return volume.load();}
+int volume_register(){return volume_reg.load();}
 } // namespace board

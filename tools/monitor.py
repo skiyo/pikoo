@@ -25,7 +25,7 @@ p.add_argument('--control-socket',type=Path)
 p.add_argument('--send')
 a=p.parse_args()
 os.umask(0o077)
-commands={'status','wake','stop','end','mute','unmute','takeover','tone','volume low','volume normal','volume higher','rotate 90','rotate 270'}
+commands={'status','wake','stop','end','mute','unmute','takeover','tone','volume low','volume normal','volume higher','volume louder','rotate 90','rotate 270'}
 if a.send:
     if a.send not in commands|{'close-monitor'} or not a.control_socket:p.error('Choose a supported command and --control-socket')
     with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as client:

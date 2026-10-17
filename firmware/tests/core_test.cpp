@@ -11,6 +11,26 @@ int main() {
   es7210_mr(int32_t(0x7fff8000u),mapped_mic,mapped_ref);
   assert(mapped_mic==32767&&mapped_ref==-32768);
   assert(dac_slot(-32768)==INT32_MIN&&dac_slot(32767)==int32_t(0x7fff0000));
+  // Start with 120 ms of speech queued, but do not wait forever for a short
+  // answer or a stalled upstream. Cancellation must discard a waiting start.
+  {
+    int16_t block[1440]{};Playback buffered;Playback::Chunk first;
+    assert(buffered.append("buffer",block,1440));
+    assert(!buffered.take(first,2880,0));
+    assert(!buffered.take(first,2880,199));
+    assert(buffered.append("buffer",block,1440));
+    assert(buffered.take(first,2880,199));assert(buffered.started(first));
+    assert(buffered.take(first,2880,199));
+    buffered.reset();assert(buffered.append("short",block,100));
+    assert(!buffered.take(first,2880,300));buffered.done("short");
+    assert(buffered.take(first,2880,301));
+    buffered.reset();assert(buffered.append("stalled",block,100));
+    assert(!buffered.take(first,2880,500));assert(buffered.take(first,2880,700));
+    buffered.reset();assert(buffered.append("cancelled",block,100));
+    assert(!buffered.take(first,2880,800));buffered.cancel();
+    assert(!buffered.take(first,2880,1000));
+    assert(buffered.append("new",block,100));assert(!buffered.take(first,2880,1000));
+  }
   // A continuously replenished microphone stream cannot starve incoming audio
   // or cancellation handling, even when the producer is faster than the link.
   unsigned sent=0;
