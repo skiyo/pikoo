@@ -29,7 +29,7 @@ def validate_training_manifest(manifest):
     if any(row.get('evaluation_only') for row in manifest):
         raise ValueError('evaluation_only recordings require a separate evaluation manifest')
 
-def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative_repeats=5,hard_negative_repeats=5,min_snr=10,negative_prefixes=False,pcm_context=False):
+def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative_repeats=5,hard_negative_repeats=5,min_snr=10,negative_prefixes=False,pcm_context=False,acoustic_augmentation=False,acoustic_probability=1.):
     validate_training_manifest(manifest)
     rng=np.random.default_rng(seed);sets={k:([],[]) for k in ['train','validation','test']}
     groups={};clips={}
@@ -54,8 +54,12 @@ def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative
                 x=x[:max(2880,int(len(x)*rng.uniform(.15,1.0)))]
             if row['split']=='train':
                 factor=rng.uniform(.88,1.12);x=np.interp(np.arange(0,len(x),factor),np.arange(len(x)),x)
-                x*=rng.uniform(.35,1.2)
-                if rng.random()<.5:
+                use_acoustic=acoustic_augmentation and (acoustic_probability>=1 or rng.random()<acoustic_probability)
+                if use_acoustic:
+                    from acoustic_augment import augment
+                    x=augment(x,rng)
+                else:x*=rng.uniform(.35,1.2)
+                if not use_acoustic and rng.random()<.5:
                     delay=int(rng.uniform(.03,.12)*16000);x[delay:]+=x[:-delay]*rng.uniform(.05,.25)
                 if rng.random()<.7:
                     noise=np.sqrt(np.mean(x*x))/10**(rng.uniform(min_snr,35)/20)
@@ -97,8 +101,12 @@ def main():
     p.add_argument('--pcm-context',action='store_true',help='Use a complete noisy PCM context rather than zero feature padding')
     p.add_argument('--resume-weights',type=Path,help='Fine-tune a compatible local checkpoint; record its hash')
     p.add_argument('--negative-weight',type=float,default=1,help='Non-wake loss multiplier; calibrate on validation, not the test split')
+    p.add_argument('--acoustic-augmentation',action='store_true',help='Synthetic band limits, early reflections, and -28 to +2dB gain; no household recordings')
+    p.add_argument('--learning-rate',type=float,default=.001,help='Optimizer rate; use validation only to choose it')
+    p.add_argument('--acoustic-probability',type=float,default=1.,help='Fraction of augmented training examples using acoustic simulation; others retain the baseline distribution')
     a=p.parse_args()
-    if a.window_frames%3 or a.window_frames<150 or min(a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.filters,a.first_filters)<1 or not 0<=a.min_snr<35 or not 0<a.negative_weight<=16:raise ValueError('Invalid training dimensions')
+    os.umask(0o077)
+    if a.window_frames%3 or a.window_frames<150 or min(a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.filters,a.first_filters)<1 or not 0<=a.min_snr<35 or not 0<a.negative_weight<=16 or not 0<a.learning_rate<=.01 or not 0<=a.acoustic_probability<=1:raise ValueError('Invalid training dimensions')
     kernels=[int(k) for k in a.kernels.split(',')]
     if not kernels or any(k<3 or k%2==0 for k in kernels) or a.window_frames//3<=sum(k-1 for k in kernels):raise ValueError('Receptive field exceeds training window')
     sys.path.insert(0,str(a.upstream.resolve()))
@@ -108,7 +116,7 @@ def main():
     a.output.mkdir(parents=True,exist_ok=True)
     manifest=json.loads(a.manifest.read_text());cache=a.output/'features.npz'
     validate_training_manifest(manifest)
-    feature_config={'window_frames':a.window_frames,'positive_repeats':a.positive_repeats,'negative_repeats':a.negative_repeats,'hard_negative_repeats':a.hard_negative_repeats,'min_snr':a.min_snr,'negative_prefixes':a.negative_prefixes,'pcm_context':a.pcm_context}
+    feature_config={'window_frames':a.window_frames,'positive_repeats':a.positive_repeats,'negative_repeats':a.negative_repeats,'hard_negative_repeats':a.hard_negative_repeats,'min_snr':a.min_snr,'negative_prefixes':a.negative_prefixes,'pcm_context':a.pcm_context,'acoustic_augmentation':a.acoustic_augmentation,'acoustic_probability':a.acoustic_probability}
     fingerprint=hashlib.sha256(b'pikoo-features-v4-aligned-relative-noise'+json.dumps(feature_config,sort_keys=True).encode()+a.manifest.read_bytes())
     for row in manifest:fingerprint.update(hashlib.sha256((a.manifest.parent/row['path']).read_bytes()).digest())
     cache_key=fingerprint.hexdigest();keyfile=a.output/'features.sha256'
@@ -121,7 +129,7 @@ def main():
     flags=SimpleNamespace(pointwise_filters=','.join([str(a.filters)]*len(kernels)),repeat_in_block=','.join(['1']*len(kernels)),mixconv_kernel_sizes=','.join('['+str(k)+']' for k in kernels),residual_connection=','.join(['0']*len(kernels)),first_conv_filters=a.first_filters,first_conv_kernel_size=3,stride=3,spatial_attention=0,pooled=1,max_pool=0)
     model=mixednet.model(flags,(a.window_frames,40),None)
     if a.resume_weights:model.load_weights(a.resume_weights)
-    model.compile(optimizer=tf.keras.optimizers.Adam(.001),loss='binary_crossentropy',metrics=['accuracy'])
+    model.compile(optimizer=tf.keras.optimizers.Adam(a.learning_rate),loss='binary_crossentropy',metrics=['accuracy'])
     x,y=sets['train'];vx,vy=sets['validation'];tx,ty=sets['test']
     weights={0:a.negative_weight,1:float((y==0).sum()/max(1,(y==1).sum()))}
     history=model.fit(x,y,batch_size=32,epochs=a.epochs,validation_data=(vx,vy),class_weight=weights,callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=5,restore_best_weights=True)],verbose=2)
@@ -129,6 +137,7 @@ def main():
     report={'status':'experimental','feature_config':feature_config,'filters':a.filters,'first_filters':a.first_filters,'kernels':kernels,'test_deferred':a.defer_test,'data_sources':{name:sum(r.get('source','unknown')==name for r in manifest) for name in set(r.get('source','unknown') for r in manifest)},'real_child_clips':sum(bool(r.get('real_child')) for r in manifest),'restricted_data':any(r.get('restricted',False) for r in manifest),'samples':{s:len(v[1]) for s,v in sets.items()},'epochs':len(history.history['loss']),'metrics':{}}
     if a.resume_weights:report['resume_weights_sha256']=hashlib.sha256(a.resume_weights.read_bytes()).hexdigest()
     report['class_weights']=weights
+    report['learning_rate']=a.learning_rate
     for split,xx,yy in [('validation',vx,vy),('test',tx,ty)]:
         if split=='test' and a.defer_test:continue
         pred=model.predict(xx,verbose=0).reshape(-1);report['metrics'][split]={'positive_count':int(sum(yy==1)),'negative_count':int(sum(yy==0)),'window_recall_at_0.9':float(np.mean(pred[yy==1]>=.9)),'window_false_positive_rate_at_0.9':float(np.mean(pred[yy==0]>=.9))}

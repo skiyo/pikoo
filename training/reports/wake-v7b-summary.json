@@ -81,6 +81,129 @@
     "Real child data here contains ordinary-speech negatives only",
     "Six adult recordings are one speaker, not 20 live trials",
     "No eight-hour background or long-duration stability pass",
-    "No restricted weights or recordings are distributed"
-  ]
+    "No restricted weights or recordings are distributed",
+    "Neither simulated acoustics nor existing test corpus replaces the pending 20 live trials"
+  ],
+  "frozen_previous_corpus_regression": {
+    "note": "Existing V5 test corpus; kept out of V7 training/selection. Not a new real-person or child target-word test.",
+    "all": {
+      "positive_clips": 54,
+      "wake_detected": 53,
+      "negative_clips": 578,
+      "false_positive_clips": 1,
+      "negative_seconds": 1741.8531249999999
+    },
+    "real_child": {
+      "positive_clips": 0,
+      "wake_detected": 0,
+      "negative_clips": 410,
+      "false_positive_clips": 0,
+      "negative_seconds": 1551.0568125000002
+    },
+    "known_false_trigger": "One incomplete synthesized near-phrase; full false-wake acceptance remains pending"
+  },
+  "actual_device_feature_parity": {
+    "status": "actual-ESP32-vs-desktop-reference-feature-trace",
+    "frames": 200,
+    "max_raw_score_difference": 4.999999999866223e-07,
+    "raw_peak_device": 0.996094,
+    "raw_peak_reference": 0.99609375,
+    "threshold_decisions_equal": true,
+    "raw_audio_saved": false,
+    "cloud_upload_samples": 0
+  },
+  "desktop_loudspeaker_development": {
+    "60": {
+      "positive_clips": 4,
+      "wake_hits": 2,
+      "negative_clips": 4,
+      "false_wakes": 0
+    },
+    "80": {
+      "positive_clips": 4,
+      "wake_hits": 3,
+      "negative_clips": 4,
+      "false_wakes": 0
+    }
+  },
+  "desktop_loudspeaker_limits": [
+    "Unmeasured desktop geometry; volume percentages are not calibrated SPL",
+    "Synthetic playback, not real humans or 1 metre acceptance",
+    "No audio uploaded during these bounded tests",
+    "Quiet synthetic youthful delivery still missed; further real child tests required"
+  ],
+  "further_development": {
+    "V7C": {
+      "all": {
+        "positive_clips": 46,
+        "wake_detected": 44,
+        "negative_clips": 455,
+        "false_positive_clips": 1,
+        "negative_seconds": 1383.629125
+      },
+      "real_child": {
+        "positive_clips": 0,
+        "wake_detected": 0,
+        "negative_clips": 390,
+        "false_positive_clips": 0,
+        "negative_seconds": 1294.36875
+      },
+      "decision": "rejected: additional validation false wakes; no household recordings used for selection"
+    },
+    "V7D": {
+      "all": {
+        "positive_clips": 46,
+        "wake_detected": 42,
+        "negative_clips": 455,
+        "false_positive_clips": 1,
+        "negative_seconds": 1383.629125
+      },
+      "real_child": {
+        "positive_clips": 0,
+        "wake_detected": 0,
+        "negative_clips": 390,
+        "false_positive_clips": 0,
+        "negative_seconds": 1294.36875
+      },
+      "decision": "rejected: additional validation false wakes; no household recordings used for selection"
+    },
+    "V7E": {
+      "all": {
+        "positive_clips": 46,
+        "wake_detected": 46,
+        "negative_clips": 455,
+        "false_positive_clips": 3,
+        "negative_seconds": 1383.629125
+      },
+      "real_child": {
+        "positive_clips": 0,
+        "wake_detected": 0,
+        "negative_clips": 390,
+        "false_positive_clips": 2,
+        "negative_seconds": 1294.36875
+      },
+      "decision": "rejected: additional validation false wakes; no household recordings used for selection"
+    },
+    "V7F": {
+      "all": {
+        "positive_clips": 46,
+        "wake_detected": 42,
+        "negative_clips": 455,
+        "false_positive_clips": 1,
+        "negative_seconds": 1383.629125
+      },
+      "real_child": {
+        "positive_clips": 0,
+        "wake_detected": 0,
+        "negative_clips": 390,
+        "false_positive_clips": 0,
+        "negative_seconds": 1294.36875
+      },
+      "decision": "rejected: additional validation false wakes; no household recordings used for selection"
+    }
+  },
+  "detector_confirmation_study": {
+    "scope": "validation only, V7E, unchanged threshold 0.90",
+    "consecutive_windows_1_to_5": "did not remove all validation false wakes; not adopted"
+  }
 }

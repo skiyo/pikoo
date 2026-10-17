@@ -75,6 +75,9 @@ struct LocalWakeAudio {
 };
 QueueHandle_t wake_queue;
 std::atomic<uint32_t> wake_dropped{0};
+// Explicit USB evaluation only. Reboot/default and automatic expiry restore
+// ordinary behavior; enabling this never opens a cloud voice session.
+std::atomic<uint64_t> wake_test_until_ms{0};
 esp_websocket_client_handle_t ws = nullptr;
 esp_transport_handle_t tls_transport=nullptr,websocket_transport=nullptr;
 std::string endpoint, token, ssid, password, device_id, ws_uri, headers,
@@ -95,6 +98,7 @@ TaskHandle_t capture_handle=nullptr, process_handle=nullptr, playback_handle=nul
 const esp_afe_sr_iface_t *afe;
 esp_afe_sr_data_t *afe_data;
 uint64_t now() { return esp_timer_get_time() / 1000; }
+bool local_wake_test() { return now()<wake_test_until_ms.load(); }
 std::string field(cJSON *o, const char *key) {
   auto x = cJSON_GetObjectItem(o, key);
   return cJSON_IsString(x) ? x->valuestring : "";
@@ -255,6 +259,7 @@ void ensure_conversation() {
   if(nvs_open("pikoo",NVS_READWRITE,&n)==ESP_OK){nvs_set_str(n,"conversation",conversation_id.c_str());nvs_set_i64(n,"conv_at",t);nvs_commit(n);nvs_close(n);}
 }
 void begin() {
+  if(local_wake_test())return;
   if (muted || !wifi_ready || time(nullptr) < 1700000000) {
     session.state = muted ? State::Muted : State::Offline;
     return;
@@ -597,6 +602,7 @@ void graphics_task(void *) {
     input.time_ms=started;input.level=std::min(1.f,(state==State::Speaking?board::output_level():board::microphone_level())*8);
     const char *label="";
     if(!config_ready) {input.state=pikoo::eyes::State::Boot;label="USB SETUP";}
+    else if(local_wake_test())label=state==State::Muted?"TEST MIC OFF":"WAKE TEST";
     else if(state==State::Muted) label="MIC OFF";
     else if(state==State::Offline)label="OFFLINE";
     else if(state==State::Occupied)label="HOLD TO TAKE";
@@ -619,7 +625,7 @@ void control_action(pikoo::Button::Action action) {
 void diagnostics() {
   wifi_ap_record_t ap{};
   int rssi=esp_wifi_sta_get_ap_info(&ap)==ESP_OK?ap.rssi:0;
-  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu volume_db=%d dac_reg=%d rssi=%d playback_gaps=%lu playback_gap_max_us=%lu wake_score=%.3f wake_peak=%.3f wake_raw_peak=%.3f wake_hits=%lu wake_errors=%lu wake_dropped=%lu",
+  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu volume_db=%d dac_reg=%d rssi=%d playback_gaps=%lu playback_gap_max_us=%lu wake_score=%.3f wake_peak=%.3f wake_raw_peak=%.3f wake_hits=%lu wake_errors=%lu wake_dropped=%lu wake_test=%d",
     board::Name,esp_app_get_description()->version,int(visual_state.load()),int(wifi_ready.load()),int(muted.load()),int(uploading.load()),
     (unsigned long)upload_count.load(),(unsigned long)reconnect_count.load(),unsigned(esp_get_free_heap_size()),unsigned(esp_get_minimum_free_heap_size()),
     unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),board::display_fps(),board::microphone_level(),board::reference_level(),board::output_level(),
@@ -628,7 +634,7 @@ void diagnostics() {
     unsigned(capture_handle?uxTaskGetStackHighWaterMark(capture_handle):0),unsigned(process_handle?uxTaskGetStackHighWaterMark(process_handle):0),
     board::microphone_peak(),board::reference_peak(),(unsigned long)received_audio_count.load(),
     (unsigned long)captured_samples.load(),(unsigned long)processed_samples.load(),(unsigned long)uploaded_samples.load(),processed_level.load(),
-    (unsigned long)board::display_render_us(),(unsigned long)board::display_transfer_us(),(unsigned long)send_last_us.load(),(unsigned long)send_max_us.load(),(unsigned long)resample_max_us.load(),(unsigned long)receive_max_us.load(),board::volume_db(),board::volume_register(),rssi,(unsigned long)playback_gaps.load(),(unsigned long)playback_gap_max_us.load(),wake_score(),wake_peak_score(),wake_raw_peak_score(),(unsigned long)wake_detection_count(),(unsigned long)wake_error_count(),(unsigned long)wake_dropped.load());
+    (unsigned long)board::display_render_us(),(unsigned long)board::display_transfer_us(),(unsigned long)send_last_us.load(),(unsigned long)send_max_us.load(),(unsigned long)resample_max_us.load(),(unsigned long)receive_max_us.load(),board::volume_db(),board::volume_register(),rssi,(unsigned long)playback_gaps.load(),(unsigned long)playback_gap_max_us.load(),wake_score(),wake_peak_score(),wake_raw_peak_score(),(unsigned long)wake_detection_count(),(unsigned long)wake_error_count(),(unsigned long)wake_dropped.load(),int(local_wake_test()));
 }
 void controls_task(void *) {
   pikoo::Button button;char command[32]{};size_t used=0;
@@ -642,6 +648,8 @@ void controls_task(void *) {
       if(c=='\r'||c=='\n') {
         command[used]=0;
         if(!strcmp(command,"status")) diagnostics();
+        else if(!strcmp(command,"wake test on")&&!awake&&!uploading&&(visual_state==State::Idle||visual_state==State::Muted))wake_test_until_ms=now()+300000;
+        else if(!strcmp(command,"wake test off"))wake_test_until_ms=0;
         else if(!strcmp(command,"wake trace")&&visual_state==State::Idle&&!muted)wake_trace_start();
         else if(!strcmp(command,"wake capture")&&visual_state==State::Idle&&!muted)wake_capture_start();
         else if(!strcmp(command,"wake"))wake_request=true;
