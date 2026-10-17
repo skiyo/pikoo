@@ -356,7 +356,8 @@ void receive(const std::string &raw) {
     } else if (!session.ready) {
       session.voice_ready(now());
       voice_connected=true;
-      if(interaction.greeting_pending()) {
+      const bool greeting=interaction.greeting_pending();
+      if(greeting) {
         auto greeting=event("conversation.item.create");
         auto parts=cJSON_AddArrayToObject(greeting,"parts");
         auto part=cJSON_CreateObject();
@@ -369,8 +370,12 @@ void receive(const std::string &raw) {
           ESP_LOGI("pikoo","wake greeting submitted");
         }
       }
-      tone_request = true;
-      // Playback task opens upload only after the ready tone has drained.
+      // Manual text input produces playback.clear. Do not let that cancel a
+      // ready tone and strand the microphone gate closed. The spoken greeting
+      // itself signals readiness; reserve the tone for provider reconnection.
+      tone_request = !greeting;
+      if(greeting)uploading=!interaction.closing();
+      // On reconnection, playback opens upload after the tone has drained.
       // Reset retry backoff only after a stable connection, not mere readiness.
     }
   } else if (type == "audio.delta" && session.ready && !muted) {
