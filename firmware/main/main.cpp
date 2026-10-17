@@ -66,6 +66,15 @@ struct Upload {
   int16_t pcm[upload_samples];
 };
 QueueHandle_t upload_queue;
+// Standby has no speaker playback. Preserve the microphone waveform for the
+// model's own microfrontend instead of passing it through conversational AEC.
+struct LocalWakeAudio {
+  uint32_t epoch, sequence;
+  uint16_t count;
+  int16_t pcm[512];
+};
+QueueHandle_t wake_queue;
+std::atomic<uint32_t> wake_dropped{0};
 esp_websocket_client_handle_t ws = nullptr;
 esp_transport_handle_t tls_transport=nullptr,websocket_transport=nullptr;
 std::string endpoint, token, ssid, password, device_id, ws_uri, headers,
@@ -147,6 +156,7 @@ void clear_audio(bool notify) {
       receipt("playback.cancelled", id);
 }
 void gate_off() {
+  wake_cancel_diagnostics();
   uploading = false;
   ++stream_epoch;
   xQueueReset(upload_queue);
@@ -486,16 +496,28 @@ void playback_task(void *) {
 void capture_task(void *) {
   int count = afe->get_feed_chunksize(afe_data);
   std::vector<int16_t> pcm(count * 2);
+  LocalWakeAudio local{};uint32_t sequence=0;
+  configASSERT(count<=512);
   while (true) {
     if (board::capture(pcm.data(), count)) {
       captured_samples+=count;
       afe->feed(afe_data, pcm.data());
+      if(!awake&&!muted) {
+        local.epoch=stream_epoch.load();local.sequence=++sequence;local.count=count;
+        for(int i=0;i<count;++i)local.pcm[i]=pcm[2*i];
+        if(xQueueSend(wake_queue,&local,0)!=pdTRUE) {
+          ++wake_dropped;xQueueReset(wake_queue);
+          xQueueSend(wake_queue,&local,0);
+        }
+      }
     } else
       vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 void processing_task(void *) {
   bool was_awake = true;
+  uint32_t wake_sequence=0,wake_epoch=UINT32_MAX;
+  LocalWakeAudio local{};
   std::vector<int16_t> packet(upload_samples);
   size_t used=0;uint32_t packet_epoch=0;
   while (true) {
@@ -513,10 +535,19 @@ void processing_task(void *) {
       continue;
     }
     if (!a) {
-      if (was_awake)
+      if (was_awake) {
         wake_reset();
-      if (wake_feed(r->data, r->data_size / 2))
-        wake_request = true;
+        wake_sequence=0;xQueueReset(wake_queue);
+      }
+      pikoo::pump_bounded(2,[&]{return xQueueReceive(wake_queue,&local,0)==pdTRUE;},[&]{
+        if(local.epoch!=epoch)return;
+        if(wake_epoch!=local.epoch||(wake_sequence&&local.sequence!=wake_sequence+1))wake_reset();
+        wake_epoch=local.epoch;
+        wake_sequence=local.sequence;
+        if(wake_feed(local.pcm,local.count))wake_request=true;
+      });
+    } else {
+      xQueueReset(wake_queue);
     }
     was_awake = a;
     if (uploading) {
@@ -588,7 +619,7 @@ void control_action(pikoo::Button::Action action) {
 void diagnostics() {
   wifi_ap_record_t ap{};
   int rssi=esp_wifi_sta_get_ap_info(&ap)==ESP_OK?ap.rssi:0;
-  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu volume_db=%d dac_reg=%d rssi=%d playback_gaps=%lu playback_gap_max_us=%lu",
+  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu volume_db=%d dac_reg=%d rssi=%d playback_gaps=%lu playback_gap_max_us=%lu wake_score=%.3f wake_peak=%.3f wake_raw_peak=%.3f wake_hits=%lu wake_errors=%lu wake_dropped=%lu",
     board::Name,esp_app_get_description()->version,int(visual_state.load()),int(wifi_ready.load()),int(muted.load()),int(uploading.load()),
     (unsigned long)upload_count.load(),(unsigned long)reconnect_count.load(),unsigned(esp_get_free_heap_size()),unsigned(esp_get_minimum_free_heap_size()),
     unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),board::display_fps(),board::microphone_level(),board::reference_level(),board::output_level(),
@@ -597,7 +628,7 @@ void diagnostics() {
     unsigned(capture_handle?uxTaskGetStackHighWaterMark(capture_handle):0),unsigned(process_handle?uxTaskGetStackHighWaterMark(process_handle):0),
     board::microphone_peak(),board::reference_peak(),(unsigned long)received_audio_count.load(),
     (unsigned long)captured_samples.load(),(unsigned long)processed_samples.load(),(unsigned long)uploaded_samples.load(),processed_level.load(),
-    (unsigned long)board::display_render_us(),(unsigned long)board::display_transfer_us(),(unsigned long)send_last_us.load(),(unsigned long)send_max_us.load(),(unsigned long)resample_max_us.load(),(unsigned long)receive_max_us.load(),board::volume_db(),board::volume_register(),rssi,(unsigned long)playback_gaps.load(),(unsigned long)playback_gap_max_us.load());
+    (unsigned long)board::display_render_us(),(unsigned long)board::display_transfer_us(),(unsigned long)send_last_us.load(),(unsigned long)send_max_us.load(),(unsigned long)resample_max_us.load(),(unsigned long)receive_max_us.load(),board::volume_db(),board::volume_register(),rssi,(unsigned long)playback_gaps.load(),(unsigned long)playback_gap_max_us.load(),wake_score(),wake_peak_score(),wake_raw_peak_score(),(unsigned long)wake_detection_count(),(unsigned long)wake_error_count(),(unsigned long)wake_dropped.load());
 }
 void controls_task(void *) {
   pikoo::Button button;char command[32]{};size_t used=0;
@@ -611,6 +642,8 @@ void controls_task(void *) {
       if(c=='\r'||c=='\n') {
         command[used]=0;
         if(!strcmp(command,"status")) diagnostics();
+        else if(!strcmp(command,"wake trace")&&visual_state==State::Idle&&!muted)wake_trace_start();
+        else if(!strcmp(command,"wake capture")&&visual_state==State::Idle&&!muted)wake_capture_start();
         else if(!strcmp(command,"wake"))wake_request=true;
         else if(!strcmp(command,"stop")){board::silence();cancel_request=true;}
         else if(!strcmp(command,"end")){board::silence();gate_off();finish_request=true;stop_request=true;}
@@ -754,6 +787,8 @@ extern "C" void app_main() {
   vTaskPrioritySet(nullptr,5);
   ESP_ERROR_CHECK(nvs_flash_init());
   upload_queue = xQueueCreate(upload_slots, sizeof(Upload));
+  wake_queue = xQueueCreate(4, sizeof(LocalWakeAudio));
+  configASSERT(upload_queue&&wake_queue);
   boot_id=esp_random();
   gpio_config_t button_cfg{};button_cfg.pin_bit_mask=1ULL<<board::Button;button_cfg.mode=GPIO_MODE_INPUT;button_cfg.pull_up_en=GPIO_PULLUP_ENABLE;
   ESP_ERROR_CHECK(gpio_config(&button_cfg));

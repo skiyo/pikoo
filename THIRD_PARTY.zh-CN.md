@@ -25,6 +25,7 @@ Pikoo 原创代码、双眼图形和项目文档采用 Apache-2.0。安装依赖
 | [ws](https://github.com/websockets/ws) | 锁文件 8.22.0 | 模拟器使用的 Node WebSocket 依赖 | MIT |
 | [TensorFlow](https://github.com/tensorflow/tensorflow) | 2.18.1 | 可选训练/推理依赖 | Apache-2.0，加内含第三方声明 |
 | [NumPy](https://github.com/numpy/numpy) | 2.0.2 | 可选训练依赖 | 核心 BSD-3-Clause，加内含依赖许可 |
+| [Apache Arrow / PyArrow](https://github.com/apache/arrow) | 19.0.1 | 固定版本 MInDS-14 Parquet 的可选导入器 | Apache-2.0，保留内含依赖声明 |
 | [PyYAML](https://github.com/yaml/pyyaml) | 6.0.2 | 可选训练配置依赖 | MIT |
 | [webrtcvad-wheels](https://github.com/daanzu/py-webrtcvad-wheels) | 2.0.14 | 可选语音活动依赖 | 封装 MIT，内含 WebRTC VAD 保留上游 BSD 类条款 |
 | [Node.js](https://github.com/nodejs/node) | 运行要求 24+ | 服务器/模拟器运行环境，不随项目打包 | MIT 及内含依赖声明 |
@@ -38,7 +39,7 @@ Pikoo 原创代码、双眼图形和项目文档采用 Apache-2.0。安装依赖
 |---|---|---|
 | [Muse Gadget SDK 模拟器](https://github.com/facebookincubator/muse-gadget-sdk/blob/main/esp32/simulator/README.md) | 模拟器组织、动画节奏参考 | 未复制 Muse 代码或 Jollybot 素材；Pikoo 绘制、网页和画面原创 |
 | [微雪双眼文档](https://docs.waveshare.net/ESP32-S3-DualEye-LCD-1.28/) | 规格、原理图和驱动参考入口 | 硬件/资料参考，不重新授权商家材料 |
-| [Google Gemini API](https://ai.google.dev/gemini-api/docs) | 外部实时与文本服务 | 地区、额度、价格和服务条款独立，不是开源组件 |
+| [Google Gemini API](https://ai.google.dev/gemini-api/docs) | 外部实时、文本及可选 TTS 语料生成服务 | 地区、额度、价格和服务条款独立，不是开源组件 |
 | [Let's Encrypt](https://letsencrypt.org/) | 外部证书服务 | 运维需维护续签并遵守服务要求 |
 
 ## 音频、数据与模型
@@ -46,6 +47,8 @@ Pikoo 原创代码、双眼图形和项目文档采用 Apache-2.0。安装依赖
 - 当前公开文件树**不分发权重和音频**，保留模型卡及汇总评估记录。
 - 早期模型使用本机 macOS 系统声音，分发权利尚未确认；拥有电脑不等于拥有声音的公开分发权。[苹果公开 macOS 条款](https://www.apple.com/legal/sla/docs/macOSTahoe.pdf)将系统声音内容限于个人非商业使用，并限制公开分享；未直接说明此唤醒模型情形，发布前还需核对实际产品/版本条款。
 - 本机 V5 使用已授权 [ChildMandarin](https://huggingface.co/datasets/BAAI/ChildMandarin)。获准访问不等于获准转发音频或权重，需审核完整受限条款和许可记录，不能仅看数据卡标签。V5、录音和原始清单保持私密。
+- 可选的 [PolyAI MInDS-14 中文子集](https://huggingface.co/datasets/PolyAI/minds14/tree/40ce77cb32a384e4d50a568e1ec39ac804019d33/zh-CN) 使用 CC-BY-4.0。署名：PolyAI；Gerz 等（2021），*Multilingual and Cross-Lingual Intent Detection from Spoken Data*。用途为普通讲话负样本，不提供自定义唤醒词正样本。8kHz 电话录音不等于宽频麦克风或儿童测试；没有说话人/年龄编号，全部只放训练集。
+- Google TTS 生成音频是合成语料，遵循 [Gemini API 条款](https://ai.google.dev/gemini-api/terms)，不受仓库 Apache-2.0 重新授权。合成童声不能标为真实儿童录音。音频、清单及实验权重保留本机；自动转写审核仅上传经哈希验证的生成语音。家庭录音只做独立测试，语料工具不会上传家庭录音。
 - [ChildTalk](https://github.com/NKU-HLT/ChildTalk) 是备选研究来源，未下载或参与训练，后续使用前需审查条款。
 - Git 历史仍含早期模型，保留历史不表示权重获得 Apache-2.0 授权；当前发布包不应包含它们。
 - 后续公开模型需记录训练和分发权利、数据来源、独立模型卡/许可，并完成成人/儿童及实板评估。家庭录音默认私密。

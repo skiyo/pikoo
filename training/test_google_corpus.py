@@ -1,0 +1,85 @@
+import base64
+import importlib.util
+import io
+import unittest
+import wave
+
+AVAILABLE = importlib.util.find_spec('numpy') is not None
+
+
+@unittest.skipUnless(AVAILABLE, 'Optional synthesis runtime is not installed')
+class GoogleCorpusTest(unittest.TestCase):
+    def test_synthetic_voice_identities_do_not_cross_splits(self):
+        from generate_google import jobs
+        rows = jobs()
+        self.assertEqual(len(rows), 96)
+        groups = {}
+        for row in rows:
+            self.assertEqual(groups.setdefault(row['speaker'], row['split']), row['split'])
+            self.assertTrue(row['synthetic'])
+            self.assertFalse(row['real_child'])
+        for split in ('train', 'validation', 'test'):
+            self.assertEqual({r['label'] for r in rows if r['split'] == split}, {0, 1})
+
+    def test_decode_requires_complete_wav_and_converts_to_16khz(self):
+        import numpy as np
+        from generate_google import decode_audio
+        out = io.BytesIO()
+        with wave.open(out, 'wb') as w:
+            w.setparams((1, 2, 24000, 0, 'NONE', 'not compressed'))
+            w.writeframes((np.sin(np.arange(24000) * .13) * 5000).astype('<i2').tobytes())
+        response = {'status': 'completed', 'steps': [{'type': 'model_output',
+            'content': [{'type': 'audio', 'data': base64.b64encode(out.getvalue()).decode()}]}]}
+        result = decode_audio(response)
+        self.assertEqual(len(result), 16000)
+        self.assertGreater(float(np.max(result)), 1000)
+        response['status'] = 'in_progress'
+        with self.assertRaisesRegex(ValueError, 'complete'):
+            decode_audio(response)
+
+    def test_legacy_pcm_decodes_and_incomplete_output_is_rejected(self):
+        import numpy as np
+        from generate_google import decode_audio
+        pcm = (np.sin(np.arange(24000) * .13) * 5000).astype('<i2')
+        response = {'candidates': [{'finishReason': 'STOP', 'content': {'parts': [
+            {'inlineData': {'mimeType': 'audio/L16;rate=24000',
+                            'data': base64.b64encode(pcm.tobytes()).decode()}}]}}]}
+        result = decode_audio(response)
+        self.assertEqual(len(result), 16000)
+        self.assertGreater(float(np.max(result)), 1000)
+        response['candidates'][0]['finishReason'] = 'MAX_TOKENS'
+        with self.assertRaisesRegex(ValueError, 'complete'):
+            decode_audio(response)
+
+    def test_pause_alignment_rejects_missing_or_extra_utterances(self):
+        import numpy as np
+        from generate_google import split_utterances
+        speech = (np.sin(np.arange(8000) * .13) * 5000).astype('<i2')
+        pcm = np.concatenate([speech, np.zeros(16000, '<i2'), speech])
+        clips = split_utterances(pcm, 2)
+        self.assertEqual(len(clips), 2)
+        self.assertTrue(all(len(c) >= len(speech) for c in clips))
+        with self.assertRaisesRegex(ValueError, 'alignment failed'):
+            split_utterances(pcm, 3)
+
+    def test_antialias_filter_suppresses_above_target_nyquist(self):
+        import numpy as np
+        from generate_google import resample
+        time = np.arange(24000) / 24000
+        low = resample(np.sin(2 * np.pi * 3000 * time) * 5000, 24000)[100:-100]
+        high = resample(np.sin(2 * np.pi * 10000 * time) * 5000, 24000)[100:-100]
+        self.assertLess(float(np.mean(high ** 2)), float(np.mean(low ** 2)) * .01)
+
+    def test_telephone_mulaw_extremes_and_silence(self):
+        import numpy as np
+        import struct
+        from import_minds14 import decode_wave
+        fmt = struct.pack('<HHIIHH', 7, 1, 8000, 8000, 1, 8)
+        data = bytes([255, 127, 0, 128])
+        chunks = b'fmt ' + struct.pack('<I', len(fmt)) + fmt + b'data' + struct.pack('<I', len(data)) + data
+        blob = b'RIFF' + struct.pack('<I', len(chunks) + 4) + b'WAVE' + chunks
+        np.testing.assert_array_equal(decode_wave(blob), [0, 0, -32124, 32124])
+
+
+if __name__ == '__main__':
+    unittest.main()

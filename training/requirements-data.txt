@@ -1,0 +1,2 @@
+# Optional importer for the pinned MInDS-14 parquet source.
+pyarrow==19.0.1

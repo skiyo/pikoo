@@ -23,7 +23,14 @@ def load(path):
         if w.getnchannels()!=1 or w.getframerate()!=16000 or w.getsampwidth()!=2:raise ValueError(f'expected mono PCM16/16kHz: {path.name}')
         return np.frombuffer(w.readframes(w.getnframes()),'<i2').astype(np.float32)
 
-def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative_repeats=5,hard_negative_repeats=5,min_snr=10,negative_prefixes=False):
+def validate_training_manifest(manifest):
+    # External acceptance recordings must never enter training, validation,
+    # feature caches, or representative data for quantization.
+    if any(row.get('evaluation_only') for row in manifest):
+        raise ValueError('evaluation_only recordings require a separate evaluation manifest')
+
+def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative_repeats=5,hard_negative_repeats=5,min_snr=10,negative_prefixes=False,pcm_context=False):
+    validate_training_manifest(manifest)
     rng=np.random.default_rng(seed);sets={k:([],[]) for k in ['train','validation','test']}
     groups={};clips={}
     for row in manifest:
@@ -60,7 +67,14 @@ def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative
                 start=int(rng.integers(0,len(x)-window_samples+1)) if row['split']=='train' else (len(x)-window_samples)//2
                 x=x[start:start+window_samples]
             # Wake phrase ends just before the prediction window ends.
-            x=np.pad(x,(4800,int(rng.uniform(0,.12)*16000)))
+            tail=int(rng.uniform(0,.12)*16000)
+            lead=max(4800,window_samples-len(x)-tail) if pcm_context else 4800
+            x=np.pad(x,(lead,tail))
+            if pcm_context:
+                # A real idle microphone is not a zero-filled spectrogram.
+                # Extract the entire causal window from quiet noisy PCM,
+                # including the context before and after the wake phrase.
+                x+=rng.normal(0,rng.uniform(2,80),len(x))
             spec=features(np.clip(x,-32768,32767).astype(np.int16))
             if len(spec)<window_frames:spec=np.pad(spec,((window_frames-len(spec),0),(0,0)))
             spec=spec[-window_frames:]
@@ -80,8 +94,11 @@ def main():
     p.add_argument('--kernels',default='5,9,13,21')
     p.add_argument('--hard-negative-repeats',type=int,default=5);p.add_argument('--min-snr',type=float,default=10)
     p.add_argument('--negative-prefixes',action='store_true')
+    p.add_argument('--pcm-context',action='store_true',help='Use a complete noisy PCM context rather than zero feature padding')
+    p.add_argument('--resume-weights',type=Path,help='Fine-tune a compatible local checkpoint; record its hash')
+    p.add_argument('--negative-weight',type=float,default=1,help='Non-wake loss multiplier; calibrate on validation, not the test split')
     a=p.parse_args()
-    if a.window_frames%3 or a.window_frames<150 or min(a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.filters,a.first_filters)<1 or not 0<=a.min_snr<35:raise ValueError('Invalid training dimensions')
+    if a.window_frames%3 or a.window_frames<150 or min(a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.filters,a.first_filters)<1 or not 0<=a.min_snr<35 or not 0<a.negative_weight<=16:raise ValueError('Invalid training dimensions')
     kernels=[int(k) for k in a.kernels.split(',')]
     if not kernels or any(k<3 or k%2==0 for k in kernels) or a.window_frames//3<=sum(k-1 for k in kernels):raise ValueError('Receptive field exceeds training window')
     sys.path.insert(0,str(a.upstream.resolve()))
@@ -90,7 +107,8 @@ def main():
     tf.keras.utils.set_random_seed(42);tf.config.threading.set_intra_op_parallelism_threads(4);tf.config.threading.set_inter_op_parallelism_threads(2)
     a.output.mkdir(parents=True,exist_ok=True)
     manifest=json.loads(a.manifest.read_text());cache=a.output/'features.npz'
-    feature_config={'window_frames':a.window_frames,'positive_repeats':a.positive_repeats,'negative_repeats':a.negative_repeats,'hard_negative_repeats':a.hard_negative_repeats,'min_snr':a.min_snr,'negative_prefixes':a.negative_prefixes}
+    validate_training_manifest(manifest)
+    feature_config={'window_frames':a.window_frames,'positive_repeats':a.positive_repeats,'negative_repeats':a.negative_repeats,'hard_negative_repeats':a.hard_negative_repeats,'min_snr':a.min_snr,'negative_prefixes':a.negative_prefixes,'pcm_context':a.pcm_context}
     fingerprint=hashlib.sha256(b'pikoo-features-v4-aligned-relative-noise'+json.dumps(feature_config,sort_keys=True).encode()+a.manifest.read_bytes())
     for row in manifest:fingerprint.update(hashlib.sha256((a.manifest.parent/row['path']).read_bytes()).digest())
     cache_key=fingerprint.hexdigest();keyfile=a.output/'features.sha256'
@@ -102,11 +120,15 @@ def main():
     print('sets', {s:len(v[1]) for s,v in sets.items()},flush=True)
     flags=SimpleNamespace(pointwise_filters=','.join([str(a.filters)]*len(kernels)),repeat_in_block=','.join(['1']*len(kernels)),mixconv_kernel_sizes=','.join('['+str(k)+']' for k in kernels),residual_connection=','.join(['0']*len(kernels)),first_conv_filters=a.first_filters,first_conv_kernel_size=3,stride=3,spatial_attention=0,pooled=1,max_pool=0)
     model=mixednet.model(flags,(a.window_frames,40),None)
+    if a.resume_weights:model.load_weights(a.resume_weights)
     model.compile(optimizer=tf.keras.optimizers.Adam(.001),loss='binary_crossentropy',metrics=['accuracy'])
     x,y=sets['train'];vx,vy=sets['validation'];tx,ty=sets['test']
-    history=model.fit(x,y,batch_size=32,epochs=a.epochs,validation_data=(vx,vy),class_weight={0:1.,1:float((y==0).sum()/max(1,(y==1).sum()))},callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=5,restore_best_weights=True)],verbose=2)
+    weights={0:a.negative_weight,1:float((y==0).sum()/max(1,(y==1).sum()))}
+    history=model.fit(x,y,batch_size=32,epochs=a.epochs,validation_data=(vx,vy),class_weight=weights,callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=5,restore_best_weights=True)],verbose=2)
     model.save_weights(a.output/'checkpoint.weights.h5')
     report={'status':'experimental','feature_config':feature_config,'filters':a.filters,'first_filters':a.first_filters,'kernels':kernels,'test_deferred':a.defer_test,'data_sources':{name:sum(r.get('source','unknown')==name for r in manifest) for name in set(r.get('source','unknown') for r in manifest)},'real_child_clips':sum(bool(r.get('real_child')) for r in manifest),'restricted_data':any(r.get('restricted',False) for r in manifest),'samples':{s:len(v[1]) for s,v in sets.items()},'epochs':len(history.history['loss']),'metrics':{}}
+    if a.resume_weights:report['resume_weights_sha256']=hashlib.sha256(a.resume_weights.read_bytes()).hexdigest()
+    report['class_weights']=weights
     for split,xx,yy in [('validation',vx,vy),('test',tx,ty)]:
         if split=='test' and a.defer_test:continue
         pred=model.predict(xx,verbose=0).reshape(-1);report['metrics'][split]={'positive_count':int(sum(yy==1)),'negative_count':int(sum(yy==0)),'window_recall_at_0.9':float(np.mean(pred[yy==1]>=.9)),'window_false_positive_rate_at_0.9':float(np.mean(pred[yy==0]>=.9))}

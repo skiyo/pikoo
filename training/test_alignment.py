@@ -9,6 +9,31 @@ AVAILABLE=all(importlib.util.find_spec(name) for name in ('tensorflow','numpy','
 
 @unittest.skipUnless(AVAILABLE,'Optional training runtime is not installed')
 class AlignmentTest(unittest.TestCase):
+    def test_external_evaluation_recordings_never_enter_training_pipeline(self):
+        from train import dataset, validate_training_manifest
+        for split in ('train','validation','test'):
+            row=dict(path='must-not-read.wav',label=1,split=split,
+                     group='heldout',evaluation_only=True)
+            with self.subTest(split=split):
+                with self.assertRaisesRegex(ValueError,'separate evaluation manifest'):
+                    validate_training_manifest([row])
+                with self.assertRaisesRegex(ValueError,'separate evaluation manifest'):
+                    dataset([row],Path('/nonexistent'))
+
+    def test_pcm_context_uses_real_features_for_idle_prefix(self):
+        import numpy as np
+        from train import dataset
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);signal=(np.sin(np.arange(8000)*.15)*4000).astype('<i2')
+            with wave.open(str(root/'short.wav'),'wb') as w:
+                w.setparams((1,2,16000,0,'NONE','not compressed'));w.writeframes(signal.tobytes())
+            row=dict(path='short.wav',label=1,split='validation',group='fixture')
+            before=dataset([row],root,window_frames=399)['validation'][0][0]
+            after=dataset([row],root,window_frames=399,pcm_context=True)['validation'][0][0]
+            self.assertEqual(after.shape,(399,40))
+            self.assertTrue(np.all(before[:100]==0))
+            self.assertGreater(float(np.mean(after[:100])),0)
+
     def test_quantization_matches_device_half_away_rounding(self):
         import numpy as np
         from streaming_runtime import quantize

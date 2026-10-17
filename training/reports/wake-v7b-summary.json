@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-17",
+  "status": "frozen-experimental-offline-tested-live-device-pending",
+  "model": "V7B",
+  "model_sha256": "aaf2fb7d8906c88b78eb4c6f7c069ccb674541b5814a9eb9033fd4075ac7f748",
+  "bytes": 45128,
+  "license": "restricted-local-experiment-weights-not-distributed",
+  "threshold": 0.9,
+  "rolling_inferences": 5,
+  "training_manifest_sha256": "6da68a763aebc2fc492b1c8d5bd6265f072647e618fdc1ed1a178ca69299f3bf",
+  "data": {
+    "train": {
+      "positive": 68,
+      "negative": 7342,
+      "real_child": 6337
+    },
+    "validation": {
+      "positive": 46,
+      "negative": 455,
+      "real_child": 390
+    }
+  },
+  "new_google_clips_accepted": 88,
+  "new_google_clips_rejected_as_batches": 28,
+  "new_real_mandarin_training_negatives": 502,
+  "sources": {
+    "google_tts": "https://ai.google.dev/gemini-api/docs/speech-generation",
+    "minds14": "https://huggingface.co/datasets/PolyAI/minds14/tree/40ce77cb32a384e4d50a568e1ec39ac804019d33",
+    "childmandarin": "https://huggingface.co/datasets/BAAI/ChildMandarin"
+  },
+  "streaming_validation": {
+    "positive_clips": 46,
+    "wake_detected": 44,
+    "negative_clips": 455,
+    "false_positive_clips": 0,
+    "negative_seconds": 1383.629125
+  },
+  "real_child_validation": {
+    "positive_clips": 0,
+    "wake_detected": 0,
+    "negative_clips": 390,
+    "false_positive_clips": 0,
+    "negative_seconds": 1294.36875
+  },
+  "reserved_adult_test": {
+    "as_recorded": {
+      "target_clips": 3,
+      "target_hits": 3,
+      "non_target_clips": 3,
+      "false_wakes": 0
+    },
+    "three_second_quiet_prefix": {
+      "target_clips": 3,
+      "target_hits": 3,
+      "non_target_clips": 3,
+      "false_wakes": 0
+    }
+  },
+  "household_test_policy": "evaluation only; frozen before scoring; excluded from training, augmentation, tuning, quantization, and model selection",
+  "rejected_predecessor": {
+    "V7A": {
+      "target_hits": 44,
+      "target_clips": 46,
+      "false_wakes": 4,
+      "negative_clips": 455,
+      "real_child_false_wakes": 3,
+      "reason": "development validation false wakes"
+    }
+  },
+  "static_check": "passed",
+  "micro_reference_parity": {
+    "status": "host-micro-parity-passed",
+    "cases": 6,
+    "resets_per_case": 3,
+    "host_arena_used_bytes": [
+      21712
+    ]
+  },
+  "limits": [
+    "Synthesized voices are not real adult/child wake acceptance",
+    "Real child data here contains ordinary-speech negatives only",
+    "Six adult recordings are one speaker, not 20 live trials",
+    "No eight-hour background or long-duration stability pass",
+    "No restricted weights or recordings are distributed"
+  ]
+}

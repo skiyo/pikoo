@@ -25,6 +25,7 @@ Versions below describe the current pinned integration, not a claim that all com
 | [ws](https://github.com/websockets/ws) | 8.22.0 in server lockfile | Installed Node WebSocket dependency used by local simulator | MIT |
 | [TensorFlow](https://github.com/tensorflow/tensorflow) | 2.18.1 | Optional training/inference dependency | Apache-2.0 plus bundled third-party notices |
 | [NumPy](https://github.com/numpy/numpy) | 2.0.2 | Optional training dependency | BSD-3-Clause core plus bundled dependencies |
+| [Apache Arrow / PyArrow](https://github.com/apache/arrow) | 19.0.1 | Optional importer for the pinned MInDS-14 Parquet data | Apache-2.0; retain bundled dependency notices |
 | [PyYAML](https://github.com/yaml/pyyaml) | 6.0.2 | Optional training configuration dependency | MIT |
 | [webrtcvad-wheels](https://github.com/daanzu/py-webrtcvad-wheels) | 2.0.14 | Optional voice-activity dependency | MIT wrapper; bundled WebRTC VAD retains upstream BSD-style terms |
 | [Node.js](https://github.com/nodejs/node) | Runtime requirement 24+ | Server/simulator runtime; not bundled in Pikoo | MIT and bundled dependency notices |
@@ -38,7 +39,7 @@ Software binaries, firmware images or containers must include the license texts/
 |---|---|---|
 | [Muse Gadget SDK simulator](https://github.com/facebookincubator/muse-gadget-sdk/blob/main/esp32/simulator/README.md) | Simulator organization and animation pacing reference | No Muse code or Jollybot assets copied; original Pikoo renderer/page/assets |
 | [Waveshare DualEye documentation](https://docs.waveshare.net/ESP32-S3-DualEye-LCD-1.28/) | Board specifications, schematic and driver-reference entry | Documentation/hardware reference; no blanket relicensing of supplier materials |
-| [Google Gemini API](https://ai.google.dev/gemini-api/docs) | External realtime and text service | Service terms, regional availability, quotas and pricing apply separately; not an open-source dependency |
+| [Google Gemini API](https://ai.google.dev/gemini-api/docs) | External realtime, text and optional TTS corpus generation service | Service terms, regional availability, quotas and pricing apply separately; not an open-source dependency |
 | [Let's Encrypt](https://letsencrypt.org/) | External certificate service | Operator must maintain renewal and follow service requirements |
 
 ## Audio, datasets and models
@@ -46,6 +47,8 @@ Software binaries, firmware images or containers must include the license texts/
 - The current tree distributes **no wake-model weights or audio**. Model cards and aggregate evaluation records remain for transparency.
 - Early experimental weights were trained with local macOS system voices. Their redistribution rights have not been established; Apple software ownership does not itself establish public audio/model rights. [Apple's published macOS terms](https://www.apple.com/legal/sla/docs/macOSTahoe.pdf) limit System Voice content to personal non-commercial use and restrict public sharing. They do not expressly settle this wake-model scenario; check the applicable product/version terms before publication.
 - Local V5 also used authorized [ChildMandarin](https://huggingface.co/datasets/BAAI/ChildMandarin). Access approval is not permission to redistribute audio or derived weights. Complete gated terms and permission records must be reviewed; dataset-card labels alone are insufficient. V5, recordings and raw manifests remain private.
+- The optional [PolyAI MInDS-14 Mandarin subset](https://huggingface.co/datasets/PolyAI/minds14/tree/40ce77cb32a384e4d50a568e1ec39ac804019d33/zh-CN) is CC-BY-4.0. Attribution: PolyAI; Gerz et al. (2021), *Multilingual and Cross-Lingual Intent Detection from Spoken Data*. It provides ordinary-speech negatives, not the custom wake phrase. The 8kHz telephone recordings do not establish wideband microphone or child performance. No speaker/age IDs are supplied; keep this source in training only.
+- Google-generated TTS remains synthetic and subject to the [Gemini API terms](https://ai.google.dev/gemini-api/terms), not the repository's Apache-2.0 license. Synthetic youthful delivery is not a real child recording. Generated audio, source manifests and derived experimental weights remain local. Only hash-verified generated clips may be submitted for automated transcript review; household recordings are evaluation-only and are never uploaded by the corpus tooling.
 - [ChildTalk](https://github.com/NKU-HLT/ChildTalk) is a potential research source, not a downloaded or trained component. Its own terms would need review before use.
 - Historical Git commits retain an early model. Keeping history does not grant an Apache-2.0 license to those weights. No current release should package them.
 - Future public model releases need documented rights for training and model redistribution, provenance, a separate model card/license, and real adult/child and board evaluation. Household recordings are private by default.
