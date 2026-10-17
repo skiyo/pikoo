@@ -55,10 +55,15 @@ std::atomic<uint32_t> playback_gaps{0},playback_gap_max_us{0};
 void fail_queue(int reason){overflow_reason=reason;overflow=true;}
 std::atomic<uint64_t> speech_at{0};
 std::atomic<uint32_t> stream_epoch{0};
+// 40 ms of PCM plus Base64/JSON fits inside one 4096-byte TLS record.
+// Keep the same 800 ms bounded backlog as the previous eight 100 ms packets.
+constexpr size_t upload_samples=640;
+constexpr unsigned upload_slots=20;
+static_assert(4*((upload_samples*2+2)/3)+512<4096);
 struct Upload {
   uint32_t epoch;
   int count;
-  int16_t pcm[1600];
+  int16_t pcm[upload_samples];
 };
 QueueHandle_t upload_queue;
 esp_websocket_client_handle_t ws = nullptr;
@@ -424,7 +429,7 @@ void playback_task(void *) {
     bool have = false, started = false;
     {
       std::lock_guard<std::mutex> lock(play_mutex);
-      have = playback.take(chunk,24000*120/1000,now());
+      have = playback.take(chunk,24000*500/1000,now(),600);
       if (have)
         started = playback.started(chunk);
     }
@@ -491,7 +496,7 @@ void capture_task(void *) {
 }
 void processing_task(void *) {
   bool was_awake = true;
-  std::vector<int16_t> packet(1600);
+  std::vector<int16_t> packet(upload_samples);
   size_t used=0;uint32_t packet_epoch=0;
   while (true) {
     auto r = afe->fetch_with_delay(afe_data,pdMS_TO_TICKS(100));
@@ -520,10 +525,10 @@ void processing_task(void *) {
       if(packet_epoch!=epoch){used=0;packet_epoch=epoch;}
       size_t pos=0;
       while(pos<samples) {
-        size_t n=std::min<size_t>(1600-used,samples-pos);
+        size_t n=std::min<size_t>(upload_samples-used,samples-pos);
         memcpy(packet.data()+used,r->data+pos,n*2);used+=n;pos+=n;
-        if(used==1600) {
-          Upload u{};u.epoch=epoch;u.count=1600;memcpy(u.pcm,packet.data(),3200);used=0;
+        if(used==upload_samples) {
+          Upload u{};u.epoch=epoch;u.count=upload_samples;memcpy(u.pcm,packet.data(),upload_samples*sizeof(int16_t));used=0;
           if(!xQueueSend(upload_queue,&u,0))fail_queue(8);
         }
       }
@@ -748,7 +753,7 @@ extern "C" void app_main() {
   heap_caps_malloc_extmem_enable(512);
   vTaskPrioritySet(nullptr,5);
   ESP_ERROR_CHECK(nvs_flash_init());
-  upload_queue = xQueueCreate(8, sizeof(Upload));
+  upload_queue = xQueueCreate(upload_slots, sizeof(Upload));
   boot_id=esp_random();
   gpio_config_t button_cfg{};button_cfg.pin_bit_mask=1ULL<<board::Button;button_cfg.mode=GPIO_MODE_INPUT;button_cfg.pull_up_en=GPIO_PULLUP_ENABLE;
   ESP_ERROR_CHECK(gpio_config(&button_cfg));

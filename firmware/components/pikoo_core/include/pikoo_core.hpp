@@ -58,7 +58,7 @@ public:
       reject(id);
     }
   }
-  bool take(Chunk &out,size_t initial_samples=0,uint64_t now_ms=0) {
+  bool take(Chunk &out,size_t initial_samples=0,uint64_t now_ms=0,uint64_t max_buffer_ms=200) {
     if (queue_.empty())
       return false;
     auto &response=responses_.at(queue_.front().id);
@@ -68,7 +68,7 @@ public:
       // only once at least 10 ms of PCM is available. Keep the marker queued.
       if(response.remaining<std::min<size_t>(initial_samples,240))return false;
       if(!response.buffering){response.buffering=true;response.buffered_at=now_ms;}
-      if(now_ms<response.buffered_at||now_ms-response.buffered_at<200)return false;
+      if(now_ms<response.buffered_at||now_ms-response.buffered_at<max_buffer_ms)return false;
     }
     out = std::move(queue_.front());
     queue_.pop_front();

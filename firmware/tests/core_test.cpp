@@ -42,6 +42,20 @@ int main() {
     assert(buffered.started(first));
     assert(buffered.take(first,2880,315));assert(first.pcm.size()==1440);
   }
+  {
+    // Device trace: 140 ms arrives first, the next 320 ms arrives 520 ms later.
+    // A 120 ms start underruns. The bounded jitter prefill retains every sample.
+    Playback jitter;Playback::Chunk part;int16_t a[3360]{},b[7680]{};
+    assert(jitter.append("jitter",a,3360));
+    assert(!jitter.take(part,12000,0,600));
+    assert(!jitter.take(part,12000,200,600));
+    assert(jitter.append("jitter",b,7680));
+    assert(!jitter.take(part,12000,520,600));
+    assert(jitter.take(part,12000,600,600));assert(jitter.started(part));
+    assert(part.pcm.size()==3360);assert(jitter.take(part,12000,600,600));
+    assert(part.pcm.size()==7680);jitter.cancel();
+    assert(!jitter.take(part,12000,601,600));
+  }
   // A continuously replenished microphone stream cannot starve incoming audio
   // or cancellation handling, even when the producer is faster than the link.
   unsigned sent=0;
