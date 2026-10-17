@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-17",
+  "status": "post-freeze-offline-evaluation-failed-recall-expectation",
+  "model": "V8D",
+  "model_sha256": "dbeee42e45cd0b80fe4130058fe93639af181a11821b43fb9999bf8a20cce247",
+  "threshold": 0.9,
+  "runtime": "TFLite reference kernels, firmware quantization, five-inference rolling mean",
+  "adult_heldout": {
+    "positive_recordings": 3,
+    "negative_recordings": 3,
+    "as_recorded": {"hits": 1, "false_wakes": 0},
+    "three_second_quiet_prefix": {"hits": 2, "false_wakes": 0}
+  },
+  "previously_inspected_adult_diagnostics": {
+    "positive_recordings": 2,
+    "hits_as_recorded": 0,
+    "hits_with_quiet_prefix": 0,
+    "blind_test": false
+  },
+  "training_pronunciation_coverage_audit": {
+    "positive_manifest_rows": 268,
+    "positive_texts": {"你好皮酷": 249, "你好。皮酷": 13, "你好，皮酷": 6},
+    "latin_spelling_positive_rows": 0,
+    "explicit_nihao_pikoo_first_tone_variant": false,
+    "note": "Rows include synthetic pitch/tempo variants; they are not independent speakers. Text coverage does not prove each generated waveform's pronunciation."
+  },
+  "privacy": "Recordings remain private and evaluation-only; no training, threshold tuning, augmentation for training or model selection used household recordings.",
+  "limitations": "One adult heldout speaker, only three positives; no real child target recordings. Seventeen earlier live trials saved detection metadata, not audio, used V7B and lack per-trial speaker assignment. These cannot be re-scored as recordings with V8D.",
+  "next_data_requirement": "Treat both Mandarin ni hao pi2 ku4 and mixed-language ni hao Pikoo / pi1 ku1 as accepted variants. Build training and development data from public or synthetic sources, with distinct source speakers and session splits; household audio remains test-only. Do not choose a replacement using this heldout result."
+}

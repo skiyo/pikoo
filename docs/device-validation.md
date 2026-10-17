@@ -85,3 +85,15 @@ Firmware source `dc94618` was built with ESP-IDF 5.5.5 and the unchanged private
 | Eyes and connectivity | Both C++ renderers verify closed poses for connecting/offline/muted/occupied/auth error; explicit session-to-renderer mapping corrects swapped speaking/thinking states. The user confirmed that the eyes opened after connection and closed after farewell, and that speech was complete |
 
 随后一次真人实测已完成：本地唤醒 1 次，自动回应，识别告别，播放完成后主动断开；用户确认开闭眼正常、声音完整。这是单次会话交互通过，不是四位家庭成员各 20 次的唤醒率验收。儿童识别率、实机自然插话及长期运行的验收状态保持待完成。本轮没有保存麦克风录音；电脑合成音只用于交互测试，没有加入训练数据。设备已回闭眼待机。
+
+## Wake recording and pronunciation audit / 录音与发音覆盖核对（2026-10-17）
+
+The earlier "20 trials" run completed 17 trials on V7B, with 6 detections and no saved audio. Per-trial speakers were not recorded, so the aggregate is not an individual adult/child score and cannot be re-scored with V8D. The separate private recording inventory contains six adult heldout clips (three targets, three non-targets) and two earlier diagnostic clips.
+
+A post-freeze V8D re-test of all eight recordings found **1/3 target hits as recorded, 2/3 with a quiet prefix, and 0/3 non-target false wakes**. The two previously inspected diagnostic positives were both missed and are not blind-test evidence. These findings expose poor real-voice recall despite passing the earlier synthetic development gate; V8D is not accepted for household wake reliability. No household audio was used for training, tuning or model selection, and the board model was not replaced based on these results. [Sanitized evaluation and coverage report](../training/reports/wake-v8d-household-evaluation.json).
+
+The current training manifest has 268 positive rows, including derived variants, all spelling the target in Chinese. It contains no explicit `你好 Pikoo` positive with the intended flatter `pī kū` pronunciation. Future public/synthetic training data must cover both allowed readings, and score adult and childlike voices separately; pitch/tempo augmentation alone does not establish that coverage. Text metadata cannot prove the exact pronunciation of every synthesized clip.
+
+此前所谓“近 20 个样本”是 17 次现场检测记录，没有保存录音，不能重放到新版模型。另存的 8 段成人录音现已全部在冻结的 V8D 上补测，主要 3 段目标词原样仅命中 1 段；静音前缀条件命中 2 段。3 段非目标没有误唤醒，2 段旧诊断目标均漏识别。当前模型不能认定唤醒验收通过。另收到儿童约五六次成功一次的使用反馈，这不是受控的个人 20 次验收。
+
+During a later, separately awakened conversation, one `bounded queue overflow reason=5` and a reconnect were observed. This remains an audio-streaming reliability issue; the successful greeting/farewell interaction does not establish long-session stability.
