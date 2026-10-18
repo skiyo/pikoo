@@ -1,6 +1,6 @@
 # 第三方软件与来源
 
-可选声调增强使用独立安装的 Praat-Parselmouth 0.4.7（GPL-3.0-or-later，含 Praat），见 `training/requirements-prosody.txt`；不复制进 Pikoo，也不链接到固件中，其自身许可继续适用。
+可选声调增强和同声前缀准备使用独立安装的 Praat-Parselmouth 0.4.7（GPL-3.0-or-later，含 Praat），见 `training/requirements-prosody.txt`；不复制进 Pikoo，也不链接到固件中，其自身许可继续适用。
 
 可选的本机合成／检查使用 MLX Audio 0.5.9、MLX 0.32.4（MIT），独立依赖见 `training/requirements-local-audio.txt`。Qwen3-TTS VoiceDesign、Qwen3-ASR-0.6B 源模型卡标注 Apache-2.0；转换后的 MLX 权重保留原许可，不随 Pikoo 分发。语料权利仍决定最终唤醒模型的分发边界；这些不是 ESP32 依赖。见[发音覆盖说明](docs/wake-pronunciations.zh-CN.md)。
 

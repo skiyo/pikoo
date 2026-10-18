@@ -6,6 +6,21 @@ import wave
 
 @unittest.skipUnless(importlib.util.find_spec('parselmouth'),'Optional Praat augmentation runtime')
 class LevelToneTest(unittest.TestCase):
+    def test_matched_prefix_cuts_precede_known_final_syllable(self):
+        import numpy as np
+        from prepare_tts_prefixes import boundaries
+        blocks=[np.zeros(1600)]
+        for frequency in (180,220,260,300):
+            blocks.extend([.2*np.sin(2*np.pi*frequency*np.arange(4800)/16000),np.zeros(2400)])
+        x=np.concatenate(blocks)
+        with tempfile.TemporaryDirectory() as tmp:
+            source=Path(tmp)/'four-syllables.wav'
+            with wave.open(str(source),'wb') as w:
+                w.setparams((1,2,16000,0,'NONE','not compressed'));w.writeframes((x*32767).astype('<i2').tobytes())
+            cuts=boundaries(source)
+            self.assertEqual(len(cuts),2)
+            self.assertLess(cuts[0],1.0)
+            self.assertLess(cuts[1],1.45)
     def test_levelled_tail_preserves_duration_and_leading_pitch(self):
         import numpy as np
         import parselmouth

@@ -28,9 +28,10 @@ def main():
         for condition in conditions:
             x=modify(pcm,condition,rng)
             scores={k:predict(path,np.pad(x,(16000,16000))) for k,path in models.items()}
-            details.append({'label':row['label'],'source':row.get('source'),
+            details.append({'label':row['label'],'source':row.get('source'),'sha256':row.get('sha256') or hashlib.sha256((a.manifest.parent/row['path']).read_bytes()).hexdigest(),
                 'speaker':row.get('speaker',row.get('voice')),'real_child':row.get('real_child',False),
                 'age':row.get('age'),'text':None if row.get('real_child') else row.get('text'),
+                'pronunciation':row.get('pronunciation'),'synthetic_style':row.get('synthetic_style'),
                 'condition':condition,'context':row.get('context'),
                 'seconds':len(x)/16000,'scores':scores,'detected':{k:v>=.9 for k,v in scores.items()}})
         if n%50==0:print('Scored',n+1,'/',len(rows),flush=True)
@@ -46,6 +47,9 @@ def main():
                 groups['voice:'+voice]=[r for r in group if r['speaker']==voice]
             for context in {r['context'] for r in group if r['label']}:
                 groups['context:'+str(context)]=[r for r in group if r['label'] and r['context']==context]
+            for field in ('source','pronunciation','synthetic_style'):
+                for value in {r.get(field) for r in group if r.get(field) is not None}:
+                    groups[field+':'+str(value)]=[r for r in group if r.get(field)==value]
             for name,sub in groups.items():
                 pos=[r for r in sub if r['label']];neg=[r for r in sub if not r['label']]
                 report[name]={'positive_clips':len(pos),'wake_detected':sum(r['detected'][model] for r in pos),

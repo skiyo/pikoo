@@ -14,8 +14,8 @@ from review_google_corpus import normalize
 
 def validate(rows,root,protected):
     for row in rows:
-        if row.get('source') not in {'Qwen3-TTS-synthetic-local','Google-TTS-level-tone-synthetic','Google-TTS-incomplete-prefix'} or not row.get('synthetic') or row.get('evaluation_only') or row.get('real_child') or row.get('reference_audio_used') or row.get('family_inputs_used'):
-            raise ValueError('Only fictional local synthesis without reference audio is eligible')
+        if row.get('source') not in {'Google-Gemini-TTS-synthetic','Qwen3-TTS-synthetic-local','Google-TTS-level-tone-synthetic','Google-TTS-incomplete-prefix','TTS-matched-incomplete-prefix'} or not row.get('synthetic') or row.get('evaluation_only') or row.get('real_child') or row.get('reference_audio_used') or row.get('family_inputs_used'):
+            raise ValueError('Only fictional synthesis without reference audio is eligible')
         p=(root/row['path']).resolve()
         if not p.is_relative_to(root.resolve()):raise ValueError('Synthetic path escapes corpus')
         digest=hashlib.sha256(p.read_bytes()).hexdigest()
@@ -63,6 +63,9 @@ def main():
 
 def content_approved(row,transcript):
     normalized=normalize(transcript)
+    if row.get('source')=='TTS-matched-incomplete-prefix':
+        prefixes={'你','你好'}|{'你好'+c for c in '皮披批匹癖痞屁坯'}
+        return row['label']==0 and normalized in prefixes
     if row.get('source')=='Google-TTS-incomplete-prefix':
         return row['label']==0 and bool(normalized) and '你好皮酷' not in normalized
     return normalized==normalize(row['text'])

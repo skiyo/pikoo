@@ -6,10 +6,39 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import wave
 
 
 @unittest.skipUnless(importlib.util.find_spec('numpy'), 'Optional training runtime is not installed')
 class PrepareGoogleTest(unittest.TestCase):
+    def test_ambiguous_training_contrast_cannot_remove_legacy_validation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);rows=[]
+            for split in ('train','validation'):
+                path=root/(split+'.wav');path.write_bytes(split.encode())
+                rows.append(dict(path=path.name,source='Qwen3-TTS-synthetic-local',synthetic=True,label=0,split=split,group=split,text='你好比酷'))
+            (root/'previous.json').write_text(json.dumps(rows))
+            for name in ('google','review','negatives'):(root/(name+'.json')).write_text('[]')
+            (root/'protected.json').write_text('{"audio_sha256":{}}')
+            result=self.run_prepare(root,['--quarantine-training-negatives','你好比酷'])
+            self.assertEqual(result.returncode,0,result.stderr)
+            output=json.loads((root/'result/manifest.json').read_text())
+            self.assertEqual([r['split'] for r in output],['validation'])
+    def test_short_context_never_discards_long_validation_targets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);rows=[]
+            for name,split,seconds,amplitude in [('long-train','train',3,1),('short-train','train',1,2),('long-val','validation',3,3)]:
+                path=root/(name+'.wav')
+                with wave.open(str(path),'wb') as w:
+                    w.setparams((1,2,16000,0,'NONE','not compressed'));w.writeframes(amplitude.to_bytes(2,'little')*16000*seconds)
+                rows.append(dict(path=path.name,source='Google-Gemini-TTS-synthetic',label=1,split=split,group=name))
+            (root/'previous.json').write_text(json.dumps(rows))
+            for name in ('google','review','negatives'):(root/(name+'.json')).write_text('[]')
+            (root/'protected.json').write_text('{"audio_sha256":{}}')
+            result=self.run_prepare(root,['--context-frames','300'])
+            self.assertEqual(result.returncode,0,result.stderr)
+            output=json.loads((root/'result/manifest.json').read_text())
+            self.assertEqual({r['group'] for r in output},{'short-train','long-val'})
     def run_prepare(self, root, extra=()):
         return subprocess.run([sys.executable, str(Path(__file__).with_name('prepare_google_iteration.py')),
             '--previous', str(root / 'previous.json'), '--google', str(root / 'google.json'),

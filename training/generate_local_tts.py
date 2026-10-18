@@ -24,7 +24,8 @@ PROFILES = [
 ]
 
 
-def jobs():
+def jobs(contrasts=False,child_focus=False,phonetic_spelling=False):
+    contrasts=contrasts or child_focus
     utterances = [
         ('你好皮酷', 1, 'mandarin-pi2-ku4'),
         ('你好Pikoo', 1, 'mixed-pi1-ku1'),
@@ -39,9 +40,18 @@ def jobs():
         ('你好，批枯。', 1, 'mixed-pi1-ku1'),
         ('你好，披哭！', 1, 'mixed-pi1-ku1'),
     ]
+    if contrasts:
+        # Additional TRAIN-only near phrases; no household input or held-out
+        # waveform mining. Keep each prompt family in its preassigned split.
+        utterances=utterances[:4]+[(text,0,'non-target') for text in (
+            '你好皮','你好','你好皮皮','你真酷','你好皮球','你好比酷',
+            '你好朋友','你好屁股','皮酷','给我讲一个故事','你好派酷','你好皮克')]
     rows=[]
     for profile_index,(profile,split,style,prompt) in enumerate(PROFILES):
+        if contrasts and split!='train':continue
+        if child_focus and style!='childlike':continue
         for index,(text,label,pronunciation) in enumerate(utterances):
+            if phonetic_spelling and 'Pikoo' in text:text=text.replace('Pikoo','批枯')
             instruction=prompt+' This is an invented voice, not an imitation of a real person. Read only the supplied text.'
             if pronunciation=='mixed-pi1-ku1':
                 instruction+=' Say 你好 in Mandarin, followed by PEE-koo, /pi: ku:/, two clear level syllables. Do not say pee-go or pie-co.'
@@ -54,6 +64,7 @@ def jobs():
                 synthetic=True,real_child=False,reference_audio_used=False,
                 source_terms='https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign',
                 identity_scope='prompt-family; not a verified fixed voice or real speaker'))
+            if contrasts:rows[-1]['seed']=(2026101850 if child_focus else 2026101800)+profile_index*100+index
     return rows
 
 
@@ -62,8 +73,13 @@ def main():
     p.add_argument('--model',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--limit',type=int,default=96)
+    p.add_argument('--contrasts',action='store_true',help='Additional train-only incomplete and near-phrase negatives, with synthetic target controls')
+    p.add_argument('--child-focus',action='store_true',help='Train-only fictional childlike prompt families; implies contrasts; never real child speech')
+    p.add_argument('--phonetic-spelling',action='store_true',help='Constrain mixed-name syllables with Chinese first-tone homophones and explicit Chinese synthesis')
+    p.add_argument('--broad',action='store_true',help='36 preassigned fictional voice conditions; 24 train / 12 validation; at most 288 utterances')
     a=p.parse_args()
-    if not 1<=a.limit<=96:raise ValueError('Bound synthesis to 1..96 utterances')
+    if not 1<=a.limit<=(288 if a.broad else 96):raise ValueError('Synthesis exceeds the selected bounded curriculum')
+    if a.broad and (a.child_focus or a.contrasts):raise ValueError('Choose broad or focused curriculum')
     # Prevent an optional library from fetching any weights or tokenizer files.
     os.environ['HF_HUB_OFFLINE']='1';os.environ['TRANSFORMERS_OFFLINE']='1'
     os.umask(0o077)
@@ -75,29 +91,48 @@ def main():
     model=load_model(str(a.model.resolve()))
     a.output.mkdir(parents=True,exist_ok=True);audio=a.output/'audio';audio.mkdir(exist_ok=True)
     rows=[]
-    for job in jobs()[:a.limit]:
-        identity={**job,'generator':'local-voicedesign-v9-1','weights':a.model.name}
+    rejected_path=a.output/'rejected-items.json'
+    rejected=json.loads(rejected_path.read_text()) if rejected_path.exists() else {}
+    if a.broad:
+        from broad_curriculum import jobs as broad_jobs
+        selected=broad_jobs()[:a.limit]
+    else:selected=jobs(a.contrasts,a.child_focus,a.phonetic_spelling)[:a.limit]
+    for attempted,job in enumerate(selected,1):
+        identity={**job,'generator':'local-voicedesign-v10-broad' if a.broad else 'local-voicedesign-v10-child-phonetic' if a.child_focus else 'local-voicedesign-v10-contrast' if a.contrasts else 'local-voicedesign-v9-1','weights':a.model.name}
+        language='Chinese' if a.phonetic_spelling or a.broad else 'auto'
+        if a.phonetic_spelling or a.broad:identity['synthesis_language']=language
         digest=hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()
+        if digest in rejected:continue
         path=audio/(digest+'.wav');metadata=path.with_suffix('.json')
         if metadata.exists():
             row=json.loads(metadata.read_text())
             if hashlib.sha256(path.read_bytes()).hexdigest()!=row['sha256']:raise ValueError('Cached synthetic hash mismatch')
         else:
             mx.random.seed(job['seed']);started=time.monotonic()
-            outputs=list(model.generate_voice_design(text=job['text'],instruct=job['instruction'],language='auto',
+            outputs=list(model.generate_voice_design(text=job['text'],instruct=job['instruction'],language=language,
                 max_tokens=180,temperature=.7,verbose=False,stream=False))
-            if len(outputs)!=1:raise ValueError('Unexpected generated output count')
-            part=outputs[0];pcm=np.asarray(part.audio,dtype=np.float32)
-            if not .3<=len(pcm)/part.sample_rate<=12:raise ValueError('Unexpected synthetic duration')
+            reason=None
+            if len(outputs)!=1:reason='Unexpected generated output count'
+            else:
+                part=outputs[0];pcm=np.asarray(part.audio,dtype=np.float32)
+                if not .3<=len(pcm)/part.sample_rate<=12:reason='Unexpected synthetic duration'
+            if reason:
+                rejected[digest]={'seed':job['seed'],'profile':job['profile'],'reason':reason}
+                rejected_path.write_text(json.dumps(rejected,indent=2)+'\n')
+                print(json.dumps({'attempted':attempted,'rejected':len(rejected),'reason':reason}),flush=True)
+                mx.clear_cache();continue
             pcm=np.clip(np.rint(resample(pcm*32767,part.sample_rate)),-32768,32767).astype('<i2')
             with wave.open(str(path),'wb') as w:w.setparams((1,2,16000,0,'NONE','not compressed'));w.writeframes(pcm.tobytes())
             row={**identity,'path':str(path.relative_to(a.output)), 'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
                  'seconds':len(pcm)/16000,'elapsed_seconds':round(time.monotonic()-started,2),'label_review':'required'}
             metadata.write_text(json.dumps(row,ensure_ascii=False,indent=2)+'\n')
         rows.append(row)
-        (a.output/'manifest.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2)+'\n')
-        print(json.dumps({'completed':len(rows),'total':a.limit,'split':job['split'],'label':job['label'],'pronunciation':job['pronunciation']}),flush=True)
+        temporary=a.output/'manifest.partial.json'
+        temporary.write_text(json.dumps(rows,ensure_ascii=False,indent=2)+'\n')
+        temporary.replace(a.output/'manifest.json')
+        print(json.dumps({'completed':len(rows),'attempted':attempted,'total':len(selected),'split':job['split'],'label':job['label'],'pronunciation':job['pronunciation']}),flush=True)
         mx.clear_cache()
+    (a.output/'generation-status.json').write_text(json.dumps({'generated':len(rows),'rejected':len(rejected),'planned':len(selected),'synthetic_not_real_child_evidence':True},indent=2)+'\n')
 
 
 if __name__=='__main__':main()

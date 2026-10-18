@@ -29,8 +29,10 @@ def validate_training_manifest(manifest):
     if any(row.get('evaluation_only') or str(row.get('source','')).startswith('private-') for row in manifest):
         raise ValueError('evaluation_only recordings require a separate evaluation manifest')
 
-def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative_repeats=5,hard_negative_repeats=5,min_snr=10,negative_prefixes=False,pcm_context=False,acoustic_augmentation=False,acoustic_probability=1.):
+def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative_repeats=5,hard_negative_repeats=5,min_snr=10,negative_prefixes=False,pcm_context=False,acoustic_augmentation=False,acoustic_probability=1.,negative_tail_seconds=.12,positive_tail_seconds=.12):
     validate_training_manifest(manifest)
+    if not .12<=negative_tail_seconds<=1.5:raise ValueError('Negative tail must be between 0.12 and 1.5 seconds')
+    if not .12<=positive_tail_seconds<=.6:raise ValueError('Positive tail must be between 0.12 and 0.6 seconds')
     rng=np.random.default_rng(seed);sets={k:([],[]) for k in ['train','validation','test']}
     groups={};clips={}
     for row in manifest:
@@ -71,7 +73,17 @@ def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative
                 start=int(rng.integers(0,len(x)-window_samples+1)) if row['split']=='train' else (len(x)-window_samples)//2
                 x=x[start:start+window_samples]
             # Wake phrase ends just before the prediction window ends.
-            tail=int(rng.uniform(0,.12)*16000)
+            # Non-targets must stay negative AFTER speech stops too. A short
+            # end-aligned window misses delayed streaming false activations.
+            # Keep positive alignment and validation/test construction intact.
+            maximum_tail=negative_tail_seconds if row['split']=='train' and not row['label'] else .12
+            if row['split']=='train' and row['label'] and positive_tail_seconds>.12:
+                # Leave the complete target in the causal window, even after
+                # speed augmentation. Never turn a cropped prefix positive.
+                available=(window_samples-len(x)-4800)/16000
+                if available<0:raise ValueError('Complete TRAIN target cannot fit; curate with --context-frames first')
+                maximum_tail=min(positive_tail_seconds,available)
+            tail=int(rng.uniform(0,maximum_tail)*16000)
             lead=max(4800,window_samples-len(x)-tail) if pcm_context else 4800
             x=np.pad(x,(lead,tail))
             if pcm_context:
@@ -98,6 +110,8 @@ def main():
     p.add_argument('--kernels',default='5,9,13,21')
     p.add_argument('--hard-negative-repeats',type=int,default=5);p.add_argument('--min-snr',type=float,default=10)
     p.add_argument('--negative-prefixes',action='store_true')
+    p.add_argument('--negative-tail-seconds',type=float,default=.12,help='TRAIN non-target tail range; 0.12..1.5 seconds; positive and evaluation alignment unchanged')
+    p.add_argument('--positive-tail-seconds',type=float,default=.12,help='TRAIN complete-target tail range; 0.12..0.6 seconds, capped to preserve the entire phrase; evaluation unchanged')
     p.add_argument('--pcm-context',action='store_true',help='Use a complete noisy PCM context rather than zero feature padding')
     p.add_argument('--resume-weights',type=Path,help='Fine-tune a compatible local checkpoint; record its hash')
     p.add_argument('--negative-weight',type=float,default=1,help='Non-wake loss multiplier; calibrate on validation, not the test split')
@@ -110,6 +124,8 @@ def main():
     p.add_argument('--source-first-filters',type=int,default=24)
     a=p.parse_args()
     os.umask(0o077)
+    if not .12<=a.negative_tail_seconds<=1.5:raise ValueError('Negative tail must be between 0.12 and 1.5 seconds')
+    if not .12<=a.positive_tail_seconds<=.6:raise ValueError('Positive tail must be between 0.12 and 0.6 seconds')
     if a.window_frames%3 or a.window_frames<150 or min(a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.filters,a.first_filters)<1 or not 0<=a.min_snr<35 or not 0<a.negative_weight<=16 or not 0<a.learning_rate<=.01 or not 0<=a.acoustic_probability<=1:raise ValueError('Invalid training dimensions')
     kernels=[int(k) for k in a.kernels.split(',')]
     if not kernels or any(k<3 or k%2==0 for k in kernels) or a.window_frames//3<=sum(k-1 for k in kernels):raise ValueError('Receptive field exceeds training window')
@@ -121,7 +137,7 @@ def main():
     manifest=json.loads(a.manifest.read_text());cache=a.output/'features.npz'
     validate_training_manifest(manifest)
     protected=set(json.loads(a.protected_hashes.read_text())['audio_sha256'].values()) if a.protected_hashes else set()
-    feature_config={'window_frames':a.window_frames,'positive_repeats':a.positive_repeats,'negative_repeats':a.negative_repeats,'hard_negative_repeats':a.hard_negative_repeats,'min_snr':a.min_snr,'negative_prefixes':a.negative_prefixes,'pcm_context':a.pcm_context,'acoustic_augmentation':a.acoustic_augmentation,'acoustic_probability':a.acoustic_probability}
+    feature_config={'window_frames':a.window_frames,'positive_repeats':a.positive_repeats,'negative_repeats':a.negative_repeats,'hard_negative_repeats':a.hard_negative_repeats,'min_snr':a.min_snr,'negative_prefixes':a.negative_prefixes,'pcm_context':a.pcm_context,'acoustic_augmentation':a.acoustic_augmentation,'acoustic_probability':a.acoustic_probability,'negative_tail_seconds':a.negative_tail_seconds,'positive_tail_seconds':a.positive_tail_seconds}
     fingerprint=hashlib.sha256(b'pikoo-features-v5-mined-child-hard-negatives'+json.dumps(feature_config,sort_keys=True).encode()+a.manifest.read_bytes())
     for row in manifest:
         digest=hashlib.sha256((a.manifest.parent/row['path']).read_bytes()).digest()

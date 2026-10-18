@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import wave
 from review_google_corpus import normalize
 
 
@@ -23,14 +24,21 @@ def main():
     p.add_argument('--mac-positives-per-voice', type=int, default=8)
     p.add_argument('--drop-historical-positives',action='store_true',help='Remove macOS/self-test training positives; keep historical development regression')
     p.add_argument('--validation-challenge',type=Path,nargs='*',default=[],help='Reviewed synthetic validation rows only; never add their training rows')
-    p.add_argument('--reviewed-prefixes',type=Path,nargs='*',default=[],help='Content-reviewed incomplete Google wake phrases as hard negatives')
+    p.add_argument('--reviewed-prefixes',type=Path,nargs='*',default=[],help='Content-reviewed incomplete fictional TTS phrases as hard negatives')
+    p.add_argument('--context-frames',type=int,default=0,help='If set, exclude TRAIN positives that cannot fit whole with 300ms lead, 120ms tail and 0.88 minimum speed jitter; validation is unchanged')
+    p.add_argument('--quarantine-training-negatives',nargs='*',default=[],help='Explicit ambiguous synthetic near-name texts to withhold from TRAIN; legacy validation remains unchanged')
     a = p.parse_args()
     os.umask(0o077)
     if not 1 <= a.mac_positives_per_voice <= 64:
         raise ValueError('Invalid historical positive cap')
+    if a.context_frames and (a.context_frames<150 or a.context_frames%3):
+        raise ValueError('Context must contain at least 150 frames and be divisible by three')
     protected = set(json.loads(a.excluded_audio_hashes.read_text())['audio_sha256'].values())
     rows = []
     historical_positives = defaultdict(list)
+    too_long_train_positives=[]
+    ambiguous_train_negatives=[]
+    ambiguous_texts={normalize(text) for text in a.quarantine_training_negatives}
 
     def append(row, manifest):
         if row.get('evaluation_only') or str(row.get('source', '')).startswith('private-'):
@@ -41,6 +49,19 @@ def main():
             raise ValueError('Protected human recording cannot enter model development')
         if row.get('sha256') and digest != row['sha256']:
             raise ValueError('Source audio hash mismatch')
+        if row['split']=='train' and not row['label'] and row.get('synthetic') and normalize(row.get('text','')) in ambiguous_texts:
+            ambiguous_train_negatives.append(digest)
+            return
+        if a.context_frames and row['split']=='train' and row['label']:
+            with wave.open(str(path)) as audio:
+                if (audio.getnchannels(),audio.getsampwidth(),audio.getframerate())!=(1,2,16000):
+                    raise ValueError('Expected mono 16kHz PCM16 target')
+                samples=row.get('wake_end_sample',audio.getnframes())
+                if not 0<samples<=audio.getnframes():raise ValueError('Invalid target endpoint')
+            maximum=((a.context_frames+2)*160-4800-1920)*.88
+            if samples>maximum:
+                too_long_train_positives.append({'sha256':digest,'source':row.get('source'),'samples':samples})
+                return
         rows.append({**row, 'path': os.path.relpath(path, a.output.resolve()), 'sha256': digest})
 
     for row in json.loads(a.previous.read_text()):
@@ -91,8 +112,8 @@ def main():
     for manifest in a.reviewed_prefixes:
         reviews={r['sha256']:r for r in json.loads((manifest.parent/'review.json').read_text())}
         for row in json.loads(manifest.read_text()):
-            if row.get('source')!='Google-TTS-incomplete-prefix' or row['label']!=0 or not row.get('synthetic') or row.get('reference_audio_used') or row.get('family_inputs_used') or row.get('real_child'):
-                raise ValueError('Prefix negatives require fictional Google derivatives')
+            if row.get('source') not in {'Google-TTS-incomplete-prefix','TTS-matched-incomplete-prefix'} or row['label']!=0 or not row.get('synthetic') or row.get('reference_audio_used') or row.get('family_inputs_used') or row.get('real_child'):
+                raise ValueError('Prefix negatives require fictional TTS derivatives')
             if row['split']=='test':continue
             checked=reviews.get(row['sha256'],{})
             heard=normalize(checked.get('transcript',''))
@@ -116,6 +137,8 @@ def main():
     path = a.output / 'manifest.json'
     path.write_text(json.dumps(unique, ensure_ascii=False, indent=2))
     report = {'status': 'development-data-no-household-audio', 'rejected_google_rows': rejected,
+              'context_frames':a.context_frames,'too_long_train_positives_excluded':len(too_long_train_positives),'validation_context_exclusions':0,
+              'ambiguous_training_negatives_quarantined':len(ambiguous_train_negatives),'legacy_validation_label_exclusions':0,
               'historical_training_positives_removed':a.drop_historical_positives,'synthetic_validation_challenges':challenge_count,'reviewed_prefix_negatives':prefix_count,
               'protected_human_hashes': len(protected),
               'sources': dict(Counter(r.get('source') for r in unique)),

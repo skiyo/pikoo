@@ -6,7 +6,7 @@ Pikoo-authored code, original eye graphics and project documentation use Apache-
 
 ## Software inventory
 
-Optional prosody augmentation uses [Praat-Parselmouth](https://github.com/YannickJadoul/Parselmouth) 0.4.7 (GPL-3.0-or-later, including Praat). It is a separately installed workstation dependency, not copied into Pikoo or linked into firmware; see `training/requirements-prosody.txt`. Its own license remains authoritative.
+Optional prosody augmentation and matched-prefix preparation use [Praat-Parselmouth](https://github.com/YannickJadoul/Parselmouth) 0.4.7 (GPL-3.0-or-later, including Praat). It is a separately installed workstation dependency, not copied into Pikoo or linked into firmware; see `training/requirements-prosody.txt`. Its own license remains authoritative.
 
 Optional workstation synthesis/review uses [MLX Audio](https://github.com/Blaizzy/mlx-audio) 0.5.9 and MLX 0.32.4 (MIT), with separate pins in `training/requirements-local-audio.txt`. The source model cards for [Qwen3-TTS VoiceDesign](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign) and [Qwen3-ASR-0.6B](https://huggingface.co/Qwen/Qwen3-ASR-0.6B) specify Apache-2.0. Converted MLX weights retain source terms and are not included here. Corpus rights still govern the wake model. These are not ESP32 dependencies. See [pronunciation development](docs/wake-pronunciations.md).
 

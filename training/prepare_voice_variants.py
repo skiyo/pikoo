@@ -9,6 +9,7 @@ import argparse
 from collections import Counter
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -68,7 +69,11 @@ def main():
     parser.add_argument('--protected-hashes', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--sources',nargs='+',choices=sorted(ALLOWED_SOURCES),default=['Google-Gemini-TTS-synthetic'])
+    parser.add_argument('--profile',type=float,nargs=2,action='append',metavar=('SEMITONES','TEMPO'),help='Optional bounded profiles; default is the historical five-profile set')
     args = parser.parse_args()
+    profiles=args.profile or PROFILES
+    if len(profiles)>5 or any(not math.isfinite(s) or not math.isfinite(t) or not -2<=s<=8 or not .75<=t<=1.25 for s,t in profiles):
+        raise ValueError('Use at most five finite profiles: -2..8 semitones and 0.75..1.25 tempo')
     os.umask(0o077)
     rows = json.loads(args.manifest.read_text())
     protected = set(json.loads(args.protected_hashes.read_text())['audio_sha256'].values())
@@ -90,7 +95,7 @@ def main():
         # Absolute wake boundaries would no longer align after tempo changes.
         if 'wake_end_sample' in row:
             raise ValueError('Timestamped source requires explicit boundary remapping')
-        for semitones, tempo in PROFILES:
+        for semitones, tempo in profiles:
             identity = {'parent_sha256': row['sha256'], 'semitones': semitones,
                         'tempo': tempo, 'processor': 'ffmpeg-asetrate-atempo-v1'}
             name = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
@@ -108,7 +113,7 @@ def main():
     report = {'status': 'synthetic-development-augmentation-not-child-acceptance',
         'source_manifest_sha256': hashlib.sha256(args.manifest.read_bytes()).hexdigest(),
         'ffmpeg_version': subprocess.check_output([ffmpeg, '-version'], text=True).splitlines()[0],
-        'profiles': PROFILES, 'protected_hashes': len(protected),
+        'profiles': profiles, 'protected_hashes': len(protected),
         'counts': dict(Counter(f"{r['split']}:label={r['label']}" for r in variants)),
         'real_child_positive_recordings': 0, 'household_recordings_used': 0}
     (args.output / 'preparation-report.json').write_text(json.dumps(report, indent=2) + '\n')

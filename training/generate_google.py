@@ -157,6 +157,7 @@ def main():
     p.add_argument('--voices', nargs='*', help='Optional explicit voice ordering; split assignment never changes')
     p.add_argument('--mixed-pronunciation',action='store_true',help='Include English Pikoo / pi1-ku1 as an accepted target alongside Mandarin')
     p.add_argument('--phonetic-spelling',action='store_true',help='Constrain pi1-ku1 using exact Chinese homophone text instead of ambiguous Latin spelling')
+    p.add_argument('--utterance-indices',type=int,nargs='+',help='Single-utterance requests only: select positions 0..7 within each voice (four targets, four negatives)')
     a = p.parse_args()
     os.umask(0o077)
     key = None
@@ -172,6 +173,8 @@ def main():
         raise ValueError('limit must be between 1 and 96')
     if a.interval < 0:
         raise ValueError('interval must be nonnegative')
+    if a.utterance_indices and (a.batch_voices or len(set(a.utterance_indices))!=len(a.utterance_indices) or any(i not in range(8) for i in a.utterance_indices)):
+        raise ValueError('Unique utterance indices 0..7 require single-utterance generation')
     rate_lock = threading.Lock()
     next_request = [0.0]
 
@@ -185,8 +188,12 @@ def main():
             voices = [v for values in VOICES.values() for v in values]
         rows = []
         for voice in voices:
-            for label in (1, 0):
-                rows.extend([r for r in all_rows if r['voice'] == voice and r['label'] == label][:a.items_per_voice // 2])
+            if a.utterance_indices:
+                voice_rows=[r for r in all_rows if r['voice']==voice]
+                rows.extend(voice_rows[i] for i in a.utterance_indices)
+            else:
+                for label in (1, 0):
+                    rows.extend([r for r in all_rows if r['voice'] == voice and r['label'] == label][:a.items_per_voice // 2])
         rows = rows[:a.limit]
         for row in rows:
             row['synthetic_style'] = 'childlike' if row['voice'] in a.childlike_voices else 'adult'
@@ -295,15 +302,23 @@ def main():
                     response = json.load(reply)
             except HTTPError as error:
                 try:
-                    details = json.loads(error.read()).get('error', {})
-                    # Error messages can echo inputs. Only retain status and structured
-                    # quota details, never the authenticated request or headers.
+                    decoded=json.loads(error.read())
+                    details = decoded.get('error', decoded)
+                    # Local-only error diagnostics can echo synthetic prompts.
+                    # Redact the key; never retain authenticated requests/headers.
                     safe = {'code': error.code, 'status': details.get('status'),
-                            'details': details.get('details', [])}
+                            'details': details.get('details', []),
+                            'safe_error_body':json.loads(json.dumps(decoded).replace(key,'[REDACTED]')),
+                            'retry_after':error.headers.get('Retry-After')}
                     (a.output / 'last-api-error.json').write_text(json.dumps(safe, indent=2))
                 except (ValueError, OSError):
                     pass
                 raise RuntimeError(f'Gemini TTS HTTP {error.code}; stop and inspect quota/network') from None
+            (audio/(digest[:24]+'.response-meta.json')).write_text(json.dumps({
+                'model':a.model,'voice':row['voice'],'status':response.get('status'),
+                'finish_reasons':[c.get('finishReason') for c in response.get('candidates',[])],
+                'prompt_feedback':response.get('promptFeedback'),
+                'usage':response.get('usage',response.get('usageMetadata'))},indent=2))
             pcm = decode_audio(response)
             write_wav(path, pcm)
             metadata.write_text(json.dumps({'request': identity,
@@ -317,11 +332,11 @@ def main():
 
     completed = []
     rejected = []
+    selected = selected_jobs()
     try:
         if a.batch_voices:
             if a.limit % a.items_per_voice:
                 raise ValueError('Batch generation requires a complete set of utterances per voice')
-            selected = selected_jobs()
             for start in range(0, len(selected), a.items_per_voice):
                 batch = selected[start:start + a.items_per_voice]
                 try:
@@ -337,18 +352,17 @@ def main():
                                   'batch_voices': True}), flush=True)
             return
         with ThreadPoolExecutor(max_workers=a.workers) as pool:
-            selected = selected_jobs()
             for start in range(0, len(selected), a.workers):
                 # At most two in flight: a quota failure cannot leave the entire
                 # corpus queued for further rejected API calls.
                 for row in pool.map(generate, selected[start:start + a.workers]):
                     completed.append(row)
                     (a.output / 'manifest.json').write_text(json.dumps(completed, ensure_ascii=False, indent=2))
-                    print(json.dumps({'completed': len(completed), 'expected': min(96, a.limit),
+                    print(json.dumps({'completed': len(completed), 'expected': len(selected),
                                       'split': row['split'], 'label': row['label']}), flush=True)
     finally:
         (a.output / 'generation-status.json').write_text(json.dumps({
-            'completed_manifest_rows': len(completed), 'expected': min(96, a.limit),
+            'completed_manifest_rows': len(completed), 'expected': len(selected),
             'model': a.model, 'synthetic_not_human': True,
             'rejected_batches': rejected,
             'finished_unix': int(time.time())}, indent=2))

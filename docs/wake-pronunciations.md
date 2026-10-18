@@ -4,7 +4,7 @@
 
 The accepted phrase includes Mandarin **你好皮酷 (pí kù)** and mixed-language **你好 Pikoo (pī kū / PEE-koo)**. The embedded classifier consumes audio, not spelling. Changing a transcript or shifting overall pitch does not add the missing pronunciation.
 
-The current Google-only candidate excludes macOS and local TTS training positives. `prepare_level_tones.py` applies Praat PSOLA to the last two voiced regions of reviewed isolated Google speech, then screens the result again. These are **prosody derivatives**, not fresh native mixed-language recordings or real children. Uncertain alignment/content is rejected. Parent identities retain their splits. Separate local synthetic voices are only an additional development challenge for this candidate. NVIDIA NIM/Magpie is excluded.
+The earlier V9B/C Google-only candidates excluded macOS and local TTS training positives. `prepare_level_tones.py` applies Praat PSOLA to the last two voiced regions of reviewed isolated Google speech, then screens the result again. These are **prosody derivatives**, not fresh native mixed-language recordings or real children. Uncertain alignment/content is rejected. Parent identities retain their splits. Separate local synthetic voices are only an additional development challenge for this candidate. NVIDIA NIM/Magpie is excluded.
 
 V9 adds fictional synthetic voices. `generate_google.py --mixed-pronunciation` preserves preassigned Google voice splits and stops on quota errors. `generate_local_tts.py` uses explicitly downloaded Qwen3 VoiceDesign weights, with networking disabled and no reference recordings. Chinese spellings 批枯 / 披哭 constrain pī kū; wrong or uncertain output stays excluded. Source weight revisions/checksums are recorded separately.
 
@@ -33,3 +33,53 @@ The datasets differ, so aggregate recall does not rank these models directly. V9
 V9B/C use Google and its derivatives for current training positives, while inheriting the historical V8D initialization. The threshold remains 0.90 with five-inference averaging. Household audio was not used to select these candidates. See the [sanitized V9 report](../training/reports/wake-v9-summary.json).
 
 The free Google TTS daily quota is exhausted. The next attempt must wait until at least 2026-10-18 08:00 Asia/Shanghai, then stop if still limited, without polling or paid fallback. NVIDIA NIM was cancelled at the user's request: no NIM speech was generated or used, and the newly created local credential file was deleted. The next step needs independently generated, content-checked natural pronunciation, rather than only a larger model or a lower threshold.
+
+## Results on 2026-10-18: expanded mixed-name development
+
+The V10 round uses reviewed Google speech plus existing offline Qwen3 VoiceDesign/ASR tools. No new large models were downloaded and no NVIDIA NIM/Magpie was used. The 36 fictional synthesis conditions were assigned to 24 training and 12 development groups before generation. Of 288 planned utterances, 287 had valid audio; 242 passed the transcript screen. Thirteen ambiguous near-name negatives were quarantined before broad-candidate training, leaving 229 approved originals. Their derivatives preserve parent splits. These are fictional adult/childlike styles, not recordings of real children or proof of English-native pronunciation.
+
+Matching TRAIN-only ambiguous contrasts were withheld; all 813 legacy validation waveforms remain. The newer corpus retains 390 real Chinese child ordinary-speech negatives. No household recording was loaded, scored, or used for training, tuning, calibration or selection this round. The old macOS/self-test TRAIN positives were removed from the current data; checkpoint ancestry and historical development regressions still retain earlier sources.
+
+A further 304 transcript-screened incomplete prefixes were cut from the exact same synthetic target waveforms (219 training, 85 development). This addresses voice differences between separately synthesized positive and negative utterances. Alignment uncertainty, full names, and unrelated ASR output are rejected. Human listening confirmed that one development negative says only “你好皮”, without “酷”; it remains negative. That is a synthetic-label check, not household training.
+
+Candidate results and the unchanged software gate are recorded in the [sanitized V10 report](../training/reports/wake-v10-summary.json). D/E use 316 targets and 645 non-targets; F/G add 85 prefix negatives. Counts from different corpora must not be ranked directly. The fixed gate requires zero development false wakes, at least 90% in each new style/pronunciation group, at least 44/46 original targets, the augmentation check, and a model below 64 KiB. Passing this gate would still require board timing, household and background acceptance.
+
+The F timing diagnostic found all 25 false-wake maxima after the 120 ms training tail. `train.py --negative-tail-seconds 1.2` is the G experiment: sample TRAIN non-target windows through a longer quiet period, retaining positive alignment and the streaming evaluation. This is a development hypothesis, not a proven explanation of real child failures. No lower threshold, dropped validation errors, or automatic deployment is used.
+
+Small free Google requests admitted six isolated content-screened utterances; incomplete output, incorrect content and invalid batches were excluded. Quota responses and a transcription timeout/503 stopped further API attempts. This does not establish a provider outage. There is no scheduled retry or paid fallback. The next iteration needs better phonetic discrimination as well as broader natural speech, not merely more copies of a failing sample.
+
+### Reproducing the public workflow
+
+Use the pinned optional local-audio environment and already acquired model files. Keep generated audio, model weights and private manifests outside public releases. These commands illustrate the stages; corpus permission, parent splits and the protected household hash ledger remain mandatory.
+
+```sh
+python training/generate_local_tts.py --model /private/qwen3-tts \
+  --output training/data/fictional-broad --broad --limit 288
+python training/review_local_corpus.py --model /private/qwen3-asr \
+  --manifest training/data/fictional-broad/manifest.json \
+  --protected-hashes /private/household-hashes.json \
+  --output training/data/fictional-broad/review.json
+python training/prepare_tts_prefixes.py \
+  --manifest training/data/reviewed-targets/manifest.json \
+  --protected-hashes /private/household-hashes.json \
+  --output training/data/matched-prefixes
+# Independently review the prefixes before merging them with --reviewed-prefixes.
+```
+
+`prepare_google_iteration.py --context-frames 399` excludes only TRAIN positives that cannot fit whole with the configured speed jitter. `--quarantine-training-negatives` is an explicit label-quality exclusion for TRAIN data; it never removes legacy validation failures. `prepare_voice_variants.py --profile 3 1.0` can select a mild three-semitone derivative instead of the default five profiles. `evaluate_iteration.py` reports style, pronunciation and source separately; the standard streaming score remains the five-inference mean at 0.90. Host Micro parity and static size/operator checks are separate from actual ESP32 timing.
+
+### Outcome of this round
+
+**No V10 candidate passed the full development gate; none was flashed. The device retains V8D.** Expanding data improves some fictional childlike and mixed-name groups, but does not establish real child acceptance. D/E and F/G/H use different negative sets, so compare their detailed reports on matching subsets.
+
+| Candidate | Bytes | Development target hits | False wakes |
+|---|---:|---:|---:|
+| V10D | 45,128 | 290/316 | 10/645 |
+| V10E | 62,640 | 288/316 | 9/645 |
+| V10F | 62,640 | 286/316 | 25/730 |
+| V10G | 62,640 | 273/316 | 5/730 |
+| V10H | 62,640 | 287/316 | 7/730 |
+
+G reduces false wakes from F's 25/730 to 5/730 on the same set, but loses target recall. The human-confirmed “你好皮” negative drops from 0.9375 in F to 0.7836 in G, below 0.90. This is one corrected development error, not a general success. H tests longer complete-target tails (up to 0.6 s, capped to preserve the entire phrase and idle lead) alongside G's longer non-target tails. Its separate result above is also a failed candidate.
+
+All D–H models passed static operator/size checks and host Micro score/reset parity (six cases, three resets each). The wider models use 26,704 bytes of host Micro arena; that is not whole-device memory or ESP32 timing. Software regression passed: 22 simulator, 9 server, 11 USB-tool and 45 training tests, plus native session/audio and eye checks. Actual children, one-metre wake trials and eight-hour background listening remain pending. Household audio was not scored this round.
