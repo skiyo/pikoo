@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-18",
+  "date": "2026-10-19",
   "status": "research-only-no-qualified-release",
   "household_training_tuning_calibration_selection": false,
   "household_scored_this_round": false,
@@ -296,10 +296,25 @@
       ],
       "result": "failed unchanged development; no independent test consumed",
       "household_used": false
+    },
+    "AF_frozen_acoustic192": {
+      "bytes": 263488,
+      "development_targets": 316,
+      "development_hits": 237,
+      "development_non_targets": 730,
+      "development_false_wakes": 11,
+      "train_float_int8_passed": 6,
+      "train_float_int8_cases": 8,
+      "host_Micro_exact_cases": 6,
+      "host_Micro_reset_rounds": 3,
+      "host_arena_bytes": 115584,
+      "result": "failed unchanged development and float/INT8 diagnostic; not deployed",
+      "household_or_independent_test_used": false,
+      "ESP32_timing_or_allocation_verified": false
     }
   },
   "pending": [
-    "AE larger original-child phonetic model:192channels,96stem,kernels3/5/7/9; fresh60epoch maximum, currently training",
+    "AG joint acoustic192 wake training continues after frozen AF failed; protected TRAIN corpus and unchanged development gate",
     "Exact corpus/phone/fold cache proof allows reusing original float32 frontend arrays across architecture widths; every waveform rechecked against current protected hashes",
     "Google TTS free daily quota reached; use existing reviewed data until reset, no paid fallback or project/model rotation",
     "Next wake model must pass unchanged development, newly frozen independent test, ESP32/runtime and actual family tests"
@@ -350,5 +365,24 @@
     "action": "stopped requests; local training continues",
     "AD_new_raw": 3,
     "AD_content_approved_targets": 1
+  },
+  "AE_completed": {
+    "epochs": 23,
+    "internal_speaker_fold_phone_error": 0.5182145162777829,
+    "previous_U_phone_error": 0.49036244581757815,
+    "parameters": 159802,
+    "filters": 192,
+    "first_filters": 96,
+    "kernels": [
+      3,
+      5,
+      7,
+      9
+    ],
+    "original_train_clips": 19661,
+    "internal_validation_clips": 2327,
+    "result": "Acoustic metric worse than U; not wake acceptance",
+    "household_or_independent_test_used": false,
+    "on_device_measured": false
   }
 }
