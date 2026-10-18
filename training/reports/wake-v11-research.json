@@ -4,7 +4,7 @@
   "household_training_tuning_calibration_selection": false,
   "household_scored_this_round": false,
   "normal_model_upgraded": false,
-  "data_boundary": "V11, V12 and V13 independent tests are consumed and hash-protected; never training, calibration or development inputs",
+  "data_boundary": "V11/V12/V13/V14 independent tests are consumed and hash-protected; never training, calibration or development inputs",
   "completed": {
     "MN_B14_veto": {
       "development_targets": 293,
@@ -206,14 +206,62 @@
       "ASR_content_approved": 0,
       "household_used": false,
       "result": "all rejected; not used for training or represented as natural child wake utterances"
+    },
+    "U_full_original_phonetic": {
+      "train_clips": 19661,
+      "internal_validation_clips": 2327,
+      "epochs_this_continuation": 46,
+      "phoneme_error_rate": 0.49036244581757815,
+      "result": "phonetic research only; not wake acceptance"
+    },
+    "Y_contrastive_sequence": {
+      "bytes": 133528,
+      "development_hits": 304,
+      "development_targets": 316,
+      "development_false_wakes": 15,
+      "development_non_targets": 730,
+      "TRAIN_float_int8_cases_passed": 8,
+      "TRAIN_float_int8_cases": 8,
+      "TRAIN_host_Micro_cases": 6,
+      "TRAIN_host_Micro_reset_rounds": 3,
+      "TRAIN_host_Micro_max_byte_difference": 0,
+      "host_arena_bytes": 80320,
+      "result": "failed single-network development; no deployment"
+    },
+    "Z_B13_Y_causal_agreement": {
+      "combined_bytes": 323464,
+      "member_thresholds": [
+        0.9,
+        0.92
+      ],
+      "rolling_inferences": 5,
+      "past_coincidence_inferences": 10,
+      "development_hits": 295,
+      "development_targets": 316,
+      "development_false_wakes": 0,
+      "development_non_targets": 730,
+      "new_raw_targets": "38/38",
+      "pitch_tempo_targets": "184/203",
+      "result": "failed independent V14 English recall; freeze archived, no deployment",
+      "independent_target_hits": 44,
+      "independent_targets": 48,
+      "independent_false_wakes": 0,
+      "independent_non_targets": 55,
+      "independent_groups": {
+        "adult_mandarin": "14/14",
+        "adult_mixed": "7/9",
+        "childlike_mandarin": "14/15",
+        "childlike_mixed": "9/10",
+        "adult_literal_English": "1/2",
+        "childlike_literal_English": "4/5"
+      }
     }
   },
   "pending": [
-    "U original-full-utterance phonetic continuation, bounded batches, 15.43h original child TRAIN audio",
-    "Y complete near-phrase multiclass supervision with scalar wake export; training and automatic dev check pending",
-    "Any new qualifying candidate needs freshly generated independent V14; V13 is consumed",
-    "Actual ESP32 audio/display concurrency and four household members",
-    "8-hour background and 72-hour runtime"
+    "AA baseline fine-tuning and AB contrastive training on reviewed expanded TRAIN only; automatic parity/development evaluation queued",
+    "Additional Google adult/childlike literal-English single-utterance TRAIN generation, one worker65seconds, no paid fallback",
+    "Any qualifying next candidate needs a NEW frozen independent test, exact serialized device implementation and runtime checks",
+    "Actual four-person wake/8-hour background/72-hour runtime acceptance"
   ],
   "notes": [
     "ChildMandarin original TRAIN transcripts supervise phonetic research; ordinary child speech is not positive wake evidence.",
@@ -239,5 +287,17 @@
     "new_large_download": false,
     "official_dev_or_test_archive_opened": false,
     "household_or_sealed_used": false
+  },
+  "new_training_audit": {
+    "English_surface_Qwen_raw": 96,
+    "English_surface_Qwen_content_approved_targets": 1,
+    "English_surface_Qwen_content_approved_non_targets": 43,
+    "Google_raw": 40,
+    "Google_rejected_batch": "Puck: expected8 segments, found9; no clips accepted from it",
+    "strict_batch_and_label_audited_added_rows": 60,
+    "added_targets": 9,
+    "added_mixed_targets": 5,
+    "original_development_rows_unchanged": 1046,
+    "household_or_consumed_test_used": false
   }
 }

@@ -11,6 +11,13 @@ import wave
 
 @unittest.skipUnless(importlib.util.find_spec('numpy'), 'Optional training runtime is not installed')
 class PrepareGoogleTest(unittest.TestCase):
+    def test_explicit_english_phonetic_surface_cannot_become_empty_text_match(self):
+        from prepare_google_iteration import reviewed_content_matches
+        row={'label':1,'text':'Ni hao, pee coo.','english_phonetic_surface':True,'expected_spoken_transcript':'你好皮酷'}
+        self.assertTrue(reviewed_content_matches(row,'你好皮酷'))
+        self.assertTrue(reviewed_content_matches(row,'Ni hao, pee coo.'))
+        for text in ['你好皮','unrelated English','']:
+            self.assertFalse(reviewed_content_matches(row,text))
     def test_empty_optional_corpus_does_not_require_a_review_file(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)

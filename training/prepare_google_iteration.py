@@ -12,6 +12,11 @@ import os
 from pathlib import Path
 import wave
 from review_google_corpus import normalize
+from review_local_corpus import content_approved
+
+
+def reviewed_content_matches(row,transcript):
+    return content_approved(row,transcript) if row.get('english_phonetic_surface') else normalize(transcript)==normalize(row['text'])
 
 
 def main():
@@ -88,7 +93,7 @@ def main():
             batches[row.get('batch_id', row['sha256'])].append(row)
         for batch in batches.values():
             valid = all(r['sha256'] in review and review[r['sha256']].get('approved',True) and
-                        normalize(review[r['sha256']]['transcript']) == normalize(r['text']) for r in batch)
+                        reviewed_content_matches(r,review[r['sha256']]['transcript']) for r in batch)
             if not valid:
                 rejected += len(batch)
                 continue
@@ -107,7 +112,7 @@ def main():
             if row.get('source') not in {'Qwen3-TTS-synthetic-local','Google-Gemini-TTS-synthetic'} or not row.get('synthetic') or row.get('reference_audio_used') or row.get('family_inputs_used') or row.get('real_child'):
                 raise ValueError('Development challenges require fictional synthetic audio')
             checked=reviews.get(row['sha256'],{})
-            if checked.get('approved') and normalize(checked.get('transcript',''))==normalize(row['text']):
+            if checked.get('approved') and reviewed_content_matches(row,checked.get('transcript','')):
                 append({**row,'usage':'validation challenge only; not training'},manifest);challenge_count+=1
     prefix_count=0
     for manifest in a.reviewed_prefixes:

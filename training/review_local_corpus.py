@@ -8,6 +8,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 from review_google_corpus import normalize
 
@@ -21,6 +22,8 @@ def validate(rows,root,protected):
         digest=hashlib.sha256(p.read_bytes()).hexdigest()
         if digest in protected:raise ValueError('Protected household audio is ineligible')
         if digest!=row['sha256']:raise ValueError('Synthetic audio hash mismatch')
+        if row.get('english_phonetic_surface') and (row['text'] not in {'Ni hao, pee coo.','Ni hao! Pee koo!'} or row['label']!=1 or row.get('expected_spoken_transcript')!='你好皮酷'):
+            raise ValueError('Unknown English phonetic target surface')
 
 
 def main():
@@ -62,6 +65,14 @@ def main():
 
 
 def content_approved(row,transcript):
+    if row.get('english_phonetic_surface'):
+        if row['label']!=1 or row.get('expected_spoken_transcript')!='你好皮酷' or row.get('text') not in {'Ni hao, pee coo.','Ni hao! Pee koo!'}:return False
+        # Match the complete utterance, keeping unexpected English words
+        # visible instead of stripping them with Chinese punctuation cleanup.
+        text=re.sub(r'\b(?:ni[\s-]*hao|knee[\s-]*how)\b','你好',transcript,flags=re.I)
+        text=re.sub(r'\b(?:pee[\s-]*(?:coo|koo)|pikoo|piku|peekoo)\b','皮酷',text,flags=re.I)
+        if re.search('[A-Za-z0-9]',text):return False
+        return normalize(text)=='你好皮酷'
     normalized=normalize(transcript)
     if row.get('source')=='TTS-matched-incomplete-prefix':
         prefixes={'你','你好'}|{'你好'+c for c in '皮披批匹癖痞屁坯'}

@@ -12,6 +12,9 @@ class LocalCurriculumTest(unittest.TestCase):
         phonetic=code_switch_jobs('train','phonetic')
         self.assertTrue(all('Pee ' in r['text'] for r in phonetic if r['label']))
         self.assertFalse({r['seed'] for r in rows}&{r['seed'] for r in phonetic})
+        english=code_switch_jobs('train','english')
+        self.assertFalse({r['seed'] for r in rows+phonetic}&{r['seed'] for r in english})
+        self.assertTrue(all(r['synthesis_language']=='English' and r['english_phonetic_surface'] and r['expected_spoken_transcript']=='你好皮酷' for r in english if r['label']))
         dev=code_switch_jobs('validation')
         self.assertEqual(len(dev),48)
         self.assertFalse({r['seed'] for r in rows}&{r['seed'] for r in dev})
@@ -50,12 +53,27 @@ class LocalCurriculumTest(unittest.TestCase):
         for key in ['group','seed','instruction']:
             self.assertFalse({r[key] for r in old+new}&{r[key] for r in newest})
         self.assertTrue(any('Pee Koo' in r['text'] and r['synthesis_language']=='auto' for r in newest))
+        next_=heldout_jobs('v14')
+        self.assertEqual(len(next_),128)
+        for key in ['group','seed','instruction']:
+            self.assertFalse({r[key] for r in old+new+newest}&{r[key] for r in next_})
+        for style in ['adult','childlike']:
+            for pron in ['mandarin-pi2-ku4','mixed-pi1-ku1']:
+                self.assertEqual(sum(r['label'] and r['synthetic_style']==style and r['pronunciation']==pron for r in next_),16)
+        self.assertTrue(all(r['split']=='test' and r['frozen_holdout'] and not r['family_inputs_used'] for r in next_))
     def test_matched_prefix_review_rejects_full_names_and_unrelated_asr(self):
         from review_local_corpus import content_approved
         row={'source':'TTS-matched-incomplete-prefix','label':0}
         self.assertTrue(content_approved(row,'你好，皮。'))
         for text in ['你好皮酷','你好Pikoo','你好朋友','']:
             self.assertFalse(content_approved(row,text))
+    def test_english_surface_requires_complete_greeting_and_both_name_syllables(self):
+        from review_local_corpus import content_approved
+        row={'label':1,'text':'Ni hao, pee coo.','english_phonetic_surface':True,'expected_spoken_transcript':'你好皮酷'}
+        for transcript in ['Ni hao, pee coo.','Knee how, Pikoo!','你好皮酷','Ni hao, piku.']:
+            self.assertTrue(content_approved(row,transcript),transcript)
+        for transcript in ['你好皮','Ni hao, pee.','你好皮球','Ni hao, Pikoo, thank you.','unrelated English','']:
+            self.assertFalse(content_approved(row,transcript),transcript)
     def test_broad_curriculum_assigns_conditions_before_generation(self):
         from broad_curriculum import jobs as broad_jobs
         rows=broad_jobs();groups={}

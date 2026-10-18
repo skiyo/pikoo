@@ -18,6 +18,17 @@ class Tests(unittest.TestCase):
         self.assertEqual([detector.step(1,1) for _ in range(4)],[0]*4)
         self.assertEqual(detector.step(1,1),1)
         self.assertEqual(Agreement().step(1,1),0)
+    def test_explicit_asymmetric_cutoffs_do_not_lower_either_requirement(self):
+        detector=Agreement(.9,secondary_threshold=.92)
+        self.assertLess(max(detector.step(.95,.91) for _ in range(20)),.9)
+        detector=Agreement(.9,secondary_threshold=.92)
+        self.assertLess(max(detector.step(.89,.99) for _ in range(20)),.9)
+        detector=Agreement(.9,secondary_threshold=.92)
+        self.assertGreaterEqual(max(detector.step(.91,.93) for _ in range(20)),.9)
+    def test_default_decision_score_remains_exact(self):
+        detector=Agreement()
+        for _ in range(5):score=detector.step(.91,.93)
+        self.assertEqual(score,sum([.91]*5)/5)
 
 
 if __name__=='__main__':unittest.main()
