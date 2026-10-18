@@ -925,7 +925,30 @@
     "expected_label": 0,
     "human_confirmed_no_final_ku": true,
     "label_changed": false,
-    "household_audio": false
+    "household_audio": false,
+    "fixed_threshold_scores": {
+      "V10D": {
+        "score": 0.9539062500000001,
+        "false_wake": true
+      },
+      "V10E": {
+        "score": 0.93671875,
+        "false_wake": true
+      },
+      "V10F": {
+        "score": 0.9375,
+        "false_wake": true
+      },
+      "V10G": {
+        "score": 0.7835937500000001,
+        "false_wake": false
+      },
+      "V10H": {
+        "score": 0.9328125,
+        "false_wake": true
+      }
+    },
+    "outcome": "G suppresses this case; H regresses. This incomplete-phrase error is not resolved across candidates."
   },
   "matched_prefix_data": {
     "approved": 304,
