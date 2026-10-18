@@ -333,10 +333,19 @@
       "bytes": 453424,
       "result": "failed unchanged development; no independent test consumed",
       "household_or_consumed_test_used": false
+    },
+    "AI_relu6": {
+      "development_hits": 0,
+      "development_targets": 316,
+      "development_false_wakes": 0,
+      "development_non_targets": 730,
+      "float_int8_diagnostic": "passed",
+      "host_Micro_exact": "passed",
+      "result": "failed old-scope recall; no hardware or independent test; preserved as failure"
     }
   },
   "pending": [
-    "AI explicitly retrains acoustic and sequence ReLUs with ReLU6 bounds to investigate observed INT8 dynamic-range error; unchanged quality gates",
+    "User changed goal to Mandarin greeting plus pī kū only; new explicit level-tone contract, AJ128 fine-tuning running; old failures not reclassified",
     "Exact corpus/phone/fold cache proof allows reusing original float32 frontend arrays across architecture widths; every waveform rechecked against current protected hashes",
     "Google TTS free daily quota reached; use existing reviewed data until reset, no paid fallback or project/model rotation",
     "Next wake model must pass unchanged development, newly frozen independent test, ESP32/runtime and actual family tests"
@@ -414,5 +423,16 @@
     "option": "train.py --relu6 --sequence-readout --train-sequence-encoder",
     "functional_change": "Bounds acoustic and readout activations; changes function and requires retraining and full revalidation",
     "scope": "public/synthetic TRAIN only; no new independent or household input"
+  },
+  "new_user_scope": {
+    "date": "2026-10-19",
+    "required": "你好 Pikoo / ni hao + pi1 ku1",
+    "former_pi2_ku4": "unspecified, never relabeled negative",
+    "training_positive_rows": 663,
+    "training_negative_rows": 9525,
+    "development_targets": 184,
+    "development_negatives": 730,
+    "policy": "dualeye-pikoo-level-v1.json",
+    "household_used": false
   }
 }

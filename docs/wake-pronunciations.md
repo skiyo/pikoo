@@ -2,7 +2,7 @@
 
 [English](wake-pronunciations.md) | [简体中文](wake-pronunciations.zh-CN.md)
 
-The accepted phrase includes Mandarin **你好皮酷 (pí kù)** and mixed-language **你好 Pikoo (pī kū / PEE-koo)**. The embedded classifier consumes audio, not spelling. Changing a transcript or shifting overall pitch does not add the missing pronunciation.
+**Scope updated by the user on 2026-10-19:** the only required phrase is Mandarin **你好** followed by **Pikoo (pī kū / PEE-koo)**, with both name syllables first tone. The former pí kù variant is unspecified: it is neither required to wake nor required to be rejected. Adult and real-child acceptance, false-wake and resource requirements remain. Historical dual-pronunciation failures below remain failures. The embedded classifier consumes audio, not spelling. Changing a transcript or shifting overall pitch does not add the missing pronunciation.
 
 The earlier V9B/C Google-only candidates excluded macOS and local TTS training positives. `prepare_level_tones.py` applies Praat PSOLA to the last two voiced regions of reviewed isolated Google speech, then screens the result again. These are **prosody derivatives**, not fresh native mixed-language recordings or real children. Uncertain alignment/content is rejected. Parent identities retain their splits. Separate local synthetic voices are only an additional development challenge for this candidate. NVIDIA NIM/Magpie is excluded.
 
@@ -87,3 +87,5 @@ All D–H models passed static operator/size checks and host Micro score/reset p
 ## Larger-network follow-up on 2026-10-18
 
 The user authorized a 512 KiB experimental budget. Continued larger-network training, exact streaming checkpoint selection and measured ESP32 resource results are tracked in [capacity development](wake-capacity.md) and the [V11 report](../training/reports/wake-v11-summary.json). Work is in progress; the normal device retains V8D until a candidate passes.
+
+The new `training/level_tone_scope.py prepare` contract keeps every existing non-target and only explicitly labeled `mixed-pi1-ku1` positives. It does not relabel former positives. The reviewed corpus retains 663 TRAIN positives and 9,525 TRAIN negatives; development retains 184 targets and all 730 non-targets. `dualeye-pikoo-level-v1.json` requires 90% recall for raw adult, raw childlike, augmented and overall target groups, with zero development false wakes. Raw childlike voices remain synthetic. Missing development negatives or protected recordings fail closed. This is a new disclosed development scope, not a fresh independent test or retroactive release. AJ fine-tunes the existing 128/64-channel primary encoder on this scope; its results, INT8 compatibility, new frozen-candidate independent test and real-device/family trials are pending.

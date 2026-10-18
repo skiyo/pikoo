@@ -1,0 +1,16 @@
+{
+  "contract": "pikoo-level-tone-only-v1",
+  "changed_at": "2026-10-19",
+  "reason": "User narrowed the target to Mandarin ni hao followed by pī kū, both name syllables first tone",
+  "pronunciation": "mixed-pi1-ku1",
+  "old_mandarin_pronunciation": "unspecified; exclude former positives without relabeling them negatives",
+  "threshold": 0.9,
+  "rolling_inferences": 5,
+  "input_context": {"lead_seconds": 1.0, "background_rms": 0.0},
+  "min_recall": 0.9,
+  "max_false_wakes": 0,
+  "firmware_max_bytes": 524288,
+  "hardware_gate": {"arena_bytes_max": 262144, "inference_deadline_us": 30000, "p99_target_us": 20000},
+  "acceptance": "Fresh frozen-candidate test and actual adults/children remain required; prior failures remain failures",
+  "household_training_tuning_or_selection": false
+}

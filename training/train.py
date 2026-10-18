@@ -336,6 +336,11 @@ def main():
         model_json['trained_languages']=['zh','en']
         model_json['accepted_pronunciations']=['你好皮酷 / pi2-ku4','你好 Pikoo / pi1-ku1']
         model_json['language_scope']='Mandarin greeting with a mixed English pet name; not general English wake support'
+        positives=[r for r in manifest if r['label'] and r['split']=='train']
+        if all(r.get('pronunciation')=='mixed-pi1-ku1' for r in positives):
+            model_json['wake_word']='你好 Pikoo'
+            model_json['accepted_pronunciations']=['你好 Pikoo / pi1-ku1']
+            model_json['pronunciation_scope']='Only level-tone pī kū is required; other tone variants are unspecified, not rejection targets'
     (a.output/'nihao_pikoo.json').write_text(json.dumps(model_json,ensure_ascii=False,indent=2)+'\n')
     report.update(bytes=len(binary),sha256=hashlib.sha256(binary).hexdigest(),max_model_bytes=a.max_model_bytes,parameters=model.count_params(),trainable_parameters=sum(int(np.prod(w.shape)) for w in model.trainable_weights))
     (a.output/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n');print(json.dumps(report,ensure_ascii=False),flush=True)
