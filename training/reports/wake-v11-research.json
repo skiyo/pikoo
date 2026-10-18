@@ -311,10 +311,32 @@
       "result": "failed unchanged development and float/INT8 diagnostic; not deployed",
       "household_or_independent_test_used": false,
       "ESP32_timing_or_allocation_verified": false
+    },
+    "AG_joint_acoustic192": {
+      "targets": 316,
+      "hits": 312,
+      "non_targets": 730,
+      "false_wakes": 16,
+      "bytes": 263488,
+      "result": "failed unchanged development; no independent test consumed",
+      "household_or_consumed_test_used": false,
+      "train_float_int8_passed": 0,
+      "train_float_int8_cases": 8,
+      "host_Micro_exact_cases": 6,
+      "host_arena_bytes": 115584
+    },
+    "AH_causal_primary_plus_AG": {
+      "targets": 316,
+      "hits": 301,
+      "non_targets": 730,
+      "false_wakes": 1,
+      "bytes": 453424,
+      "result": "failed unchanged development; no independent test consumed",
+      "household_or_consumed_test_used": false
     }
   },
   "pending": [
-    "AG joint acoustic192 wake training continues after frozen AF failed; protected TRAIN corpus and unchanged development gate",
+    "AI explicitly retrains acoustic and sequence ReLUs with ReLU6 bounds to investigate observed INT8 dynamic-range error; unchanged quality gates",
     "Exact corpus/phone/fold cache proof allows reusing original float32 frontend arrays across architecture widths; every waveform rechecked against current protected hashes",
     "Google TTS free daily quota reached; use existing reviewed data until reset, no paid fallback or project/model rotation",
     "Next wake model must pass unchanged development, newly frozen independent test, ESP32/runtime and actual family tests"
@@ -384,5 +406,13 @@
     "result": "Acoustic metric worse than U; not wake acceptance",
     "household_or_independent_test_used": false,
     "on_device_measured": false
+  },
+  "quantization_range_experiment": {
+    "observed_AG_largest_state_scale": 2.02641224861145,
+    "observed_AG_dense_activation_scale": 1.4475520849227905,
+    "interpretation": "Large calibrated ranges can coarsen INT8 resolution; hypothesis, not proof of all observed errors",
+    "option": "train.py --relu6 --sequence-readout --train-sequence-encoder",
+    "functional_change": "Bounds acoustic and readout activations; changes function and requires retraining and full revalidation",
+    "scope": "public/synthetic TRAIN only; no new independent or household input"
   }
 }

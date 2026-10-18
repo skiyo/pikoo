@@ -138,6 +138,7 @@ def main():
     p.add_argument('--sequence-readout',action='store_true',help='Train an ordered nonlinear wake head over an explicit zero-head phonetic encoder')
     p.add_argument('--train-sequence-encoder',action='store_true',help='Explicit joint acoustic-sequence experiment; retain pretrained normalization statistics')
     p.add_argument('--contrastive-classes',action='store_true',help='Separate complete near-phrase classes during sequence training; export scalar wake probability')
+    p.add_argument('--relu6',action='store_true',help='Experimental bounded acoustic/sequence activations; requires explicit joint retraining and full revalidation')
     p.add_argument('--train-temporal-encoder',action='store_true',help='Train the ordered temporal head and its encoder jointly; separate fresh-training experiment')
     a=p.parse_args()
     os.umask(0o077)
@@ -162,6 +163,7 @@ def main():
     if not .12<=a.positive_tail_seconds<=.6:raise ValueError('Positive tail must be between 0.12 and 0.6 seconds')
     if a.window_frames%3 or a.window_frames<150 or min(a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.filters,a.first_filters)<1 or not 0<=a.min_snr<35 or not 0<a.negative_weight<=16 or not 0<a.learning_rate<=.01 or not 0<=a.acoustic_probability<=1:raise ValueError('Invalid training dimensions')
     kernels=[int(k) for k in a.kernels.split(',')]
+    if a.relu6 and not (a.sequence_readout and a.train_sequence_encoder):raise ValueError('ReLU6 requires explicit joint sequence retraining')
     if not kernels or any(k<3 or k%2==0 for k in kernels) or a.window_frames//3<=sum(k-1 for k in kernels):raise ValueError('Receptive field exceeds training window')
     sys.path.insert(0,str(a.upstream.resolve()))
     from microwakeword import mixednet,utils
@@ -206,10 +208,13 @@ def main():
     readout=None
     if a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head or a.sequence_readout:
         if a.head_backbone_weights:model.load_weights(a.head_backbone_weights)
+        if a.relu6:
+            from regularization import with_relu6
+            model=with_relu6(model)
         source_model=model
         if a.sequence_readout:
             from sequence_readout import attach
-            model=attach(source_model,train_encoder=a.train_sequence_encoder)
+            model=attach(source_model,train_encoder=a.train_sequence_encoder,relu6=a.relu6)
         elif a.phone_head:
             from phonetic_bottleneck import attach
             model=attach(source_model,a.phone_head,a.head_backbone_weights,posterior=not a.phone_logits,logit_clip=a.phone_logit_clip)
@@ -230,6 +235,7 @@ def main():
         if a.temporal_readout:readout.update(type='ordered-final-temporal-head',hidden_units=0)
         if a.sequence_readout:readout.update(type='frozen-acoustic-sequence',hidden_units=32,channels=16)
         if a.train_sequence_encoder:readout.update(type='joint-acoustic-sequence',backbone_frozen=False,normalization_frozen=True)
+        if a.relu6:readout.update(activation='relu6',changes_acoustic_function=True)
         if a.train_temporal_encoder:
             for layer in model.layers:
                 if layer.name!='temporal_integer_anchor':layer.trainable=True
