@@ -11,6 +11,30 @@ import wave
 
 @unittest.skipUnless(importlib.util.find_spec('numpy'), 'Optional training runtime is not installed')
 class PrepareGoogleTest(unittest.TestCase):
+    def test_empty_optional_corpus_does_not_require_a_review_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            for name in ['previous','google','negatives']:(root/(name+'.json')).write_text('[]')
+            (root/'protected.json').write_text('{"audio_sha256":{}}')
+            result=self.run_prepare(root)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertEqual(json.loads((root/'result/manifest.json').read_text()),[])
+    def test_duplicate_waveform_preserves_mining_weight_and_rejects_conflicting_labels(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);(root/'fixture.wav').write_bytes(b'fixture')
+            row=dict(path='fixture.wav',source='Qwen3-TTS-synthetic-local',synthetic=True,label=0,split='train',group='train')
+            for name in ['google','review','negatives']:(root/(name+'.json')).write_text('[]')
+            (root/'protected.json').write_text('{"audio_sha256":{}}')
+            (root/'previous.json').write_text(json.dumps([row,{**row,'hard_negative':True,'mining_model_sha256':'mining-fixture'}]))
+            result=self.run_prepare(root)
+            self.assertEqual(result.returncode,0,result.stderr)
+            merged=json.loads((root/'result/manifest.json').read_text())
+            self.assertEqual(len(merged),1)
+            self.assertTrue(merged[0]['hard_negative'])
+            (root/'previous.json').write_text(json.dumps([row,{**row,'label':1}]))
+            result=self.run_prepare(root)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('conflicting labels',result.stderr)
     def test_ambiguous_training_contrast_cannot_remove_legacy_validation(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);rows=[]

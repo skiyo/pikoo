@@ -26,7 +26,7 @@ def load(path):
 def validate_training_manifest(manifest):
     # External acceptance recordings must never enter training, validation,
     # feature caches, or representative data for quantization.
-    if any(row.get('evaluation_only') or str(row.get('source','')).startswith('private-') for row in manifest):
+    if any(row.get('evaluation_only') or row.get('frozen_holdout') or str(row.get('source','')).startswith('private-') for row in manifest):
         raise ValueError('evaluation_only recordings require a separate evaluation manifest')
 
 def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative_repeats=5,hard_negative_repeats=5,min_snr=10,negative_prefixes=False,pcm_context=False,acoustic_augmentation=False,acoustic_probability=1.,negative_tail_seconds=.12,positive_tail_seconds=.12):
@@ -122,8 +122,13 @@ def main():
     p.add_argument('--widen-from',type=Path,help='Narrow checkpoint; preserve its function while adding independently initialized channels')
     p.add_argument('--source-filters',type=int,default=32)
     p.add_argument('--source-first-filters',type=int,default=24)
+    p.add_argument('--max-model-bytes',type=int,default=65536,help='Explicit experimental flash budget, 65536..524288 bytes; does not change accuracy gates')
+    p.add_argument('--save-epoch-checkpoints',action='store_true',help='Keep each private epoch for actual streaming development validation')
+    p.add_argument('--export-only',action='store_true',help='Export a specified --resume-weights checkpoint without another training step; still checks provenance and quantization inputs')
     a=p.parse_args()
     os.umask(0o077)
+    if not 65536<=a.max_model_bytes<=524288:raise ValueError('Model flash budget must be 64..512 KiB')
+    if a.export_only and (not a.resume_weights or a.widen_from):raise ValueError('Export-only requires one explicit resume checkpoint')
     if not .12<=a.negative_tail_seconds<=1.5:raise ValueError('Negative tail must be between 0.12 and 1.5 seconds')
     if not .12<=a.positive_tail_seconds<=.6:raise ValueError('Positive tail must be between 0.12 and 0.6 seconds')
     if a.window_frames%3 or a.window_frames<150 or min(a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.filters,a.first_filters)<1 or not 0<=a.min_snr<35 or not 0<a.negative_weight<=16 or not 0<a.learning_rate<=.01 or not 0<=a.acoustic_probability<=1:raise ValueError('Invalid training dimensions')
@@ -136,7 +141,10 @@ def main():
     a.output.mkdir(parents=True,exist_ok=True)
     manifest=json.loads(a.manifest.read_text());cache=a.output/'features.npz'
     validate_training_manifest(manifest)
-    protected=set(json.loads(a.protected_hashes.read_text())['audio_sha256'].values()) if a.protected_hashes else set()
+    protection=json.loads(a.protected_hashes.read_text()) if a.protected_hashes else {'audio_sha256':{}}
+    protected=set(protection['audio_sha256'].values())
+    household_count=protection.get('household_sha256_count',len(protected))
+    if not isinstance(household_count,int) or not 0<=household_count<=len(protected):raise ValueError('Invalid protected household count')
     feature_config={'window_frames':a.window_frames,'positive_repeats':a.positive_repeats,'negative_repeats':a.negative_repeats,'hard_negative_repeats':a.hard_negative_repeats,'min_snr':a.min_snr,'negative_prefixes':a.negative_prefixes,'pcm_context':a.pcm_context,'acoustic_augmentation':a.acoustic_augmentation,'acoustic_probability':a.acoustic_probability,'negative_tail_seconds':a.negative_tail_seconds,'positive_tail_seconds':a.positive_tail_seconds}
     fingerprint=hashlib.sha256(b'pikoo-features-v5-mined-child-hard-negatives'+json.dumps(feature_config,sort_keys=True).encode()+a.manifest.read_bytes())
     for row in manifest:
@@ -167,14 +175,20 @@ def main():
     model.compile(optimizer=tf.keras.optimizers.Adam(a.learning_rate),loss='binary_crossentropy',metrics=['accuracy'])
     x,y=sets['train'];vx,vy=sets['validation'];tx,ty=sets['test']
     weights={0:a.negative_weight,1:float((y==0).sum()/max(1,(y==1).sum()))}
-    history=model.fit(x,y,batch_size=32,epochs=a.epochs,validation_data=(vx,vy),class_weight=weights,callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=5,restore_best_weights=True)],verbose=2)
+    callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=5,restore_best_weights=True)]
+    if a.save_epoch_checkpoints:
+        (a.output/'epochs').mkdir(exist_ok=True)
+        callbacks.append(tf.keras.callbacks.ModelCheckpoint(str(a.output/'epochs/epoch-{epoch:02d}.weights.h5'),save_weights_only=True))
+    history=None if a.export_only else model.fit(x,y,batch_size=32,epochs=a.epochs,validation_data=(vx,vy),class_weight=weights,callbacks=callbacks,verbose=2)
     model.save_weights(a.output/'checkpoint.weights.h5')
-    report={'status':'experimental','feature_config':feature_config,'filters':a.filters,'first_filters':a.first_filters,'kernels':kernels,'test_deferred':a.defer_test,'data_sources':{name:sum(r.get('source','unknown')==name for r in manifest) for name in set(r.get('source','unknown') for r in manifest)},'real_child_clips':sum(bool(r.get('real_child')) for r in manifest),'restricted_data':any(r.get('restricted',False) for r in manifest),'samples':{s:len(v[1]) for s,v in sets.items()},'epochs':len(history.history['loss']),'metrics':{}}
+    report={'status':'experimental','feature_config':feature_config,'filters':a.filters,'first_filters':a.first_filters,'kernels':kernels,'test_deferred':a.defer_test,'data_sources':{name:sum(r.get('source','unknown')==name for r in manifest) for name in set(r.get('source','unknown') for r in manifest)},'real_child_clips':sum(bool(r.get('real_child')) for r in manifest),'restricted_data':any(r.get('restricted',False) for r in manifest),'samples':{s:len(v[1]) for s,v in sets.items()},'epochs':len(history.history['loss']) if history else 0,'export_only':a.export_only,'metrics':{}}
+    if history:(a.output/'training-history.json').write_text(json.dumps(history.history,indent=2)+'\n')
     if a.resume_weights:report['resume_weights_sha256']=hashlib.sha256(a.resume_weights.read_bytes()).hexdigest()
     report['class_weights']=weights
     report['learning_rate']=a.learning_rate
     report['training_manifest_sha256']=hashlib.sha256(a.manifest.read_bytes()).hexdigest()
-    report['protected_household_hashes_checked']=len(protected)
+    report['protected_household_hashes_checked']=household_count
+    report['protected_audio_hashes_checked']=len(protected)
     if widening:report['widening']=widening
     for split,xx,yy in [('validation',vx,vy),('test',tx,ty)]:
         if split=='test' and a.defer_test:continue
@@ -198,7 +212,7 @@ def main():
     converter.target_spec.supported_ops=[tf.lite.OpsSet.TFLITE_BUILTINS_INT8];converter.inference_input_type=tf.int8;converter.inference_output_type=tf.uint8;converter.representative_dataset=representative
     binary=converter.convert();(a.output/'nihao_pikoo.tflite').write_bytes(binary)
     from check_esp32_model import check
-    compatibility=check(a.output/'nihao_pikoo.tflite',Path(__file__).parents[1]/'firmware/main/wake_model.cpp')
+    compatibility=check(a.output/'nihao_pikoo.tflite',Path(__file__).parents[1]/'firmware/main/wake_model.cpp',a.max_model_bytes)
     (a.output/'esp32-static-check.json').write_text(json.dumps(compatibility,indent=2)+'\n')
     model_json={'type':'micro','wake_word':'你好皮酷','author':'Pikoo contributors','model':'nihao_pikoo.tflite','trained_languages':['zh'],'version':2,'micro':{'probability_cutoff':.90,'sliding_window_size':5,'feature_step_size':10,'tensor_arena_size':262144,'minimum_esphome_version':'2024.7'},'status':'experimental-not-hardware-validated'}
     if any(r.get('pronunciation')=='mixed-pi1-ku1' and r['label'] and r['split']=='train' for r in manifest):
@@ -206,6 +220,6 @@ def main():
         model_json['accepted_pronunciations']=['你好皮酷 / pi2-ku4','你好 Pikoo / pi1-ku1']
         model_json['language_scope']='Mandarin greeting with a mixed English pet name; not general English wake support'
     (a.output/'nihao_pikoo.json').write_text(json.dumps(model_json,ensure_ascii=False,indent=2)+'\n')
-    report.update(bytes=len(binary),sha256=hashlib.sha256(binary).hexdigest())
+    report.update(bytes=len(binary),sha256=hashlib.sha256(binary).hexdigest(),max_model_bytes=a.max_model_bytes,parameters=model.count_params(),trainable_parameters=sum(int(np.prod(w.shape)) for w in model.trainable_weights))
     (a.output/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n');print(json.dumps(report,ensure_ascii=False),flush=True)
 if __name__=='__main__':main()

@@ -67,7 +67,7 @@ You can combine wake settings with `PIKOO_SIM_CONFIG`. Standby microphone audio 
 idf.py -C firmware -DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite build
 ```
 
-The build rejects missing weights and files larger than 64 KiB. Use [Development](development.md) for checks and the existing USB tooling. Binary releases embedding restricted weights must not be published.
+The DualEye build rejects missing weights and files larger than its explicit experimental budget (512 KiB by default). This budget was raised on 2026-10-18 to investigate larger networks; successful compilation does not establish acceptable RAM use, inference latency or wake accuracy. The historical 1.83-inch build retains its 64 KiB limit. Use [Development](development.md) for checks and the existing USB tooling. Binary releases embedding restricted weights must not be published.
 
 ## Troubleshooting
 

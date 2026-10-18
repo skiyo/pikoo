@@ -1,0 +1,21 @@
+{
+  "created_at": "2026-10-17T13:57:19.679475+00:00",
+  "threshold": 0.9,
+  "rolling_inferences": 5,
+  "household_data_used_for_selection": false,
+  "primary_new_targets_min_recall": 0.9,
+  "each_new_pronunciation_and_style_min_recall": 0.9,
+  "old_original_target_min_hits": 44,
+  "old_original_targets": 46,
+  "validation_non_target_false_wakes_max": 0,
+  "new_pitch_tempo_min_recall": 0.9,
+  "firmware_max_bytes": 524288,
+  "real_child_target_acceptance": "pending; synthetic is not real child evidence",
+  "budget_revision": "2026-10-18 user requested continuing with larger networks; accuracy/false-wake gates unchanged",
+  "hardware_gate": {
+    "arena_bytes_max": 262144,
+    "inference_deadline_us": 30000,
+    "p99_target_us": 20000,
+    "concurrent_audio_and_display_required": true
+  }
+}

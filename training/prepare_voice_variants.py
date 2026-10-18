@@ -24,7 +24,7 @@ ALLOWED_SOURCES = {'Google-Gemini-TTS-synthetic','Qwen3-TTS-synthetic-local','Go
 def validate(rows, root, protected):
     groups, hashes = {}, {}
     for row in rows:
-        if row.get('evaluation_only') or str(row.get('source', '')).startswith('private-'):
+        if row.get('evaluation_only') or row.get('frozen_holdout') or str(row.get('source', '')).startswith('private-'):
             raise ValueError('Household/evaluation audio cannot enter development')
         if row['split'] not in ('train', 'validation'):
             raise ValueError('Test recordings cannot enter development')

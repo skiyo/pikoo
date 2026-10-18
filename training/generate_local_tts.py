@@ -77,9 +77,13 @@ def main():
     p.add_argument('--child-focus',action='store_true',help='Train-only fictional childlike prompt families; implies contrasts; never real child speech')
     p.add_argument('--phonetic-spelling',action='store_true',help='Constrain mixed-name syllables with Chinese first-tone homophones and explicit Chinese synthesis')
     p.add_argument('--broad',action='store_true',help='36 preassigned fictional voice conditions; 24 train / 12 validation; at most 288 utterances')
+    p.add_argument('--heldout',action='store_true',help='80 preassigned fictional TEST utterances; score only after a deployment candidate is frozen')
+    p.add_argument('--hard-contrasts',action='store_true',help='96 fresh TRAIN-only complete targets and near phrases; preserve broad training prompt groups')
     a=p.parse_args()
     if not 1<=a.limit<=(288 if a.broad else 96):raise ValueError('Synthesis exceeds the selected bounded curriculum')
     if a.broad and (a.child_focus or a.contrasts):raise ValueError('Choose broad or focused curriculum')
+    if a.heldout and (a.broad or a.child_focus or a.contrasts):raise ValueError('Held-out curriculum cannot be mixed with development jobs')
+    if a.hard_contrasts and (a.heldout or a.broad or a.child_focus or a.contrasts):raise ValueError('Choose one explicit curriculum')
     # Prevent an optional library from fetching any weights or tokenizer files.
     os.environ['HF_HUB_OFFLINE']='1';os.environ['TRANSFORMERS_OFFLINE']='1'
     os.umask(0o077)
@@ -93,14 +97,20 @@ def main():
     rows=[]
     rejected_path=a.output/'rejected-items.json'
     rejected=json.loads(rejected_path.read_text()) if rejected_path.exists() else {}
-    if a.broad:
+    if a.hard_contrasts:
+        from broad_curriculum import hard_contrast_jobs
+        selected=hard_contrast_jobs()[:a.limit]
+    elif a.heldout:
+        from heldout_curriculum import jobs as heldout_jobs
+        selected=heldout_jobs()[:a.limit]
+    elif a.broad:
         from broad_curriculum import jobs as broad_jobs
         selected=broad_jobs()[:a.limit]
     else:selected=jobs(a.contrasts,a.child_focus,a.phonetic_spelling)[:a.limit]
     for attempted,job in enumerate(selected,1):
-        identity={**job,'generator':'local-voicedesign-v10-broad' if a.broad else 'local-voicedesign-v10-child-phonetic' if a.child_focus else 'local-voicedesign-v10-contrast' if a.contrasts else 'local-voicedesign-v9-1','weights':a.model.name}
-        language='Chinese' if a.phonetic_spelling or a.broad else 'auto'
-        if a.phonetic_spelling or a.broad:identity['synthesis_language']=language
+        identity={**job,'generator':'local-voicedesign-v11-hard-contrasts' if a.hard_contrasts else 'local-voicedesign-v11-heldout' if a.heldout else 'local-voicedesign-v10-broad' if a.broad else 'local-voicedesign-v10-child-phonetic' if a.child_focus else 'local-voicedesign-v10-contrast' if a.contrasts else 'local-voicedesign-v9-1','weights':a.model.name}
+        language='Chinese' if a.phonetic_spelling or a.broad or a.heldout or a.hard_contrasts else 'auto'
+        if a.phonetic_spelling or a.broad or a.heldout or a.hard_contrasts:identity['synthesis_language']=language
         digest=hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()
         if digest in rejected:continue
         path=audio/(digest+'.wav');metadata=path.with_suffix('.json')

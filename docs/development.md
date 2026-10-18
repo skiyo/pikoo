@@ -22,7 +22,7 @@ For targeted work use `bash tools/test-eyes.sh`, `bash tools/test-core.sh`, `nod
 
 ## Native and device builds
 
-Build desktop graphics using `bash tools/build-eyes.sh`. Tests produce ignored artifacts under `firmware/build-host/`. For the historical firmware, use ESP-IDF 5.5.5 and explicitly provide `-DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite`; see [firmware notes](firmware.md). The missing-model error and 64 KiB limit are intentional. No public firmware binary is currently supplied.
+Build desktop graphics using `bash tools/build-eyes.sh`. Tests produce ignored artifacts under `firmware/build-host/`. For the historical firmware, use ESP-IDF 5.5.5 and explicitly provide `-DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite`; see [firmware notes](firmware.md). Missing weights remain an error. The historical 1.83-inch build retains its 64 KiB limit; the DualEye experimental build now accepts an explicit 64–512 KiB flash budget. Training/static checks still default to 64 KiB unless `--max-model-bytes 524288` is supplied. Allocation, a 30 ms inference interval and concurrent-device tests remain separate gates. No public firmware binary is currently supplied.
 
 `tools/Pikoo-USB.command` and `tools/device.py` provide partition-checked DualEye installation, upgrades, diagnostics and recovery. See [firmware](firmware.md). Do not use the old board mapping on DualEye. Configuration contains secrets; store it outside Git, revoke replaced tokens, and follow the board's official download-mode instructions.
 

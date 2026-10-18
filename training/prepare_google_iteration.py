@@ -41,7 +41,7 @@ def main():
     ambiguous_texts={normalize(text) for text in a.quarantine_training_negatives}
 
     def append(row, manifest):
-        if row.get('evaluation_only') or str(row.get('source', '')).startswith('private-'):
+        if row.get('evaluation_only') or row.get('frozen_holdout') or str(row.get('source', '')).startswith('private-'):
             raise ValueError('External human recordings are evaluation-only')
         path = (manifest.parent / row['path']).resolve()
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -79,6 +79,7 @@ def main():
     rejected = 0
     for manifest in a.google:
         candidates = json.loads(manifest.read_text())
+        if not candidates:continue
         if any(r.get('source') not in {'Google-Gemini-TTS-synthetic','Qwen3-TTS-synthetic-local','Google-TTS-level-tone-synthetic'} or not r.get('synthetic') or r.get('reference_audio_used') or r.get('family_inputs_used') or r.get('real_child') for r in candidates):
             raise ValueError('Reviewed inputs must be fictional synthetic TTS without reference audio')
         review = {r['sha256']: r for r in json.loads((manifest.parent / 'review.json').read_text())}
@@ -121,6 +122,7 @@ def main():
                 append({**row,'hard_negative':True},manifest);prefix_count+=1
     identities = {}
     waveforms = {}
+    waveform_records = {}
     unique = []
     for row in rows:
         group = row.get('speaker', row.get('voice', row['group']))
@@ -130,8 +132,16 @@ def main():
         if row['sha256'] in waveforms:
             if waveforms[row['sha256']] != row['split']:
                 raise ValueError('Waveform crosses splits')
+            original=waveform_records[row['sha256']]
+            if original['label']!=row['label']:
+                raise ValueError('Identical waveform has conflicting labels')
+            if row.get('hard_negative') and not row['label']:
+                original['hard_negative']=True
+                if row.get('mining_model_sha256'):
+                    original['hard_negative_mining_model_sha256']=row['mining_model_sha256']
             continue
         waveforms[row['sha256']] = row['split']
+        waveform_records[row['sha256']] = row
         unique.append(row)
     a.output.mkdir(parents=True, exist_ok=True)
     path = a.output / 'manifest.json'

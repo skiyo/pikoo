@@ -23,10 +23,12 @@ OP_METHODS = {
 }
 
 
-def check(path, firmware):
+def check(path, firmware, max_bytes=65536):
+    if not isinstance(max_bytes,int) or not 65536<=max_bytes<=524288:
+        raise ValueError('Explicit model flash budget must be 64..512 KiB')
     binary = path.read_bytes()
-    if len(binary) > 65536:
-        raise ValueError('Model exceeds Pikoo first-release 64 KiB flash budget')
+    if len(binary) > max_bytes:
+        raise ValueError(f'Model exceeds configured {max_bytes}-byte flash budget')
     model = schema.Model.GetRootAsModel(binary, 0)
     if model.Version() != 3:
         raise ValueError('Unsupported TFLite schema')
@@ -53,7 +55,7 @@ def check(path, firmware):
         for t in range(sub.TensorsLength()):
             if sub.Tensors(t).Type() not in allowed:
                 raise ValueError('Floating point or unsupported tensor in quantized model')
-    return dict(status='static-check-passed', bytes=len(binary), flash_budget_bytes=65536,
+    return dict(status='static-check-passed', bytes=len(binary), flash_budget_bytes=max_bytes,
         sha256=hashlib.sha256(binary).hexdigest(), input_shape=[1,3,40], input_type='int8',
         feature_step_ms=10, inference_interval_ms=30, operators=ops,
         configured_tensor_arena_bytes=262144,
@@ -63,8 +65,9 @@ def check(path, firmware):
 def main():
     p=argparse.ArgumentParser();p.add_argument('--model',type=Path,required=True)
     p.add_argument('--firmware',type=Path,default=Path(__file__).parents[1]/'firmware/main/wake_model.cpp')
+    p.add_argument('--max-model-bytes',type=int,default=65536,help='Explicit experimental flash budget, 65536..524288; arena/timing still require measurement')
     p.add_argument('--output',type=Path,required=True);a=p.parse_args()
-    result=check(a.model,a.firmware);a.output.write_text(json.dumps(result,indent=2)+'\n')
+    result=check(a.model,a.firmware,a.max_model_bytes);a.output.write_text(json.dumps(result,indent=2)+'\n')
     print(json.dumps(result,indent=2))
 
 

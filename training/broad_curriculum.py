@@ -65,3 +65,19 @@ def jobs():
                 source_terms='https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign',
                 identity_scope='preassigned prompt condition; not a verified fixed voice or real speaker'))
     return rows
+
+
+def hard_contrast_jobs():
+    """Fresh TRAIN synthesis; never imitate a development/test condition."""
+    rows=[]
+    profiles=[r for r in jobs() if r['split']=='train' and r['text']=='你好皮酷']
+    for n,base in enumerate(profiles):
+        phrases=[('你好皮酷',1,'mandarin-pi2-ku4'),('你好批枯',1,'mixed-pi1-ku1'),
+                 ('你好皮球',0,'non-target'),('你好酷酷' if n%2==0 else '你真酷',0,'non-target')]
+        for index,(text,label,pronunciation) in enumerate(phrases):
+            instruction=base['instruction']
+            if pronunciation=='mixed-pi1-ku1':instruction+=' 批枯 is pī kū, two clear first-tone syllables.'
+            rows.append({**base,'text':text,'label':label,'pronunciation':pronunciation,
+                'instruction':instruction,'seed':2026101820000+n*32+index,
+                'purpose':'train-only fresh near-phrase contrasts; no development waveform or voice imitation'})
+    return rows

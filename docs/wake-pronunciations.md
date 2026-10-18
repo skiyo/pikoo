@@ -83,3 +83,7 @@ python training/prepare_tts_prefixes.py \
 G reduces false wakes from F's 25/730 to 5/730 on the same set, but loses target recall. The human-confirmed “你好皮” negative drops from 0.9375 in F to 0.7836 in G, below 0.90. This is one corrected development error, not a general success. H tests longer complete-target tails (up to 0.6 s, capped to preserve the entire phrase and idle lead) alongside G's longer non-target tails. Its separate result above is also a failed candidate; the confirmed “你好皮” negative rises again to 0.9328 and falsely wakes. The specific incomplete-phrase problem therefore remains unresolved.
 
 All D–H models passed static operator/size checks and host Micro score/reset parity (six cases, three resets each). The wider models use 26,704 bytes of host Micro arena; that is not whole-device memory or ESP32 timing. Software regression passed: 22 simulator, 9 server, 11 USB-tool and 45 training tests, plus native session/audio and eye checks. Actual children, one-metre wake trials and eight-hour background listening remain pending. Household audio was not scored this round.
+
+## Larger-network follow-up on 2026-10-18
+
+The user authorized a 512 KiB experimental budget. Continued larger-network training, exact streaming checkpoint selection and measured ESP32 resource results are tracked in [capacity development](wake-capacity.md) and the [V11 report](../training/reports/wake-v11-summary.json). Work is in progress; the normal device retains V8D until a candidate passes.

@@ -67,7 +67,7 @@ bash tools/start-dualeye.sh
 idf.py -C firmware -DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite build
 ```
 
-缺少模型或超过 64 KiB 会拒绝构建。检查和 USB 工具见[开发说明](development.zh-CN.md)。包含受限模型的固件不能公开发布。
+双眼构建缺少模型或超过显式实验预算时会拒绝构建，当前默认上限为 512 KiB。2026-10-18 按用户要求提高预算以试验更大网络；编译通过不能代替内存、推理耗时与识别验收。历史 1.83 板构建仍保留 64 KiB 上限。检查和 USB 工具见[开发说明](development.zh-CN.md)。包含受限模型的固件不能公开发布。
 
 ## 常见问题
 

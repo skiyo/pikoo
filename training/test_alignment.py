@@ -67,13 +67,13 @@ class AlignmentTest(unittest.TestCase):
     def test_external_evaluation_recordings_never_enter_training_pipeline(self):
         from train import dataset, validate_training_manifest
         for split in ('train','validation','test'):
-            row=dict(path='must-not-read.wav',label=1,split=split,
-                     group='heldout',evaluation_only=True)
-            with self.subTest(split=split):
-                with self.assertRaisesRegex(ValueError,'separate evaluation manifest'):
-                    validate_training_manifest([row])
-                with self.assertRaisesRegex(ValueError,'separate evaluation manifest'):
-                    dataset([row],Path('/nonexistent'))
+            for flag in ['evaluation_only','frozen_holdout']:
+                row=dict(path='must-not-read.wav',label=1,split=split,group='heldout',**{flag:True})
+                with self.subTest(split=split,flag=flag):
+                    with self.assertRaisesRegex(ValueError,'separate evaluation manifest'):
+                        validate_training_manifest([row])
+                    with self.assertRaisesRegex(ValueError,'separate evaluation manifest'):
+                        dataset([row],Path('/nonexistent'))
 
     def test_pcm_context_uses_real_features_for_idle_prefix(self):
         import numpy as np

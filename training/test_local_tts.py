@@ -5,6 +5,24 @@ import tempfile
 from generate_local_tts import jobs
 
 class LocalCurriculumTest(unittest.TestCase):
+    def test_hard_contrasts_preserve_training_groups_and_fresh_seeds(self):
+        from broad_curriculum import jobs as broad_jobs,hard_contrast_jobs
+        original=broad_jobs();rows=hard_contrast_jobs()
+        self.assertEqual(len(rows),96)
+        self.assertEqual({r['split'] for r in rows},{'train'})
+        self.assertFalse({r['group'] for r in rows}&{r['group'] for r in original if r['split']!='train'})
+        self.assertFalse({r['seed'] for r in rows}&{r['seed'] for r in original})
+        self.assertTrue({'你好皮球','你好酷酷','你真酷'}<={r['text'] for r in rows if not r['label']})
+    def test_fresh_synthetic_holdout_is_never_a_development_voice_group(self):
+        from heldout_curriculum import jobs as heldout_jobs
+        from broad_curriculum import jobs as broad_jobs
+        rows=heldout_jobs()
+        self.assertEqual(len(rows),80)
+        self.assertEqual({r['split'] for r in rows},{'test'})
+        self.assertTrue(all(r['frozen_holdout'] and not r['family_inputs_used'] and not r['reference_audio_used'] for r in rows))
+        self.assertFalse({r['group'] for r in rows}&{r['group'] for r in jobs()+broad_jobs()})
+        for style in ['adult','childlike']:
+            self.assertEqual({r['pronunciation'] for r in rows if r['synthetic_style']==style and r['label']},{'mandarin-pi2-ku4','mixed-pi1-ku1'})
     def test_matched_prefix_review_rejects_full_names_and_unrelated_asr(self):
         from review_local_corpus import content_approved
         row={'source':'TTS-matched-incomplete-prefix','label':0}

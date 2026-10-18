@@ -31,6 +31,7 @@ def main():
             details.append({'label':row['label'],'source':row.get('source'),'sha256':row.get('sha256') or hashlib.sha256((a.manifest.parent/row['path']).read_bytes()).hexdigest(),
                 'speaker':row.get('speaker',row.get('voice')),'real_child':row.get('real_child',False),
                 'age':row.get('age'),'text':None if row.get('real_child') else row.get('text'),
+                'evaluation_only':row.get('evaluation_only',False),'frozen_holdout':row.get('frozen_holdout',False),
                 'pronunciation':row.get('pronunciation'),'synthetic_style':row.get('synthetic_style'),
                 'condition':condition,'context':row.get('context'),
                 'seconds':len(x)/16000,'scores':scores,'detected':{k:v>=.9 for k,v in scores.items()}})
