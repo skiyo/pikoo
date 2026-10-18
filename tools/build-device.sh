@@ -13,4 +13,4 @@ case "$(idf.py --version)" in
 esac
 model="$(cd "$(dirname "$model")" && pwd)/$(basename "$model")"
 cd "$root/firmware"
-idf.py -B build-dualeye -DSDKCONFIG="$PWD/build-dualeye/sdkconfig" -DPIKOO_WAKE_MODEL="$model" -DPIKOO_WAKE_MAX_BYTES="${PIKOO_WAKE_MAX_BYTES:-524288}" -DPIKOO_WAKE_BENCHMARK=OFF build
+idf.py -B build-dualeye -DSDKCONFIG="$PWD/build-dualeye/sdkconfig" -DPIKOO_WAKE_MODEL="$model" -DPIKOO_WAKE_MAX_BYTES="${PIKOO_WAKE_MAX_BYTES:-524288}" -DPIKOO_WAKE_BENCHMARK=OFF -DPIKOO_COMMAND_BENCHMARK=OFF build

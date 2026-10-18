@@ -1479,7 +1479,7 @@
   "software_regression": {
     "simulator": 22,
     "server": 9,
-    "usb_tools": 11,
+    "usb_tools": 13,
     "training": 60,
     "native_audio_session": "passed",
     "eyes": "passed"

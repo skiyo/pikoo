@@ -16,7 +16,7 @@ Versions below describe the current pinned integration, not a claim that all com
 |---|---|---|---|
 | [qwen-audio-agent](https://github.com/QwenAudio/qwen-audio-agent/tree/v2.0.1) | 2.0.1 | Installed server dependency; authentication, realtime provider and memory/session framework; Pikoo adapters are separate | Apache-2.0; retain upstream notices |
 | [ESP-IDF](https://github.com/espressif/esp-idf/tree/v5.5.5) | 5.5.5 / `b774170ff46c393eeb5e495ea37936038d3f4f4f` | Firmware framework dependency | Apache-2.0 for framework; bundled third-party components have separate terms |
-| [ESP-SR](https://github.com/espressif/esp-sr) | 2.5.3 | AFE/AEC dependency for DualEye and the historical baseline; built-in WakeNet disabled | ESPRESSIF MIT License, with ESPRESSIF-product limitation; not generic MIT or Pikoo Apache-2.0 |
+| [ESP-SR](https://github.com/espressif/esp-sr) | 2.5.3 | AFE/AEC dependency and optional MN7 local-confirmation development probe; built-in WakeNet disabled | ESPRESSIF MIT License, with ESPRESSIF-product limitation; not generic MIT or Pikoo Apache-2.0 |
 | [ESP-TFLite-Micro](https://github.com/espressif/esp-tflite-micro) | 1.4.1 | Embedded INT8 inference dependency | Apache-2.0 plus retained third-party notices |
 | [microWakeWord](https://github.com/OHF-Voice/micro-wake-word) | `4665173cd35f1cff9a61e06fc427f124766c488e` | Separately installed training code; not copied wholesale into this repository | Apache-2.0; model/data terms are separate |
 | [pymicro-features](https://github.com/rhasspy/pymicro-features/tree/96bd69cfad79aa67697e176570d3dd87052c3def) / TensorFlow microfrontend | Copied source revision `96bd69cfad79aa67697e176570d3dd87052c3def`; Python package 2.0.2 | Vendored `pikoo_features`; desktop feature extraction dependency | Apache-2.0; TensorFlow author headers retained; added Pikoo ESP-IDF CMake integration |
@@ -25,7 +25,7 @@ Versions below describe the current pinned integration, not a claim that all com
 | [Waveshare BSP](https://components.espressif.com/components/waveshare/esp32_s3_touch_lcd_1_83/versions/2.0.0) | 2.0.0 | Installed historical 1.83-EN board integration; not DualEye driver support | Apache-2.0 for this BSP; retain dependency licenses |
 | [esp_codec_dev](https://github.com/espressif/esp-adf-libs/tree/master/esp_codec_dev) | 1.5.11 | Installed ES8311/ES7210 codec dependency | Apache-2.0 |
 | [esp_lcd_gc9a01](https://components.espressif.com/components/espressif/esp_lcd_gc9a01/versions/2.0.4) | 2.0.4 | Installed dual circular panel driver; Pikoo board integration is original | Apache-2.0 |
-| [ESP-NN](https://github.com/espressif/esp-nn) | 1.4.1 | Resolved firmware optimized inference dependency; real-board performance pending | Apache-2.0 |
+| [ESP-NN](https://github.com/espressif/esp-nn) | 1.4.1 | Resolved optimized inference dependency; synthetic device timings recorded, live audio concurrency pending | Apache-2.0 |
 | [ws](https://github.com/websockets/ws) | 8.22.0 in server lockfile | Installed Node WebSocket dependency used by local simulator | MIT |
 | [TensorFlow](https://github.com/tensorflow/tensorflow) | 2.18.1 | Optional training/inference dependency | Apache-2.0 plus bundled third-party notices |
 | [NumPy](https://github.com/numpy/numpy) | 2.0.2 | Optional training dependency | BSD-3-Clause core plus bundled dependencies |

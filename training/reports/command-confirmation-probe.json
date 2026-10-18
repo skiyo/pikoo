@@ -1,0 +1,69 @@
+{
+  "label": "command-probe2",
+  "status": "synthetic-command-probe",
+  "model_sha256": "87c77c650bbafbfb63f7cca4979f70302ef34078429635d01f716f5ae01b8e5b",
+  "family_audio_used": false,
+  "nvs_written": false,
+  "restored": true,
+  "cases": 12,
+  "targets": 4,
+  "hits": 2,
+  "negatives": 8,
+  "false_wakes": 0,
+  "frames": 1263,
+  "mean_frame_us": 15472,
+  "max_frame_us": 31701,
+  "internal_free_bytes": 290967,
+  "psram_free_bytes": 5321528,
+  "microphone_enabled": false,
+  "network_enabled": false,
+  "amplifier_enabled": false,
+  "purpose": "TRAIN-only engineering probe, not validation or acceptance",
+  "source": {
+    "component": "ESP-SR",
+    "version": "2.5.3",
+    "model": "mn7_cn",
+    "license": "ESPRESSIF MIT; ESPRESSIF products only; no weights redistributed"
+  },
+  "synthetic_targets": {
+    "adult_mandarin": {
+      "hits": 0,
+      "cases": 1
+    },
+    "adult_mixed_name": {
+      "hits": 1,
+      "cases": 1
+    },
+    "childlike_mandarin": {
+      "hits": 0,
+      "cases": 1
+    },
+    "childlike_mixed_name": {
+      "hits": 1,
+      "cases": 1
+    }
+  },
+  "non_targets": {
+    "synthetic_near_words": 4,
+    "real_child_ordinary_speech": 4,
+    "false_wakes": 0
+  },
+  "first_startup_failure": {
+    "cause": "Missing FST dictionary; rejected and baseline application restored",
+    "fix": "Pack the required FST files, assert presence at startup, and validate pack structure before building"
+  },
+  "next_probe": {
+    "status": "compiled-not-flashed",
+    "internal_decode_threshold": 0.1,
+    "external_confirmation_cutoff": 0.7,
+    "loader": "all-PSRAM",
+    "purpose": "inspect low-confidence TRAIN results, not select using sealed/family tests"
+  },
+  "device_recovery": {
+    "flash_readback_restored": true,
+    "live_status_after_restore": "not recovered; USB replug requested",
+    "further_flashing": "deferred until fresh device status"
+  },
+  "normal_firmware_confirmed_deployed": false,
+  "sealed_test_scored": false
+}
