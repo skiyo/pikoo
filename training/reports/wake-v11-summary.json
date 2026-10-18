@@ -1356,7 +1356,7 @@
     "household_used": false,
     "manifest_sha256": "048d597d9b7b4c730740d9d2b6910934adef315626c86d4d94e44501b0d46d27"
   },
-  "C_status": "training",
+  "C_status": "no-checkpoint-passed",
   "hardware_benchmarks": {
     "v11a": {
       "label": "v11a",
@@ -1409,6 +1409,31 @@
       "live_audio_concurrency_validated": false,
       "benchmark_application_sha256": "6753a3c0554bad4cc231c6e66519d8616ada78c0fb743bbd71a96c3b1133dece",
       "benchmark_source_sha256": "a2819700311c0902c299f8f5166ca40e02d0bd93061d8300f0e5294bafcb2595"
+    },
+    "v11c": {
+      "label": "v11c",
+      "status": "synthetic-device-timing",
+      "baseline_application_sha256": "81bae45d6a7f683faf6c6953fab88f9db068eb824603e41219396fb198c3f5e3",
+      "model_sha256": "68f60825547e5f8a60126970150828473969254ae90b20abfdd57ec8da4da7a1",
+      "family_audio_used": false,
+      "nvs_written": false,
+      "restored": true,
+      "device_arena_used_bytes": 70732,
+      "model_bytes": 261312,
+      "iterations": 600,
+      "frontend_plus_inference_mean_us": 20239,
+      "frontend_plus_inference_p99_us": 20556,
+      "frontend_plus_inference_max_us": 20643,
+      "inference_max_us": 20504,
+      "deadline_misses": 0,
+      "wake_errors": 0,
+      "internal_free_bytes": 317175,
+      "psram_free_bytes": 7992996,
+      "display_fps": 7.4,
+      "microphone_enabled": false,
+      "network_enabled": false,
+      "amplifier_enabled": false,
+      "live_audio_concurrency_validated": false
     }
   },
   "fresh_synthetic_test": {
@@ -1430,7 +1455,7 @@
     "simulator": 22,
     "server": 9,
     "usb_tools": 11,
-    "training": 52,
+    "training": 56,
     "native_audio_session": "passed",
     "eyes": "passed"
   },
@@ -1441,5 +1466,1324 @@
     "Synthetic device timing is not live AFE/audio/network concurrency or microphone acceptance.",
     "Graphics measured below the 20fps design target during the synthetic timing load.",
     "Household and fresh synthetic test waveforms are excluded from training and quantization."
-  ]
+  ],
+  "C_epochs": [
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 261312,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 291,
+        "non_targets": 730,
+        "false_wakes": 0
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 37,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 36,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 12,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 192,
+        "non_targets": 131,
+        "false_wakes": 0
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 1,
+      "model_sha256": "68f60825547e5f8a60126970150828473969254ae90b20abfdd57ec8da4da7a1"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 261312,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 290,
+        "non_targets": 730,
+        "false_wakes": 0
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 36,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 36,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 12,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 192,
+        "non_targets": 131,
+        "false_wakes": 0
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 2,
+      "model_sha256": "089ed314623d2cf99e3ebc77b3a37120a9c3a046b698442a03987478e84fd4d4"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "false-wakes",
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 261312,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 288,
+        "non_targets": 730,
+        "false_wakes": 4
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 35,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 35,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 11,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 191,
+        "non_targets": 131,
+        "false_wakes": 2
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 5,
+      "model_sha256": "3752aa2319fb4d5c8245963a085331cb3a28413b685a6ad1722778e2325ba719"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 261312,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 286,
+        "non_targets": 730,
+        "false_wakes": 0
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 36,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 35,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 11,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 188,
+        "non_targets": 131,
+        "false_wakes": 0
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 3,
+      "model_sha256": "2ad9e28afeb899d1412fd45421941dc11993c787901a0657940ce167a871f25b"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 261312,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 286,
+        "non_targets": 730,
+        "false_wakes": 0
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 35,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 35,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 11,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 189,
+        "non_targets": 131,
+        "false_wakes": 0
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 4,
+      "model_sha256": "98c722cfdf0ea7b012bc4ad4c075b1feb7e31e51620000e9de8566bccccac968"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "false-wakes",
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 261312,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 292,
+        "non_targets": 730,
+        "false_wakes": 2
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 38,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 35,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 11,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 192,
+        "non_targets": 131,
+        "false_wakes": 1
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 6,
+      "model_sha256": "6aa79dc3a31be473b396454dabaa875dce008541673a8899206548e8c34cf202"
+    }
+  ],
+  "D_status": "no-checkpoint-passed",
+  "D_epochs": [
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "false-wakes",
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 201096,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 285,
+        "non_targets": 730,
+        "false_wakes": 2
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 37,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 35,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 11,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 186,
+        "non_targets": 131,
+        "false_wakes": 1
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 2,
+      "model_sha256": "99277e66cf5ae8de31aa8a346fc8347046eaeb098864f1b38306c7ca710ae0ae"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "false-wakes",
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 201096,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 285,
+        "non_targets": 730,
+        "false_wakes": 2
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 37,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 35,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 11,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 186,
+        "non_targets": 131,
+        "false_wakes": 1
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 1,
+      "model_sha256": "f6df3e92f530b42d460fa7bf196c921d1ad91a9c23081857378d7288f72ce13c"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "false-wakes",
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 201096,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 284,
+        "non_targets": 730,
+        "false_wakes": 2
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 36,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 35,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 11,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 186,
+        "non_targets": 131,
+        "false_wakes": 1
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 3,
+      "model_sha256": "8fe67e274dabdffdfab59051752690e21fe943cb4776bcb6c7cd7c20f007fdfc"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "false-wakes",
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 201096,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 284,
+        "non_targets": 730,
+        "false_wakes": 1
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 36,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 35,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 11,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 186,
+        "non_targets": 131,
+        "false_wakes": 0
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 4,
+      "model_sha256": "7298d1e02e83b1a724e19dcd3067e1f904526e4fec7b09860bacd15fdd8324fd"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "false-wakes",
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 201096,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 285,
+        "non_targets": 730,
+        "false_wakes": 1
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 37,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 35,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 11,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 186,
+        "non_targets": 131,
+        "false_wakes": 0
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 7,
+      "model_sha256": "e8912f50b51cbc903976e7904487703fb23b9cb9914c5f026493806eaa406428"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "false-wakes",
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 201096,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 284,
+        "non_targets": 730,
+        "false_wakes": 1
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 36,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 35,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 11,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 186,
+        "non_targets": 131,
+        "false_wakes": 0
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 5,
+      "model_sha256": "8082e7cd771ff81df12a8a1b829b0fb6b849234868d9b7f9cfa9b75ed0255022"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "false-wakes",
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 201096,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 284,
+        "non_targets": 730,
+        "false_wakes": 1
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 36,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 35,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 11,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 186,
+        "non_targets": 131,
+        "false_wakes": 0
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 6,
+      "model_sha256": "efa05d3416efb255dc3c7015bf73b3c70b5aaf88ec0314622083f4271970d471"
+    }
+  ],
+  "E_status": "scanning",
+  "E_epochs": [
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "false-wakes",
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 189936,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 289,
+        "non_targets": 730,
+        "false_wakes": 2
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 36,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 36,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 12,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 191,
+        "non_targets": 131,
+        "false_wakes": 1
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 1,
+      "model_sha256": "30aedd96895d6a67a33aeb8c4f8530d969c10974b1b8f12e972719bd1a5c3b43"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "false-wakes",
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 189936,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 291,
+        "non_targets": 730,
+        "false_wakes": 1
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 38,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 36,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 12,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 191,
+        "non_targets": 131,
+        "false_wakes": 0
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 2,
+      "model_sha256": "b5107fed5429c2de0ee48cc2697752bde0b0ffddbda143d171a0cc0c3ba97d46"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 189936,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 291,
+        "non_targets": 730,
+        "false_wakes": 0
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 38,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 36,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 12,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 191,
+        "non_targets": 131,
+        "false_wakes": 0
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 3,
+      "model_sha256": "ca84526bff1c7be7b656dca5c24cf303c7213040bae2d5729254cb38613a71fa"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "false-wakes",
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 189936,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 288,
+        "non_targets": 730,
+        "false_wakes": 1
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 36,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 35,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 11,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 191,
+        "non_targets": 131,
+        "false_wakes": 1
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 4,
+      "model_sha256": "907e644327926a89a9c383e2ede7c2d56d0a0157264f623451015ded1157f497"
+    },
+    {
+      "status": "failed-development-gate",
+      "passed": false,
+      "failures": [
+        "false-wakes",
+        "legacy-original-recall",
+        "adult:mixed-pi1-ku1"
+      ],
+      "model_bytes": 189936,
+      "streaming_development": {
+        "targets": 316,
+        "hits": 292,
+        "non_targets": 730,
+        "false_wakes": 1
+      },
+      "legacy_original": {
+        "targets": 46,
+        "hits": 38,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "new_primary": {
+        "targets": 38,
+        "hits": 36,
+        "non_targets": 36,
+        "false_wakes": 0
+      },
+      "new_style_pronunciation": {
+        "adult:mandarin-pi2-ku4": {
+          "targets": 7,
+          "hits": 7,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "adult:mixed-pi1-ku1": {
+          "targets": 5,
+          "hits": 4,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mandarin-pi2-ku4": {
+          "targets": 14,
+          "hits": 13,
+          "non_targets": 0,
+          "false_wakes": 0
+        },
+        "childlike:mixed-pi1-ku1": {
+          "targets": 12,
+          "hits": 12,
+          "non_targets": 0,
+          "false_wakes": 0
+        }
+      },
+      "pitch_tempo": {
+        "targets": 203,
+        "hits": 191,
+        "non_targets": 131,
+        "false_wakes": 1
+      },
+      "real_child_ordinary_speech": {
+        "targets": 0,
+        "hits": 0,
+        "non_targets": 390,
+        "false_wakes": 0
+      },
+      "epoch": 5,
+      "model_sha256": "0da3ac2971d8373a6cbe24579d263ef32312c9af1439f7fcef127767d88b9d81"
+    }
+  ],
+  "warm_context_diagnostic": {
+    "status": "did-not-resolve-regression",
+    "selection_protocol_changed": false,
+    "scores": {
+      "0": {
+        "context": {
+          "lead_seconds": 4.5,
+          "background_rms": 0.0
+        },
+        "B14": {
+          "positive_clips": 316,
+          "wake_detected": 289,
+          "negative_clips": 730,
+          "false_positive_clips": 1,
+          "negative_seconds": 1687.9948749999996
+        },
+        "B13": {
+          "positive_clips": 316,
+          "wake_detected": 299,
+          "negative_clips": 730,
+          "false_positive_clips": 5,
+          "negative_seconds": 1687.9948749999996
+        }
+      },
+      "20": {
+        "context": {
+          "lead_seconds": 4.5,
+          "background_rms": 20.0
+        },
+        "B14": {
+          "positive_clips": 316,
+          "wake_detected": 284,
+          "negative_clips": 730,
+          "false_positive_clips": 1,
+          "negative_seconds": 1687.9948749999996
+        },
+        "B13": {
+          "positive_clips": 316,
+          "wake_detected": 296,
+          "negative_clips": 730,
+          "false_positive_clips": 4,
+          "negative_seconds": 1687.9948749999996
+        }
+      },
+      "80": {
+        "context": {
+          "lead_seconds": 4.5,
+          "background_rms": 80.0
+        },
+        "B14": {
+          "positive_clips": 316,
+          "wake_detected": 274,
+          "negative_clips": 730,
+          "false_positive_clips": 2,
+          "negative_seconds": 1687.9948749999996
+        },
+        "B13": {
+          "positive_clips": 316,
+          "wake_detected": 289,
+          "negative_clips": 730,
+          "false_positive_clips": 5,
+          "negative_seconds": 1687.9948749999996
+        }
+      }
+    }
+  },
+  "fresh_test_policy": {
+    "status": "frozen-before-first-model-score",
+    "split": "test",
+    "manifest_sha256": "bafba3f8618eb318628077f4bc7e992e583c2fddf946bd4b9f174e6bdf0169a4",
+    "content_approved_clips": 68,
+    "counts": {
+      "adult:1:mandarin-pi2-ku4": 6,
+      "adult:1:mixed-pi1-ku1": 7,
+      "adult:0:non-target": 13,
+      "childlike:1:mandarin-pi2-ku4": 11,
+      "childlike:1:mixed-pi1-ku1": 10,
+      "childlike:0:non-target": 21
+    },
+    "threshold": 0.9,
+    "rolling_inferences": 5,
+    "input_context": {
+      "lead_seconds": 1.0,
+      "background_rms": 0.0
+    },
+    "each_adult_childlike_pronunciation_min_recall": 0.9,
+    "non_target_false_wakes_max": 0,
+    "candidate_frozen_before_evaluation": true,
+    "cannot_tune_or_select_using_this_test": true,
+    "actual_child_recall_remains_pending": true,
+    "family_audio_used": false
+  }
 }

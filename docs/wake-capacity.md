@@ -11,7 +11,8 @@ On 2026-10-18 the user authorized larger networks and continued iteration toward
 | V11A, widened from V10H | 96 / 64 | 134,320 | 286/316 | 6/730 |
 | V11B, fresh training, epoch 13 | 128 / 64 | 189,936 | 304/316 | 3/730 |
 | V11B, epoch 14 | 128 / 64 | 189,936 | 293/316 | 1/730 |
-| V11C, added train contrasts | 160 / 80 | In progress | Pending | Pending |
+| V11C, added train contrasts, epoch 1 | 160 / 80 | 261,312 | 291/316 | 0/730 |
+| V11D, frozen encoder + residual readout, epoch 7 | 128 / 64 + 64-unit readout | 201,096 | 285/316 | 1/730 |
 
 V11B epoch 13 detects all 38 newly added original fictional targets, including both pronunciations and adult/childlike styles. Epoch 14 passes the recall groups but falsely wakes on one pitch-shifted “你好皮球”. All 18 B epochs were checked; none passed the entire gate. These are reused **development** recordings, not blind or human acceptance. No household recording was used for training, tuning, selection or scoring this round.
 
@@ -21,10 +22,18 @@ Synthetic-only device measurements with both displays running:
 |---|---:|---:|---:|---|
 | V11A | 42,028 B | 11,410 µs | 11,427 µs | 0/600 / 0 |
 | V11B epoch 13 | 53,228 B | 15,516 µs | 15,641 µs | 0/600 / 0 |
+| V11C epoch 1 | 70,732 B | 20,556 µs | 20,643 µs | 0/600 / 0 |
 
 The timing image disables the microphone, amplifier and network. It feeds deterministic generated PCM at a 30 ms cadence and renders eyes concurrently. Each temporary test restored the V8D application and verified its SHA-256, without writing NVS. This establishes preliminary computational headroom; real audio/AFE/network concurrency and physical wake trials remain separate.
 
 C retains all **1,046** F validation waveforms and labels. Its training set has 1,058 targets and 9,007 non-targets after screening/curation, including 118 new TRAIN-mined prefixes and fresh training-condition near-phrase synthesis. Derivatives keep parent splits. Mining scored no validation/test speech. New synthetic test audio was separately generated and content-screened before scoring; frozen test hashes and the eight household waveform hashes are excluded from training and calibration. Fictional childlike synthesis is not real child target speech.
+
+
+C eliminates false wakes at its first checkpoint but regresses legacy targets and one adult mixed-name group. All six C checkpoints and seven D readout checkpoints failed the unchanged gate. C also misses the 20 ms P99 development target and reaches only 7.4 fps under this synthetic display load. A larger file alone is not acceptance.
+
+Ongoing ablations retain the same development waveforms and protected test hashes: E reduces the negative-loss multiplier; F additionally freezes pretrained batch-normalization statistics while fine-tuning convolutions; G adds a short ordered acoustic branch to the frozen whole-phrase encoder. The G branch shares the first causal features, learns three depthwise stages (5/9/13, 24 channels), retains 20 time steps and uses a zero-initialized residual logit. Its initial function and subsequent offline/streaming alignment are tested. It is not a pretrained phoneme recognizer.
+
+A separate 4.5-second startup-context diagnostic at simulated background RMS 0/20/80 did **not** resolve B's regression. Historical one-second cold-start scores and labels remain the gate. Diagnostic input contexts are explicit in reports; the gate rejects a mismatched context. No warm-up guard or threshold relaxation was deployed.
 
 ## Reproducing the checks
 

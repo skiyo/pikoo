@@ -5,6 +5,7 @@ Real child recordings are negative-only; this never claims child wake recall.
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import numpy as np
@@ -17,17 +18,24 @@ def main():
     p.add_argument('--model',type=Path,required=True);p.add_argument('--previous',type=Path,required=True)
     p.add_argument('--split',choices=['validation','test'],required=True)
     p.add_argument('--output',type=Path,required=True);p.add_argument('--clean-only',action='store_true')
+    p.add_argument('--lead-seconds',type=float,default=1.,help='Explicit diagnostic startup context; default preserves historical 1s silence')
+    p.add_argument('--background-rms',type=float,default=0.,help='Deterministic simulated PCM background; changes the evaluation convention, not labels')
     a=p.parse_args();os.umask(0o077)
+    if not math.isfinite(a.lead_seconds) or not 1<=a.lead_seconds<=10 or not math.isfinite(a.background_rms) or not 0<=a.background_rms<=200:raise ValueError('Invalid diagnostic input context')
     manifest=json.loads(a.manifest.read_text());rows=[r for r in manifest if r['split']==a.split]
     models={'previous':a.previous,'candidate':a.model}
     hashes={k:hashlib.sha256(v.read_bytes()).hexdigest() for k,v in models.items()}
     conditions=['clean'] if a.clean_only else CONDITIONS
     rng=np.random.default_rng(20261014);details=[]
+    background_rng=np.random.default_rng(20261018)
     for n,row in enumerate(rows):
         pcm=load(a.manifest.parent/row['path'])
         for condition in conditions:
             x=modify(pcm,condition,rng)
-            scores={k:predict(path,np.pad(x,(16000,16000))) for k,path in models.items()}
+            samples=np.pad(x,(round(a.lead_seconds*16000),16000))
+            if a.background_rms:
+                samples=np.clip(samples+background_rng.normal(0,a.background_rms,len(samples)),-32768,32767).astype('<i2')
+            scores={k:predict(path,samples) for k,path in models.items()}
             details.append({'label':row['label'],'source':row.get('source'),'sha256':row.get('sha256') or hashlib.sha256((a.manifest.parent/row['path']).read_bytes()).hexdigest(),
                 'speaker':row.get('speaker',row.get('voice')),'real_child':row.get('real_child',False),
                 'age':row.get('age'),'text':None if row.get('real_child') else row.get('text'),
@@ -60,6 +68,8 @@ def main():
     report={'status':'offline-only-not-human-or-hardware-validation','split':a.split,
         'runtime':'TFLite reference kernels; firmware float32 half-away input quantization',
         'threshold':.9,'models':hashes,'conditions':summaries,'details':details}
+    report['input_context']={'lead_seconds':a.lead_seconds,'background_rms':a.background_rms}
+    report['background_seed']=20261018
     for model,path in models.items():
         assert hashlib.sha256(path.read_bytes()).hexdigest()==hashes[model],'Model changed during evaluation'
     a.output.parent.mkdir(parents=True,exist_ok=True)

@@ -125,10 +125,19 @@ def main():
     p.add_argument('--max-model-bytes',type=int,default=65536,help='Explicit experimental flash budget, 65536..524288 bytes; does not change accuracy gates')
     p.add_argument('--save-epoch-checkpoints',action='store_true',help='Keep each private epoch for actual streaming development validation')
     p.add_argument('--export-only',action='store_true',help='Export a specified --resume-weights checkpoint without another training step; still checks provenance and quantization inputs')
+    p.add_argument('--classifier-head-units',type=int,default=0,help='Optional 16..256-unit residual readout; freeze the original encoder and logit')
+    p.add_argument('--head-backbone-weights',type=Path,help='Original plain-model checkpoint used to initialize a residual readout; incompatible with resume/widen')
+    p.add_argument('--freeze-batch-normalization',action='store_true',help='Fine-tune convolution weights while retaining pretrained normalization statistics')
+    p.add_argument('--phonetic-readout',action='store_true',help='Experimental short-context causal correction branch; freezes the whole-phrase encoder')
     a=p.parse_args()
     os.umask(0o077)
     if not 65536<=a.max_model_bytes<=524288:raise ValueError('Model flash budget must be 64..512 KiB')
     if a.export_only and (not a.resume_weights or a.widen_from):raise ValueError('Export-only requires one explicit resume checkpoint')
+    if a.classifier_head_units and not 16<=a.classifier_head_units<=256:raise ValueError('Classifier head must have 16..256 units')
+    if a.head_backbone_weights and (not (a.classifier_head_units or a.phonetic_readout) or a.resume_weights or a.widen_from):raise ValueError('Head backbone requires a residual head without resume/widen')
+    if a.phonetic_readout and (a.classifier_head_units or a.widen_from):raise ValueError('Select one readout architecture')
+    if a.freeze_batch_normalization and not (a.resume_weights or a.widen_from):raise ValueError('Frozen normalization requires explicit pretrained weights')
+    if a.classifier_head_units and a.widen_from:raise ValueError('Widen the encoder and add a readout in separate experiments')
     if not .12<=a.negative_tail_seconds<=1.5:raise ValueError('Negative tail must be between 0.12 and 1.5 seconds')
     if not .12<=a.positive_tail_seconds<=.6:raise ValueError('Positive tail must be between 0.12 and 0.6 seconds')
     if a.window_frames%3 or a.window_frames<150 or min(a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.filters,a.first_filters)<1 or not 0<=a.min_snr<35 or not 0<a.negative_weight<=16 or not 0<a.learning_rate<=.01 or not 0<=a.acoustic_probability<=1:raise ValueError('Invalid training dimensions')
@@ -171,7 +180,25 @@ def main():
         difference=float(np.max(np.abs(model(fixture,training=False).numpy()-source_model(fixture,training=False).numpy())))
         if difference>1e-5:raise ValueError('Widening changed the original function')
         widening={'source_sha256':hashlib.sha256(a.widen_from.read_bytes()).hexdigest(),'initial_max_probability_difference':difference,'source_filters':a.source_filters,'source_first_filters':a.source_first_filters}
+    readout=None
+    if a.classifier_head_units or a.phonetic_readout:
+        if a.head_backbone_weights:model.load_weights(a.head_backbone_weights)
+        source_model=model
+        if a.phonetic_readout:
+            from phonetic_readout import attach
+            model=attach(source_model)
+        else:
+            from residual_readout import attach
+            model=attach(source_model,a.classifier_head_units)
+        difference=float(np.max(np.abs(model(sets['train'][0][:8],training=False).numpy()-source_model(sets['train'][0][:8],training=False).numpy())))
+        if difference>1e-5:raise ValueError('Residual initialization changed the original function')
+        readout={'units':a.classifier_head_units,'backbone_frozen':True,'dropout':.1,'initial_max_probability_difference':difference}
+        if a.phonetic_readout:readout.update(type='ordered-short-context-correction',channels=24,recent_frames=20,hidden_units=64)
+        if a.head_backbone_weights:readout['backbone_sha256']=hashlib.sha256(a.head_backbone_weights.read_bytes()).hexdigest()
     if a.resume_weights:model.load_weights(a.resume_weights)
+    if a.freeze_batch_normalization:
+        from residual_readout import freeze_normalization
+        freeze_normalization(model)
     model.compile(optimizer=tf.keras.optimizers.Adam(a.learning_rate),loss='binary_crossentropy',metrics=['accuracy'])
     x,y=sets['train'];vx,vy=sets['validation'];tx,ty=sets['test']
     weights={0:a.negative_weight,1:float((y==0).sum()/max(1,(y==1).sum()))}
@@ -190,6 +217,8 @@ def main():
     report['protected_household_hashes_checked']=household_count
     report['protected_audio_hashes_checked']=len(protected)
     if widening:report['widening']=widening
+    if readout:report['classifier_readout']=readout
+    report['batch_normalization_frozen']=a.freeze_batch_normalization
     for split,xx,yy in [('validation',vx,vy),('test',tx,ty)]:
         if split=='test' and a.defer_test:continue
         pred=model.predict(xx,verbose=0).reshape(-1);report['metrics'][split]={'positive_count':int(sum(yy==1)),'negative_count':int(sum(yy==0)),'window_recall_at_0.9':float(np.mean(pred[yy==1]>=.9)),'window_false_positive_rate_at_0.9':float(np.mean(pred[yy==0]>=.9))}

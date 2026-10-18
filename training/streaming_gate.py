@@ -18,6 +18,9 @@ def count(rows):
 
 
 def assess(evaluation,policy,legacy_hashes,model_bytes):
+    default_context={'lead_seconds':1.,'background_rms':0.}
+    if evaluation.get('input_context',default_context)!=policy.get('input_context',default_context):
+        raise ValueError('Diagnostic input context differs from the fixed gate')
     if evaluation['threshold']!=policy['threshold'] or policy['rolling_inferences']!=5:
         raise ValueError('Evaluation and fixed streaming gate disagree')
     rows=evaluation['details']

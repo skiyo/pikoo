@@ -39,5 +39,12 @@ class StreamingGateTest(unittest.TestCase):
             contaminated=copy.deepcopy(ev);contaminated['details'][0][field]=value
             with self.assertRaisesRegex(ValueError,'cannot select'):assess(contaminated,policy,legacy,200000)
 
+    def test_diagnostic_context_cannot_silently_replace_the_fixed_gate(self):
+        ev,policy,legacy=self.fixture()
+        ev['input_context']={'lead_seconds':4.5,'background_rms':20.}
+        with self.assertRaisesRegex(ValueError,'input context'):assess(ev,policy,legacy,200000)
+        policy['input_context']=dict(ev['input_context'])
+        self.assertTrue(assess(ev,policy,legacy,200000)['passed'])
+
 
 if __name__=='__main__':unittest.main()
