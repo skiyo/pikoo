@@ -39,8 +39,35 @@ def eligible(row,protected):
     return row['split']=='train' and row['source'] in {'ChildMandarin','PolyAI-MInDS14-zh-CN','Qwen3-TTS-synthetic-local','Google-Gemini-TTS-synthetic'}
 
 
-def flags(kernels=(5,9,13,21,31,43)):
-    return SimpleNamespace(pointwise_filters=','.join(['128']*len(kernels)),repeat_in_block=','.join(['1']*len(kernels)),mixconv_kernel_sizes=','.join('['+str(k)+']' for k in kernels),residual_connection=','.join(['0']*len(kernels)),first_conv_filters=64,first_conv_kernel_size=3,stride=3,spatial_attention=0,pooled=1,max_pool=0)
+def flags(kernels=(5,9,13,21,31,43),filters=128,first_filters=64):
+    if not 64<=filters<=256 or not 16<=first_filters<=128:raise ValueError('Invalid bounded acoustic width')
+    return SimpleNamespace(pointwise_filters=','.join([str(filters)]*len(kernels)),repeat_in_block=','.join(['1']*len(kernels)),mixconv_kernel_sizes=','.join('['+str(k)+']' for k in kernels),residual_connection=','.join(['0']*len(kernels)),first_conv_filters=first_filters,first_conv_kernel_size=3,stride=3,spatial_attention=0,pooled=1,max_pool=0)
+
+
+def reuse_feature_cache(source,source_protection,spec,rows,ids,destination):
+    """Reuse raw features only after proving corpus, phone IDs and folds match.
+
+    Width/context change the network, not its 399 raw frontend frames. All
+    source waveforms are checked against the current protection ledger first.
+    """
+    report=json.loads((source/'report.json').read_text())
+    if report['manifest_sha256']!=spec['manifest_sha256'] or report.get('household_used') is not False or report.get('official_validation_or_test_used') is not False:
+        raise ValueError('Feature source has incompatible corpus provenance')
+    old={**spec,'left_context':report['left_context_frames'],'protected_sha256':hashlib.sha256(source_protection.read_bytes()).hexdigest()}
+    fingerprint=hashlib.sha256(json.dumps(old,sort_keys=True).encode()).hexdigest()
+    if (source/'features.sha256').read_text().strip()!=fingerprint:raise ValueError('Feature source identity, labels or protection ledger changed')
+    with np.load(source/'features.npz') as arrays:x,y,folds=arrays['x'],arrays['y'],arrays['folds']
+    if x.dtype!=np.float32 or x.shape!=(len(rows),399,40) or y.shape!=(len(rows),74) or folds.shape!=(len(rows),):
+        raise ValueError('Feature source dimensions or floating-point precision mismatch')
+    expected=np.zeros((len(rows),72),np.int32)
+    for i,item in enumerate(rows):expected[i,:len(item['tokens'])]=[ids[t] for t in item['tokens']]
+    if not np.array_equal(y[:,2:],expected) or not np.array_equal(y[:,0],[len(item['tokens']) for item in rows]) or not np.array_equal(folds,[item['fold']=='validation' for item in rows]) or not np.all((y[:,1]>0)&(y[:,1]<=133)):
+        raise ValueError('Feature source phone labels or held-out folds do not match')
+    os.link(source/'features.npz',destination)
+    digest=hashlib.sha256()
+    with (source/'features.npz').open('rb') as file:
+        for chunk in iter(lambda:file.read(8*1024*1024),b''):digest.update(chunk)
+    return x,y,folds,{'source_cache_sha256':digest.hexdigest(),'source_fingerprint':fingerprint,'current_waveforms_rechecked':True,'source_array_precision':'float32'}
 
 
 def main():
@@ -49,11 +76,17 @@ def main():
     p.add_argument('--backbone-weights',type=Path)
     p.add_argument('--fresh',action='store_true',help='Fresh phonetic encoder, with trainable normalization; no inherited KWS weights')
     p.add_argument('--kernels',default='5,9,13,21,31,43',help='Causal acoustic kernels; short contexts are a separate phone-recognition experiment')
+    p.add_argument('--filters',type=int,default=128)
+    p.add_argument('--first-filters',type=int,default=64)
+    p.add_argument('--feature-cache-source',type=Path,help='Own completed original-utterance run; prove exact labels/folds before reusing raw frontend arrays')
+    p.add_argument('--cache-source-protected-hashes',type=Path,help='Exact protection ledger used to build the source cache')
     p.add_argument('--resume-ctc',type=Path,help='Own prior phonetic checkpoint, with matching provenance sidecar; requires explicit vocabulary')
     p.add_argument('--vocabulary',type=Path,help='Existing frozen phone-ID mapping for continuation on new original TRAIN audio')
     p.add_argument('--epochs',type=int,default=24);p.add_argument('--limit',type=int,default=0);p.add_argument('--batch-size',type=int,default=16)
     a=p.parse_args();os.umask(0o077)
     kernels=[int(k) for k in a.kernels.split(',')]
+    flags(kernels,a.filters,a.first_filters)
+    if bool(a.feature_cache_source)!=bool(a.cache_source_protected_hashes):raise ValueError('Feature reuse requires its original protection ledger')
     if not kernels or any(k<3 or k%2==0 for k in kernels):raise ValueError('Expected odd acoustic kernels >=3')
     left_context=3*sum(k-1 for k in kernels)
     if left_context>600 or (a.fresh==bool(a.backbone_weights)):raise ValueError('Choose fresh training or one explicit pretrained encoder')
@@ -93,9 +126,13 @@ def main():
     import tensorflow as tf
     tf.config.threading.set_intra_op_parallelism_threads(4);tf.config.threading.set_inter_op_parallelism_threads(2);tf.keras.utils.set_random_seed(2026101881)
     from train import load,features
+    reused_cache=None
     if cache.exists():
         if key.read_text().strip()!=fingerprint:raise ValueError('Acoustic feature cache provenance changed')
         arrays=np.load(cache);x,y,folds=arrays['x'],arrays['y'],arrays['folds']
+    elif a.feature_cache_source:
+        x,y,folds,reused_cache=reuse_feature_cache(a.feature_cache_source,a.cache_source_protected_hashes,spec,rows,ids,cache)
+        key.write_text(fingerprint+'\n')
     else:
         xs=[];ys=[];folds=[];retained=[]
         for index,item in enumerate(rows):
@@ -112,19 +149,20 @@ def main():
     (a.output/'vocabulary.json').write_text(json.dumps({'blank':0,'tokens':ids},ensure_ascii=False,indent=2)+'\n')
     sys.path.insert(0,str(a.upstream));from microwakeword import mixednet
     from residual_readout import freeze_normalization
-    backbone=mixednet.model(flags(kernels),(399+left_context,40),None)
+    (a.output/'features-spec.json').write_text(json.dumps(spec,ensure_ascii=False)+'\n')
+    backbone=mixednet.model(flags(kernels,a.filters,a.first_filters),(399+left_context,40),None)
     if a.backbone_weights:
         backbone.load_weights(a.backbone_weights);freeze_normalization(backbone)
     pool=next(l for l in backbone.layers if isinstance(l,tf.keras.layers.AveragePooling2D));stream=backbone.layers[backbone.layers.index(pool)-1]
     encoded=stream.input
-    if tuple(encoded.shape[1:])!=(133,1,128):raise ValueError('Unexpected encoder causal alignment')
+    if tuple(encoded.shape[1:])!=(133,1,a.filters):raise ValueError('Unexpected encoder causal alignment')
     encoder=tf.keras.Model(backbone.inputs,encoded,name='child_phonetic_encoder')
     inp=tf.keras.Input((399,40));z=tf.keras.layers.ZeroPadding1D((left_context,0))(inp);z=encoder(z)
-    z=tf.keras.layers.Reshape((133,128))(z);logits=tf.keras.layers.Dense(len(vocabulary)+1,name='phone_logits')(z)
+    z=tf.keras.layers.Reshape((133,a.filters))(z);logits=tf.keras.layers.Dense(len(vocabulary)+1,name='phone_logits')(z)
     model=tf.keras.Model(inp,logits)
     if a.resume_ctc:
         proof=json.loads(a.resume_ctc.with_suffix('.json').read_text())
-        if proof['checkpoint_sha256']!=hashlib.sha256(a.resume_ctc.read_bytes()).hexdigest() or proof['vocabulary_sha256']!=hashlib.sha256(a.vocabulary.read_bytes()).hexdigest() or proof['kernels']!=kernels or proof.get('household_used') is not False:
+        if proof['checkpoint_sha256']!=hashlib.sha256(a.resume_ctc.read_bytes()).hexdigest() or proof['vocabulary_sha256']!=hashlib.sha256(a.vocabulary.read_bytes()).hexdigest() or proof['kernels']!=kernels or proof.get('filters',128)!=a.filters or proof.get('first_filters',64)!=a.first_filters or proof.get('household_used') is not False:
             raise ValueError('CTC checkpoint provenance or phone mapping mismatch')
         model.load_weights(a.resume_ctc)
     def loss(labels,logits):
@@ -160,13 +198,14 @@ def main():
         truth=tf.sparse.from_dense(tf.cast(labels[:,2:],tf.int64))
         errors+=float(tf.reduce_sum(tf.edit_distance(decoded[0],truth,normalize=False)));denominator+=int(labels[:,0].sum())
     # A normal KWS checkpoint, with transferred acoustic layers and a fresh head.
-    wake=mixednet.model(flags(kernels),(519,40),None);wake.set_weights(backbone.get_weights())
+    wake=mixednet.model(flags(kernels,a.filters,a.first_filters),(399,40),None);wake.set_weights(backbone.get_weights())
     head=wake.layers[-1];head.set_weights([np.zeros_like(v) for v in head.get_weights()]);wake.save_weights(a.output/'wake-encoder-init.weights.h5')
     sha=lambda file:hashlib.sha256(file.read_bytes()).hexdigest()
     (a.output/'phone-head.json').write_text(json.dumps({'encoder_init_sha256':sha(a.output/'wake-encoder-init.weights.h5'),'phone_head_sha256':sha(a.output/'phone-head.npz'),'ctc_weights_sha256':sha(checkpoint),'vocabulary_sha256':sha(a.output/'vocabulary.json'),'phoneme_classes':len(vocabulary)+1,'source_manifest_sha256':spec['manifest_sha256'],'household_used':False},indent=2)+'\n')
     report={'status':'completed-phonetic-pretraining-not-wake-acceptance','kernels':kernels,'left_context_frames':left_context,'fresh_encoder':a.fresh,'normalization_trainable':a.fresh,'train_clips':int((~folds).sum()),'speaker_heldout_validation_clips':int(folds.sum()),'phoneme_classes':len(vocabulary)+1,'phoneme_error_rate':errors/max(1,denominator),'epochs':len(history.history['loss']),'history':history.history,'permission_record_sha256':hashlib.sha256(a.permission_record.read_bytes()).hexdigest(),'manifest_sha256':spec['manifest_sha256'],'source_weights_sha256':hashlib.sha256(a.backbone_weights.read_bytes()).hexdigest() if a.backbone_weights else None,'household_used':False,'official_validation_or_test_used':False,'excluded':dict(excluded),'publication':'private restricted derivatives only','next':'Evaluate acoustic quality and initialize a separately validated wake model; no firmware promotion from CTC loss'}
     if a.resume_ctc:report['resumed_ctc_sha256']=hashlib.sha256(a.resume_ctc.read_bytes()).hexdigest()
     report['feature_dtype']=str(x.dtype)
+    report.update(filters=a.filters,first_filters=a.first_filters,parameters=model.count_params(),reused_feature_cache=reused_cache)
     report['validation_scope']='Official child speaker groups and preassigned fictional prompt groups; synthetic voice identities are not verified; MInDS-14 is TRAIN-only'
     (a.output/'report.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2),flush=True)
 

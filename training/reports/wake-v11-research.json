@@ -255,13 +255,54 @@
         "adult_literal_English": "1/2",
         "childlike_literal_English": "4/5"
       }
+    },
+    "AA": {
+      "bytes": 189936,
+      "targets": 316,
+      "hits": 305,
+      "non_targets": 730,
+      "false_wakes": 7,
+      "failures": [
+        "false-wakes"
+      ],
+      "result": "failed unchanged development; no independent test consumed",
+      "household_used": false,
+      "TRAIN_float_int8_cases": "8/8"
+    },
+    "AB": {
+      "bytes": 133528,
+      "targets": 316,
+      "hits": 300,
+      "non_targets": 730,
+      "false_wakes": 16,
+      "failures": [
+        "false-wakes",
+        "adult:mandarin-pi2-ku4"
+      ],
+      "result": "failed unchanged development; no independent test consumed",
+      "household_used": false,
+      "TRAIN_float_int8_cases": "8/8"
+    },
+    "AC": {
+      "bytes": 323464,
+      "targets": 316,
+      "hits": 296,
+      "non_targets": 730,
+      "false_wakes": 2,
+      "failures": [
+        "false-wakes",
+        "adult:mandarin-pi2-ku4",
+        "adult:mixed-pi1-ku1"
+      ],
+      "result": "failed unchanged development; no independent test consumed",
+      "household_used": false
     }
   },
   "pending": [
-    "AA baseline fine-tuning and AB contrastive training on reviewed expanded TRAIN only; automatic parity/development evaluation queued",
-    "Additional Google adult/childlike literal-English single-utterance TRAIN generation, one worker65seconds, no paid fallback",
-    "Any qualifying next candidate needs a NEW frozen independent test, exact serialized device implementation and runtime checks",
-    "Actual four-person wake/8-hour background/72-hour runtime acceptance"
+    "AE larger original-child phonetic model:192channels,96stem,kernels3/5/7/9; fresh60epoch maximum, currently training",
+    "Exact corpus/phone/fold cache proof allows reusing original float32 frontend arrays across architecture widths; every waveform rechecked against current protected hashes",
+    "Google TTS free daily quota reached; use existing reviewed data until reset, no paid fallback or project/model rotation",
+    "Next wake model must pass unchanged development, newly frozen independent test, ESP32/runtime and actual family tests"
   ],
   "notes": [
     "ChildMandarin original TRAIN transcripts supervise phonetic research; ordinary child speech is not positive wake evidence.",
@@ -299,5 +340,15 @@
     "added_mixed_targets": 5,
     "original_development_rows_unchanged": 1046,
     "household_or_consumed_test_used": false
+  },
+  "observed_Google_quota": {
+    "date": "2026-10-18",
+    "model": "gemini-3.1-flash-tts-preview",
+    "error": 429,
+    "quota_id": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+    "local_project_daily_limit": 10,
+    "action": "stopped requests; local training continues",
+    "AD_new_raw": 3,
+    "AD_content_approved_targets": 1
   }
 }
