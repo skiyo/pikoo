@@ -129,15 +129,21 @@ def main():
     p.add_argument('--head-backbone-weights',type=Path,help='Original plain-model checkpoint used to initialize a residual readout; incompatible with resume/widen')
     p.add_argument('--freeze-batch-normalization',action='store_true',help='Fine-tune convolution weights while retaining pretrained normalization statistics')
     p.add_argument('--phonetic-readout',action='store_true',help='Experimental short-context causal correction branch; freezes the whole-phrase encoder')
+    p.add_argument('--dropout',type=float,default=0.,help='Training-only dropout after encoder ReLUs; 0..0.4, plain model only')
+    p.add_argument('--early-stop-patience',type=int,default=5,help='Window-validation patience; full streaming gate remains independent')
+    p.add_argument('--temporal-readout',action='store_true',help='Freeze the encoder and replace average pooling with an initially equivalent ordered head')
     a=p.parse_args()
     os.umask(0o077)
     if not 65536<=a.max_model_bytes<=524288:raise ValueError('Model flash budget must be 64..512 KiB')
     if a.export_only and (not a.resume_weights or a.widen_from):raise ValueError('Export-only requires one explicit resume checkpoint')
     if a.classifier_head_units and not 16<=a.classifier_head_units<=256:raise ValueError('Classifier head must have 16..256 units')
-    if a.head_backbone_weights and (not (a.classifier_head_units or a.phonetic_readout) or a.resume_weights or a.widen_from):raise ValueError('Head backbone requires a residual head without resume/widen')
+    if a.head_backbone_weights and (not (a.classifier_head_units or a.phonetic_readout or a.temporal_readout) or a.resume_weights or a.widen_from):raise ValueError('Head backbone requires a readout without resume/widen')
+    if a.temporal_readout and (a.classifier_head_units or a.phonetic_readout or a.widen_from or a.dropout):raise ValueError('Select one plain-encoder readout experiment')
     if a.phonetic_readout and (a.classifier_head_units or a.widen_from):raise ValueError('Select one readout architecture')
     if a.freeze_batch_normalization and not (a.resume_weights or a.widen_from):raise ValueError('Frozen normalization requires explicit pretrained weights')
     if a.classifier_head_units and a.widen_from:raise ValueError('Widen the encoder and add a readout in separate experiments')
+    if not 0<=a.dropout<=.4 or not 1<=a.early_stop_patience<=30:raise ValueError('Invalid regularization configuration')
+    if a.dropout and (a.widen_from or a.classifier_head_units or a.phonetic_readout):raise ValueError('Dropout experiment requires a plain encoder')
     if not .12<=a.negative_tail_seconds<=1.5:raise ValueError('Negative tail must be between 0.12 and 1.5 seconds')
     if not .12<=a.positive_tail_seconds<=.6:raise ValueError('Positive tail must be between 0.12 and 0.6 seconds')
     if a.window_frames%3 or a.window_frames<150 or min(a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.filters,a.first_filters)<1 or not 0<=a.min_snr<35 or not 0<a.negative_weight<=16 or not 0<a.learning_rate<=.01 or not 0<=a.acoustic_probability<=1:raise ValueError('Invalid training dimensions')
@@ -169,6 +175,9 @@ def main():
     print('sets', {s:len(v[1]) for s,v in sets.items()},flush=True)
     flags=SimpleNamespace(pointwise_filters=','.join([str(a.filters)]*len(kernels)),repeat_in_block=','.join(['1']*len(kernels)),mixconv_kernel_sizes=','.join('['+str(k)+']' for k in kernels),residual_connection=','.join(['0']*len(kernels)),first_conv_filters=a.first_filters,first_conv_kernel_size=3,stride=3,spatial_attention=0,pooled=1,max_pool=0)
     model=mixednet.model(flags,(a.window_frames,40),None)
+    if a.dropout:
+        from regularization import with_dropout
+        model=with_dropout(model,a.dropout)
     widening=None
     if a.widen_from:
         if a.resume_weights:raise ValueError('Choose resume or widening, not both')
@@ -181,10 +190,13 @@ def main():
         if difference>1e-5:raise ValueError('Widening changed the original function')
         widening={'source_sha256':hashlib.sha256(a.widen_from.read_bytes()).hexdigest(),'initial_max_probability_difference':difference,'source_filters':a.source_filters,'source_first_filters':a.source_first_filters}
     readout=None
-    if a.classifier_head_units or a.phonetic_readout:
+    if a.classifier_head_units or a.phonetic_readout or a.temporal_readout:
         if a.head_backbone_weights:model.load_weights(a.head_backbone_weights)
         source_model=model
-        if a.phonetic_readout:
+        if a.temporal_readout:
+            from temporal_readout import attach
+            model=attach(source_model)
+        elif a.phonetic_readout:
             from phonetic_readout import attach
             model=attach(source_model)
         else:
@@ -194,6 +206,7 @@ def main():
         if difference>1e-5:raise ValueError('Residual initialization changed the original function')
         readout={'units':a.classifier_head_units,'backbone_frozen':True,'dropout':.1,'initial_max_probability_difference':difference}
         if a.phonetic_readout:readout.update(type='ordered-short-context-correction',channels=24,recent_frames=20,hidden_units=64)
+        if a.temporal_readout:readout.update(type='ordered-final-temporal-head',hidden_units=0)
         if a.head_backbone_weights:readout['backbone_sha256']=hashlib.sha256(a.head_backbone_weights.read_bytes()).hexdigest()
     if a.resume_weights:model.load_weights(a.resume_weights)
     if a.freeze_batch_normalization:
@@ -202,7 +215,7 @@ def main():
     model.compile(optimizer=tf.keras.optimizers.Adam(a.learning_rate),loss='binary_crossentropy',metrics=['accuracy'])
     x,y=sets['train'];vx,vy=sets['validation'];tx,ty=sets['test']
     weights={0:a.negative_weight,1:float((y==0).sum()/max(1,(y==1).sum()))}
-    callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=5,restore_best_weights=True)]
+    callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=a.early_stop_patience,restore_best_weights=True)]
     if a.save_epoch_checkpoints:
         (a.output/'epochs').mkdir(exist_ok=True)
         callbacks.append(tf.keras.callbacks.ModelCheckpoint(str(a.output/'epochs/epoch-{epoch:02d}.weights.h5'),save_weights_only=True))
@@ -219,10 +232,18 @@ def main():
     if widening:report['widening']=widening
     if readout:report['classifier_readout']=readout
     report['batch_normalization_frozen']=a.freeze_batch_normalization
+    report['training_regularization']={'dropout':a.dropout,'early_stop_patience':a.early_stop_patience}
     for split,xx,yy in [('validation',vx,vy),('test',tx,ty)]:
         if split=='test' and a.defer_test:continue
         pred=model.predict(xx,verbose=0).reshape(-1);report['metrics'][split]={'positive_count':int(sum(yy==1)),'negative_count':int(sum(yy==0)),'window_recall_at_0.9':float(np.mean(pred[yy==1]>=.9)),'window_false_positive_rate_at_0.9':float(np.mean(pred[yy==0]>=.9))}
     config={'stride':3,'spectrogram_length':a.window_frames}
+    if a.phonetic_readout:
+        from phonetic_readout import anchor_for_quantization
+        before=model(x[:8],training=False).numpy()
+        model=anchor_for_quantization(model)
+        difference=float(np.max(np.abs(model(x[:8],training=False).numpy()-before)))
+        if difference>1e-5:raise ValueError('Integer-state anchor changed the trained function')
+        report['integer_state_anchor_max_difference']=difference
     streaming=utils.to_streaming_inference(model,config,modes.Modes.STREAM_INTERNAL_STATE_INFERENCE)
     archive=tf.keras.export.ExportArchive();archive.track(streaming);archive.add_endpoint(name='serve',fn=streaming.call,input_signature=[tf.TensorSpec(streaming.input.shape,tf.float32)])
     archive.write_out(str(a.output/'saved'),verbose=False)

@@ -40,3 +40,28 @@ def attach(base):
     out=tf.keras.layers.Activation('sigmoid',name='ending_probability')(
         tf.keras.layers.Add(name='ending_logit')([logit,correction]))
     return tf.keras.Model(base.inputs[0],out)
+
+
+def anchor_for_quantization(base):
+    """Preserve trained weights while making the ending buffer fully integer.
+
+    A unit depthwise kernel supplies a quantizable consumer for the recurrent
+    buffer. With Flatten/Concat alone, TF 2.18 leaves this state in float32.
+    Insert this identity only for export, keeping training checkpoints portable.
+    """
+    name='ending_integer_state_anchor'
+    def call(layer,*args,**kwargs):
+        result=layer(*args,**kwargs)
+        if layer.name=='ending_recent_buffer':
+            result=tf.keras.layers.DepthwiseConv2D((1,1),use_bias=False,trainable=False,
+                depthwise_initializer='ones',name=name)(result)
+        return result
+    model=tf.keras.models.clone_model(base,call_function=call)
+    original={layer.name:layer for layer in base.layers if not isinstance(layer,tf.keras.layers.InputLayer)}
+    copied=set()
+    for layer in model.layers:
+        if layer.name==name or isinstance(layer,tf.keras.layers.InputLayer):continue
+        if layer.name not in original:raise ValueError('Export changed an existing layer name: '+layer.name)
+        layer.set_weights(original[layer.name].get_weights());copied.add(layer.name)
+    if copied!=set(original):raise ValueError('Export lost an existing layer')
+    return model

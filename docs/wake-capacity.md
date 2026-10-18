@@ -13,6 +13,7 @@ On 2026-10-18 the user authorized larger networks and continued iteration toward
 | V11B, epoch 14 | 128 / 64 | 189,936 | 293/316 | 1/730 |
 | V11C, added train contrasts, epoch 1 | 160 / 80 | 261,312 | 291/316 | 0/730 |
 | V11D, frozen encoder + residual readout, epoch 7 | 128 / 64 + 64-unit readout | 201,096 | 285/316 | 1/730 |
+| V11G, short ordered branch, epoch 1 | 128 / 64 + 24-channel branch | 250,688 | 312/316 | 5/730 |
 
 V11B epoch 13 detects all 38 newly added original fictional targets, including both pronunciations and adult/childlike styles. Epoch 14 passes the recall groups but falsely wakes on one pitch-shifted “你好皮球”. All 18 B epochs were checked; none passed the entire gate. These are reused **development** recordings, not blind or human acceptance. No household recording was used for training, tuning, selection or scoring this round.
 
@@ -23,6 +24,7 @@ Synthetic-only device measurements with both displays running:
 | V11A | 42,028 B | 11,410 µs | 11,427 µs | 0/600 / 0 |
 | V11B epoch 13 | 53,228 B | 15,516 µs | 15,641 µs | 0/600 / 0 |
 | V11C epoch 1 | 70,732 B | 20,556 µs | 20,643 µs | 0/600 / 0 |
+| V11G epoch 1 | 61,260 B | 19,923 µs | 20,043 µs | 0/600 / 0 |
 
 The timing image disables the microphone, amplifier and network. It feeds deterministic generated PCM at a 30 ms cadence and renders eyes concurrently. Each temporary test restored the V8D application and verified its SHA-256, without writing NVS. This establishes preliminary computational headroom; real audio/AFE/network concurrency and physical wake trials remain separate.
 
@@ -34,6 +36,11 @@ C eliminates false wakes at its first checkpoint but regresses legacy targets an
 Ongoing ablations retain the same development waveforms and protected test hashes: E reduces the negative-loss multiplier; F additionally freezes pretrained batch-normalization statistics while fine-tuning convolutions; G adds a short ordered acoustic branch to the frozen whole-phrase encoder. The G branch shares the first causal features, learns three depthwise stages (5/9/13, 24 channels), retains 20 time steps and uses a zero-initialized residual logit. Its initial function and subsequent offline/streaming alignment are tested. It is not a pretrained phoneme recognizer.
 
 A separate 4.5-second startup-context diagnostic at simulated background RMS 0/20/80 did **not** resolve B's regression. Historical one-second cold-start scores and labels remain the gate. Diagnostic input contexts are explicit in reports; the gate rejects a mismatched context. No warm-up guard or threshold relaxation was deployed.
+
+
+G's first export was rejected because one recurrent buffer stayed FLOAT32. The repair inserts an exact unit depthwise kernel only at export, copies every existing layer weight, verifies unchanged probabilities and checks the entire TFLite graph for integer compatibility. Six reference/Micro cases with three resets each then passed (host arena 61,808 bytes). On-device synthetic timing used 61,260 bytes and reached 7.4 fps; this is still below the animation design target.
+
+Later experiments preserve all failed results: I adds training-only dropout (`--dropout .15`) and a longer window-loss patience; K/L interpolate compatible checkpoints into one network, with optional TRAIN-only normalization calibration. These do not run two networks on the device. M (`--temporal-readout --head-backbone-weights ...`) keeps the frozen encoder and replaces the final average with an ordered head. Its initialization tiles the original classifier weights across time and divides by the number of steps, preserving the original function. It trains only the new classifier and uses an integer identity consumer for its recurrent state. No new model download, family training, threshold relaxation or blind-test selection was involved.
 
 ## Reproducing the checks
 
