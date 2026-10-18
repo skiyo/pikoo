@@ -135,13 +135,17 @@ def main():
     p.add_argument('--phone-logits',action='store_true',help='Use frozen phone logits instead of probabilities; separate quantization experiment')
     p.add_argument('--phone-logit-clip',type=float,default=0.,help='Optional 1..32 fixed logit bound for integer-friendly phone features')
     p.add_argument('--temporal-readout',action='store_true',help='Freeze the encoder and replace average pooling with an initially equivalent ordered head')
+    p.add_argument('--sequence-readout',action='store_true',help='Train an ordered nonlinear wake head over an explicit zero-head phonetic encoder')
+    p.add_argument('--train-sequence-encoder',action='store_true',help='Explicit joint acoustic-sequence experiment; retain pretrained normalization statistics')
     p.add_argument('--train-temporal-encoder',action='store_true',help='Train the ordered temporal head and its encoder jointly; separate fresh-training experiment')
     a=p.parse_args()
     os.umask(0o077)
     if not 65536<=a.max_model_bytes<=524288:raise ValueError('Model flash budget must be 64..512 KiB')
     if a.export_only and (not a.resume_weights or a.widen_from):raise ValueError('Export-only requires one explicit resume checkpoint')
     if a.classifier_head_units and not 16<=a.classifier_head_units<=256:raise ValueError('Classifier head must have 16..256 units')
-    if a.head_backbone_weights and (not (a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head) or (a.resume_weights and not a.export_only) or a.widen_from):raise ValueError('Head backbone requires a readout; resume is export-only and widening is separate')
+    if a.head_backbone_weights and (not (a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head or a.sequence_readout) or (a.resume_weights and not a.export_only) or a.widen_from):raise ValueError('Head backbone requires a readout; resume is export-only and widening is separate')
+    if a.sequence_readout and (not a.head_backbone_weights or a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head or a.dropout or a.widen_from):raise ValueError('Sequence readout requires only its explicit phonetic encoder initialization')
+    if a.train_sequence_encoder and not a.sequence_readout:raise ValueError('Sequence encoder fine-tuning requires its explicit ordered head')
     if a.phone_head and (not a.head_backbone_weights or a.temporal_readout or a.phonetic_readout or a.classifier_head_units or a.dropout or a.widen_from):raise ValueError('Phone bottleneck requires one explicit matching encoder initialization')
     if a.phone_logits and not a.phone_head:raise ValueError('Phone logits requires a matching phone head')
     if a.phone_logit_clip and (not a.phone_logits or not 1<=a.phone_logit_clip<=32):raise ValueError('Clip requires phone logits and a finite 1..32 bound')
@@ -198,10 +202,13 @@ def main():
         if difference>1e-5:raise ValueError('Widening changed the original function')
         widening={'source_sha256':hashlib.sha256(a.widen_from.read_bytes()).hexdigest(),'initial_max_probability_difference':difference,'source_filters':a.source_filters,'source_first_filters':a.source_first_filters}
     readout=None
-    if a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head:
+    if a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head or a.sequence_readout:
         if a.head_backbone_weights:model.load_weights(a.head_backbone_weights)
         source_model=model
-        if a.phone_head:
+        if a.sequence_readout:
+            from sequence_readout import attach
+            model=attach(source_model,train_encoder=a.train_sequence_encoder)
+        elif a.phone_head:
             from phonetic_bottleneck import attach
             model=attach(source_model,a.phone_head,a.head_backbone_weights,posterior=not a.phone_logits,logit_clip=a.phone_logit_clip)
         elif a.temporal_readout:
@@ -219,6 +226,8 @@ def main():
         if a.phonetic_readout:readout.update(type='ordered-short-context-correction',channels=24,recent_frames=20,hidden_units=64)
         if a.phone_head:readout.update(type='frozen-phonetic-bottleneck',phone_input='logits' if a.phone_logits else 'probabilities',phone_logit_clip=a.phone_logit_clip,phone_head_sha256=hashlib.sha256(a.phone_head.read_bytes()).hexdigest())
         if a.temporal_readout:readout.update(type='ordered-final-temporal-head',hidden_units=0)
+        if a.sequence_readout:readout.update(type='frozen-acoustic-sequence',hidden_units=32,channels=16)
+        if a.train_sequence_encoder:readout.update(type='joint-acoustic-sequence',backbone_frozen=False,normalization_frozen=True)
         if a.train_temporal_encoder:
             for layer in model.layers:
                 if layer.name!='temporal_integer_anchor':layer.trainable=True
@@ -235,7 +244,18 @@ def main():
     if a.save_epoch_checkpoints:
         (a.output/'epochs').mkdir(exist_ok=True)
         callbacks.append(tf.keras.callbacks.ModelCheckpoint(str(a.output/'epochs/epoch-{epoch:02d}.weights.h5'),save_weights_only=True))
-    history=None if a.export_only else model.fit(x,y,batch_size=32,epochs=a.epochs,validation_data=(vx,vy),class_weight=weights,callbacks=callbacks,verbose=2)
+    batch_rng=np.random.default_rng(42)
+    def batches(values,labels,shuffle):
+        def generate():
+            order=np.arange(len(labels))
+            if shuffle:batch_rng.shuffle(order)
+            for start in range(0,len(order),32):
+                selected=order[start:start+32];yield values[selected],labels[selected]
+        data=tf.data.Dataset.from_generator(generate,output_signature=(tf.TensorSpec((None,a.window_frames,40),tf.float32),tf.TensorSpec((None,),tf.float32)))
+        data=data.apply(tf.data.experimental.assert_cardinality((len(labels)+31)//32))
+        options=tf.data.Options();options.threading.private_threadpool_size=2
+        return data.with_options(options).prefetch(1)
+    history=None if a.export_only else model.fit(batches(x,y,True),epochs=a.epochs,validation_data=batches(vx,vy,False),class_weight=weights,callbacks=callbacks,shuffle=False,verbose=2)
     model.save_weights(a.output/'checkpoint.weights.h5')
     report={'status':'experimental','feature_config':feature_config,'filters':a.filters,'first_filters':a.first_filters,'kernels':kernels,'test_deferred':a.defer_test,'data_sources':{name:sum(r.get('source','unknown')==name for r in manifest) for name in set(r.get('source','unknown') for r in manifest)},'real_child_clips':sum(bool(r.get('real_child')) for r in manifest),'restricted_data':any(r.get('restricted',False) for r in manifest),'samples':{s:len(v[1]) for s,v in sets.items()},'epochs':len(history.history['loss']) if history else 0,'export_only':a.export_only,'metrics':{}}
     if history:(a.output/'training-history.json').write_text(json.dumps(history.history,indent=2)+'\n')
@@ -278,8 +298,13 @@ def main():
             for i in range(0,a.window_frames,3):yield [sample[None,i:i+3,:].astype(np.float32)]
     converter=tf.lite.TFLiteConverter.from_saved_model(str(a.output/'saved'))
     converter.optimizations=[tf.lite.Optimize.DEFAULT];converter._experimental_variable_quantization=True
+    # The pinned TF 2.18 reference FC kernel disagrees with optimized kernels
+    # on multi-channel Dense quantization. Keep FC weights per-tensor so the
+    # validation backend and Micro deployment use the same portable graph.
+    converter._experimental_disable_per_channel_quantization_for_dense_layers=True
     converter.target_spec.supported_ops=[tf.lite.OpsSet.TFLITE_BUILTINS_INT8];converter.inference_input_type=tf.int8;converter.inference_output_type=tf.uint8;converter.representative_dataset=representative
     binary=converter.convert();(a.output/'nihao_pikoo.tflite').write_bytes(binary)
+    report['dense_weight_quantization']='per-tensor; pinned reference-kernel portability'
     from check_esp32_model import check
     compatibility=check(a.output/'nihao_pikoo.tflite',Path(__file__).parents[1]/'firmware/main/wake_model.cpp',a.max_model_bytes)
     (a.output/'esp32-static-check.json').write_text(json.dumps(compatibility,indent=2)+'\n')

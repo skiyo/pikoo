@@ -4,7 +4,7 @@
   "household_training_tuning_calibration_selection": false,
   "household_scored_this_round": false,
   "normal_model_upgraded": false,
-  "data_boundary": "V11 and V12 independently consumed tests are protected; not fresh tests and never development inputs",
+  "data_boundary": "V11, V12 and V13 independent tests are consumed and hash-protected; never training, calibration or development inputs",
   "completed": {
     "MN_B14_veto": {
       "development_targets": 293,
@@ -56,7 +56,7 @@
       "bytes": 218536,
       "development_hits": 0,
       "development_targets": 316,
-      "result": "failed; cold streaming export differs from window metrics"
+      "result": "Historical reference scores invalidated by multi-output Dense backend disagreement; portable re-export required"
     },
     "Q2b_raw_logits": {
       "bytes": 217320,
@@ -65,13 +65,13 @@
       "development_false_wakes": 730,
       "development_non_targets": 730,
       "float_int8_max_difference_on_TRAIN": 0.9961,
-      "result": "rejected quantization corruption; no deployment"
+      "result": "Historical scores invalidated by backend disagreement; portable re-export evaluated separately below"
     },
     "Q2c_bounded_logits": {
       "bytes": 217344,
       "float_int8_TRAIN_cases_passed": 0,
       "float_int8_TRAIN_cases": 4,
-      "result": "rejected parity check before accuracy promotion"
+      "result": "Historical parity rejection includes reference backend disagreement; do not attribute it to training or export corruption"
     },
     "Q3_long_ordered": {
       "bytes": 206408,
@@ -128,12 +128,68 @@
       "best_false_wakes": 1,
       "non_targets": 730,
       "result": "all failed original gate; legacy and adult mixed recall also regressed"
+    },
+    "G_portable_dense": {
+      "bytes": 249176,
+      "development_hits": 312,
+      "development_targets": 316,
+      "development_false_wakes": 5,
+      "development_non_targets": 730,
+      "TRAIN_parity_cases_passed": 4,
+      "TRAIN_parity_cases": 4,
+      "result": "corrected per-tensor Dense graph; full development still failed"
+    },
+    "T_short_phonetic_initial": {
+      "bytes_portable": 90296,
+      "phoneme_error_rate": 0.6446426158627212,
+      "epochs": 28,
+      "result": "research only; source contained binary cropped-prefix records with inherited full transcripts; do not treat as clean-utterance phonetic accuracy"
+    },
+    "Q2b_portable_dense": {
+      "bytes": 215200,
+      "development_hits": 283,
+      "development_targets": 316,
+      "development_false_wakes": 29,
+      "development_non_targets": 730,
+      "TRAIN_float_int8_cases_passed": 2,
+      "TRAIN_float_int8_cases": 4,
+      "result": "failed after portable re-export; original backend collapse corrected"
+    },
+    "V_B13_original_child_phonetic_veto": {
+      "combined_bytes": 280232,
+      "development_hits": 295,
+      "development_targets": 316,
+      "development_false_wakes": 0,
+      "development_non_targets": 730,
+      "independent_hits": 34,
+      "independent_targets": 37,
+      "independent_false_wakes": 2,
+      "independent_non_targets": 44,
+      "independent_groups": {
+        "adult_mandarin": "7/8",
+        "adult_mixed": "4/4",
+        "childlike_mandarin": "13/14",
+        "childlike_mixed": "10/11"
+      },
+      "host_Micro_vector_parity": "6 TRAIN cases, 3 resets each, exact bytes",
+      "result": "failed-independent-V13; not deployed"
+    },
+    "W_frozen_original_acoustic_sequence": {
+      "bytes": 132064,
+      "development_hits": 306,
+      "development_targets": 316,
+      "development_false_wakes": 32,
+      "development_non_targets": 730,
+      "TRAIN_float_int8_cases_passed": 5,
+      "TRAIN_float_int8_cases": 8,
+      "result": "failed; not deployed"
     }
   },
   "pending": [
-    "T short-context phonetic encoder, fresh normalization and original TRAIN supervision",
-    "V13 independent synthetic test:96raw,81content-screened; no wake model scoring yet",
-    "actual hardware and four household members",
+    "U original-full-utterance phonetic continuation, bounded batches, 15.43h original child TRAIN audio",
+    "X later-original-child acoustic encoder + ordered readout joint fine-tuning, normalization frozen; no result yet",
+    "Any new qualifying candidate needs freshly generated independent V14; V13 is consumed",
+    "Actual ESP32 audio/display concurrency and four household members",
     "8-hour background and 72-hour runtime"
   ],
   "notes": [
@@ -143,5 +199,22 @@
     "Experimental optional verifier integration stays OFF; it has no qualified release.",
     "No NVIDIA NIM/Magpie or new model download used.",
     "R/S are private engineering prototypes, not published reproducible model releases. Exact protected acoustic weights were retained while learning on streamed TRAIN features."
-  ]
+  ],
+  "backend_correction": {
+    "tensorflow": "2.18.1",
+    "observed": "Same58-output phone graph: optimized runtime near float, reference runtime severely different; standardize Dense weights per-tensor and reject unverified per-channel FC scoring",
+    "fix": "train.py enables _experimental_disable_per_channel_quantization_for_dense_layers; static and runtime guards; synthetic backend regression test",
+    "family_audio_used": false
+  },
+  "data_correction": {
+    "discovered": "Combined binary TRAIN manifest included297 cropped child prefixes; those labels are suitable for wake rejection, not full-transcript phonetic alignment",
+    "fix": "phonetic eligibility excludes derived/cropped records; new private original-only phonetic corpus",
+    "original_child_TRAIN_clips": 21842,
+    "original_child_TRAIN_hours": 15.429355659722221,
+    "adult_public_clips": 502,
+    "ASR_screened_synthetic": 122,
+    "new_large_download": false,
+    "official_dev_or_test_archive_opened": false,
+    "household_or_sealed_used": false
+  }
 }

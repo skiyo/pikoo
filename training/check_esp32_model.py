@@ -52,6 +52,12 @@ def check(path, firmware, max_bytes=65536):
              schema.TensorType.INT64,schema.TensorType.RESOURCE,schema.TensorType.BOOL}
     for g in range(model.SubgraphsLength()):
         sub=model.Subgraphs(g)
+        for o in range(sub.OperatorsLength()):
+            op=sub.Operators(o)
+            if model.OperatorCodes(op.OpcodeIndex()).BuiltinCode()==schema.BuiltinOperator.FULLY_CONNECTED:
+                quant=sub.Tensors(op.Inputs(1)).Quantization()
+                if quant and quant.ScaleLength()>1:
+                    raise ValueError('Per-channel FullyConnected requires separate kernel parity verification; export per-tensor Dense weights for the pinned reference policy')
         for t in range(sub.TensorsLength()):
             if sub.Tensors(t).Type() not in allowed:
                 raise ValueError('Floating point or unsupported tensor in quantized model')
