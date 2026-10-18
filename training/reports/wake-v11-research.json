@@ -183,11 +183,34 @@
       "TRAIN_float_int8_cases_passed": 5,
       "TRAIN_float_int8_cases": 8,
       "result": "failed; not deployed"
+    },
+    "X_joint_original_acoustic_sequence": {
+      "bytes": 132064,
+      "development_hits": 315,
+      "development_targets": 316,
+      "development_false_wakes": 58,
+      "development_non_targets": 730,
+      "result": "failed; no deployment"
+    },
+    "U_later_fixed_margin_veto": {
+      "development_hits": 277,
+      "development_targets": 316,
+      "development_false_wakes": 0,
+      "development_non_targets": 730,
+      "pitch_tempo_hits": 167,
+      "pitch_tempo_targets": 203,
+      "result": "failed development recall; no independent test consumed"
+    },
+    "public_child_segment_pilot": {
+      "constructed_phrases": 34,
+      "ASR_content_approved": 0,
+      "household_used": false,
+      "result": "all rejected; not used for training or represented as natural child wake utterances"
     }
   },
   "pending": [
     "U original-full-utterance phonetic continuation, bounded batches, 15.43h original child TRAIN audio",
-    "X later-original-child acoustic encoder + ordered readout joint fine-tuning, normalization frozen; no result yet",
+    "Y complete near-phrase multiclass supervision with scalar wake export; training and automatic dev check pending",
     "Any new qualifying candidate needs freshly generated independent V14; V13 is consumed",
     "Actual ESP32 audio/display concurrency and four household members",
     "8-hour background and 72-hour runtime"

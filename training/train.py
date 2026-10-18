@@ -137,6 +137,7 @@ def main():
     p.add_argument('--temporal-readout',action='store_true',help='Freeze the encoder and replace average pooling with an initially equivalent ordered head')
     p.add_argument('--sequence-readout',action='store_true',help='Train an ordered nonlinear wake head over an explicit zero-head phonetic encoder')
     p.add_argument('--train-sequence-encoder',action='store_true',help='Explicit joint acoustic-sequence experiment; retain pretrained normalization statistics')
+    p.add_argument('--contrastive-classes',action='store_true',help='Separate complete near-phrase classes during sequence training; export scalar wake probability')
     p.add_argument('--train-temporal-encoder',action='store_true',help='Train the ordered temporal head and its encoder jointly; separate fresh-training experiment')
     a=p.parse_args()
     os.umask(0o077)
@@ -146,6 +147,7 @@ def main():
     if a.head_backbone_weights and (not (a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head or a.sequence_readout) or (a.resume_weights and not a.export_only) or a.widen_from):raise ValueError('Head backbone requires a readout; resume is export-only and widening is separate')
     if a.sequence_readout and (not a.head_backbone_weights or a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head or a.dropout or a.widen_from):raise ValueError('Sequence readout requires only its explicit phonetic encoder initialization')
     if a.train_sequence_encoder and not a.sequence_readout:raise ValueError('Sequence encoder fine-tuning requires its explicit ordered head')
+    if a.contrastive_classes and not a.sequence_readout:raise ValueError('Contrast supervision requires the explicit sequence readout')
     if a.phone_head and (not a.head_backbone_weights or a.temporal_readout or a.phonetic_readout or a.classifier_head_units or a.dropout or a.widen_from):raise ValueError('Phone bottleneck requires one explicit matching encoder initialization')
     if a.phone_logits and not a.phone_head:raise ValueError('Phone logits requires a matching phone head')
     if a.phone_logit_clip and (not a.phone_logits or not 1<=a.phone_logit_clip<=32):raise ValueError('Clip requires phone logits and a finite 1..32 bound')
@@ -233,13 +235,28 @@ def main():
                 if layer.name!='temporal_integer_anchor':layer.trainable=True
             readout.update(backbone_frozen=False,training='joint-encoder-and-ordered-head')
         if a.head_backbone_weights:readout['backbone_sha256']=hashlib.sha256(a.head_backbone_weights.read_bytes()).hexdigest()
+    fit_model=model
+    contrast_labels=None
+    if a.contrastive_classes:
+        from contrastive_readout import attach,expanded_labels,PHRASES
+        fit_model,model=attach(model)
+        contrast_labels=expanded_labels(manifest,a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.negative_prefixes)
+        for split,labels in contrast_labels.items():
+            if len(labels)!=len(sets[split][1]) or not np.array_equal(labels==1,sets[split][1]==1):raise ValueError('Contrast labels do not match cached binary examples')
+        readout.update(supervision='explicit-complete-near-phrase-classes',classes=PHRASES)
     if a.resume_weights:model.load_weights(a.resume_weights)
     if a.freeze_batch_normalization:
         from residual_readout import freeze_normalization
         freeze_normalization(model)
-    model.compile(optimizer=tf.keras.optimizers.Adam(a.learning_rate),loss='binary_crossentropy',metrics=['accuracy'])
+    fit_model.compile(optimizer=tf.keras.optimizers.Adam(a.learning_rate),loss='sparse_categorical_crossentropy' if a.contrastive_classes else 'binary_crossentropy',metrics=['accuracy'])
     x,y=sets['train'];vx,vy=sets['validation'];tx,ty=sets['test']
     weights={0:a.negative_weight,1:float((y==0).sum()/max(1,(y==1).sum()))}
+    fit_y,fit_vy=y,vy
+    if contrast_labels is not None:
+        fit_y,fit_vy=contrast_labels['train'],contrast_labels['validation']
+        counts={int(k):int((fit_y==k).sum()) for k in np.unique(fit_y)}
+        weights={k:min(8.,max(1.,counts.get(0,1)/max(1,count)/max(1,len(counts)-2))) for k,count in counts.items()}
+        weights[0]=a.negative_weight;weights[1]=float((y==0).sum()/max(1,(y==1).sum()))
     callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=a.early_stop_patience,restore_best_weights=True)]
     if a.save_epoch_checkpoints:
         (a.output/'epochs').mkdir(exist_ok=True)
@@ -255,7 +272,7 @@ def main():
         data=data.apply(tf.data.experimental.assert_cardinality((len(labels)+31)//32))
         options=tf.data.Options();options.threading.private_threadpool_size=2
         return data.with_options(options).prefetch(1)
-    history=None if a.export_only else model.fit(batches(x,y,True),epochs=a.epochs,validation_data=batches(vx,vy,False),class_weight=weights,callbacks=callbacks,shuffle=False,verbose=2)
+    history=None if a.export_only else fit_model.fit(batches(x,fit_y,True),epochs=a.epochs,validation_data=batches(vx,fit_vy,False),class_weight=weights,callbacks=callbacks,shuffle=False,verbose=2)
     model.save_weights(a.output/'checkpoint.weights.h5')
     report={'status':'experimental','feature_config':feature_config,'filters':a.filters,'first_filters':a.first_filters,'kernels':kernels,'test_deferred':a.defer_test,'data_sources':{name:sum(r.get('source','unknown')==name for r in manifest) for name in set(r.get('source','unknown') for r in manifest)},'real_child_clips':sum(bool(r.get('real_child')) for r in manifest),'restricted_data':any(r.get('restricted',False) for r in manifest),'samples':{s:len(v[1]) for s,v in sets.items()},'epochs':len(history.history['loss']) if history else 0,'export_only':a.export_only,'metrics':{}}
     if history:(a.output/'training-history.json').write_text(json.dumps(history.history,indent=2)+'\n')
