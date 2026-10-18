@@ -9,7 +9,16 @@ import tensorflow as tf
 from pymicro_features import MicroFrontend
 from streaming_runtime import interpreter as create_interpreter,quantize
 
-def predict(model,pcm):
+def rolling_peak(probabilities,warmup_frames=0):
+    if warmup_frames<0 or warmup_frames%3:raise ValueError('Warmup must be a nonnegative multiple of three features')
+    # The first valid output is the invocation that fills the declared input
+    # horizon. All five probabilities in a decision must be valid outputs.
+    skip=max(0,warmup_frames//3-1)
+    valid=np.asarray(probabilities)[skip:]
+    return float(np.max(np.convolve(valid,np.ones(5)/5,'valid'))) if len(valid)>=5 else 0.
+
+
+def predict(model,pcm,warmup_frames=0):
     interpreter=create_interpreter(model)
     interpreter.allocate_tensors();inp=interpreter.get_input_details()[0];out=interpreter.get_output_details()[0]
     if inp['shape'].tolist()!=[1,3,40]:raise ValueError(f"Unexpected input shape {inp['shape']}")
@@ -22,8 +31,7 @@ def predict(model,pcm):
         scale,zero=inp['quantization'];x=quantize(pending,scale,zero)[None,...]
         pending=[];interpreter.set_tensor(inp['index'],x);interpreter.invoke()
         oscale,ozero=out['quantization'];prob.append((int(interpreter.get_tensor(out['index']).flat[0])-ozero)*oscale)
-    rolling=np.convolve(prob,np.ones(5)/5,'valid') if len(prob)>=5 else np.array([0.])
-    return float(max(rolling))
+    return rolling_peak(prob,warmup_frames)
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--model',type=Path,required=True);p.add_argument('--manifest',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--threshold',type=float,default=.9);a=p.parse_args()

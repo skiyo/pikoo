@@ -17,13 +17,13 @@ int main(int argc, char **argv) {
   std::vector<char> bytes((std::istreambuf_iterator<char>(file)), {});
   flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size());
   if (bytes.empty() || !tflite::VerifyModelBuffer(verifier)) return 3;
-  tflite::MicroMutableOpResolver<18> resolver;
+  tflite::MicroMutableOpResolver<19> resolver;
   resolver.AddCallOnce(); resolver.AddVarHandle(); resolver.AddReadVariable();
   resolver.AddAssignVariable(); resolver.AddStridedSlice(); resolver.AddConcatenation();
   resolver.AddConv2D(); resolver.AddDepthwiseConv2D(); resolver.AddReshape();
   resolver.AddFullyConnected(); resolver.AddLogistic(); resolver.AddAveragePool2D();
   resolver.AddQuantize(); resolver.AddDequantize(); resolver.AddMul(); resolver.AddAdd();
-  resolver.AddMean(); resolver.AddExpandDims();
+  resolver.AddMean(); resolver.AddExpandDims(); resolver.AddSoftmax();
   alignas(16) static uint8_t arena[262144];
   auto allocator = tflite::MicroAllocator::Create(arena, sizeof(arena));
   auto variables = tflite::MicroResourceVariables::Create(allocator, 24);

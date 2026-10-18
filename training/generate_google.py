@@ -38,14 +38,14 @@ STYLES = [
 NEGATIVES = ['你好皮球', '你好朋友', '给我讲一个故事', '皮球在哪里']
 
 
-def jobs(mixed_pronunciation=False,phonetic_spelling=False):
+def jobs(mixed_pronunciation=False,phonetic_spelling=False,near_phrase_contrasts=False):
     """Assign voice identities to splits before any generation or augmentation."""
     rows = []
     for split, voices in VOICES.items():
         for voice in voices:
             targets=['你好皮酷','你好Pikoo','你好，Pikoo','你好皮酷'] if mixed_pronunciation else ['你好皮酷']*4
             if phonetic_spelling:targets=['你好皮酷','你好批枯','你好披哭','你好皮酷']
-            for label, texts in [(1, targets), (0, NEGATIVES)]:
+            for label, texts in [(1, targets), (0, ['你好皮球','你好酷酷','你好皮','你好皮皮'] if near_phrase_contrasts else NEGATIVES)]:
                 for index, text in enumerate(texts):
                     style = ('Speak standard Mainland Mandarin Chinese. Read only '
                              'the exact supplied Chinese text, addressing a small pet robot. '
@@ -158,6 +158,7 @@ def main():
     p.add_argument('--mixed-pronunciation',action='store_true',help='Include English Pikoo / pi1-ku1 as an accepted target alongside Mandarin')
     p.add_argument('--phonetic-spelling',action='store_true',help='Constrain pi1-ku1 using exact Chinese homophone text instead of ambiguous Latin spelling')
     p.add_argument('--utterance-indices',type=int,nargs='+',help='Single-utterance requests only: select positions 0..7 within each voice (four targets, four negatives)')
+    p.add_argument('--near-phrase-contrasts',action='store_true',help='Explicit near-phrase negatives; retain assigned voice splits')
     a = p.parse_args()
     os.umask(0o077)
     key = None
@@ -179,7 +180,7 @@ def main():
     next_request = [0.0]
 
     def selected_jobs():
-        all_rows = jobs(a.mixed_pronunciation,a.phonetic_spelling)
+        all_rows = jobs(a.mixed_pronunciation,a.phonetic_spelling,a.near_phrase_contrasts)
         if a.voices:
             if len(set(a.voices)) != len(a.voices) or any(v not in {r['voice'] for r in all_rows} for v in a.voices):
                 raise ValueError('Unknown or duplicate voice')
@@ -210,6 +211,8 @@ def main():
         instructions = ('Speak only the exact Chinese utterances below in the order given. '
                         'Leave at least 1.2 seconds of silence between utterances. '
                         'Never read instructions or line numbers. ' + content[0]['annotations'][0]['style'])
+        if any('Pikoo' in c['text'] for c in content):
+            instructions += ' The English pet nickname Pikoo is pronounced PEE-koo, two complete level syllables, not pee-go or pee-co. Preserve the final koo.'
         transcript = '\n'.join(c['text'].replace('<long pause>', '') for c in content)
         return ('https://generativelanguage.googleapis.com/v1beta/models/' + a.model + ':generateContent',
             {'contents': [{'parts': [{'text': instructions + '\n\n' + transcript}]}],

@@ -20,8 +20,10 @@ def main():
     p.add_argument('--output',type=Path,required=True);p.add_argument('--clean-only',action='store_true')
     p.add_argument('--lead-seconds',type=float,default=1.,help='Explicit diagnostic startup context; default preserves historical 1s silence')
     p.add_argument('--background-rms',type=float,default=0.,help='Deterministic simulated PCM background; changes the evaluation convention, not labels')
+    p.add_argument('--warmup-frames',type=int,default=0,help='Explicit model startup contract; masks only incomplete recurrent state, preserves default cold evaluation')
     a=p.parse_args();os.umask(0o077)
     if not math.isfinite(a.lead_seconds) or not 1<=a.lead_seconds<=10 or not math.isfinite(a.background_rms) or not 0<=a.background_rms<=200:raise ValueError('Invalid diagnostic input context')
+    if not 0<=a.warmup_frames<=900 or a.warmup_frames%3 or (a.warmup_frames and a.lead_seconds*100<a.warmup_frames+14):raise ValueError('Warmup requires a full horizon and five valid outputs before the utterance')
     manifest=json.loads(a.manifest.read_text());rows=[r for r in manifest if r['split']==a.split]
     models={'previous':a.previous,'candidate':a.model}
     hashes={k:hashlib.sha256(v.read_bytes()).hexdigest() for k,v in models.items()}
@@ -35,7 +37,7 @@ def main():
             samples=np.pad(x,(round(a.lead_seconds*16000),16000))
             if a.background_rms:
                 samples=np.clip(samples+background_rng.normal(0,a.background_rms,len(samples)),-32768,32767).astype('<i2')
-            scores={k:predict(path,samples) for k,path in models.items()}
+            scores={k:predict(path,samples,a.warmup_frames) for k,path in models.items()}
             details.append({'label':row['label'],'source':row.get('source'),'sha256':row.get('sha256') or hashlib.sha256((a.manifest.parent/row['path']).read_bytes()).hexdigest(),
                 'speaker':row.get('speaker',row.get('voice')),'real_child':row.get('real_child',False),
                 'age':row.get('age'),'text':None if row.get('real_child') else row.get('text'),
@@ -69,6 +71,7 @@ def main():
         'runtime':'TFLite reference kernels; firmware float32 half-away input quantization',
         'threshold':.9,'models':hashes,'conditions':summaries,'details':details}
     report['input_context']={'lead_seconds':a.lead_seconds,'background_rms':a.background_rms}
+    if a.warmup_frames:report['input_context']['warmup_feature_frames']=a.warmup_frames
     report['background_seed']=20261018
     for model,path in models.items():
         assert hashlib.sha256(path.read_bytes()).hexdigest()==hashes[model],'Model changed during evaluation'

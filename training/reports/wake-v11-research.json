@@ -1,0 +1,147 @@
+{
+  "date": "2026-10-18",
+  "status": "research-only-no-qualified-release",
+  "household_training_tuning_calibration_selection": false,
+  "household_scored_this_round": false,
+  "normal_model_upgraded": false,
+  "data_boundary": "V11 and V12 independently consumed tests are protected; not fresh tests and never development inputs",
+  "completed": {
+    "MN_B14_veto": {
+      "development_targets": 293,
+      "development_targets_total": 316,
+      "development_false_wakes": 1,
+      "development_non_targets": 730,
+      "result": "failed"
+    },
+    "N_B13_B14_ensemble": {
+      "development_targets": 294,
+      "development_targets_total": 316,
+      "development_false_wakes": 0,
+      "independent_targets": 34,
+      "independent_targets_total": 34,
+      "independent_false_wakes": 2,
+      "independent_non_targets": 34,
+      "result": "failed-independent-test"
+    },
+    "O_B13_stronger_veto": {
+      "replay_cases_before_rejection": 3,
+      "result": "early-rejected; not complete accuracy"
+    },
+    "P_B13_H5_ensemble": {
+      "development_targets": 296,
+      "development_targets_total": 316,
+      "development_false_wakes": 0,
+      "independent_targets": 33,
+      "independent_targets_total": 35,
+      "independent_false_wakes": 2,
+      "independent_non_targets": 38,
+      "result": "failed-independent-test"
+    },
+    "Q_phonetic_pretraining": {
+      "train_clips": 4426,
+      "internal_speaker_heldout_clips": 527,
+      "phoneme_classes": 58,
+      "phoneme_error_rate": 0.6814997939843428,
+      "result": "mechanical pretraining experiment, not wake or ASR acceptance"
+    },
+    "Q1_ordered_phonetic": {
+      "bytes": 206408,
+      "development_targets": 299,
+      "development_targets_total": 316,
+      "development_false_wakes": 89,
+      "development_non_targets": 730,
+      "result": "failed"
+    },
+    "Q2_probability_bottleneck": {
+      "bytes": 218536,
+      "development_hits": 0,
+      "development_targets": 316,
+      "result": "failed; cold streaming export differs from window metrics"
+    },
+    "Q2b_raw_logits": {
+      "bytes": 217320,
+      "development_hits": 316,
+      "development_targets": 316,
+      "development_false_wakes": 730,
+      "development_non_targets": 730,
+      "float_int8_max_difference_on_TRAIN": 0.9961,
+      "result": "rejected quantization corruption; no deployment"
+    },
+    "Q2c_bounded_logits": {
+      "bytes": 217344,
+      "float_int8_TRAIN_cases_passed": 0,
+      "float_int8_TRAIN_cases": 4,
+      "result": "rejected parity check before accuracy promotion"
+    },
+    "Q3_long_ordered": {
+      "bytes": 206408,
+      "development_hits": 301,
+      "development_targets": 316,
+      "development_false_wakes": 3,
+      "development_non_targets": 730,
+      "other_epochs_checked": [
+        1,
+        2,
+        5,
+        7,
+        9
+      ],
+      "result": "none passed original gate"
+    },
+    "Q4_joint_short_acoustic": {
+      "bytes": 154808,
+      "development_hits": 314,
+      "development_targets": 316,
+      "development_false_wakes": 420,
+      "development_non_targets": 730,
+      "startup_contract_diagnostic": {
+        "lead_seconds": 6,
+        "warmup_features": 519,
+        "hits": 309,
+        "targets": 316,
+        "false_wakes": 82,
+        "non_targets": 730
+      },
+      "result": "failed both cold and explicit valid-state diagnostic; no firmware delay change"
+    },
+    "R_actual_streaming_linear_head": {
+      "training_clips": 10663,
+      "training_vectors": 181505,
+      "model_epochs_checked": [
+        1,
+        6,
+        12,
+        24
+      ],
+      "result": "all failed original gate; 3/730false at each checkpoint"
+    },
+    "S_actual_streaming_residual32": {
+      "bytes": 195296,
+      "model_epochs_checked": [
+        1,
+        4,
+        8,
+        16,
+        24,
+        40
+      ],
+      "best_false_wakes": 1,
+      "non_targets": 730,
+      "result": "all failed original gate; legacy and adult mixed recall also regressed"
+    }
+  },
+  "pending": [
+    "T short-context phonetic encoder, fresh normalization and original TRAIN supervision",
+    "V13 independent synthetic test:96raw,81content-screened; no wake model scoring yet",
+    "actual hardware and four household members",
+    "8-hour background and 72-hour runtime"
+  ],
+  "notes": [
+    "ChildMandarin original TRAIN transcripts supervise phonetic research; ordinary child speech is not positive wake evidence.",
+    "Synthetic childlike styles are not verified human children.",
+    "Google/Qwen ASR screening checks content, not exact tone or accent.",
+    "Experimental optional verifier integration stays OFF; it has no qualified release.",
+    "No NVIDIA NIM/Magpie or new model download used.",
+    "R/S are private engineering prototypes, not published reproducible model releases. Exact protected acoustic weights were retained while learning on streamed TRAIN features."
+  ]
+}

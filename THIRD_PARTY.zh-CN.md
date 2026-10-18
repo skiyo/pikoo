@@ -34,6 +34,7 @@ Pikoo 原创代码、双眼图形和项目文档采用 Apache-2.0。安装依赖
 | [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) / [MLX 模型](https://huggingface.co/mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-4bit) | VoiceDesign 4-bit `5c390979e4b93af5f2932f90742ca99c7dd04687` | 本机纯文本合成试验，无参考声音；未进入 V8D 训练 | 模型及代码 Apache-2.0；本仓库不附带权重 |
 | [MLX-Audio](https://github.com/Blaizzy/mlx-audio) / [MLX](https://github.com/ml-explore/mlx) | 0.5.9 / 0.32.4 | 可选独立 Apple Silicon 语音合成试验环境 | MIT；依赖保留各自声明 |
 | [PyYAML](https://github.com/yaml/pyyaml) | 6.0.2 | 可选训练配置依赖 | MIT |
+| [pypinyin](https://github.com/mozillazg/python-pinyin) | 0.55.0 | 可选研究训练的文本转音素标签，单独安装 | MIT |
 | [webrtcvad-wheels](https://github.com/daanzu/py-webrtcvad-wheels) | 2.0.14 | 可选语音活动依赖 | 封装 MIT，内含 WebRTC VAD 保留上游 BSD 类条款 |
 | [Node.js](https://github.com/nodejs/node) | 运行要求 24+ | 服务器/模拟器运行环境，不随项目打包 | MIT 及内含依赖声明 |
 | [Nginx](https://nginx.org/en/) / [Certbot](https://github.com/certbot/certbot) / [mihomo](https://github.com/MetaCubeX/mihomo) | 运维安装；文档 IP 证书流程要求 Certbot ≥5.4 | 部署模板集成，不引用源码或二进制 | Nginx BSD-2-Clause；Certbot Apache-2.0；mihomo GPL-3.0，分发各遵守其许可 |

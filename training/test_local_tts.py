@@ -5,6 +5,21 @@ import tempfile
 from generate_local_tts import jobs
 
 class LocalCurriculumTest(unittest.TestCase):
+    def test_code_switch_training_has_literal_names_and_no_heldout_groups(self):
+        from broad_curriculum import jobs as broad_jobs,code_switch_jobs
+        rows=code_switch_jobs()
+        self.assertEqual(len(rows),96)
+        phonetic=code_switch_jobs('train','phonetic')
+        self.assertTrue(all('Pee ' in r['text'] for r in phonetic if r['label']))
+        self.assertFalse({r['seed'] for r in rows}&{r['seed'] for r in phonetic})
+        dev=code_switch_jobs('validation')
+        self.assertEqual(len(dev),48)
+        self.assertFalse({r['seed'] for r in rows}&{r['seed'] for r in dev})
+        self.assertFalse({r['group'] for r in rows}&{r['group'] for r in dev})
+        self.assertEqual({r['split'] for r in rows},{'train'})
+        self.assertTrue(all('Pikoo' in r['text'] for r in rows if r['label']))
+        self.assertFalse({r['seed'] for r in rows}&{r['seed'] for r in broad_jobs()})
+        self.assertTrue(all(not r['family_inputs_used'] and not r['reference_audio_used'] for r in rows))
     def test_hard_contrasts_preserve_training_groups_and_fresh_seeds(self):
         from broad_curriculum import jobs as broad_jobs,hard_contrast_jobs
         original=broad_jobs();rows=hard_contrast_jobs()
@@ -23,6 +38,18 @@ class LocalCurriculumTest(unittest.TestCase):
         self.assertFalse({r['group'] for r in rows}&{r['group'] for r in jobs()+broad_jobs()})
         for style in ['adult','childlike']:
             self.assertEqual({r['pronunciation'] for r in rows if r['synthetic_style']==style and r['label']},{'mandarin-pi2-ku4','mixed-pi1-ku1'})
+    def test_replacement_holdout_has_new_prompts_seeds_and_groups(self):
+        from heldout_curriculum import jobs as heldout_jobs
+        old=heldout_jobs('v11');new=heldout_jobs('v12')
+        self.assertEqual(len(new),80)
+        for key in ['group','seed','instruction']:
+            self.assertFalse({r[key] for r in old}&{r[key] for r in new})
+        self.assertTrue(all(r['split']=='test' and r['frozen_holdout'] for r in new))
+        newest=heldout_jobs('v13')
+        self.assertEqual(len(newest),96)
+        for key in ['group','seed','instruction']:
+            self.assertFalse({r[key] for r in old+new}&{r[key] for r in newest})
+        self.assertTrue(any('Pee Koo' in r['text'] and r['synthesis_language']=='auto' for r in newest))
     def test_matched_prefix_review_rejects_full_names_and_unrelated_asr(self):
         from review_local_corpus import content_approved
         row={'source':'TTS-matched-incomplete-prefix','label':0}

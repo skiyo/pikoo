@@ -19,7 +19,7 @@ OP_METHODS = {
     'FULLY_CONNECTED':'FullyConnected', 'LOGISTIC':'Logistic',
     'AVERAGE_POOL_2D':'AveragePool2D', 'QUANTIZE':'Quantize',
     'DEQUANTIZE':'Dequantize', 'MUL':'Mul', 'ADD':'Add', 'MEAN':'Mean',
-    'EXPAND_DIMS':'ExpandDims',
+    'EXPAND_DIMS':'ExpandDims', 'SOFTMAX':'Softmax',
 }
 
 

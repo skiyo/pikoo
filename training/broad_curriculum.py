@@ -81,3 +81,22 @@ def hard_contrast_jobs():
                 'instruction':instruction,'seed':2026101820000+n*32+index,
                 'purpose':'train-only fresh near-phrase contrasts; no development waveform or voice imitation'})
     return rows
+
+
+def code_switch_jobs(split="train",spelling="brand"):
+    if spelling not in {"brand","phonetic"}:raise ValueError("Invalid phonetic surface")
+    if split not in {"train","validation"}:raise ValueError("Invalid preassigned curriculum split")
+    """TRAIN-only literal Pikoo plus near phrases, paired by prompt condition."""
+    profiles=[r for r in jobs() if r['split']==split and r['text']=='你好皮酷']
+    rows=[]
+    for n,base in enumerate(profiles):
+        phrases=[('你好Pikoo',1,'mixed-pi1-ku1'),('你好，Pikoo',1,'mixed-pi1-ku1'),
+                 ('你好酷酷',0,'non-target'),('你好皮球',0,'non-target')]
+        for index,(text,label,pronunciation) in enumerate(phrases):
+            if spelling=='phonetic' and label:text='你好 Pee Koo' if index==0 else '你好，Pee Coo'
+            instruction=base['instruction'].replace('Read only the supplied Chinese text exactly, without extra words.',
+                'Read only the supplied text exactly, including the English nickname when present; no extra words.')
+            if label:instruction+=' Say the Chinese greeting 你好 then the English nickname Pikoo as PEE-koo, pī kū, two full level syllables. Preserve the final koo.'
+            rows.append({**base,'text':text,'label':label,'pronunciation':pronunciation,'instruction':instruction,
+                'seed':(2026101890000 if split=='train' else 2026101990000)+(50000 if spelling=='phonetic' else 0)+n*32+index,'purpose':split+'-only natural code switching; preassigned prompt families; no test/family input'})
+    return rows

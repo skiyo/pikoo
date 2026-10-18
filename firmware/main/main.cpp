@@ -30,6 +30,9 @@
 #include "pikoo_interaction.hpp"
 #include "eye_state.hpp"
 #include "wake_model.hpp"
+#ifdef PIKOO_WAKE_VETO
+#include "wake_verifier.hpp"
+#endif
 #include <atomic>
 #include <cstring>
 #include <ctime>
@@ -52,6 +55,10 @@ std::atomic<bool> wifi_ready{false}, uploading{false}, awake{false},
     cancel_request{false}, takeover_request{false}, net_open{false},
     net_down{false}, overflow{false}, tone_request{false}, tone_complete{false},
     diagnostic_tone{false}, display_ready{false}, config_ready{false}, finish_request{false};
+#ifdef PIKOO_WAKE_VETO
+std::atomic<bool> verified_wake_request{false};
+std::atomic<uint32_t> verified_wake_epoch{0};
+#endif
 std::atomic<int> close_code{0}, overflow_reason{0};
 std::atomic<uint32_t> send_max_us{0},send_last_us{0};
 std::atomic<uint32_t> resample_max_us{0},receive_max_us{0};
@@ -164,6 +171,9 @@ void clear_audio(bool notify) {
       receipt("playback.cancelled", id);
 }
 void gate_off() {
+#ifdef PIKOO_WAKE_VETO
+  verified_wake_request=false;wake_verifier_invalidate();
+#endif
   wake_cancel_diagnostics();
   uploading = false;
   ++stream_epoch;
@@ -576,14 +586,28 @@ void processing_task(void *) {
     if (!a) {
       if (was_awake) {
         wake_reset();
+#ifdef PIKOO_WAKE_VETO
+        wake_verifier_reset();
+#endif
         wake_sequence=0;xQueueReset(wake_queue);
       }
       pikoo::pump_bounded(2,[&]{return xQueueReceive(wake_queue,&local,0)==pdTRUE;},[&]{
         if(local.epoch!=epoch)return;
-        if(wake_epoch!=local.epoch||(wake_sequence&&local.sequence!=wake_sequence+1))wake_reset();
+        if(wake_epoch!=local.epoch||(wake_sequence&&local.sequence!=wake_sequence+1)){
+          wake_reset();
+#ifdef PIKOO_WAKE_VETO
+          wake_verifier_reset();
+#endif
+        }
         wake_epoch=local.epoch;
         wake_sequence=local.sequence;
+#ifdef PIKOO_WAKE_VETO
+        if(wake_verifier_feed(local.pcm,local.count,local.epoch)){
+          verified_wake_epoch=local.epoch;verified_wake_request=true;
+        }
+#else
         if(wake_feed(local.pcm,local.count))wake_request=true;
+#endif
       });
     } else {
       xQueueReset(wake_queue);
@@ -659,9 +683,14 @@ void control_action(pikoo::Button::Action action) {
   }
 }
 void diagnostics() {
+#ifdef PIKOO_WAKE_VETO
+  ESP_LOGI("wake_veto","candidates=%lu rejected=%lu cancelled=%lu errors=%lu last_us=%lu",
+    (unsigned long)wake_verifier_candidates(),(unsigned long)wake_verifier_rejected(),
+    (unsigned long)wake_verifier_cancelled(),(unsigned long)wake_verifier_errors(),(unsigned long)wake_verifier_last_us());
+#endif
   wifi_ap_record_t ap{};
   int rssi=esp_wifi_sta_get_ap_info(&ap)==ESP_OK?ap.rssi:0;
-  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu volume_db=%d dac_reg=%d rssi=%d playback_gaps=%lu playback_gap_max_us=%lu wake_score=%.3f wake_peak=%.3f wake_raw_peak=%.3f wake_hits=%lu wake_errors=%lu wake_dropped=%lu wake_test=%d",
+  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu volume_db=%d dac_reg=%d rssi=%d playback_gaps=%lu playback_gap_max_us=%lu wake_score=%.3f wake_peak=%.3f wake_raw_peak=%.3f wake_hits=%lu wake_errors=%lu wake_dropped=%lu wake_test=%d veto_candidates=%lu veto_rejected=%lu veto_cancelled=%lu veto_errors=%lu veto_last_us=%lu",
     board::Name,esp_app_get_description()->version,int(visual_state.load()),int(wifi_ready.load()),int(muted.load()),int(uploading.load()),
     (unsigned long)upload_count.load(),(unsigned long)reconnect_count.load(),unsigned(esp_get_free_heap_size()),unsigned(esp_get_minimum_free_heap_size()),
     unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),board::display_fps(),board::microphone_level(),board::reference_level(),board::output_level(),
@@ -670,7 +699,14 @@ void diagnostics() {
     unsigned(capture_handle?uxTaskGetStackHighWaterMark(capture_handle):0),unsigned(process_handle?uxTaskGetStackHighWaterMark(process_handle):0),
     board::microphone_peak(),board::reference_peak(),(unsigned long)received_audio_count.load(),
     (unsigned long)captured_samples.load(),(unsigned long)processed_samples.load(),(unsigned long)uploaded_samples.load(),processed_level.load(),
-    (unsigned long)board::display_render_us(),(unsigned long)board::display_transfer_us(),(unsigned long)send_last_us.load(),(unsigned long)send_max_us.load(),(unsigned long)resample_max_us.load(),(unsigned long)receive_max_us.load(),board::volume_db(),board::volume_register(),rssi,(unsigned long)playback_gaps.load(),(unsigned long)playback_gap_max_us.load(),wake_score(),wake_peak_score(),wake_raw_peak_score(),(unsigned long)wake_detection_count(),(unsigned long)wake_error_count(),(unsigned long)wake_dropped.load(),int(local_wake_test()));
+    (unsigned long)board::display_render_us(),(unsigned long)board::display_transfer_us(),(unsigned long)send_last_us.load(),(unsigned long)send_max_us.load(),(unsigned long)resample_max_us.load(),(unsigned long)receive_max_us.load(),board::volume_db(),board::volume_register(),rssi,(unsigned long)playback_gaps.load(),(unsigned long)playback_gap_max_us.load(),wake_score(),wake_peak_score(),wake_raw_peak_score(),(unsigned long)wake_detection_count(),(unsigned long)wake_error_count(),(unsigned long)wake_dropped.load(),int(local_wake_test()),
+#ifdef PIKOO_WAKE_VETO
+    (unsigned long)wake_verifier_candidates(),(unsigned long)wake_verifier_rejected(),
+    (unsigned long)wake_verifier_cancelled(),(unsigned long)wake_verifier_errors(),(unsigned long)wake_verifier_last_us()
+#else
+    0UL,0UL,0UL,0UL,0UL
+#endif
+  );
 }
 void controls_task(void *) {
   pikoo::Button button;char command[32]{};size_t used=0;
@@ -728,6 +764,12 @@ void session_task(void *) {
       takeover = true;
       wake_request = true;
     }
+#ifdef PIKOO_WAKE_VETO
+    if(verified_wake_request.exchange(false)&&verified_wake_epoch==stream_epoch&&!muted&&!active&&
+        session.state!=State::AuthError&&session.state!=State::Occupied){
+      wake_mark_confirmed();wake_request=true;
+    }
+#endif
     if (wake_request.exchange(false) && !muted && !active &&
         session.state!=State::AuthError && (session.state!=State::Occupied||takeover)) {
       next_retry = 0;
@@ -923,6 +965,9 @@ extern "C" void app_main() {
   ESP_LOGI("pikoo","AFE feed=%d fetch=%d channels=%d",afe->get_feed_chunksize(afe_data),afe->get_fetch_chunksize(afe_data),afe->get_feed_channel_num(afe_data));
   if (!wake_init())
     ESP_LOGE("pikoo", "wake initialization failed; button fallback available; acceptance blocked");
+#ifdef PIKOO_WAKE_VETO
+  if(!wake_verifier_init())ESP_LOGE("pikoo","verifier unavailable; voice wake disabled, BOOT fallback available");
+#endif
   xTaskCreatePinnedToCore(capture_task, "capture", 8192, nullptr, 8, &capture_handle,
                           0);
   xTaskCreatePinnedToCore(processing_task, "audio-process", 12288, nullptr, 6,

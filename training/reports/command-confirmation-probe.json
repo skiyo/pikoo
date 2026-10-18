@@ -53,17 +53,68 @@
     "fix": "Pack the required FST files, assert presence at startup, and validate pack structure before building"
   },
   "next_probe": {
-    "status": "compiled-not-flashed",
+    "label": "command-probe3",
+    "status": "synthetic-command-probe",
+    "model_sha256": "87c77c650bbafbfb63f7cca4979f70302ef34078429635d01f716f5ae01b8e5b",
+    "family_audio_used": false,
+    "nvs_written": false,
+    "restored": true,
+    "cases": 12,
+    "targets": 4,
+    "hits": 2,
+    "negatives": 8,
+    "false_wakes": 0,
+    "frames": 1263,
+    "mean_frame_us": 15317,
+    "max_frame_us": 31635,
+    "internal_free_bytes": 290967,
+    "psram_free_bytes": 5321524,
+    "microphone_enabled": false,
+    "network_enabled": false,
+    "amplifier_enabled": false,
+    "purpose": "TRAIN-only low-confidence diagnostic, not acceptance",
     "internal_decode_threshold": 0.1,
     "external_confirmation_cutoff": 0.7,
     "loader": "all-PSRAM",
-    "purpose": "inspect low-confidence TRAIN results, not select using sealed/family tests"
+    "target_top1_probabilities": [
+      0.620994,
+      0.823276,
+      0.685212,
+      0.972275
+    ]
   },
   "device_recovery": {
     "flash_readback_restored": true,
-    "live_status_after_restore": "not recovered; USB replug requested",
-    "further_flashing": "deferred until fresh device status"
+    "live_status_after_restore": "Fresh idle/unmuted/upload=0 status recovered after physical USB reconnect and after probe3 restore",
+    "further_flashing": "Owned-USB offline TRAIN batch diagnostics; normal release not updated"
   },
   "normal_firmware_confirmed_deployed": false,
-  "sealed_test_scored": false
+  "sealed_test_scored": false,
+  "usb_batch": {
+    "status": "TRAIN128 and development294 completed; B14 veto failed at1/730 false; B13 stronger veto early-rejected atthirdnegative",
+    "transport": "bounded128-sample default, maximum512, Base64, sequence ACK, FNV1a; explicit resync and complete-case retry",
+    "train_cases": 128,
+    "train_targets": 48,
+    "train_non_targets": 80,
+    "strict_confirmation_targets_at_0_5": 37,
+    "target_vetoes_at_predeclared_0_5_policy": 0,
+    "negative_vetoes": 8,
+    "family_audio_used": false,
+    "quality_gate_passed": false
+  },
+  "optional_integration": {
+    "status": "compiled-not-flashed",
+    "version": "0.2.0-v11-veto-exp",
+    "application_bytes": 5506400,
+    "application_partition_bytes": 6291456,
+    "concurrent_runtime_acceptance": "pending"
+  },
+  "development_result": {
+    "targets": 293,
+    "targets_total": 316,
+    "false_wakes": 1,
+    "non_targets": 730,
+    "replayed_primary_triggers": 294,
+    "passed": false
+  }
 }

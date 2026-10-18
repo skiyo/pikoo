@@ -46,9 +46,9 @@ Later experiments preserve all failed results: I adds training-only dropout (`--
 
 An optional MN7 Chinese verifier from the already installed ESP-SR package is being tested **only in a separate offline diagnostic image**. Its acoustic+FST pack is 2,681,351 bytes; it has separate ESPRESSIF-product license terms. No new model was downloaded and no verifier weights or audio enter this source tree. The normal build explicitly disables both diagnostic modes.
 
-The first functional TRAIN-only probe detected 2/4 synthetic targets and rejected all eight non-targets (four near phrases and four authorized real-child ordinary-speech clips). Both Mandarin targets were missed, so this is **not a qualifying candidate**. Mean processing was 15,472 µs per 512-sample frame; 5,321,528 bytes of PSRAM remained with the microphone/network disabled. A second compiled diagnostic uses all-PSRAM loading and exposes lower-confidence decoding for TRAIN-only analysis; it has not run. See the [actual probe record](../training/reports/command-confirmation-probe.json).
+The first functional TRAIN-only probe detected 2/4 synthetic targets and rejected all eight non-targets (four near phrases and four authorized real-child ordinary-speech clips). Both Mandarin targets were missed, so this is **not a qualifying candidate**. Mean processing was 15,472 µs per 512-sample frame; 5,321,528 bytes of PSRAM remained with the microphone/network disabled. The all-PSRAM TRAIN-only diagnostic has now run: the two missed Mandarin targets decoded as the correct command with probabilities 0.620994 and 0.685212, still below the unchanged 0.7 probe cutoff. The two mixed-name examples scored 0.823276 and 0.972275. This does not qualify a release. See the [actual probe record](../training/reports/command-confirmation-probe.json).
 
-The first startup failure identified a missing FST dictionary. `tools/check_command_models.py` now checks the acoustic files, required dictionary, header bounds and payload offsets before CMake builds this image. Failed and successful probes restored and read-verified the protected application. USB status did not recover after the last restore; further flashing is waiting for a physical reconnect. Flash verification alone is not proof of a running device.
+The first startup failure identified a missing FST dictionary. `tools/check_command_models.py` now checks the acoustic files, required dictionary, header bounds and payload offsets before CMake builds this image. Failed and successful probes restored and read-verified the protected application. The user reconnected USB, fresh idle status recovered, and probe3 was restored with readback verification. A 128-case TRAIN batch is now being exercised over checksummed, bounded USB frames; an interrupted first run is retained as incomplete. Flash verification alone is not proof of a running device.
 
 ## Reproducing the checks
 
@@ -65,3 +65,21 @@ idf.py -B build-wake-benchmark \
 ```
 
 Before flashing, protect a verified copy of the current application and its build metadata, check the actual partition layout and use the existing app-only upgrade tool. Restore and verify that application after recording the result, including on failure. Do not overwrite configuration or publish restricted binaries. `tools/build-device.sh` explicitly turns benchmark mode OFF for normal builds. The benchmark yields on overruns to avoid starving diagnostics/graphics and reports failures rather than relaxing the deadline.
+
+
+## Current research outcome
+
+The [sanitized research record](../training/reports/wake-v11-research.json) retains failures, rather than promoting a development pass into a release. N (B13+B14) and P (B13+H5) passed the reused development gate, but their separately generated independent tests still produced two false wakes each. These tests are consumed and hash-protected from training and subsequent selection. Neither candidate was installed as a normal release. The MN7 veto also failed: B14 retained one false wake, and the stronger B13 variant was rejected on its third negative replay.
+
+A separate research encoder now uses authorized **original TRAIN** child-speech transcripts and fictional synthesis for tone-free phonetic CTC supervision. Its internal speaker-held-out phoneme error rate is 0.6815; that is not good ASR accuracy or wake acceptance. Q1's longer ordered head detected 299/316 development targets but falsely woke on 89/730 non-targets, so it was rejected. Phone-posterior and longer-context readouts remain experiments. Screened English sound spellings (`Pee Koo` / `Pee Coo`) retain their actual synthesis text; incorrect `pi ke`, `pi gu` and `PQ` outputs are not relabeled as targets.
+
+`training/phonetic_pretrain.py` requires the existing local permission record and protected waveform hashes. `--phone-head` additionally verifies matching acoustic-encoder and phone-head checksums. These private restricted derivatives are not published. The household recordings remain test-only and were not scored during these candidate choices.
+
+
+### Export and streaming diagnostics
+
+`training/check_quantization.py` compares a SavedModel and its INT8 graph on content-hash-checked TRAIN speech before accuracy promotion. It rejects protected/held-out audio, records both model identities and fails when probability errors exceed declared engineering tolerances. Q2b and Q2c were rejected by this check; static integer/operator compatibility alone missed the conversion error.
+
+A separately declared 519-feature startup experiment retained the original cold failures. `evaluate_iteration.py --lead-seconds 6 --warmup-frames 519` scores only after a full recurrent horizon and five valid outputs, and records that changed context. This is a **rejected diagnostic**, not an original-gate pass: Q4 still produced 82/730 false wakes; Q3 still failed recall and false-wake requirements. No startup delay was installed on the normal device. The original default evaluation remains unchanged.
+
+Frozen-encoder TRAIN-stream mining and residual-head experiments also failed. The current research hypothesis is a **short-context phonetic encoder**: `phonetic_pretrain.py --fresh --kernels 3,5,7` learns phone features from scratch with trainable normalization, using authorized original TRAIN transcripts only. The earlier long-context phonetic encoder's error rate is not carried over as a result for this new run. A newly generated V13 synthetic set remains unscored by wake models; V11 and V12 remain consumed and excluded.

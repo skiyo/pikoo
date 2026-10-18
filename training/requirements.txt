@@ -3,3 +3,5 @@ numpy==2.0.2
 pymicro-features==2.0.2
 PyYAML==6.0.2
 webrtcvad-wheels==2.0.14
+
+pypinyin==0.55.0

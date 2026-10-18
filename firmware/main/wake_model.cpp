@@ -42,7 +42,7 @@ extern const unsigned char
     model_start[] asm("_binary_nihao_pikoo_tflite_start");
 static FrontendState frontend{};
 static tflite::MicroInterpreter *interpreter;
-static tflite::MicroMutableOpResolver<18> resolver;
+static tflite::MicroMutableOpResolver<19> resolver;
 static int slices = 0, prob_count = 0;
 static float probabilities[5]{};
 bool wake_init() {
@@ -83,6 +83,7 @@ bool wake_init() {
   resolver.AddAdd();
   resolver.AddMean();
   resolver.AddExpandDims();
+  resolver.AddSoftmax();
   auto arena = static_cast<uint8_t *>(
       heap_caps_aligned_alloc(16, 262144, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
   if (!arena)
@@ -109,7 +110,8 @@ void wake_reset() {
   if (interpreter)
     interpreter->Reset();
 }
-bool wake_feed(const int16_t *pcm, size_t count) {
+void wake_mark_confirmed(){++detection_count;}
+bool wake_feed(const int16_t *pcm, size_t count,bool count_detection) {
   if (!interpreter) {
     return false;
   }
@@ -197,6 +199,6 @@ bool wake_feed(const int16_t *pcm, size_t count) {
     if(!trace_remaining&&!capture_remaining)wake_reset();
     return false;
   }
-  if(detected)++detection_count;
+  if(detected&&count_detection)++detection_count;
   return detected;
 }

@@ -126,19 +126,27 @@ def main():
     p.add_argument('--save-epoch-checkpoints',action='store_true',help='Keep each private epoch for actual streaming development validation')
     p.add_argument('--export-only',action='store_true',help='Export a specified --resume-weights checkpoint without another training step; still checks provenance and quantization inputs')
     p.add_argument('--classifier-head-units',type=int,default=0,help='Optional 16..256-unit residual readout; freeze the original encoder and logit')
-    p.add_argument('--head-backbone-weights',type=Path,help='Original plain-model checkpoint used to initialize a residual readout; incompatible with resume/widen')
+    p.add_argument('--head-backbone-weights',type=Path,help='Plain-model encoder initialization; resume is allowed only for export of a trained readout')
     p.add_argument('--freeze-batch-normalization',action='store_true',help='Fine-tune convolution weights while retaining pretrained normalization statistics')
     p.add_argument('--phonetic-readout',action='store_true',help='Experimental short-context causal correction branch; freezes the whole-phrase encoder')
     p.add_argument('--dropout',type=float,default=0.,help='Training-only dropout after encoder ReLUs; 0..0.4, plain model only')
     p.add_argument('--early-stop-patience',type=int,default=5,help='Window-validation patience; full streaming gate remains independent')
+    p.add_argument('--phone-head',type=Path,help='Authorized CTC phone head with matching encoder metadata; freezes phonetic backbone')
+    p.add_argument('--phone-logits',action='store_true',help='Use frozen phone logits instead of probabilities; separate quantization experiment')
+    p.add_argument('--phone-logit-clip',type=float,default=0.,help='Optional 1..32 fixed logit bound for integer-friendly phone features')
     p.add_argument('--temporal-readout',action='store_true',help='Freeze the encoder and replace average pooling with an initially equivalent ordered head')
+    p.add_argument('--train-temporal-encoder',action='store_true',help='Train the ordered temporal head and its encoder jointly; separate fresh-training experiment')
     a=p.parse_args()
     os.umask(0o077)
     if not 65536<=a.max_model_bytes<=524288:raise ValueError('Model flash budget must be 64..512 KiB')
     if a.export_only and (not a.resume_weights or a.widen_from):raise ValueError('Export-only requires one explicit resume checkpoint')
     if a.classifier_head_units and not 16<=a.classifier_head_units<=256:raise ValueError('Classifier head must have 16..256 units')
-    if a.head_backbone_weights and (not (a.classifier_head_units or a.phonetic_readout or a.temporal_readout) or a.resume_weights or a.widen_from):raise ValueError('Head backbone requires a readout without resume/widen')
+    if a.head_backbone_weights and (not (a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head) or (a.resume_weights and not a.export_only) or a.widen_from):raise ValueError('Head backbone requires a readout; resume is export-only and widening is separate')
+    if a.phone_head and (not a.head_backbone_weights or a.temporal_readout or a.phonetic_readout or a.classifier_head_units or a.dropout or a.widen_from):raise ValueError('Phone bottleneck requires one explicit matching encoder initialization')
+    if a.phone_logits and not a.phone_head:raise ValueError('Phone logits requires a matching phone head')
+    if a.phone_logit_clip and (not a.phone_logits or not 1<=a.phone_logit_clip<=32):raise ValueError('Clip requires phone logits and a finite 1..32 bound')
     if a.temporal_readout and (a.classifier_head_units or a.phonetic_readout or a.widen_from or a.dropout):raise ValueError('Select one plain-encoder readout experiment')
+    if a.train_temporal_encoder and not a.temporal_readout:raise ValueError('Joint temporal training requires the ordered head')
     if a.phonetic_readout and (a.classifier_head_units or a.widen_from):raise ValueError('Select one readout architecture')
     if a.freeze_batch_normalization and not (a.resume_weights or a.widen_from):raise ValueError('Frozen normalization requires explicit pretrained weights')
     if a.classifier_head_units and a.widen_from:raise ValueError('Widen the encoder and add a readout in separate experiments')
@@ -190,10 +198,13 @@ def main():
         if difference>1e-5:raise ValueError('Widening changed the original function')
         widening={'source_sha256':hashlib.sha256(a.widen_from.read_bytes()).hexdigest(),'initial_max_probability_difference':difference,'source_filters':a.source_filters,'source_first_filters':a.source_first_filters}
     readout=None
-    if a.classifier_head_units or a.phonetic_readout or a.temporal_readout:
+    if a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head:
         if a.head_backbone_weights:model.load_weights(a.head_backbone_weights)
         source_model=model
-        if a.temporal_readout:
+        if a.phone_head:
+            from phonetic_bottleneck import attach
+            model=attach(source_model,a.phone_head,a.head_backbone_weights,posterior=not a.phone_logits,logit_clip=a.phone_logit_clip)
+        elif a.temporal_readout:
             from temporal_readout import attach
             model=attach(source_model)
         elif a.phonetic_readout:
@@ -206,7 +217,12 @@ def main():
         if difference>1e-5:raise ValueError('Residual initialization changed the original function')
         readout={'units':a.classifier_head_units,'backbone_frozen':True,'dropout':.1,'initial_max_probability_difference':difference}
         if a.phonetic_readout:readout.update(type='ordered-short-context-correction',channels=24,recent_frames=20,hidden_units=64)
+        if a.phone_head:readout.update(type='frozen-phonetic-bottleneck',phone_input='logits' if a.phone_logits else 'probabilities',phone_logit_clip=a.phone_logit_clip,phone_head_sha256=hashlib.sha256(a.phone_head.read_bytes()).hexdigest())
         if a.temporal_readout:readout.update(type='ordered-final-temporal-head',hidden_units=0)
+        if a.train_temporal_encoder:
+            for layer in model.layers:
+                if layer.name!='temporal_integer_anchor':layer.trainable=True
+            readout.update(backbone_frozen=False,training='joint-encoder-and-ordered-head')
         if a.head_backbone_weights:readout['backbone_sha256']=hashlib.sha256(a.head_backbone_weights.read_bytes()).hexdigest()
     if a.resume_weights:model.load_weights(a.resume_weights)
     if a.freeze_batch_normalization:
@@ -237,8 +253,11 @@ def main():
         if split=='test' and a.defer_test:continue
         pred=model.predict(xx,verbose=0).reshape(-1);report['metrics'][split]={'positive_count':int(sum(yy==1)),'negative_count':int(sum(yy==0)),'window_recall_at_0.9':float(np.mean(pred[yy==1]>=.9)),'window_false_positive_rate_at_0.9':float(np.mean(pred[yy==0]>=.9))}
     config={'stride':3,'spectrogram_length':a.window_frames}
-    if a.phonetic_readout:
-        from phonetic_readout import anchor_for_quantization
+    if a.phonetic_readout or a.phone_head:
+        if a.phone_head:
+            from phonetic_bottleneck import anchor_for_quantization
+        else:
+            from phonetic_readout import anchor_for_quantization
         before=model(x[:8],training=False).numpy()
         model=anchor_for_quantization(model)
         difference=float(np.max(np.abs(model(x[:8],training=False).numpy()-before)))

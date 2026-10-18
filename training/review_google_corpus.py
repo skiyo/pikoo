@@ -20,7 +20,7 @@ import numpy as np
 
 
 def normalize(text):
-    text = re.sub(r'pikoo|piku|pee[- ]koo', '皮酷', text, flags=re.IGNORECASE)
+    text = re.sub(r'pikoo|piku|pee[- ](?:koo|coo)', '皮酷', text, flags=re.IGNORECASE)
     text = text.translate(str.maketrans('庫褲給講個裡哪兒', '库裤给讲个里哪儿'))
     text=re.sub(r'[^\u4e00-\u9fff]', '', text)
     # ASR spelling cannot establish lexical tone. The accepted name covers the
