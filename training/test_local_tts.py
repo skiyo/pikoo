@@ -61,6 +61,23 @@ class LocalCurriculumTest(unittest.TestCase):
             for pron in ['mandarin-pi2-ku4','mixed-pi1-ku1']:
                 self.assertEqual(sum(r['label'] and r['synthetic_style']==style and r['pronunciation']==pron for r in next_),16)
         self.assertTrue(all(r['split']=='test' and r['frozen_holdout'] and not r['family_inputs_used'] for r in next_))
+    def test_level_only_holdout_is_fresh_balanced_and_never_training(self):
+        from heldout_curriculum import jobs as heldout_jobs
+        rows=heldout_jobs('v15')
+        old=[r for version in ['v11','v12','v13','v14'] for r in heldout_jobs(version)]
+        self.assertEqual(len(rows),128)
+        for key in ['group','seed','instruction']:
+            self.assertFalse({r[key] for r in old}&{r[key] for r in rows})
+        self.assertTrue(all(r['split']=='test' and r['frozen_holdout'] and not r['family_inputs_used']
+                            and not r['reference_audio_used'] and not r['real_child'] for r in rows))
+        self.assertEqual({r['pronunciation'] for r in rows if r['label']},{'mixed-pi1-ku1'})
+        for style in ['adult','childlike']:
+            selected=[r for r in rows if r['synthetic_style']==style]
+            self.assertEqual(sum(r['label'] for r in selected),32)
+            self.assertEqual(sum(not r['label'] for r in selected),32)
+            self.assertEqual(sum(r['label'] and 'Pikoo' in r['text'] for r in selected),16)
+        self.assertTrue(all(r['synthesis_language']=='auto' for r in rows if 'Pikoo' in r['text']))
+
     def test_matched_prefix_review_rejects_full_names_and_unrelated_asr(self):
         from review_local_corpus import content_approved
         row={'source':'TTS-matched-incomplete-prefix','label':0}

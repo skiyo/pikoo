@@ -4,7 +4,47 @@ These conditions are not verified voice identities or real child recordings.
 No references, household inputs or deployment-model scores affect the jobs.
 """
 
+def level_only_jobs():
+    """V15: new conditions and seeds for the explicitly narrowed user goal."""
+    profiles=[
+        ('adult','fictional adult male, dry light bass, relaxed precise Mandarin with soft consonant releases'),
+        ('adult','fictional adult male, clear slightly twangy tenor, smooth quick Mandarin with a northern lilt'),
+        ('adult','fictional adult male, hushed textured midrange, slow connected Mandarin and rounded vowels'),
+        ('adult','fictional adult male, forward bright chest voice, animated natural Mandarin with short pauses'),
+        ('adult','fictional adult female, dark airy middle register, lightly accented gentle Mandarin'),
+        ('adult','fictional adult female, clear thin head register, deliberate casual Mandarin with soft emphasis'),
+        ('adult','fictional adult female, slightly grainy warm alto, brisk flowing Mandarin with precise consonants'),
+        ('adult','fictional adult female, ringing rounded upper voice, quiet measured everyday Mandarin'),
+        ('childlike','fictional boylike character, airy thin small voice, quick uneven Mandarin with clear ending vowels'),
+        ('childlike','fictional boylike character, rounded nasal youthful voice, measured curious Mandarin'),
+        ('childlike','fictional boylike character, reedy softly raspy high voice, flowing playful Mandarin'),
+        ('childlike','fictional boylike character, delicate forward small voice, hesitant clear Mandarin'),
+        ('childlike','fictional girllike character, bright narrow youthful voice, lively connected Mandarin'),
+        ('childlike','fictional girllike character, soft fine breathy voice, slow precise conversational Mandarin'),
+        ('childlike','fictional girllike character, light hollow ringing voice, quick gentle Mandarin syllables'),
+        ('childlike','fictional youthful character, mildly nasal rounded small voice, relaxed irregular Mandarin'),
+    ]
+    phrases=[('你好 Pikoo',1),('你好，Pikoo',1),('你好批枯',1),('你好，披哭',1),
+             ('你好皮克',0),('你好皮',0),('你好皮球',0),('给我讲个故事',0)]
+    rows=[]
+    for n,(style,description) in enumerate(profiles):
+        for index,(text,label) in enumerate(phrases):
+            group=f'qwen-heldout-v15:{n}'
+            instruction=f'Invented voice: {description}. Do not imitate a real person. Read only the supplied text exactly, with no extra words.'
+            if label:instruction+=' Say 你好 in Mandarin, followed by PEE-koo / pī kū, both name syllables first tone and complete. 批枯 and 披哭 have this same pronunciation. Do not replace koo with ke or omit it.'
+            rows.append(dict(profile=group,split='test',group=group,speaker=group,voice=group,
+                text=text,label=label,pronunciation='mixed-pi1-ku1' if label else 'non-target',
+                synthetic_style=style,instruction=instruction,seed=2026101952000+n*32+index,
+                source='Qwen3-TTS-synthetic-local',synthetic=True,real_child=False,
+                reference_audio_used=False,family_inputs_used=False,frozen_holdout=True,
+                synthesis_language='auto' if 'Pikoo' in text else 'Chinese',
+                source_terms='https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign',
+                identity_scope='preassigned synthetic test condition, not a verified voice identity'))
+    return rows
+
+
 def jobs(version="v11"):
+    if version=='v15':return level_only_jobs()
     if version not in {"v11","v12","v13","v14"}:raise ValueError("Unknown preassigned held-out revision")
     profiles=[
         ('adult','fictional adult male, light nasal tenor, fluent gently connected Mandarin'),
