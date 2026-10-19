@@ -5,6 +5,23 @@ import tempfile
 from generate_local_tts import jobs
 
 class LocalCurriculumTest(unittest.TestCase):
+    def test_v17_plan_is_disjoint_from_all_consumed_tests_and_new_development(self):
+        from heldout_curriculum import jobs as heldout_jobs
+        from generalization_curriculum import jobs as development_jobs
+        from child_level_curriculum import jobs as child_jobs
+        rows=heldout_jobs('v17')
+        old=[r for version in ['v11','v12','v13','v14','v15','v16'] for r in heldout_jobs(version)]+development_jobs()+child_jobs()
+        self.assertEqual(len(rows),256)
+        for key in ['group','seed','instruction']:
+            self.assertFalse({r[key] for r in rows}&{r[key] for r in old})
+        self.assertTrue(all(r['split']=='test' and r['frozen_holdout'] and not r['family_inputs_used']
+                            and not r['reference_audio_used'] and not r['real_child'] for r in rows))
+        for style in ['adult','childlike']:
+            selected=[r for r in rows if r['synthetic_style']==style]
+            self.assertEqual(sum(r['label'] for r in selected),64)
+            self.assertEqual(sum(not r['label'] for r in selected),64)
+            self.assertEqual(sum(r['label'] and 'Pikoo' in r['text'] for r in selected),32)
+
     def test_content_screen_never_erases_unexpected_english_or_numbers(self):
         from review_local_corpus import content_approved
         from prepare_google_iteration import reviewed_content_matches

@@ -84,7 +84,43 @@ def level_only_jobs_v16():
     return rows
 
 
+def level_only_jobs_v17():
+    """New blind conditions; require both development gates and a frozen model."""
+    conditions=[
+        ('light cottony resonance','plain steady Mandarin with soft final vowels'),
+        ('low rustling resonance','quick relaxed Mandarin with linked syllables'),
+        ('clear glassy resonance','gentle unhurried Mandarin with crisp starts'),
+        ('dry buzzy resonance','animated irregular Mandarin with brief gaps'),
+        ('rounded springy resonance','quiet fluent Mandarin with even emphasis'),
+        ('thin silky resonance','measured Mandarin with a lightly bouncing rhythm'),
+        ('soft twangy resonance','casual swift Mandarin with clear vowel endings'),
+        ('mildly grainy resonance','slow informal Mandarin with short rising phrases'),
+    ]
+    phrases=[('你好 Pikoo',1),('你好，Pikoo',1),('你好批枯',1),('你好，披哭',1),
+             ('你好皮克',0),('你好皮',0),('你好皮球',0),('给我讲个故事',0)]
+    rows=[];profile=0
+    for style,genders in [('adult',['male','female']),('childlike',['boylike','girllike'])]:
+        for gender in genders:
+            for resonance,rhythm in conditions:
+                character=f'fictional grown-up {gender}' if style=='adult' else f'fictional little {gender} character'
+                group=f'qwen-heldout-v17:{profile}'
+                for index,(text,label) in enumerate(phrases):
+                    instruction=f'Independent invented test condition: {character}, {resonance}, {rhythm}. Never imitate anyone. Speak exactly the supplied phrase, without added words.'
+                    if label:instruction+=' The Mandarin greeting is 你好; the complete robot name is Pikoo, pī kū / PEE-koo, both first tones, also spelled 批枯 or 披哭. Preserve both name syllables; do not replace koo with ke.'
+                    rows.append(dict(profile=group,split='test',group=group,speaker=group,voice=group,
+                        text=text,label=label,pronunciation='mixed-pi1-ku1' if label else 'non-target',
+                        synthetic_style=style,instruction=instruction,seed=2026102011000+profile*32+index,
+                        source='Qwen3-TTS-synthetic-local',synthetic=True,real_child=False,
+                        reference_audio_used=False,family_inputs_used=False,frozen_holdout=True,
+                        synthesis_language='auto' if 'Pikoo' in text else 'Chinese',
+                        source_terms='https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign',
+                        identity_scope='preassigned fictional independent condition, not a verified speaker'))
+                profile+=1
+    return rows
+
+
 def jobs(version="v11"):
+    if version=='v17':return level_only_jobs_v17()
     if version=='v16':return level_only_jobs_v16()
     if version=='v15':return level_only_jobs()
     if version not in {"v11","v12","v13","v14"}:raise ValueError("Unknown preassigned held-out revision")
