@@ -453,10 +453,44 @@
       "TRAIN_float_int8_passed": 8,
       "host_Micro_exact_cases": 6,
       "result": "recall groups passed but false wakes failed, not deployed"
+    },
+    "AS_plain_contrastive_frozen_normalization": {
+      "bytes": 192688,
+      "development_hits": 181,
+      "development_targets": 184,
+      "development_false_wakes": 4,
+      "development_non_targets": 730,
+      "raw_adult_hits": 17,
+      "raw_adult_targets": 18,
+      "raw_childlike_hits": 24,
+      "raw_childlike_targets": 24,
+      "TRAIN_float_int8_passed": 7,
+      "TRAIN_float_int8_cases": 8,
+      "host_Micro_exact_cases": 6,
+      "host_arena_bytes": 52144,
+      "result": "rejected false wakes and float/INT8 spike; no fresh test or deployment"
+    },
+    "AT_plain_contrastive_joint_normalization": {
+      "bytes": 192688,
+      "development_hits": 175,
+      "development_targets": 184,
+      "development_false_wakes": 0,
+      "development_non_targets": 730,
+      "raw_adult_hits": 17,
+      "raw_adult_targets": 18,
+      "raw_childlike_hits": 24,
+      "raw_childlike_targets": 24,
+      "augmented_hits": 134,
+      "augmented_targets": 142,
+      "TRAIN_float_int8_passed": 8,
+      "host_Micro_exact_cases": 6,
+      "host_arena_bytes": 52144,
+      "model_sha256": "2bf681373dbad4b8f3bf08c67c40e3d2eab1dd862da24d70cd6e50675edff6b2",
+      "result": "passed disclosed first-tone development, frozen BEFORE V15 generation; no independent, hardware or real-child acceptance yet"
     }
   },
   "pending": [
-    "AS --plain-contrastive warm-start from AR preserves initial sigmoid before explicit near-phrase training; same914cases, scalar INT8 output; no new test or hardware acceptance",
+    "Frozen AT: new V15 generation/content review/independent scoring in progress. No model/threshold adjustment on V15, no family or hardware operations. All V15 raw audio must enter the protected ledger before any further training.",
     "Exact corpus/phone/fold cache proof allows reusing original float32 frontend arrays across architecture widths; every waveform rechecked against current protected hashes",
     "Google TTS free daily quota reached; use existing reviewed data until reset, no paid fallback or project/model rotation",
     "Next wake model must pass unchanged development, newly frozen independent test, ESP32/runtime and actual family tests"
@@ -515,6 +549,14 @@
       "new_non_targets": 42,
       "development_cases_unchanged": 914,
       "real_children_or_household_synthesis": false
+    },
+    "AV_2_5_Flash": {
+      "planned": 32,
+      "raw_clips_accepted_by_alignment": 8,
+      "content_approved": 7,
+      "generation_requests": 4,
+      "rejected_bundles": 3,
+      "result": "TRAIN only, not used to select or train frozen AT; ordinary Standard API phrase bundles, not paid Batch API"
     }
   },
   "observed_Google_quota": {
@@ -564,5 +606,31 @@
     "development_negatives": 730,
     "policy": "dualeye-pikoo-level-v1.json",
     "household_used": false
+  },
+  "quantization_diagnostic": {
+    "changed": "Record worst step and both probabilities, retaining max .15 and mean .03 gates",
+    "AS_TRAIN": {
+      "shared_startup_step": 1,
+      "shared_startup_float": 0.22267977893352509,
+      "shared_startup_INT8": 0.3671875,
+      "failed_speech_step": 61,
+      "failed_speech_max_error": 0.18238168954849243
+    },
+    "input": "already authorized TRAIN, not household or independent test",
+    "interpretation": "The failed maximum is during the speech trace, not solely the shared startup transient"
+  },
+  "current_google_policy": {
+    "date": "2026-10-19",
+    "scope": "Quota errors are per-model; human explicitly requested other available TTS models",
+    "confirmed_standard_free_models": [
+      "gemini-2.5-flash-preview-tts",
+      "gemini-3.8-flash-tts",
+      "gemini-3.8-flash-lite-tts"
+    ],
+    "source": "https://ai.google.dev/gemini-api/docs/pricing",
+    "exhausted_3_1_not_before_Beijing": "2026-10-20 08:00:01",
+    "new_models": "AW/AX explicitly preplanned TRAIN-only runs, no automatic fallback for rejected jobs",
+    "rate": "single worker, >=65 seconds between requests; 65-second cooldown between model runs",
+    "not_used": "Paid Pro TTS, paid Batch API, other projects or billing changes"
   }
 }

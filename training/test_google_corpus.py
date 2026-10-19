@@ -9,6 +9,21 @@ AVAILABLE = importlib.util.find_spec('numpy') is not None
 
 @unittest.skipUnless(AVAILABLE, 'Optional synthesis runtime is not installed')
 class GoogleCorpusTest(unittest.TestCase):
+    def test_level_only_curriculum_retains_splits_and_near_phrase_negatives(self):
+        from generate_google import jobs
+        original=jobs();rows=jobs(level_contrasts=True)
+        self.assertEqual(len(rows),96)
+        self.assertEqual({r['speaker']:r['split'] for r in rows},
+                         {r['speaker']:r['split'] for r in original})
+        self.assertEqual({r['pronunciation'] for r in rows if r['label']},{'mixed-pi1-ku1'})
+        for voice in {r['voice'] for r in rows}:
+            selected=[r for r in rows if r['voice']==voice]
+            self.assertEqual(sum(r['label'] for r in selected),4)
+            self.assertEqual(sum('Pikoo' in r['text'] for r in selected),2)
+            self.assertEqual({r['text'] for r in selected if not r['label']},
+                             {'你好皮克','你好皮球','你好皮','你真酷'})
+            self.assertTrue(all(r['synthetic'] and not r['real_child'] for r in selected))
+
     def test_mixed_targets_preserve_speaker_splits_and_negative_labels(self):
         from generate_google import jobs
         from review_google_corpus import normalize

@@ -2,7 +2,7 @@
 """Explicit, bounded Gemini TTS corpus generation; never reads user recordings.
 
 Generated voices are synthetic, not evidence of real adult/child wake accuracy.
-Uses the documented Gemini 3.8 TTS Interactions REST endpoint. The caller must
+Uses the documented per-model Gemini TTS REST endpoint. The caller must
 have API access and use quota permitted by their project. No paid fallback.
 """
 import argparse
@@ -38,14 +38,18 @@ STYLES = [
 NEGATIVES = ['你好皮球', '你好朋友', '给我讲一个故事', '皮球在哪里']
 
 
-def jobs(mixed_pronunciation=False,phonetic_spelling=False,near_phrase_contrasts=False):
+def jobs(mixed_pronunciation=False,phonetic_spelling=False,near_phrase_contrasts=False,level_contrasts=False):
     """Assign voice identities to splits before any generation or augmentation."""
     rows = []
     for split, voices in VOICES.items():
         for voice in voices:
             targets=['你好皮酷','你好Pikoo','你好，Pikoo','你好皮酷'] if mixed_pronunciation else ['你好皮酷']*4
             if phonetic_spelling:targets=['你好皮酷','你好批枯','你好披哭','你好皮酷']
-            for label, texts in [(1, targets), (0, ['你好皮球','你好酷酷','你好皮','你好皮皮'] if near_phrase_contrasts else NEGATIVES)]:
+            negatives=['你好皮球','你好酷酷','你好皮','你好皮皮'] if near_phrase_contrasts else NEGATIVES
+            if level_contrasts:
+                targets=['你好批枯','你好披哭','你好Pikoo','你好，Pikoo']
+                negatives=['你好皮克','你好皮球','你好皮','你真酷']
+            for label, texts in [(1, targets), (0, negatives)]:
                 for index, text in enumerate(texts):
                     style = ('Speak standard Mainland Mandarin Chinese. Read only '
                              'the exact supplied Chinese text, addressing a small pet robot. '
@@ -159,6 +163,7 @@ def main():
     p.add_argument('--phonetic-spelling',action='store_true',help='Constrain pi1-ku1 using exact Chinese homophone text instead of ambiguous Latin spelling')
     p.add_argument('--utterance-indices',type=int,nargs='+',help='Single-utterance requests only: select positions 0..7 within each voice (four targets, four negatives)')
     p.add_argument('--near-phrase-contrasts',action='store_true',help='Explicit near-phrase negatives; retain assigned voice splits')
+    p.add_argument('--level-contrasts',action='store_true',help='First-tone Pikoo targets and matched near phrases, including pi-ke; retain voice splits')
     a = p.parse_args()
     os.umask(0o077)
     key = None
@@ -180,7 +185,7 @@ def main():
     next_request = [0.0]
 
     def selected_jobs():
-        all_rows = jobs(a.mixed_pronunciation,a.phonetic_spelling,a.near_phrase_contrasts)
+        all_rows = jobs(a.mixed_pronunciation,a.phonetic_spelling,a.near_phrase_contrasts,a.level_contrasts)
         if a.voices:
             if len(set(a.voices)) != len(a.voices) or any(v not in {r['voice'] for r in all_rows} for v in a.voices):
                 raise ValueError('Unknown or duplicate voice')
@@ -294,7 +299,8 @@ def main():
             request = Request(url,
                 data=json.dumps(payload).encode(), headers={'x-goog-api-key': key,
                     'Content-Type': 'application/json'}, method='POST')
-            # Do not rotate projects/models to bypass quota or retry rejected jobs.
+            # Each run uses one explicitly selected model; a quota error stops
+            # it. Never retry rejected jobs through an automatic model fallback.
             with rate_lock:
                 delay = next_request[0] - time.monotonic()
                 if delay > 0:

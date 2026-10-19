@@ -34,7 +34,9 @@ def errors(pairs):
     if values.ndim!=2 or values.shape[1]!=2 or not len(values) or not np.isfinite(values).all() or values.min()<0 or values.max()>1:
         raise ValueError('Invalid streaming probability pairs')
     difference=np.abs(values[:,0]-values[:,1])
-    return {'steps':len(values),'max_absolute_error':float(difference.max()),'mean_absolute_error':float(difference.mean())}
+    worst=int(np.argmax(difference))
+    return {'steps':len(values),'max_absolute_error':float(difference.max()),'mean_absolute_error':float(difference.mean()),
+        'worst_step':worst,'float_at_worst':float(values[worst,0]),'int8_at_worst':float(values[worst,1])}
 
 
 def main():
