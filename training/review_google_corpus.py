@@ -12,11 +12,28 @@ import json
 import os
 from pathlib import Path
 import re
+import ssl
 import time
-from urllib.error import HTTPError
+from urllib.error import HTTPError,URLError
 from urllib.request import build_opener, ProxyHandler, Request
 import wave
 import numpy as np
+
+
+def post_json(opener,request,timeout=55,retries=0,retry_delay=65,sleep=time.sleep):
+    """Bounded retries for transport faults only; never retry API/quota errors."""
+    if not 10<=timeout<=180 or not 0<=retries<=3 or (retries and not 65<=retry_delay<=600):
+        raise ValueError('Invalid request timeout or low-rate network retry bounds')
+    for attempt in range(retries+1):
+        try:
+            with opener.open(request,timeout=timeout) as response:return json.load(response)
+        except HTTPError:raise
+        except (TimeoutError,URLError,ConnectionError,ssl.SSLError) as error:
+            reason=error.reason if isinstance(error,URLError) else error
+            if isinstance(reason,ssl.SSLCertVerificationError) or attempt==retries:raise
+            print(json.dumps({'phase':'transient-network-retry','attempt':attempt+1,
+                'wait_seconds':retry_delay,'error_type':type(reason).__name__}),flush=True)
+            sleep(retry_delay)
 
 
 def normalize(text):
@@ -36,6 +53,9 @@ def main():
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--model', default='gemini-3.8-flash', choices=['gemini-3.8-flash', 'gemini-2.5-flash'])
     p.add_argument('--interval', type=float, default=15, help='Seconds between ASR requests')
+    p.add_argument('--request-timeout',type=float,default=55,help='Bounded API read timeout, 10..180 seconds')
+    p.add_argument('--network-retries',type=int,default=0,help='0..3 retries for transport faults only; HTTP/quota/auth errors still stop')
+    p.add_argument('--network-retry-delay',type=float,default=65,help='65..600 seconds when transport retries are explicitly enabled')
     p.add_argument('--allow-local-synthetic',action='store_true',help='Explicitly permit hash-checked fictional local Qwen TTS; never reference audio')
     p.add_argument('--protected-hashes',type=Path,help='Required protected household hash ledger when local synthesis is enabled')
     a = p.parse_args()
@@ -95,8 +115,7 @@ def main():
         request = Request('https://generativelanguage.googleapis.com/v1beta/models/' + a.model + ':generateContent',
             data=json.dumps(payload).encode(), headers={'x-goog-api-key': key, 'Content-Type': 'application/json'})
         try:
-            with opener.open(request, timeout=55) as response:
-                data = json.load(response)
+            data=post_json(opener,request,a.request_timeout,a.network_retries,a.network_retry_delay)
         except HTTPError as error:
             try:
                 decoded=json.loads(error.read()).get('error',{})

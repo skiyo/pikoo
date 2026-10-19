@@ -67,19 +67,46 @@ def attach(binary,warm_start=False):
 
 def resume_readout(training,inference,checkpoint,features,architecture):
     """Resume an explicitly described trained class mapping, not a new head."""
-    checkpoint=Path(checkpoint);metadata=checkpoint.parent/'report.json'
+    checkpoint=Path(checkpoint);epoch_proof=None
+    if checkpoint.parent.name=='epochs':
+        from epoch_provenance import resolve
+        metadata,epoch_proof=resolve(checkpoint)
+    else:metadata=checkpoint.parent/'report.json'
     report=json.loads(metadata.read_text());readout=report.get('classifier_readout',{})
     if readout.get('type')!='warm-plain-near-phrase' or readout.get('classes')!=PHRASES:
         raise ValueError('Incompatible trained near-phrase class mapping')
     for key,value in architecture.items():
         if report.get(key)!=value:raise ValueError('Trained readout architecture differs: '+key)
     digest=hashlib.sha256(checkpoint.read_bytes()).hexdigest()
-    if report.get('checkpoint_weights_sha256',digest)!=digest:
+    if not epoch_proof and report.get('checkpoint_weights_sha256',digest)!=digest:
         raise ValueError('Trained checkpoint hash differs from its report')
-    inference.load_weights(checkpoint)
+    # ModelCheckpoint saves the training graph (including optimizer state).
+    # Its scalar view shares all classifier/encoder variables with training.
+    (training if epoch_proof else inference).load_weights(checkpoint)
     all_probabilities=training(features,training=False).numpy()
     difference=float(np.max(np.abs(inference(features,training=False).numpy()-all_probabilities[:,1:2])))
     if difference>1e-6:raise ValueError('Resumed scalar and class views disagree')
     return {'checkpoint_sha256':digest,'metadata_sha256':hashlib.sha256(metadata.read_bytes()).hexdigest(),
             'source_manifest_sha256':report.get('training_manifest_sha256'),
-            'class_order_verified':True,'shared_view_max_difference':difference}
+            'class_order_verified':True,'shared_view_max_difference':difference,
+            **({'source_epoch':epoch_proof} if epoch_proof else {})}
+
+
+def widen_readout(training,inference,checkpoint,features,architecture,binary_builder):
+    """Copy every trained class into a wider encoder; verify all probabilities."""
+    checkpoint=Path(checkpoint);report=json.loads((checkpoint.parent/'report.json').read_text())
+    source={key:report[key] for key in ['filters','first_filters','kernels']}
+    if source['kernels']!=architecture['kernels'] or report['feature_config']['window_frames']!=architecture['window_frames']:
+        raise ValueError('Wider classifier changes kernels or temporal context')
+    if source['filters']>=architecture['filters'] or source['first_filters']>architecture['first_filters']:
+        raise ValueError('Wider classifier requires genuinely added channels')
+    narrow,narrow_view=attach(binary_builder(source),warm_start=True)
+    proof=resume_readout(narrow,narrow_view,checkpoint,features,source)
+    from widen import warm_start_wider
+    warm_start_wider(training,narrow)
+    difference=float(np.max(np.abs(training(features,training=False).numpy()-narrow(features,training=False).numpy())))
+    shared=float(np.max(np.abs(inference(features,training=False).numpy()-training(features,training=False).numpy()[:,1:2])))
+    if difference>1e-5 or shared>1e-6:raise ValueError('Wider classifier changed trained probabilities')
+    return {**proof,'source_filters':source['filters'],'source_first_filters':source['first_filters'],
+            'all_class_initial_max_difference':difference,'shared_view_max_difference':shared,
+            'new_channels_trainable':True}

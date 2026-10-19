@@ -217,6 +217,62 @@ python training/self_test.py \
 
 最终验收仍需每人 1 米 20 次至少 18 次成功，以及 8 小时家庭背景声误唤醒不超过 1 次。短片段误触发率不能换算成已经通过 8 小时测试。
 
+## Content cleaning / 语料清洗（2026-10-19）
+
+`clean_corpus.py` creates a separate manifest and quarantine report. It never
+deletes source audio or changes labels, and never uses wake scores to decide
+which recordings to exclude. Conflicting ASR transcripts, missing reviews,
+uncorroborated Latin-spelled target synthesis, corrupt PCM and quarantined
+ancestors exclude a sample and its descendants. Two reruns of one ASR engine
+do not count as two independent recognizers. ASR agreement does not verify tone
+or real-child performance. Protected family/sealed-test metadata is rejected
+before waveform access; those recordings cannot guide cleaning.
+
+清洗使用内容与来源证据，不按模型是否认出来删样本。输出独立清单及隔离原因，
+原始文件、标签和旧失败成绩保留。内容有分歧的样本先隔离，不凭另一个识别器
+的结果自动改成正例或负例；变速、变调和裁切样本追溯父样本。完整句子的审核
+不能替代裁切前缀自身的审核。拉丁字母目标词合成需要两类识别器核对；声调和
+真实童声效果仍需后续验收。家庭及已封存测试录音不得用于清洗决策。
+
+```sh
+python training/clean_corpus.py \
+  --manifest /private/development/manifest.json \
+  --reviews /private/content-reviews.json \
+  --catalog /private/optional-parent-metadata.json \
+  --protected-hashes /private/protected-recordings.json \
+  --output /private/content-clean-v1
+```
+
+The optional catalog contains eligible absent-ancestor metadata; it never adds
+training examples. Each review names its waveform `sha256`, `transcript` and
+recognizer `model`. The caller must retain all eligible review disagreements,
+not select only favorable transcripts. Quarantine includes uncertainty, not
+just proven synthesis errors. Data, transcripts and private reports stay local.
+
+本轮从 12,044 条开发语料中隔离 884 条，保留 11,160 条；其中包括 577 条缺少
+当前审核的旧合成语料。原始真实儿童普通讲话负例保留。所有有效音频通过文件
+摘要、PCM 格式、严重削波及空音频检查，未发现这类数字损坏。成人和虚构童声
+分别保留，虚构童声不是孩子说目标词的实测证据。
+
+Google 独立内容检查完成 50/90 条，出现 HTTP 503 后停止，未审核的内容不算
+通过。清洗后补充开发集的儿童混读覆盖仍不足，因此本轮清洗和重训不代表
+候选已合格。新实验从随机权重开始，不继承旧唤醒分类器或旧特征缓存。
+阈值 0.90、5 次平滑、90% 召回和零开发误唤醒要求不变；历史失败不改写。
+
+This cleaning revision retains 11,160 of 12,044 development recordings and
+quarantines 884, including 577 legacy synthetic recordings without current QA.
+Public child ordinary-speech negatives remain included. All source hashes and
+PCM corruption checks passed. Alternate Google content review completed 50/90
+clips before HTTP 503 stopped requests. Childlike mixed-name development
+coverage is still insufficient after conservative exclusions. Clean-data
+retraining starts from random weights; no candidate is accepted or flashed.
+Recall/false-wake limits are unchanged and old failures remain failures.
+
+Checkpoint tools also verify saved-epoch provenance and preserve every trained
+near-phrase class when explicitly widening a network. Such software checks do
+not establish device memory use, latency, or a released model. Training-tool
+regression after this update: **139 passed**, with the pinned upstream enabled.
+
 ## ESP32 模型预算与验证
 
 训练数据大小不等于部署模型大小。每次导出必须通过 `check_esp32_model.py`：默认模型不超过 **64 KiB**；2026-10-18 按用户要求扩大网络后，实验可显式传 `--max-model-bytes 524288`，放宽至 **512 KiB**。双眼构建默认采用该实验上限，旧 1.83 板仍为 64 KiB。输入仍为 INT8 `[1,3,40]`，输出为单个量化概率，不含浮点张量，所有算子均已在固件注册。文件预算、256 KiB arena、每 30ms 的实际推理耗时和识别门槛分别检查；不因文件能放下就认定能实时运行。

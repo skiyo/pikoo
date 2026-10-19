@@ -27,6 +27,53 @@ class LabelsTest(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec('tensorflow'),'Optional TensorFlow unavailable')
 class ModelTest(unittest.TestCase):
+    def test_widened_trained_head_preserves_every_class_and_can_learn(self):
+        import tempfile,json,hashlib
+        from pathlib import Path
+        import tensorflow as tf
+        from contrastive_readout import attach,widen_readout
+        def binary(architecture):
+            inp=tf.keras.Input((8,));h=tf.keras.layers.Dense(architecture['filters'],activation='relu')(inp)
+            return tf.keras.Model(inp,tf.keras.layers.Dense(1,activation='sigmoid')(h))
+        source={'filters':4,'first_filters':3,'kernels':[3,5]};target={**source,'filters':7,'first_filters':5,'window_frames':198}
+        tf.keras.utils.set_random_seed(109);fit,scalar=attach(binary(source),warm_start=True)
+        fixture=np.random.default_rng(109).normal(size=(6,8)).astype('float32')
+        fit.compile(optimizer=tf.keras.optimizers.SGD(.1),loss='sparse_categorical_crossentropy');fit.train_on_batch(fixture,np.arange(6))
+        expected=fit(fixture).numpy()
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);path=root/'checkpoint.weights.h5';scalar.save_weights(path)
+            (root/'report.json').write_text(json.dumps({**source,'feature_config':{'window_frames':198},
+                'classifier_readout':{'type':'warm-plain-near-phrase','classes':PHRASES},'checkpoint_weights_sha256':hashlib.sha256(path.read_bytes()).hexdigest()}))
+            wide,view=attach(binary(target),warm_start=True);proof=widen_readout(wide,view,path,fixture,target,binary)
+            np.testing.assert_allclose(wide(fixture).numpy(),expected,atol=1e-6)
+            self.assertTrue(proof['new_channels_trainable'])
+            wide.compile(optimizer=tf.keras.optimizers.SGD(.1),loss='sparse_categorical_crossentropy')
+            wide.train_on_batch(fixture,np.arange(6));self.assertFalse(np.allclose(wide(fixture).numpy(),expected))
+            with self.assertRaisesRegex(ValueError,'temporal context'):widen_readout(wide,view,path,fixture,{**target,'window_frames':399},binary)
+
+    def test_audited_training_epoch_restores_all_class_probabilities(self):
+        import tempfile,json
+        from pathlib import Path
+        import tensorflow as tf
+        from contrastive_readout import attach,resume_readout
+        from epoch_provenance import record
+        tf.keras.utils.set_random_seed(91)
+        x=np.random.default_rng(91).normal(size=(6,8)).astype('float32')
+        inp=tf.keras.Input((8,));base=tf.keras.Model(inp,tf.keras.layers.Dense(1,activation='sigmoid')(inp))
+        fit,view=attach(base,warm_start=True)
+        fit.compile(optimizer=tf.keras.optimizers.Adam(.01),loss='sparse_categorical_crossentropy')
+        fit.train_on_batch(x,np.arange(6));expected=fit(x).numpy()
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);(root/'epochs').mkdir();checkpoint=root/'epochs/epoch-01.weights.h5';fit.save_weights(checkpoint)
+            architecture={'filters':128,'first_filters':64,'kernels':[5,9]}
+            (root/'report.json').write_text(json.dumps({**architecture,'epochs':1,'export_only':False,
+                'classifier_readout':{'type':'warm-plain-near-phrase','classes':PHRASES},'checkpoint_weights_sha256':'different-best-checkpoint'}))
+            (root/'training-history.json').write_text(json.dumps({'loss':[1.]}));record(root)
+            fresh,scalar=attach(base,warm_start=True)
+            proof=resume_readout(fresh,scalar,checkpoint,x,architecture)
+            np.testing.assert_allclose(fresh(x).numpy(),expected,atol=1e-7)
+            self.assertEqual(proof['source_epoch']['epoch'],1)
+
     def test_trained_class_resume_preserves_all_classes_and_rejects_reordered_labels(self):
         import tempfile,json,hashlib
         from pathlib import Path

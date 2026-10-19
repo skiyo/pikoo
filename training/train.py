@@ -140,24 +140,29 @@ def main():
     p.add_argument('--train-sequence-encoder',action='store_true',help='Explicit joint acoustic-sequence experiment; retain pretrained normalization statistics')
     p.add_argument('--contrastive-classes',action='store_true',help='Separate complete near-phrase classes during sequence training; export scalar wake probability')
     p.add_argument('--plain-contrastive',action='store_true',help='Warm-start a plain binary checkpoint into near-phrase classes while preserving its initial probability; explicit retraining only')
-    p.add_argument('--resume-contrastive-weights',type=Path,help='Continue a compatible trained plain near-phrase head after explicit binary initialization; requires its original report.json')
+    p.add_argument('--resume-contrastive-weights',type=Path,help='Continue/export a compatible trained plain near-phrase head; requires original class metadata and audited provenance for epoch files')
+    p.add_argument('--widen-contrastive-from',type=Path,help='Explicitly train a wider complete near-phrase encoder, preserving every source class initially; requires its original report.json')
     p.add_argument('--relu6',action='store_true',help='Experimental bounded acoustic/sequence activations; requires explicit joint retraining and full revalidation')
     p.add_argument('--train-temporal-encoder',action='store_true',help='Train the ordered temporal head and its encoder jointly; separate fresh-training experiment')
     a=p.parse_args()
     if a.plain_contrastive:
-        if not a.resume_weights or (a.export_only and not a.resume_contrastive_weights) or a.head_backbone_weights or a.classifier_head_units or a.sequence_readout or a.phonetic_readout or a.temporal_readout or a.phone_head or a.widen_from or a.dropout:
-            raise ValueError('Plain contrast requires explicit binary initialization; export-only also requires trained contrastive weights')
+        if not (a.resume_weights or a.resume_contrastive_weights) or (a.export_only and not a.resume_contrastive_weights) or a.head_backbone_weights or a.classifier_head_units or a.sequence_readout or a.phonetic_readout or a.temporal_readout or a.phone_head or a.widen_from or a.widen_contrastive_from or a.dropout:
+            raise ValueError('Plain contrast requires binary or trained-class initialization; export-only requires trained-class weights')
+        a.contrastive_classes=True
+    if a.widen_contrastive_from:
+        if a.export_only or a.plain_contrastive or a.resume_weights or a.resume_contrastive_weights or a.head_backbone_weights or a.classifier_head_units or a.sequence_readout or a.phonetic_readout or a.temporal_readout or a.phone_head or a.widen_from or a.dropout:
+            raise ValueError('Wider trained contrast requires a separate explicit training experiment')
         a.contrastive_classes=True
     if a.resume_contrastive_weights and not a.plain_contrastive:raise ValueError('Trained plain contrastive resume requires --plain-contrastive')
     os.umask(0o077)
     if not 65536<=a.max_model_bytes<=524288:raise ValueError('Model flash budget must be 64..512 KiB')
-    if a.export_only and (not a.resume_weights or a.widen_from):raise ValueError('Export-only requires one explicit resume checkpoint')
+    if a.export_only and (not (a.resume_weights or (a.plain_contrastive and a.resume_contrastive_weights)) or a.widen_from):raise ValueError('Export-only requires one explicit resume checkpoint')
     if a.conv_dense_export and not a.export_only:raise ValueError('Dense convolution is an explicit export-only experiment')
     if a.classifier_head_units and not 16<=a.classifier_head_units<=256:raise ValueError('Classifier head must have 16..256 units')
     if a.head_backbone_weights and (not (a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head or a.sequence_readout) or (a.resume_weights and not a.export_only) or a.widen_from):raise ValueError('Head backbone requires a readout; resume is export-only and widening is separate')
     if a.sequence_readout and (not a.head_backbone_weights or a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head or a.dropout or a.widen_from):raise ValueError('Sequence readout requires only its explicit phonetic encoder initialization')
     if a.train_sequence_encoder and not a.sequence_readout:raise ValueError('Sequence encoder fine-tuning requires its explicit ordered head')
-    if a.contrastive_classes and not (a.sequence_readout or a.plain_contrastive):raise ValueError('Contrast supervision requires an explicit sequence or plain warm-start readout')
+    if a.contrastive_classes and not (a.sequence_readout or a.plain_contrastive or a.widen_contrastive_from):raise ValueError('Contrast supervision requires an explicit sequence or plain warm-start readout')
     if a.phone_head and (not a.head_backbone_weights or a.temporal_readout or a.phonetic_readout or a.classifier_head_units or a.dropout or a.widen_from):raise ValueError('Phone bottleneck requires one explicit matching encoder initialization')
     if a.phone_logits and not a.phone_head:raise ValueError('Phone logits requires a matching phone head')
     if a.phone_logit_clip and (not a.phone_logits or not 1<=a.phone_logit_clip<=32):raise ValueError('Clip requires phone logits and a finite 1..32 bound')
@@ -255,13 +260,23 @@ def main():
     if a.contrastive_classes:
         from contrastive_readout import attach,expanded_labels,PHRASES
         if a.plain_contrastive:
-            model.load_weights(a.resume_weights)
+            if a.resume_weights:model.load_weights(a.resume_weights)
             before=model(sets['train'][0][:8],training=False).numpy()
-        fit_model,model=attach(model,warm_start=a.plain_contrastive)
+        fit_model,model=attach(model,warm_start=bool(a.plain_contrastive or a.widen_contrastive_from))
         if a.plain_contrastive:
             difference=float(np.max(np.abs(model(sets['train'][0][:8],training=False).numpy()-before)))
             if difference>1e-5:raise ValueError('Warm contrast initialization changed the binary function')
             readout={'type':'warm-plain-near-phrase','backbone_frozen':False,'initial_max_probability_difference':difference}
+        if a.widen_contrastive_from:
+            from contrastive_readout import widen_readout
+            def binary_builder(source):
+                source_flags=SimpleNamespace(**vars(flags))
+                source_flags.pointwise_filters=','.join([str(source['filters'])]*len(kernels))
+                source_flags.first_conv_filters=source['first_filters']
+                return mixednet.model(source_flags,(a.window_frames,40),None)
+            widening=widen_readout(fit_model,model,a.widen_contrastive_from,sets['train'][0][:8],
+                {'filters':a.filters,'first_filters':a.first_filters,'kernels':kernels,'window_frames':a.window_frames},binary_builder)
+            readout={'type':'warm-plain-near-phrase','backbone_frozen':False,'wider_trained_classifier':widening}
         contrast_labels=expanded_labels(manifest,a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.negative_prefixes)
         for split,labels in contrast_labels.items():
             if len(labels)!=len(sets[split][1]) or not np.array_equal(labels==1,sets[split][1]==1):raise ValueError('Contrast labels do not match cached binary examples')
@@ -371,5 +386,9 @@ def main():
             model_json['pronunciation_scope']='Only level-tone pī kū is required; other tone variants are unspecified, not rejection targets'
     (a.output/'nihao_pikoo.json').write_text(json.dumps(model_json,ensure_ascii=False,indent=2)+'\n')
     report.update(bytes=len(binary),sha256=hashlib.sha256(binary).hexdigest(),max_model_bytes=a.max_model_bytes,parameters=model.count_params(),trainable_parameters=sum(int(np.prod(w.shape)) for w in model.trainable_weights))
-    (a.output/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n');print(json.dumps(report,ensure_ascii=False),flush=True)
+    (a.output/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+    if a.save_epoch_checkpoints and history:
+        from epoch_provenance import record
+        record(a.output)
+    print(json.dumps(report,ensure_ascii=False),flush=True)
 if __name__=='__main__':main()
