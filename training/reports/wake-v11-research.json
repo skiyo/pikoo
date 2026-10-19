@@ -753,10 +753,20 @@
       "selected_prefixes": 17,
       "real_child_prefixes": 6,
       "household_recordings_used": 0
+    },
+    "BG_new_development_preparation": {
+      "planned": 256,
+      "raw_generated": 253,
+      "content_approved": 188,
+      "new_TRAIN_rows_including_mined_prefixes": 99,
+      "additional_development_cases": 90,
+      "original_development_cases": 914,
+      "status": "bounded whole-network training running; no final model claim",
+      "independent_or_family_used": false
     }
   },
   "pending": [
-    "BG has one finite pipeline: complete256 preassigned fictional clips (128TRAIN,128DEVELOPMENT before blind content screening), merge approved clips and TRAIN-only mined prefixes, then continue BF trained near-phrase weights at0.000025. No new downloads, family inputs or USB.",
+    "BG training is running on99 new TRAIN records and90 separately checked development examples. A finite continuation can freeze/run one newV17 only after BOTH development gates, quantization, Micro and static checks pass. Otherwise it stops with failure evidence; no USB, family input, recurring timer or fresh-test reuse.",
     "Retain original914 development checks as a separate mandatory gate. Added development conditions must separately pass90% adult/childlike/literal-English recall and zero false wakes, with minimum content counts; they never replace the original gate or count as independent tests.",
     "All rawV16 recordings are consumed/protected together with earlier tests (899hashes). Next independent test must be entirely new, preassigned and generated only after a new qualifying candidate is frozen.",
     "Google bounded runs remain completed; no additional cloud calls, paid fallback, billing/project changes or heartbeat scheduling in the current offline pipeline.",
@@ -926,15 +936,16 @@
     "not_used": "Paid Pro TTS, paid Batch API, other projects or billing changes"
   },
   "software_regression": {
-    "training": 119,
+    "training": 120,
     "skipped": 0,
     "new_google_curriculum_focused": 8,
     "other_suites": "unchanged; previously passed, not rerun unnecessarily",
     "new_negative_spellings_and_fresh_plan": true,
-    "execution": "118 tests passed in complete discovery with pinned upstream; subsequent stricter content rule and one additional test passed all24 content/merge checks (119 distinct passing tests)",
+    "execution": "118 full-suite checks passed with pinned upstream; stricter content rule plus newV17 planning tests passed focused regressions, totaling120 distinct passing tests",
     "new_child_curriculum_resume_and_conv_export": true,
     "new_generalization_cohort_and_gate": true,
-    "new_content_screen_no_extra_Latin": true
+    "new_content_screen_no_extra_Latin": true,
+    "new_V17_plan_disjoint": true
   },
   "V16_plan": {
     "status": "consumed-failed-independent-test",
@@ -959,5 +970,22 @@
     "same_raw_frontend_fingerprint_as_BA": true,
     "fresh_test_status": "V16 not generated",
     "household_or_consumed_test_used": false
+  },
+  "V17_plan": {
+    "status": "preassigned-not-generated",
+    "clips": 256,
+    "fictional_conditions": 32,
+    "per_style_targets": 64,
+    "per_style_negatives": 64,
+    "per_style_literal_English_targets": 32,
+    "conditions_seeds_instructions_disjoint": true,
+    "gates_required_before_freeze": [
+      "original914 development",
+      "additional90 development",
+      "TRAIN float/INT8",
+      "native Micro parity",
+      "static ESP32 format"
+    ],
+    "household_or_real_child_accepted": false
   }
 }
