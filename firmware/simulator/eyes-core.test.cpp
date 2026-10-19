@@ -24,6 +24,32 @@ int main(){
   pose.x=std::numeric_limits<float>::quiet_NaN();assert(!render(pose,0,a.data(),EyePixels));
  }
  assert(seen.size()==StateCount);
+#ifdef PIKOO_EYES_FAST_TEST
+ // A clipped redraw must exactly match a complete frame within its band and
+ // preserve every outside pixel, for all states and both display sides.
+ for(int state=0;state<StateCount;state++)for(int side=0;side<2;side++){
+  Animator clipped;auto p=clipped.update({static_cast<State>(state),3200,42,.4f});
+  assert(render(p,side,a.data(),EyePixels));
+  std::fill(b.begin(),b.end(),0xa55a);
+  assert(render_fast_rows(p,side,b.data(),EyePixels,80,180));
+  for(std::size_t pixel=0;pixel<EyePixels;pixel++)
+   assert(b[pixel]==(pixel>=80*240&&pixel<180*240?a[pixel]:0xa55a));
+  assert(!render_fast_rows(p,side,b.data(),EyePixels,-1,180));
+  assert(!render_fast_rows(p,side,b.data(),EyePixels,80,241));
+  assert(!render_fast_rows(p,side,b.data(),EyePixels,80,80));
+ }
+ // For extreme closed-eye gaze/tilt, no changed pixel may lie outside the
+ // union of old/new damage bounds. This checks against actual full rasters.
+ Pose closed_pose;assert(closed_eye_rows(closed_pose).last-closed_eye_rows(closed_pose).first<40);
+ for(float y:{-22.f,0.f,22.f})for(float tilt:{-.1f,0.f,.1f})for(int side=0;side<2;side++){
+  Pose old_pose,new_pose;old_pose.y=-y;old_pose.tilt=-tilt;new_pose.y=y;new_pose.tilt=tilt;new_pose.x=28;
+  auto old_rows=closed_eye_rows(old_pose),new_rows=closed_eye_rows(new_pose);
+  int first=std::min(old_rows.first,new_rows.first),last=std::max(old_rows.last,new_rows.last);
+  assert(render(old_pose,side,a.data(),EyePixels)&&render(new_pose,side,b.data(),EyePixels));
+  for(std::size_t pixel=0;pixel<EyePixels;pixel++)
+   if(a[pixel]!=b[pixel])assert(pixel>=std::size_t(first*240)&&pixel<std::size_t(last*240));
+ }
+#endif
  // Awake eyeballs fill the disc at the top/bottom; no persistent black bars.
  Animator awake;auto listening=awake.update({State::Listening,1000});assert(render(listening,0,a.data(),EyePixels));
  auto bright=[](uint16_t c){return ((c>>11)&31)>24&&((c>>5)&63)>50;};

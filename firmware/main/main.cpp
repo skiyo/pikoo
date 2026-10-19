@@ -30,6 +30,7 @@
 #include "pikoo_interaction.hpp"
 #include "eye_state.hpp"
 #include "wake_model.hpp"
+#include "websocket_tx.hpp"
 #ifdef PIKOO_WAKE_VETO
 #include "wake_verifier.hpp"
 #endif
@@ -48,8 +49,14 @@ pikoo::Playback playback;
 pikoo::Session session;
 pikoo::Interaction interaction;
 std::atomic<bool> voice_connected{false};
-std::mutex play_mutex, in_mutex, out_mutex;
+std::mutex play_mutex, in_mutex, out_mutex, tx_mutex, tx_io_mutex;
 std::deque<std::string> incoming, outgoing;
+struct ControlMessage { uint32_t connection; std::string json; };
+std::deque<ControlMessage> control_queue;
+std::atomic<bool> tx_enabled{false};
+std::atomic<uint32_t> connection_epoch{0};
+std::atomic<bool> tx_hold_requested{false};
+std::atomic<uint32_t> session_steps{0},tx_holds{0};
 std::atomic<bool> wifi_ready{false}, uploading{false}, awake{false},
     muted{false}, wake_request{false}, stop_request{false},
     cancel_request{false}, takeover_request{false}, net_open{false},
@@ -61,15 +68,17 @@ std::atomic<uint32_t> verified_wake_epoch{0};
 #endif
 std::atomic<int> close_code{0}, overflow_reason{0};
 std::atomic<uint32_t> send_max_us{0},send_last_us{0};
+std::atomic<uint32_t> transport_stop_max_us{0};
 std::atomic<uint32_t> resample_max_us{0},receive_max_us{0};
 std::atomic<uint32_t> playback_gaps{0},playback_gap_max_us{0};
 void fail_queue(int reason){overflow_reason=reason;overflow=true;}
 std::atomic<uint64_t> speech_at{0};
 std::atomic<uint32_t> stream_epoch{0};
 // 40 ms of PCM plus Base64/JSON fits inside one 4096-byte TLS record.
-// Keep the same 800 ms bounded backlog as the previous eight 100 ms packets.
+// A lost TCP segment can take 1.5 s to retransmit with this IDF's defaults.
+// Bound recovery to 3.2 s; cancellation/epoch changes still discard everything.
 constexpr size_t upload_samples=640;
-constexpr unsigned upload_slots=20;
+constexpr unsigned upload_slots=80;
 static_assert(4*((upload_samples*2+2)/3)+512<4096);
 struct Upload {
   uint32_t epoch;
@@ -95,7 +104,7 @@ std::string endpoint, token, ssid, password, device_id, ws_uri, headers,
     fragment;
 uint64_t next_retry = 0, connecting_at = 0;
 unsigned retries = 0;
-uint32_t serial = 0;
+std::atomic<uint32_t> serial{0};
 bool active = false, takeover = false;
 std::atomic<State> visual_state{State::Idle};
 std::string conversation_id;
@@ -105,7 +114,7 @@ std::atomic<uint32_t> received_audio_count{0};
 std::atomic<uint32_t> captured_samples{0},processed_samples{0},uploaded_samples{0};
 std::atomic<float> processed_level{0};
 uint32_t boot_id;
-TaskHandle_t capture_handle=nullptr, process_handle=nullptr, playback_handle=nullptr;
+TaskHandle_t capture_handle=nullptr, process_handle=nullptr, playback_handle=nullptr, sender_handle=nullptr;
 const esp_afe_sr_iface_t *afe;
 esp_afe_sr_data_t *afe_data;
 uint64_t now() { return esp_timer_get_time() / 1000; }
@@ -142,11 +151,24 @@ cJSON *event(const char *type) {
 }
 bool send(cJSON *o) {
   auto s = stringify(o);
+  if(!tx_enabled)return false;
+  std::lock_guard<std::mutex> lock(tx_mutex);
+  if(control_queue.size()>=64){fail_queue(9);return false;}
+  control_queue.push_back({connection_epoch.load(),std::move(s)});
+  return true; // Accepted by the bounded TX queue, not a delivery receipt.
+}
+bool send_wire(const std::string &s,uint32_t connection,uint32_t audio_epoch=UINT32_MAX,int samples=0) {
+  std::lock_guard<std::mutex> lock(tx_io_mutex);
+  if(!tx_enabled||connection!=connection_epoch)return false;
+  if(samples&&(!uploading||audio_epoch!=stream_epoch))return false;
   if (ws && esp_websocket_client_is_connected(ws)) {
     auto started=esp_timer_get_time();
-    int sent=esp_websocket_client_send_text(ws,s.data(),s.size(),pdMS_TO_TICKS(1000));
+    int sent=esp_websocket_client_send_text(ws,s.data(),s.size(),pdMS_TO_TICKS(2500));
     auto elapsed=static_cast<uint32_t>(esp_timer_get_time()-started);send_last_us=elapsed;send_max_us=std::max(send_max_us.load(),elapsed);
-    if(sent==int(s.size()))return true;
+    if(sent==int(s.size())) {
+      if(samples){++upload_count;uploaded_samples+=samples;}
+      return true;
+    }
     net_down=true;
   }
   return false;
@@ -180,17 +202,29 @@ void gate_off() {
   xQueueReset(upload_queue);
 }
 void end_socket() {
+  const auto stopping_at=esp_timer_get_time();
+  tx_enabled=false;
+  ++connection_epoch;
+  {std::lock_guard<std::mutex> lock(tx_mutex);control_queue.clear();}
   voice_connected=false;
   gate_off();
   active = false;
   awake = false;
   clear_audio(false);
   if (ws) {
-    esp_websocket_client_close(ws, pdMS_TO_TICKS(1000));
+    // close(timeout) sends its CLOSE frame with portMAX_DELAY in the pinned
+    // client. Wake blocked socket IO first, then join before freeing anything.
+    if(tls_transport) {
+      const int fd=esp_transport_get_socket(tls_transport);
+      if(fd>=0)shutdown(fd,SHUT_RDWR);
+    }
+    // Shutdown must precede this lock: the sender may be blocked in TLS IO.
+    std::lock_guard<std::mutex> lock(tx_io_mutex);
     esp_websocket_client_stop(ws);
     esp_websocket_client_destroy(ws);
     ws = nullptr;
   }
+  pikoo::release_frame_writer();
   if(websocket_transport){esp_transport_destroy(websocket_transport);websocket_transport=nullptr;}
   if(tls_transport){esp_transport_destroy(tls_transport);tls_transport=nullptr;}
   net_open = false;
@@ -207,6 +241,7 @@ void end_socket() {
     std::lock_guard<std::mutex> l(out_mutex);
     outgoing.clear();
   }
+  transport_stop_max_us=std::max(transport_stop_max_us.load(),uint32_t(esp_timer_get_time()-stopping_at));
 }
 void socket_event(void *, esp_event_base_t, int32_t id, void *data) {
   auto e = static_cast<esp_websocket_event_data_t *>(data);
@@ -321,6 +356,11 @@ void begin() {
     net_down = true;
     return;
   }
+  if(!pikoo::bind_frame_writer(websocket_transport,tls_transport)) {
+    net_down=true;
+    return;
+  }
+  tx_enabled=true;
   esp_websocket_register_events(ws, WEBSOCKET_EVENT_ANY, socket_event, nullptr);
   esp_websocket_client_start(ws);
 }
@@ -690,7 +730,7 @@ void diagnostics() {
 #endif
   wifi_ap_record_t ap{};
   int rssi=esp_wifi_sta_get_ap_info(&ap)==ESP_OK?ap.rssi:0;
-  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu volume_db=%d dac_reg=%d rssi=%d playback_gaps=%lu playback_gap_max_us=%lu wake_score=%.3f wake_peak=%.3f wake_raw_peak=%.3f wake_hits=%lu wake_errors=%lu wake_dropped=%lu wake_test=%d veto_candidates=%lu veto_rejected=%lu veto_cancelled=%lu veto_errors=%lu veto_last_us=%lu",
+  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu volume_db=%d dac_reg=%d rssi=%d playback_gaps=%lu playback_gap_max_us=%lu wake_score=%.3f wake_peak=%.3f wake_raw_peak=%.3f wake_hits=%lu wake_errors=%lu wake_dropped=%lu wake_test=%d veto_candidates=%lu veto_rejected=%lu veto_cancelled=%lu veto_errors=%lu veto_last_us=%lu frame_tx=%lu frame_tx_errors=%lu stop_max_us=%lu upload_pending=%u session_steps=%lu tx_holds=%lu sender_stack_free=%u",
     board::Name,esp_app_get_description()->version,int(visual_state.load()),int(wifi_ready.load()),int(muted.load()),int(uploading.load()),
     (unsigned long)upload_count.load(),(unsigned long)reconnect_count.load(),unsigned(esp_get_free_heap_size()),unsigned(esp_get_minimum_free_heap_size()),
     unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),board::display_fps(),board::microphone_level(),board::reference_level(),board::output_level(),
@@ -706,6 +746,8 @@ void diagnostics() {
 #else
     0UL,0UL,0UL,0UL,0UL
 #endif
+    ,(unsigned long)pikoo::coalesced_frames(),(unsigned long)pikoo::frame_write_errors(),
+    (unsigned long)transport_stop_max_us.load(),unsigned(uxQueueMessagesWaiting(upload_queue)),(unsigned long)session_steps.load(),(unsigned long)tx_holds.load(),unsigned(sender_handle?uxTaskGetStackHighWaterMark(sender_handle):0)
   );
 }
 void controls_task(void *) {
@@ -724,6 +766,7 @@ void controls_task(void *) {
         // so a concurrent wake cannot race the test's network-isolation gate.
         else if(!strcmp(command,"wake test on")&&muted&&!awake&&!uploading&&visual_state==State::Muted)wake_test_until_ms=now()+300000;
         else if(!strcmp(command,"wake test off"))wake_test_until_ms=0;
+        else if(!strcmp(command,"tx hold")&&uploading)tx_hold_requested=true;
         else if(!strcmp(command,"wake trace")&&visual_state==State::Idle&&!muted)wake_trace_start();
         else if(!strcmp(command,"wake capture")&&visual_state==State::Idle&&!muted)wake_capture_start();
         else if(!strcmp(command,"wake"))wake_request=true;
@@ -750,8 +793,37 @@ void controls_task(void *) {
     vTaskDelay(pdMS_TO_TICKS(5));
   }
 }
+void sender_task(void *) {
+  while(true) {
+    // Explicit USB-only fault injection. Never enabled by normal interaction.
+    if(tx_hold_requested.exchange(false)&&tx_enabled) {
+      ++tx_holds;
+      ESP_LOGI("diag","controlled TX hold begin ms=1500");
+      vTaskDelay(pdMS_TO_TICKS(1500));
+      ESP_LOGI("diag","controlled TX hold end");
+    }
+    // Control/cancel/heartbeat events precede the next microphone packet.
+    for(int i=0;i<2;++i) {
+      ControlMessage message;
+      {std::lock_guard<std::mutex> lock(tx_mutex);
+       if(control_queue.empty())break;
+       message=std::move(control_queue.front());control_queue.pop_front();}
+      send_wire(message.json,message.connection);
+    }
+    Upload u;
+    if(tx_enabled&&uploading&&xQueueReceive(upload_queue,&u,0)==pdTRUE&&u.epoch==stream_epoch) {
+      const auto connection=connection_epoch.load();
+      auto o=event("input_audio_buffer.append");
+      auto audio=encode(u.pcm,u.count*2);
+      cJSON_AddStringToObject(o,"audio",audio.c_str());
+      send_wire(stringify(o),connection,u.epoch,u.count);
+    }
+    vTaskDelay(pdMS_TO_TICKS(2));
+  }
+}
 void session_task(void *) {
   while (true) {
+    ++session_steps;
     if(tone_complete.exchange(false)&&active&&session.ready&&!muted&&!interaction.closing()) uploading=true;
     if (stop_request.exchange(false)) {
       end_socket();
@@ -849,15 +921,6 @@ void session_task(void *) {
         }
       }
     }
-    Upload u;
-    pikoo::pump_bounded(2,[&]{return xQueueReceive(upload_queue,&u,0)==pdTRUE;},[&]{
-      if (uploading && u.epoch == stream_epoch) {
-        auto o = event("input_audio_buffer.append");
-        auto audio = encode(u.pcm, u.count * 2);
-        cJSON_AddStringToObject(o, "audio", audio.c_str());
-        if(send(o)){++upload_count;uploaded_samples+=u.count;}
-      }
-    });
     session.last_activity = std::max(session.last_activity, speech_at.load());
     bool playing;
     {
@@ -885,13 +948,20 @@ extern "C" void app_main() {
   heap_caps_malloc_extmem_enable(512);
   vTaskPrioritySet(nullptr,5);
   ESP_ERROR_CHECK(nvs_flash_init());
-  upload_queue = xQueueCreate(upload_slots, sizeof(Upload));
+  // FreeRTOS dynamic queue storage uses internal RAM, even when ordinary
+  // malloc prefers PSRAM. Reserve internal RAM for Wi-Fi/TLS and DMA instead.
+  static StaticQueue_t upload_queue_state;
+  auto upload_storage=static_cast<uint8_t *>(heap_caps_malloc(upload_slots*sizeof(Upload),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT));
+  configASSERT(upload_storage);
+  upload_queue = xQueueCreateStatic(upload_slots, sizeof(Upload),upload_storage,&upload_queue_state);
   wake_queue = xQueueCreate(4, sizeof(LocalWakeAudio));
   configASSERT(upload_queue&&wake_queue);
   boot_id=esp_random();
   gpio_config_t button_cfg{};button_cfg.pin_bit_mask=1ULL<<board::Button;button_cfg.mode=GPIO_MODE_INPUT;button_cfg.pull_up_en=GPIO_PULLUP_ENABLE;
   ESP_ERROR_CHECK(gpio_config(&button_cfg));
   ESP_ERROR_CHECK(board::display_init());display_ready=true;
+  // Keep low-priority rendering away from Wi-Fi/AFE on core 0. Sleeping
+  // frames use a clipped redraw so inference/audio remain higher priority.
   xTaskCreatePinnedToCore(graphics_task,"eyes",8192,nullptr,2,nullptr,1);
   nvs_handle_t nvs;
   if (nvs_open("pikoo", NVS_READONLY, &nvs) != ESP_OK) {
@@ -977,4 +1047,5 @@ extern "C" void app_main() {
   xTaskCreatePinnedToCore(playback_task, "playback", 8192, nullptr, 6, &playback_handle,1);
   xTaskCreatePinnedToCore(controls_task,"controls",4096,nullptr,9,nullptr,0);
   xTaskCreatePinnedToCore(session_task,"session",12288,nullptr,5,nullptr,1);
+  xTaskCreatePinnedToCore(sender_task,"sender",8192,nullptr,5,&sender_handle,1);
 }

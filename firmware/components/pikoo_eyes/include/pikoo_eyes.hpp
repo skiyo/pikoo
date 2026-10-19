@@ -21,6 +21,9 @@ struct Pose {
   State state = State::Idle;
   double time_ms = 0;
 };
+struct RowRange { int first, last; };
+// Damage bounds for fully closed eyes, without a ring or changing background.
+RowRange closed_eye_rows(const Pose &pose);
 class Animator {
  public:
   Pose update(const Input &input);
@@ -35,4 +38,7 @@ class Animator {
 bool render(const Pose &pose, int side, uint16_t *pixels, std::size_t count);
 // Scanline implementation for MCU frame budgets; same original geometry/palette.
 bool render_fast(const Pose &pose, int side, uint16_t *pixels, std::size_t count);
+// Redraw a half-open row band without touching the rest of the caller's frame.
+bool render_fast_rows(const Pose &pose, int side, uint16_t *pixels, std::size_t count,
+                      int first_row, int last_row);
 } // namespace pikoo::eyes

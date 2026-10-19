@@ -24,6 +24,8 @@ int applied_rotation=-1;
 std::atomic<uint32_t> render_us{0},transfer_us{0};
 uint64_t frame_start = 0;
 unsigned frames = 0;
+bool previous_sleeping=false;
+pikoo::eyes::RowRange previous_closed_rows{0,240};
 bool done(esp_lcd_panel_io_handle_t, esp_lcd_panel_io_event_data_t *, void *ctx) {
   BaseType_t woken = pdFALSE;
   xSemaphoreGiveFromISR(static_cast<SemaphoreHandle_t>(ctx), &woken);
@@ -85,6 +87,7 @@ esp_err_t display_init() {
 }
 void display_frame(const pikoo::eyes::Pose &pose,const char *label) {
   auto selected=rotation.load();
+  const bool rotation_changed=selected!=applied_rotation;
   if(selected!=applied_rotation) {
     for(int eye=0;eye<2;eye++) {
       esp_lcd_panel_swap_xy(panels[eye],selected==90||selected==270);
@@ -95,18 +98,30 @@ void display_frame(const pikoo::eyes::Pose &pose,const char *label) {
     applied_rotation=selected;
   }
   uint32_t drawing=0,transferring=0;
+  const bool sleeping=pose.state==pikoo::eyes::State::Idle&&pose.open==0&&pose.ring==0&&pose.saturation==1&&(!label||!*label);
+  // Once the transition has completed, the sleeping arcs only change inside
+  // this band. Preserve the physical screen's background instead of sending
+  // two complete 115 KiB frames for a sub-pixel breathing movement.
+  const bool partial=sleeping&&previous_sleeping&&!rotation_changed;
+  previous_sleeping=false;
+  const auto closed_rows=pikoo::eyes::closed_eye_rows(pose);
+  const int first=partial?std::min(previous_closed_rows.first,closed_rows.first):0;
+  const int last=partial?std::max(previous_closed_rows.last,closed_rows.last):240;
   for(int eye=0;eye<2;eye++) {
     auto start=esp_timer_get_time();
-    if(!pikoo::eyes::render_fast(pose,eye,pixels,pikoo::eyes::EyePixels)) return;
+    if(!pikoo::eyes::render_fast_rows(pose,eye,pixels,pikoo::eyes::EyePixels,first,last)) return;
     text(label);
     drawing+=esp_timer_get_time()-start;start=esp_timer_get_time();
-    for(int y=0;y<240;y+=StripeRows) {
-      for(int i=0;i<240*StripeRows;i++) strip[i]=__builtin_bswap16(pixels[y*240+i]);
-      if(esp_lcd_panel_draw_bitmap(panels[eye],0,y,240,y+StripeRows,strip)!=ESP_OK) return;
+    for(int y=first;y<last;y+=StripeRows) {
+      const int rows=std::min(StripeRows,last-y);
+      for(int i=0;i<240*rows;i++) strip[i]=__builtin_bswap16(pixels[y*240+i]);
+      if(esp_lcd_panel_draw_bitmap(panels[eye],0,y,240,y+rows,strip)!=ESP_OK) return;
       if(!xSemaphoreTake(complete[eye],pdMS_TO_TICKS(500))) return;
     }
     transferring+=esp_timer_get_time()-start;
   }
+  previous_sleeping=sleeping;
+  previous_closed_rows=closed_rows;
   render_us=drawing;transfer_us=transferring;
   auto t=esp_timer_get_time(); if(!frame_start) frame_start=t;
   frames++;

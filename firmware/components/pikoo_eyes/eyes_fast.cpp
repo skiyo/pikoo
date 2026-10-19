@@ -22,12 +22,13 @@ uint16_t blend(uint16_t bg,uint16_t fg,float amount){
 struct Raster {
   uint16_t *pixels;
   std::array<int,240> left,right;
+  int top,bottom;
   void pixel(int x,int y,uint16_t color,float alpha=1){
-    if(alpha<=0||y<0||y>=240||x<left[y]||x>right[y])return;
+    if(alpha<=0||y<top||y>=bottom||x<left[y]||x>right[y])return;
     auto &p=pixels[y*240+x];p=alpha>=1?color:blend(p,color,alpha);
   }
   void span(int y,float l,float r,uint16_t color){
-    if(y<0||y>=240||l>r)return;
+    if(y<top||y>=bottom||l>r)return;
     int a=std::max(left[y],static_cast<int>(std::ceil(l-.5f)));
     int b=std::min(right[y],static_cast<int>(std::floor(r+.5f)));
     if(a>b)return;
@@ -43,7 +44,7 @@ struct Raster {
   }
   void ellipse(float cx,float cy,float rx,float ry,uint16_t color){
     if(rx<=0||ry<=0)return;
-    int first=std::max(0,int(std::ceil(cy-ry))),last=std::min(239,int(std::floor(cy+ry)));
+    int first=std::max(top,int(std::ceil(cy-ry))),last=std::min(bottom-1,int(std::floor(cy+ry)));
     for(int y=first;y<=last;y++){
       float q=(y-cy)/ry;
       float width=rx*std::sqrt(std::max(0.f,1-q*q));
@@ -52,8 +53,14 @@ struct Raster {
   }
 };
 }
-bool render_fast(const Pose &p,int side,uint16_t *out,std::size_t count){
+RowRange closed_eye_rows(const Pose &p){
+  if(!std::isfinite(p.y)||!std::isfinite(p.tilt))return {0,240};
+  const float center=119.5f+cap(p.y,-22,22),tilt=std::abs(cap(p.tilt,-.1f,.1f)*35);
+  return {std::max(0,int(std::floor(center-tilt))-3),std::min(240,int(std::ceil(center+tilt))+26)};
+}
+bool render_fast_rows(const Pose &p,int side,uint16_t *out,std::size_t count,int first_row,int last_row){
   if(!out||count<EyePixels||side<0||side>1||
+     first_row<0||last_row>240||first_row>=last_row||
      !std::isfinite(p.x)||!std::isfinite(p.y)||!std::isfinite(p.open)||!std::isfinite(p.pupil)||
      !std::isfinite(p.tilt)||!std::isfinite(p.smile)||!std::isfinite(p.blink)||
      !std::isfinite(p.saturation)||!std::isfinite(p.ring)||!std::isfinite(p.time_ms))return false;
@@ -61,10 +68,10 @@ bool render_fast(const Pose &p,int side,uint16_t *out,std::size_t count){
   auto bg=rgb(0x252427,sat),white=rgb(0xFFF8EB,sat),amber=rgb(0xEDBD70,sat),dark=rgb(0x332A29,sat),shine=rgb(0xFFFCF3,sat);
   float cx=119.5f+cap(p.x,-28,28)+(side?-.7f:.7f);
   float cy=119.5f+cap(p.y,-22,22)+cap(p.tilt,-.1f,.1f)*(side?35:-35);
-  Raster r{out,{}, {}};
-  std::fill_n(out,EyePixels,0);
+  Raster r{out,{}, {},first_row,last_row};
+  std::fill(out+first_row*240,out+last_row*240,0);
   // One square root per scanline, instead of per pixel.
-  for(int y=0;y<240;y++){
+  for(int y=first_row;y<last_row;y++){
     float dy=y-119.5f;
     float width=std::sqrt(std::max(0.f,119.5f*119.5f-dy*dy));
     r.left[y]=std::max(0,int(std::ceil(119.5f-width+.0001f)));
@@ -74,7 +81,7 @@ bool render_fast(const Pose &p,int side,uint16_t *out,std::size_t count){
   auto physical_left=r.left,physical_right=r.right;
   if(opening>.035f){
     r.ellipse(119.5f,119.5f,119.5f,119.5f*opening,white);
-    for(int y=0;y<240;y++){
+    for(int y=first_row;y<last_row;y++){
       float q=(y-119.5f)/(119.5f*opening);
       if(std::abs(q)>1){r.left[y]=240;r.right[y]=-1;continue;}
       float width=119.5f*std::sqrt(std::max(0.f,1-q*q));
@@ -113,7 +120,10 @@ bool render_fast(const Pose &p,int side,uint16_t *out,std::size_t count){
   if(p.state==State::Speaking||p.state==State::Happy)color=0xD9A17E;
   if(p.state==State::Muted)color=0x807C76;
   auto accent=rgb(color,sat);
-  for(int y=1;y<239&&p.ring>0;y++){
+  const bool pulsing=p.state==State::Connecting||p.state==State::Boot;
+  const float phase=float(std::fmod(p.time_ms*.0018,6.2831853));
+  const float phase_sin=pulsing?std::sin(phase):0,phase_cos=pulsing?std::cos(phase):0;
+  for(int y=std::max(1,first_row);y<std::min(239,last_row)&&p.ring>0;y++){
     float dy=y-119.5f;
     // Only the thin ring boundary needs distance/angle shading.
     for(int edge=0;edge<2;edge++){
@@ -124,12 +134,16 @@ bool render_fast(const Pose &p,int side,uint16_t *out,std::size_t count){
       for(int x=first;x<=last;x++){
         float dx=x-119.5f,d=std::sqrt(dx*dx+dy*dy);
         float alpha=cap(.5f-(std::abs(d-117.5f)-.6f),0,1)*cap(p.ring,0,1);
-        if(p.state==State::Connecting||p.state==State::Boot)
-          alpha*=.25f+.75f*(std::sin(std::atan2(dy,dx)+float(std::fmod(p.time_ms*.0018,6.2831853)))*.5f+.5f);
+        // sin(atan2(dy,dx)+phase): avoid per-pixel atan2/sin/fmod on the MCU.
+        if(pulsing)
+          alpha*=.25f+.75f*((dy/d*phase_cos+dx/d*phase_sin)*.5f+.5f);
         r.pixel(x,y,accent,alpha);
       }
     }
   }
   return true;
+}
+bool render_fast(const Pose &p,int side,uint16_t *out,std::size_t count){
+  return render_fast_rows(p,side,out,count,0,240);
 }
 }

@@ -6,3 +6,5 @@ mkdir -p firmware/build-host
 firmware/build-host/core-test
 "${CXX:-c++}" -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -g -Ifirmware/components/pikoo_core/include firmware/tests/wake_replay_test.cpp -o firmware/build-host/wake-replay-test
 firmware/build-host/wake-replay-test
+"${CXX:-c++}" -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -g -Ifirmware/components/pikoo_core/include firmware/tests/websocket_frame_test.cpp -o firmware/build-host/websocket-frame-test
+firmware/build-host/websocket-frame-test
