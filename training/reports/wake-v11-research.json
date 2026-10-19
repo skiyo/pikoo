@@ -360,10 +360,76 @@
       "host_arena_bytes": 51504,
       "result": "failed new disclosed first-tone-only development gate; not deployed",
       "household_or_independent_test_used": false
+    },
+    "AK_mined_level128": {
+      "contract": "pikoo-level-tone-only-v1",
+      "development_targets": 184,
+      "development_hits": 177,
+      "development_non_targets": 730,
+      "development_false_wakes": 4,
+      "raw_adult_hits": 16,
+      "raw_adult_targets": 18,
+      "raw_childlike_hits": 24,
+      "raw_childlike_targets": 24,
+      "TRAIN_float_int8_passed": 8,
+      "TRAIN_float_int8_cases": 8,
+      "host_Micro_exact_cases": 6,
+      "result": "failed adult recall and false wakes; no independent test or hardware operation"
+    },
+    "AL_saved_AK_checkpoints": {
+      "contract": "pikoo-level-tone-only-v1",
+      "checkpoint_order": [
+        1,
+        4,
+        7,
+        10
+      ],
+      "results": {
+        "1": {
+          "hits": 164,
+          "false_wakes": 1,
+          "adult_hits": 15
+        },
+        "4": {
+          "hits": 169,
+          "false_wakes": 3,
+          "adult_hits": 15
+        },
+        "7": {
+          "hits": 167,
+          "false_wakes": 0,
+          "adult_hits": 15
+        },
+        "10": {
+          "hits": 172,
+          "false_wakes": 1,
+          "adult_hits": 16
+        }
+      },
+      "targets": 184,
+      "non_targets": 730,
+      "raw_adult_targets": 18,
+      "result": "all failed adult recall; bounded export-only comparison, no refit or independent-test scoring"
+    },
+    "AM_residual64": {
+      "bytes": 199584,
+      "development_hits": 167,
+      "development_targets": 184,
+      "development_false_wakes": 0,
+      "development_non_targets": 730,
+      "raw_adult_hits": 15,
+      "raw_adult_targets": 18,
+      "raw_childlike_hits": 24,
+      "raw_childlike_targets": 24,
+      "TRAIN_float_int8_passed": 8,
+      "TRAIN_float_int8_cases": 8,
+      "host_Micro_exact_cases": 6,
+      "host_arena_bytes": 52096,
+      "result": "failed adult synthetic recall; no device/family acceptance"
     }
   },
   "pending": [
-    "AK mines actual causal false-trigger prefixes from TRAIN negatives only, then fine-tunes with increased negative weight; all914 first-tone-only development cases unchanged",
+    "AP new96-row TRAIN-only pī kū curriculum (eight adult/four fictional childlike families), offline content screen, then AQ frozen-encoder readout; no new test generation before qualified candidate freeze",
     "Exact corpus/phone/fold cache proof allows reusing original float32 frontend arrays across architecture widths; every waveform rechecked against current protected hashes",
     "Google TTS free daily quota reached; use existing reviewed data until reset, no paid fallback or project/model rotation",
     "Next wake model must pass unchanged development, newly frozen independent test, ESP32/runtime and actual family tests"
@@ -403,7 +469,15 @@
     "added_targets": 9,
     "added_mixed_targets": 5,
     "original_development_rows_unchanged": 1046,
-    "household_or_consumed_test_used": false
+    "household_or_consumed_test_used": false,
+    "AN_Google_new_day": {
+      "new_raw": 1,
+      "new_approved": 1,
+      "stopped_http": 429,
+      "quota": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+      "daily_limit": 10,
+      "no_paid_fallback_or_model_rotation": true
+    }
   },
   "observed_Google_quota": {
     "date": "2026-10-18",
