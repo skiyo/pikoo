@@ -78,6 +78,38 @@ class LocalCurriculumTest(unittest.TestCase):
             self.assertEqual(sum(r['label'] and 'Pikoo' in r['text'] for r in selected),16)
         self.assertTrue(all(r['synthesis_language']=='auto' for r in rows if 'Pikoo' in r['text']))
 
+    def test_v16_is_a_larger_disjoint_blind_plan_with_unchanged_target_meaning(self):
+        from heldout_curriculum import jobs as heldout_jobs
+        from level_tone_curriculum import jobs as training_jobs
+        rows=heldout_jobs('v16')
+        old=[r for version in ['v11','v12','v13','v14','v15'] for r in heldout_jobs(version)]+training_jobs()
+        self.assertEqual(len(rows),256)
+        self.assertEqual(len({r['group'] for r in rows}),32)
+        self.assertEqual(len({r['seed'] for r in rows}),256)
+        for key in ['group','seed','instruction']:
+            self.assertFalse({r[key] for r in old}&{r[key] for r in rows})
+        self.assertTrue(all(r['split']=='test' and r['frozen_holdout'] and not r['family_inputs_used']
+                            and not r['reference_audio_used'] and not r['real_child'] for r in rows))
+        self.assertEqual({r['pronunciation'] for r in rows if r['label']},{'mixed-pi1-ku1'})
+        for style in ['adult','childlike']:
+            selected=[r for r in rows if r['synthetic_style']==style]
+            self.assertEqual(sum(r['label'] for r in selected),64)
+            self.assertEqual(sum(not r['label'] for r in selected),64)
+            self.assertEqual(sum(r['label'] and 'Pikoo' in r['text'] for r in selected),32)
+
+    def test_pi_ke_negative_aliases_never_admit_pi_ku_or_extra_speech(self):
+        from review_local_corpus import content_approved
+        from prepare_google_iteration import reviewed_content_matches
+        row={'source':'Google-Gemini-TTS-synthetic','label':0,'text':'你好皮克'}
+        for transcript in ['你好，皮克。','你好，匹克。','你好，皮可。','你好披克']:
+            self.assertTrue(content_approved(row,transcript))
+            self.assertTrue(reviewed_content_matches(row,transcript))
+        for transcript in ['你好皮酷','你好批枯','你好匹酷','你好皮','匹克','您好啊匹克','你好皮球','']:
+            self.assertFalse(content_approved(row,transcript))
+            self.assertFalse(reviewed_content_matches(row,transcript))
+        self.assertFalse(content_approved({**row,'label':1},'你好皮可'))
+        self.assertFalse(content_approved({**row,'text':'你好皮球'},'你好皮可'))
+
     def test_matched_prefix_review_rejects_full_names_and_unrelated_asr(self):
         from review_local_corpus import content_approved
         row={'source':'TTS-matched-incomplete-prefix','label':0}

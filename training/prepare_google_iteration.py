@@ -16,7 +16,7 @@ from review_local_corpus import content_approved
 
 
 def reviewed_content_matches(row,transcript):
-    return content_approved(row,transcript) if row.get('english_phonetic_surface') else normalize(transcript)==normalize(row['text'])
+    return content_approved(row,transcript)
 
 
 def main():

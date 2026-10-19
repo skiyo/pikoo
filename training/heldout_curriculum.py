@@ -43,7 +43,49 @@ def level_only_jobs():
     return rows
 
 
+def level_only_jobs_v16():
+    """Larger blind plan; do not generate until a new candidate is frozen.
+
+    V15 is consumed. More preassigned conditions reduce the chance that blind
+    content rejection leaves too few complete Latin-name utterances to score.
+    They are fictional conditions, never verified human speaker identities.
+    """
+    textures=[
+        ('open lightly buzzing resonance','steady gentle linked Mandarin'),
+        ('narrow fluty resonance','soft measured Mandarin with brief pauses'),
+        ('rounded sandy resonance','energetic flowing Mandarin and clear endings'),
+        ('forward papery resonance','casual slow Mandarin with mild emphasis'),
+        ('hollow lightly nasal resonance','brisk precise Mandarin with soft releases'),
+        ('dark fine-grained resonance','quiet connected Mandarin and rounded vowels'),
+        ('clear softly breathy resonance','hesitant everyday Mandarin, then fluent ending'),
+        ('thin lightly rough resonance','relaxed uneven Mandarin with distinct consonants'),
+    ]
+    profiles=[(style,gender,texture,timing) for style,genders in
+        [('adult',['male','female']),('childlike',['boylike','girllike'])]
+        for gender in genders for texture,timing in textures]
+    phrases=[('你好 Pikoo',1),('你好，Pikoo',1),('你好批枯',1),('你好，披哭',1),
+             ('你好皮克',0),('你好皮',0),('你好皮球',0),('给我讲个故事',0)]
+    rows=[]
+    for n,(style,gender,texture,timing) in enumerate(profiles):
+        character=f'imaginary adult {gender}' if style=='adult' else f'imaginary {gender} small youthful character'
+        description=f'{character}, {texture}, {timing}'
+        for index,(text,label) in enumerate(phrases):
+            group=f'qwen-heldout-v16:{n}'
+            instruction=f'New fictional test voice: {description}. Never imitate a real person. Speak only the exact supplied text without extra words.'
+            if label:instruction+=' The greeting is Mandarin 你好. The pet name Pikoo / 批枯 / 披哭 is PEE-koo, pī kū, two first-tone syllables. Finish both syllables; do not say ke, gou or omit koo.'
+            rows.append(dict(profile=group,split='test',group=group,speaker=group,voice=group,
+                text=text,label=label,pronunciation='mixed-pi1-ku1' if label else 'non-target',
+                synthetic_style=style,instruction=instruction,seed=2026101972000+n*32+index,
+                source='Qwen3-TTS-synthetic-local',synthetic=True,real_child=False,
+                reference_audio_used=False,family_inputs_used=False,frozen_holdout=True,
+                synthesis_language='auto' if 'Pikoo' in text else 'Chinese',
+                source_terms='https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign',
+                identity_scope='preassigned synthetic test condition, not a verified voice identity'))
+    return rows
+
+
 def jobs(version="v11"):
+    if version=='v16':return level_only_jobs_v16()
     if version=='v15':return level_only_jobs()
     if version not in {"v11","v12","v13","v14"}:raise ValueError("Unknown preassigned held-out revision")
     profiles=[

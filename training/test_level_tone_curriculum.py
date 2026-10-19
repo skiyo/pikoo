@@ -5,7 +5,7 @@ from heldout_curriculum import jobs as test_jobs
 
 class LevelToneCurriculumTest(unittest.TestCase):
     def test_balanced_phrases_and_disjoint_train_only_groups(self):
-        rows=jobs();old=[r for version in ['v11','v12','v13','v14','v15'] for r in test_jobs(version)]
+        rows=jobs();old=[r for version in ['v11','v12','v13','v14','v15','v16'] for r in test_jobs(version)]
         self.assertEqual(len(rows),96)
         self.assertEqual({r['split'] for r in rows},{'train'})
         self.assertEqual({r['pronunciation'] for r in rows if r['label']},{'mixed-pi1-ku1'})

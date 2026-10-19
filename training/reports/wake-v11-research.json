@@ -529,10 +529,33 @@
       "result": "failed independent synthetic test; now consumed, all255raw protected",
       "household_used": false,
       "hardware_or_real_child_accepted": false
+    },
+    "AZ_ordered_temporal_head": {
+      "model_bytes": 196168,
+      "development_hits": 182,
+      "development_targets": 184,
+      "false_wakes": 3,
+      "development_negatives": 730,
+      "adult_raw": [
+        17,
+        18
+      ],
+      "childlike_raw": [
+        24,
+        24
+      ],
+      "augmented": [
+        141,
+        142
+      ],
+      "TRAIN_float_INT8_passed": 8,
+      "host_Micro_exact_cases": 6,
+      "host_arena_bytes": 52752,
+      "result": "failed development false-wake gate; V16 not generated or scored"
     }
   },
   "pending": [
-    "AZ finite pipeline waits for preplanned Google3.8Flash/FlashLite TRAIN generation and content review, merges only approved TRAIN with existing AQ, then trains an initially equivalent ordered temporal head from AR. Preserve all914 development cases; exclude646protected hashes. New independent test must be NEWV16 after qualification/freeze; never reuseV15 for selection. No USB/timer.",
+    "BA jointly trains the ordered temporal encoder at0.00005 from AZ weights after two additional TRAIN-only pi-ke negatives; same914development and646protected hashes. No newGoogle requests. V16 preassigns256newconditions, not generated until qualification and freeze.",
     "Exact corpus/phone/fold cache proof allows reusing original float32 frontend arrays across architecture widths; every waveform rechecked against current protected hashes",
     "Google TTS free daily quota reached; use existing reviewed data until reset, no paid fallback or project/model rotation",
     "Next wake model must pass unchanged development, newly frozen independent test, ESP32/runtime and actual family tests"
@@ -560,7 +583,16 @@
     "ASR_screened_synthetic": 122,
     "new_large_download": false,
     "official_dev_or_test_archive_opened": false,
-    "household_or_sealed_used": false
+    "household_or_sealed_used": false,
+    "pi_ke_negative_spelling": {
+      "source": "already reviewed fictional TRAIN only",
+      "previous": "Two complete pi-ke negatives rejected because ASR wrote 皮可 or 匹克 instead of 皮克",
+      "fix": "Explicit complete-greeting pi-ke spelling allowlist, shared by screening and merge; positive pi-ku, missing/extra speech remain rejected",
+      "added_negative_rows": 2,
+      "targets_relabeled": 0,
+      "original_reviews_retained": true,
+      "household_or_consumed_test_used": false
+    }
   },
   "new_training_audit": {
     "English_surface_Qwen_raw": 96,
@@ -599,6 +631,22 @@
       "generation_requests": 4,
       "rejected_bundles": 3,
       "result": "TRAIN only, not used to select or train frozen AT; ordinary Standard API phrase bundles, not paid Batch API"
+    },
+    "AW_AX_3_8": {
+      "Flash_raw": 8,
+      "Flash_content_approved": 4,
+      "Lite_raw": 7,
+      "Lite_content_approved": 4,
+      "Lite_stop": "HTTP429 dailyfree10/model; no retry",
+      "AV_raw_aligned": 8,
+      "AV_content_approved": 7,
+      "AV_entire_bundle_excluded": true,
+      "raw_total": 23,
+      "individual_content_approved": 15,
+      "initial_actual_added_TRAIN_rows": 8,
+      "initial_added_targets": 5,
+      "initial_added_non_targets": 3,
+      "batch_policy": "Any failed label in an utterance bundle excludes its entire bundle; one bad AV row excluded all8"
     }
   },
   "observed_Google_quota": {
@@ -676,9 +724,24 @@
     "not_used": "Paid Pro TTS, paid Batch API, other projects or billing changes"
   },
   "software_regression": {
-    "training": 108,
+    "training": 110,
     "skipped": 0,
     "new_google_curriculum_focused": 8,
-    "other_suites": "unchanged; previously passed, not rerun unnecessarily"
+    "other_suites": "unchanged; previously passed, not rerun unnecessarily",
+    "new_negative_spellings_and_fresh_plan": true
+  },
+  "V16_plan": {
+    "status": "preassigned-only-not-generated",
+    "conditions": 32,
+    "planned_clips": 256,
+    "styles": [
+      "adult",
+      "childlike"
+    ],
+    "raw_targets_per_style": 64,
+    "raw_negatives_per_style": 64,
+    "literal_English_targets_per_style": 32,
+    "groups_seeds_instructions_disjoint_from_V11_through_V15_and_blind_supplement": true,
+    "threshold_or_recall_gate_relaxed": false
   }
 }
