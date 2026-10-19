@@ -5,6 +5,16 @@ import tempfile
 from generate_local_tts import jobs
 
 class LocalCurriculumTest(unittest.TestCase):
+    def test_content_screen_never_erases_unexpected_english_or_numbers(self):
+        from review_local_corpus import content_approved
+        from prepare_google_iteration import reviewed_content_matches
+        for text,label in [('你好 Pikoo',1),('你好皮克',0)]:
+            row={'source':'Qwen3-TTS-synthetic-local','label':label,'text':text}
+            self.assertTrue(content_approved(row,text))
+            for transcript in [text+' hello','hello '+text,text+' 123']:
+                self.assertFalse(content_approved(row,transcript))
+                self.assertFalse(reviewed_content_matches(row,transcript))
+
     def test_code_switch_training_has_literal_names_and_no_heldout_groups(self):
         from broad_curriculum import jobs as broad_jobs,code_switch_jobs
         rows=code_switch_jobs()

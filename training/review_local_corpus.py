@@ -48,7 +48,7 @@ def main():
             approved=content_approved(row,record['transcript'])
             previous=prior.get(row['sha256'])
             prior_approved=normalize(previous['transcript'])==normalize(row['text']) if previous else None
-            record.update(approved=approved and prior_approved is not False,local_approved=approved,prior_approved=prior_approved,rule='accepted-pi-ku-and-negative-pi-ke-homophones-v5-no-tone-verification')
+            record.update(approved=approved and prior_approved is not False,local_approved=approved,prior_approved=prior_approved,rule='accepted-pi-ku-and-negative-pi-ke-homophones-v6-no-extra-Latin-no-tone-verification')
         else:
             response=model.generate(str((a.manifest.parent/row['path']).resolve()),max_tokens=96,temperature=0,verbose=False)
             transcript=response.text.strip()
@@ -58,7 +58,7 @@ def main():
                 approved=approved and (not previous or previous.get('approved',False)),local_approved=approved,
                 prior_approved=previous.get('approved') if previous else None,
                 method='offline-Qwen3-ASR-content-screen-not-phonetic-or-human-validation',model=a.model.name,
-                rule='accepted-pi-ku-and-negative-pi-ke-homophones-v5-no-tone-verification')
+                rule='accepted-pi-ku-and-negative-pi-ke-homophones-v6-no-extra-Latin-no-tone-verification')
         result.append(record);a.output.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
         print(json.dumps({'reviewed':len(result),'approved':sum(r['approved'] for r in result),'label':row['label'],'style':row.get('synthetic_style')}),flush=True)
         mx.clear_cache()
@@ -73,6 +73,10 @@ def content_approved(row,transcript):
         text=re.sub(r'\b(?:pee[\s-]*(?:coo|koo)|pikoo|piku|peekoo)\b','皮酷',text,flags=re.I)
         if re.search('[A-Za-z0-9]',text):return False
         return normalize(text)=='你好皮酷'
+    # Punctuation cleanup must not silently erase extra spoken English/digits.
+    # Only the already accepted spelling of the complete name may disappear.
+    remaining=re.sub(r'pikoo|piku|pee[- ](?:koo|coo)','',transcript,flags=re.I)
+    if re.search('[A-Za-z0-9]',remaining):return False
     normalized=normalize(transcript)
     if row['label']==0 and normalize(row.get('text',''))=='你好皮克':
         # Chinese ASR spelling does not verify lexical tone. These complete
