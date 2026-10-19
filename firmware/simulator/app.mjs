@@ -95,7 +95,7 @@ $('mic').onchange=async()=>{
   await stopMic();$('notice').textContent='未能开启麦克风，请检查浏览器权限与输入设备。';log('未能开启麦克风');
  }
 };
-setInterval(()=>{session.tick();if(session.idleDue()){session.stop();close();}},250);
+setInterval(()=>{session.tick();if(session.sleepIfIdle())close();},250);
 fetch('/mode').then(r=>r.json()).then(x=>{wakeAvailable=x.wake;$('notice').textContent=x.wake?'已加载实验唤醒功能，开启麦克风后说“你好皮酷”。待机录音不出本机。':'默认不采集麦克风。模拟模式只播放测试音。';$('mode').textContent=x.mode==='live'?'真实服务器 · 等待唤醒':'本地故障模拟';});
 session.stateTo('idle');
 $('text').disabled=true;$('form').querySelector('button').disabled=true;$('cancel').disabled=true;

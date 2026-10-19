@@ -66,6 +66,18 @@ int main() {
   assert(!bounded.append("b",pcm,1));assert(bounded.append_error()==pikoo::Playback::AppendError::Capacity);
   bounded.done("a");assert(!bounded.append("a",pcm,1));assert(bounded.append_error()==pikoo::Playback::AppendError::Completed);
   bounded.cancel();assert(!bounded.append("a",pcm,1));assert(bounded.append_error()==pikoo::Playback::AppendError::Rejected);
+  // Measured cause=4 failure: 7960 ms queued, then 80 ms arrives. It is a
+  // valid burst, not a malformed frame; keep it without reconnecting.
+  std::vector<int16_t> burst(24000*7960/1000);
+  pikoo::Playback old_limit(24000*8),roomy;
+  assert(old_limit.append("burst",burst.data(),burst.size()));
+  assert(!old_limit.append("burst",burst.data(),1920));
+  assert(roomy.append("burst",burst.data(),burst.size()));
+  assert(roomy.append("burst",burst.data(),1920));
+  assert(roomy.append("burst",burst.data(),burst.size()));
+  while(roomy.queued()+240<=pikoo::Playback::MaxQueuedSamples)assert(roomy.append("burst",pcm,240));
+  assert(!roomy.append("burst",pcm,240));assert(roomy.append_error()==pikoo::Playback::AppendError::Capacity);
+  roomy.cancel();assert(roomy.queued()==0);assert(!roomy.take(c));
   std::cout<<"PASS: measured reconnect trace, startup deadline, short reply and stale audio; old starvation="
            <<previous.starved_ms<<" ms, fixed="<<fixed.starved_ms<<" ms\n";
 }

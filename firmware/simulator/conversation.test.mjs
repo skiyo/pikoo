@@ -16,6 +16,17 @@ test('tab storage holds only expiring identifier; blocked storage does not preve
  saveConversation(storage,null);assert.equal(loadConversation(storage),null);
  const blocked={getItem:()=>{throw Error()},setItem:()=>{throw Error()}};assert.equal(loadConversation(blocked),null);assert.doesNotThrow(()=>saveConversation(blocked,'test-session-1'));
 });
+test('automatic 30-second sleep stops upload but reconnects to the same topic',()=>{
+ let now=0,id=0;const out=[];
+ const s=new DeviceSession({send:e=>out.push(e),stopAudio:()=>{},playAudio:async()=>{},stateChanged:()=>{},now:()=>now,newConversationId:()=>`topic-${++id}`});
+ s.wake();s.receive({type:'voice.ready'});const original=s.conversationId;
+ now=29999;assert.equal(s.sleepIfIdle(),false);assert.equal(s.ready,true);
+ now=30000;assert.equal(s.sleepIfIdle(),true);assert.equal(s.state,'idle');assert.equal(s.ready,false);
+ const before=out.length;s.input('must-stay-local');assert.equal(out.length,before);
+ s.wake();assert.equal(s.conversationId,original);s.receive({type:'voice.ready'});
+ s.disconnect(1006);s.wake(undefined,{resume:true});assert.equal(s.conversationId,original);
+ s.stop();s.wake();assert.notEqual(s.conversationId,original);
+});
 test('conversation query remains bounded, local and unambiguous',()=>{
  const origin='http://127.0.0.1:8793';assert.deepEqual(socketRoute('/device?conversationId=test-session-1',origin),{path:'/device',conversationId:'test-session-1'});
  assert.deepEqual(socketRoute('/device',origin),{path:'/device'});

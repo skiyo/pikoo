@@ -56,4 +56,5 @@ export class DeviceSession {
   stop({endConversation=true}={}) {this.farewell=null;this.greetingPending=false;this.latestResponse=null;this.clear(true);this.ready=false;if(endConversation){this.conversationId=null;this.conversationChanged(null);}this.stateTo(this.muted?'muted':'idle');}
   setMuted(value) {this.muted=value;this.stop({endConversation:false});}
   idleDue() {return !this.farewell&&this.ready&&!this.responses.size&&this.now()-this.lastActivity>=30000;}
+  sleepIfIdle() {if(!this.idleDue())return false;this.stop({endConversation:false});return true;}
 }

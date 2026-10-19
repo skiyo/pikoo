@@ -14,6 +14,20 @@ def entry(label,offset,size,kind=1):
     return struct.pack('<HBBII16sI',0x50aa,kind,0,offset,size,label.encode(),0)
 
 class DeviceSafetyTests(unittest.TestCase):
+    def test_maintenance_stops_audio_without_ending_the_topic(self):
+        state={'topic':'existing-topic','capture':True,'connected':True}
+        class Socket:
+            def exists(self):return state['connected']
+        def command(_socket,value):
+            if value=='end':state['topic']=None
+            if value=='mute':state['capture']=False
+            if value=='close-monitor':state['connected']=False
+        with patch.object(device,'registered_socket',return_value=Socket()),patch.object(device,'monitor_command',side_effect=command),patch.object(device.time,'sleep'):
+            device.release_monitor('/dev/pikoo-test')
+        self.assertEqual(state['topic'],'existing-topic')
+        self.assertFalse(state['capture'])
+        self.assertFalse(state['connected'])
+
     def test_monitor_from_another_checkout_is_never_controlled(self):
         with tempfile.TemporaryDirectory() as tmp,patch.dict('os.environ',{'PIKOO_PRIVATE_DIR':tmp}):
             port='/dev/pikoo-test'

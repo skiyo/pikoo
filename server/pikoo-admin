@@ -25,7 +25,7 @@ case "$cmd" in
   systemctl stop pikoo
   trap 'systemctl start pikoo' EXIT
   umask 077
-  tar -czf "$file" -C / var/lib/pikoo/qwaudio etc/mihomo/config.yaml etc/nginx/nginx.conf etc/nginx/conf.d/pikoo.conf etc/systemd/system/pikoo.service etc/systemd/system/mihomo.service etc/systemd/system/pikoo-firewall.service etc/systemd/system/pikoo-cert-renew.service etc/systemd/system/pikoo-cert-renew.timer etc/letsencrypt etc/pikoo-firewall.nft usr/local/sbin/pikoo-admin opt/pikoo/app/host.mjs opt/pikoo/app/google-live-compat.mjs opt/pikoo/app/memory-timeout.mjs opt/pikoo/app/provider-check.mjs
+  tar -czf "$file" -C / var/lib/pikoo/qwaudio etc/mihomo/config.yaml etc/nginx/nginx.conf etc/nginx/conf.d/pikoo.conf etc/systemd/system/pikoo.service etc/systemd/system/mihomo.service etc/systemd/system/pikoo-firewall.service etc/systemd/system/pikoo-cert-renew.service etc/systemd/system/pikoo-cert-renew.timer etc/letsencrypt etc/pikoo-firewall.nft usr/local/sbin/pikoo-admin opt/pikoo/app/host.mjs opt/pikoo/app/google-live-compat.mjs opt/pikoo/app/memory-timeout.mjs opt/pikoo/app/context-runtime.mjs opt/pikoo/app/context-learning.mjs opt/pikoo/app/time-context.mjs opt/pikoo/app/provider-check.mjs
   echo "$file"
   ;;
  *) echo 'Usage: pikoo-admin {status|start|stop|restart|logs|pair|devices|revoke|check|backup}' >&2; exit 2 ;;

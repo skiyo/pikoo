@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { googleLiveProvider } from './node_modules/qwen-audio-agent/server/src/voice/providers/google-live.mjs';
+import { beijingConnectionContext } from './time-context.mjs';
 // Gemini Live v1beta rejects JSON Schema's additionalProperties inside Schema.
 // Validation still runs in the upstream memory/tool runtime; only its wire declaration changes.
 export function liveSchema(value) {
@@ -83,6 +84,8 @@ export const pikooGoogleLiveProvider = {
   createProtocol: () => wrapGoogleProtocol(googleLiveProvider.createProtocol()),
   buildSession(args) {
     const session=googleLiveProvider.buildSession(args);
-    return {...session,realtimeInputConfig:liveInputConfig(session.realtimeInputConfig),tools:session.tools.map(tool=>({...tool,functionDeclarations:tool.functionDeclarations.map(fn=>({...fn,parameters:liveSchema(fn.parameters)}))}))};
+    return {...session,
+      systemInstruction:{...session.systemInstruction,parts:[...session.systemInstruction.parts,{text:beijingConnectionContext()}]},
+      realtimeInputConfig:liveInputConfig(session.realtimeInputConfig),tools:session.tools.map(tool=>({...tool,functionDeclarations:tool.functionDeclarations.map(fn=>({...fn,parameters:liveSchema(fn.parameters)}))}))};
   },
 };

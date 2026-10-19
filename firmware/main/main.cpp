@@ -304,9 +304,13 @@ void forget_conversation() {
 }
 void ensure_conversation() {
   auto t=static_cast<int64_t>(time(nullptr));
-  if(!conversation_id.empty() && t>=conversation_at && t-conversation_at<86400) return;
+  if(!conversation_id.empty() && t>=conversation_at && t-conversation_at<86400) {
+    ESP_LOGI("pikoo","conversation context reused age_s=%lld",(long long)(t-conversation_at));
+    return;
+  }
   conversation_id="esp32-"+device_id+"-"+std::to_string(esp_random())+"-"+std::to_string(esp_random());
   conversation_at=t;
+  ESP_LOGI("pikoo","conversation context created");
   nvs_handle_t n;
   if(nvs_open("pikoo",NVS_READWRITE,&n)==ESP_OK){nvs_set_str(n,"conversation",conversation_id.c_str());nvs_set_i64(n,"conv_at",t);nvs_commit(n);nvs_close(n);}
 }
@@ -938,10 +942,12 @@ void session_task(void *) {
     if (interaction.finish_due(now(),playing)||session.idle_due(now(), playing)) {
       bool farewell=interaction.closing();
       end_socket();
-      forget_conversation();
+      // Silence closes the transport for privacy/power, not the topic. Keep
+      // the NVS identity so the next wake can restore recent server history.
+      if(farewell)forget_conversation();
       interaction.reset();next_retry=0;
       session.stop();
-      ESP_LOGI("pikoo","conversation ended reason=%s; standby",farewell?"farewell":"idle");
+      ESP_LOGI("pikoo","conversation ended reason=%s context=%s; standby",farewell?"farewell":"idle",farewell?"cleared":"retained");
     }
     publish_state();
     vTaskDelay(pdMS_TO_TICKS(10));

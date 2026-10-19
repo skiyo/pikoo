@@ -26,13 +26,17 @@ public:
   // indefinitely for a short or stalled response. Completed replies bypass it.
   static constexpr size_t InitialSamples = 24000 * 900 / 1000;
   static constexpr uint64_t MaxInitialWaitMs = 1500;
+  // A measured ordinary response filled the old 8 s queue (7960 + 80 ms).
+  // Decoded PCM lives in PSRAM. Bound bursts to 1.44 MB, not an unbounded
+  // stream; cancellation clears it immediately and startup remains 900 ms.
+  static constexpr size_t MaxQueuedSamples = 24000 * 30;
   enum class AppendError { None, Invalid, Rejected, Completed, Capacity, Metadata };
   struct Chunk {
     std::string id;
     std::vector<int16_t> pcm;
     uint32_t epoch;
   };
-  explicit Playback(size_t max_samples = 24000 * 8) : limit_(max_samples) {}
+  explicit Playback(size_t max_samples = MaxQueuedSamples) : limit_(max_samples) {}
   void announce(const std::string &id) {
     if (!id.empty() && id.size() <= 128 && known_.size() < 32 && !rejected(id))
       known_.insert(id);

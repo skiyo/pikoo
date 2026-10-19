@@ -122,7 +122,10 @@ def release_monitor(port):
     target=registered_socket(port)
     if not target:
         return
-    monitor_command(target,'end')
+    # Maintenance must stop capture/playback without the user's explicit-End
+    # semantics, which erase the NVS conversation identity. Mute is transient;
+    # the next boot restores ordinary standby with the existing topic.
+    monitor_command(target,'mute')
     time.sleep(.2)
     monitor_command(target,'close-monitor')
     until=time.monotonic()+3

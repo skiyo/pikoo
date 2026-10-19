@@ -10,7 +10,7 @@ Pikoo separates the local device, realtime server and offline training environme
 |---|---|---|
 | `firmware/components/pikoo_core` | PCM, GCP events, user actions → bounded audio/session state | Shared protocol, playback generations, cancellation and resampling |
 | `firmware/components/pikoo_eyes` | State, time, seed, gaze, level → two RGB565 frames | Original animation; no ESP-IDF dependency or dynamic allocation |
-| `firmware/main` | Board peripherals and core state → capture/play/display | Historical 1.83-EN integration; DualEye implementation pending |
+| `firmware/main` | Board peripherals and core state → capture/play/display | Non-touch DualEye board integration; physical acceptance tracked separately |
 | `firmware/simulator` | Explicit browser actions → local graphics/wake and optional remote session | WebAudio/canvas UI, Node relay, C++ process and Python wake worker |
 | `server` | Authenticated GCP session → realtime provider and memory tools | Fixed upstream composition plus compatibility adapters |
 | `training` | Authorized local audio → INT8 model and evaluation reports | Offline preparation, training, streaming evaluation and Micro compatibility |
@@ -38,6 +38,6 @@ Reusing the conversation ID lets the server inject saved recent text into a new 
 
 `qwen-audio-agent@2.0.1` supplies the gateway, authentication and memory/session machinery. Pikoo's `host.mjs` composes it with Gemini Live compatibility and text-call timeout adapters without rewriting installed upstream files. Gemini Live handles conversation; a configured text model handles memory extraction and summaries. This is an external service with separate availability and terms.
 
-`memory-timeout.mjs` extends the long-term-memory text timeout to 45 seconds by default; the independent session-summary call retains its upstream timeout. A timeout was observed in acceptance testing, so automatic extraction/summary stability remains pending. Text-context recovery and long-term memory are separate capabilities.
+`context-runtime.mjs` composes automatic memory and topic summarisation through a private durable outbox. Both text calls use a 45-second deadline, serial execution, bounded retries and explicit-edit invalidation. Ordinary shared-family facts can be remembered without a “remember” command. Inferred individual profiles remain disabled on the shared device. Connection clocks use Beijing time; current-time questions use the official `get_current_time` tool. See [context, memory and time](context-memory.md) for retention, limits and verification.
 
 Training is not required to serve a conversation. A future public model must meet the 64 KiB weight budget and documented source rights. Current public sources provide the pipeline but no weights.
