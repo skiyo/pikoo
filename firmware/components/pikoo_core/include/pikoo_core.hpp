@@ -21,6 +21,12 @@ unsigned pump_bounded(unsigned limit,Pop pop,Consume consume) {
 // Platform-neutral code shared by ESP32 and desktop fault-injection tests.
 class Playback {
 public:
+  // The measured device receive trace contains a 929 ms inter-packet interval.
+  // Keep enough speech ahead of the DAC before starting, without waiting
+  // indefinitely for a short or stalled response. Completed replies bypass it.
+  static constexpr size_t InitialSamples = 24000 * 900 / 1000;
+  static constexpr uint64_t MaxInitialWaitMs = 1500;
+  enum class AppendError { None, Invalid, Rejected, Completed, Capacity, Metadata };
   struct Chunk {
     std::string id;
     std::vector<int16_t> pcm;
@@ -36,14 +42,18 @@ public:
       rejected_.insert(id);
   }
   bool append(const std::string &id, const int16_t *data, size_t count) {
-    if (id.empty() || id.size() > 128 || !count || rejected_.count(id))
-      return false;
+    append_error_=AppendError::None;
+    if (id.empty() || id.size() > 128 || !count) {
+      append_error_=AppendError::Invalid;return false;
+    }
+    if(rejected_.count(id)){append_error_=AppendError::Rejected;return false;}
     auto it = responses_.find(id);
-    if ((it != responses_.end() && it->second.done) || count > limit_ - queued_)
-      return false;
+    if(it!=responses_.end()&&it->second.done){append_error_=AppendError::Completed;return false;}
+    if(count>limit_-queued_){append_error_=AppendError::Capacity;return false;}
     // Bound metadata as well as PCM. The caller closes pathological sessions.
-    if (it == responses_.end() && responses_.size() >= 32)
-      return false;
+    if (it == responses_.end() && responses_.size() >= 32) {
+      append_error_=AppendError::Metadata;return false;
+    }
     responses_[id].remaining += count;
     queue_.push_back({id, {data, data + count}, epoch_});
     queued_ += count;
@@ -125,6 +135,7 @@ public:
   bool rejected(const std::string &id) const { return rejected_.count(id); }
   bool exhausted() const { return rejected_.size() >= 1024; }
   size_t queued() const { return queued_; }
+  AppendError append_error() const { return append_error_; }
 
 private:
   struct Response {
@@ -136,6 +147,7 @@ private:
   };
   size_t limit_, queued_ = 0;
   uint32_t epoch_ = 0;
+  AppendError append_error_=AppendError::None;
   std::deque<Chunk> queue_;
   std::map<std::string, Response> responses_;
   std::set<std::string> rejected_, known_;

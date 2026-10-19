@@ -4,6 +4,8 @@ cd "$(dirname "$0")/.."
 mkdir -p firmware/build-host
 "${CXX:-c++}" -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -g -Ifirmware/components/pikoo_core/include -Ifirmware/components/pikoo_eyes/include -Ifirmware/main firmware/tests/core_test.cpp -o firmware/build-host/core-test
 firmware/build-host/core-test
+"${CXX:-c++}" -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -g -Ifirmware/components/pikoo_core/include firmware/tests/playback_jitter_test.cpp -o firmware/build-host/playback-jitter-test
+firmware/build-host/playback-jitter-test
 "${CXX:-c++}" -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -g -Ifirmware/components/pikoo_core/include firmware/tests/wake_replay_test.cpp -o firmware/build-host/wake-replay-test
 firmware/build-host/wake-replay-test
 "${CXX:-c++}" -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -g -Ifirmware/components/pikoo_core/include firmware/tests/websocket_frame_test.cpp -o firmware/build-host/websocket-frame-test

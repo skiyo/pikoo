@@ -446,8 +446,10 @@ void receive(const std::string &raw) {
         if(logged_id!=id){logged_id=id;logged_chunks=0;}
         std::lock_guard<std::mutex> lock(play_mutex);
         if (!playback.rejected(id) &&
-            !playback.append(id, pcm.data(), size / 2))
+            !playback.append(id, pcm.data(), size / 2)) {
+          ESP_LOGW("pikoo","audio append refused cause=%d samples=%u queued_ms=%u",int(playback.append_error()),unsigned(size/2),unsigned(playback.queued()/24));
           fail_queue(5);
+        }
         if(logged_chunks++<6)ESP_LOGI("pikoo","audio rx chunk=%u samples=%u queued=%u",logged_chunks,unsigned(size/2),unsigned(playback.queued()));
         session.last_activity = now();
         session.state = State::Speaking;
@@ -526,9 +528,12 @@ void playback_task(void *) {
     board::playback_idle(keep_output_ready);
     pikoo::Playback::Chunk chunk;
     bool have = false, started = false;
+    size_t prefetched=0;
     {
       std::lock_guard<std::mutex> lock(play_mutex);
-      have = playback.take(chunk,24000*500/1000,now(),600);
+      prefetched=playback.queued();
+      have = playback.take(chunk,pikoo::Playback::InitialSamples,now(),
+                           pikoo::Playback::MaxInitialWaitMs);
       if (have)
         started = playback.started(chunk);
     }
@@ -559,7 +564,7 @@ void playback_task(void *) {
         resample_max_us=std::max(resample_max_us.load(),uint32_t(esp_timer_get_time()-conversion_started));
         if(!board::play(output.data(),output.size(),generation)){played=false;break;}
         last_block=esp_timer_get_time();
-        if(started){ESP_LOGI("pikoo","audio first block queued samples=%u",unsigned(chunk.pcm.size()));receipt("playback.started",chunk.id);started=false;}
+        if(started){ESP_LOGI("pikoo","audio first block queued samples=%u prefill_ms=%u",unsigned(chunk.pcm.size()),unsigned(prefetched/24));receipt("playback.started",chunk.id);started=false;}
       }
       if (played) {
         pending.push_back(
