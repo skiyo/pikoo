@@ -80,16 +80,18 @@ def main():
     p.add_argument('--heldout',action='store_true',help='Preassigned fictional TEST utterances; generate and score only after a deployment candidate is frozen')
     p.add_argument('--hard-contrasts',action='store_true',help='96 fresh TRAIN-only complete targets and near phrases; preserve broad training prompt groups')
     p.add_argument('--level-contrasts',action='store_true',help='96 TRAIN-only first-tone targets and matched negatives; eight adult and four fictional childlike conditions')
+    p.add_argument('--child-level-contrasts',action='store_true',help='320 TRAIN-only first-tone clips; 32 fictional childlike and eight adult conditions; no references')
     p.add_argument('--code-switch-spelling',choices=['brand','phonetic','english'],default='brand',help='Explicit sound spelling and optional English synthesis language; retain original curriculum')
     p.add_argument('--code-switch-split',choices=['train','validation'],default='train',help='Explicit preassigned split for code-switch curriculum')
     p.add_argument('--code-switch-contrasts',action='store_true',help='TRAIN-only literal English nickname with near phrases; automatic language')
     p.add_argument('--heldout-version',choices=['v11','v12','v13','v14','v15','v16'],default='v11',help='Explicit independent test revision; V15/V16 are first-tone-only; never rescore a consumed test as fresh')
     a=p.parse_args()
+    if a.child_level_contrasts and any([a.heldout,a.broad,a.hard_contrasts,a.child_focus,a.contrasts,a.level_contrasts,a.code_switch_contrasts]):raise ValueError('Choose the child-level TRAIN curriculum independently')
     if a.level_contrasts and any([a.heldout,a.broad,a.hard_contrasts,a.child_focus,a.contrasts,a.code_switch_contrasts]):raise ValueError('Choose the TRAIN-only level curriculum independently')
     if a.code_switch_split!='train' and not a.code_switch_contrasts:raise ValueError('Code-switch split requires explicit curriculum')
     if a.code_switch_contrasts and (a.heldout or a.broad or a.hard_contrasts or a.child_focus or a.contrasts):raise ValueError('Choose one explicit curriculum')
     if a.heldout_version!='v11' and not a.heldout:raise ValueError('Test revision requires --heldout')
-    if not 1<=a.limit<=(288 if a.broad else 256 if a.heldout and a.heldout_version=='v16' else 128 if a.heldout and a.heldout_version in {'v14','v15'} else 96):raise ValueError('Synthesis exceeds the selected bounded curriculum')
+    if not 1<=a.limit<=(320 if a.child_level_contrasts else 288 if a.broad else 256 if a.heldout and a.heldout_version=='v16' else 128 if a.heldout and a.heldout_version in {'v14','v15'} else 96):raise ValueError('Synthesis exceeds the selected bounded curriculum')
     if a.broad and (a.child_focus or a.contrasts):raise ValueError('Choose broad or focused curriculum')
     if a.heldout and (a.broad or a.child_focus or a.contrasts):raise ValueError('Held-out curriculum cannot be mixed with development jobs')
     if a.hard_contrasts and (a.heldout or a.broad or a.child_focus or a.contrasts):raise ValueError('Choose one explicit curriculum')
@@ -106,7 +108,10 @@ def main():
     rows=[]
     rejected_path=a.output/'rejected-items.json'
     rejected=json.loads(rejected_path.read_text()) if rejected_path.exists() else {}
-    if a.level_contrasts:
+    if a.child_level_contrasts:
+        from child_level_curriculum import jobs as child_level_jobs
+        selected=child_level_jobs()[:a.limit]
+    elif a.level_contrasts:
         from level_tone_curriculum import jobs as level_jobs
         selected=level_jobs()[:a.limit]
     elif a.code_switch_contrasts:
@@ -123,7 +128,7 @@ def main():
         selected=broad_jobs()[:a.limit]
     else:selected=jobs(a.contrasts,a.child_focus,a.phonetic_spelling)[:a.limit]
     for attempted,job in enumerate(selected,1):
-        identity={**job,'generator':'local-voicedesign-level-only-TRAIN-v1' if a.level_contrasts else 'local-voicedesign-v11-code-switch' if a.code_switch_contrasts else 'local-voicedesign-v11-hard-contrasts' if a.hard_contrasts else f'local-voicedesign-{a.heldout_version}-heldout' if a.heldout else 'local-voicedesign-v10-broad' if a.broad else 'local-voicedesign-v10-child-phonetic' if a.child_focus else 'local-voicedesign-v10-contrast' if a.contrasts else 'local-voicedesign-v9-1','weights':a.model.name}
+        identity={**job,'generator':'local-voicedesign-child-level-TRAIN-v1' if a.child_level_contrasts else 'local-voicedesign-level-only-TRAIN-v1' if a.level_contrasts else 'local-voicedesign-v11-code-switch' if a.code_switch_contrasts else 'local-voicedesign-v11-hard-contrasts' if a.hard_contrasts else f'local-voicedesign-{a.heldout_version}-heldout' if a.heldout else 'local-voicedesign-v10-broad' if a.broad else 'local-voicedesign-v10-child-phonetic' if a.child_focus else 'local-voicedesign-v10-contrast' if a.contrasts else 'local-voicedesign-v9-1','weights':a.model.name}
         language='Chinese' if a.phonetic_spelling or a.broad or a.heldout or a.hard_contrasts else 'auto'
         language=job.get('synthesis_language',language)
         if a.phonetic_spelling or a.broad or a.heldout or a.hard_contrasts:identity['synthesis_language']=language

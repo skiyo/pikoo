@@ -552,13 +552,128 @@
       "host_Micro_exact_cases": 6,
       "host_arena_bytes": 52752,
       "result": "failed development false-wake gate; V16 not generated or scored"
+    },
+    "BA_joint_temporal_with_pi_ke_negatives": {
+      "epochs": 9,
+      "model_bytes": 196168,
+      "development": {
+        "targets": 184,
+        "hits": 182,
+        "non_targets": 730,
+        "false_wakes": 3
+      },
+      "adult_raw": [
+        17,
+        18
+      ],
+      "childlike_raw": [
+        24,
+        24
+      ],
+      "TRAIN_float_INT8_passed": true,
+      "host_Micro_exact_cases": 6,
+      "result": "failed false-wake gate; no V16 generated/scored"
+    },
+    "BB_original_child_phonetic_sequence": {
+      "model_sha256": "1581683048fedb53404ae35988f9eadab113ac0b22891d438a26168db6a14951",
+      "model_bytes": 133528,
+      "development": {
+        "targets": 184,
+        "hits": 178,
+        "non_targets": 730,
+        "false_wakes": 20
+      },
+      "adult_raw": {
+        "targets": 18,
+        "hits": 17,
+        "non_targets": 58,
+        "false_wakes": 2
+      },
+      "childlike_raw": {
+        "targets": 24,
+        "hits": 24,
+        "non_targets": 90,
+        "false_wakes": 2
+      },
+      "TRAIN_float_INT8_passed": false,
+      "host_Micro_exact_cases": 6,
+      "host_arena_bytes": 80320,
+      "result": "rejected; no fresh test or deployment",
+      "household_or_consumed_test_used": false,
+      "esp32_hardware_verified": false
+    },
+    "BD_function_preserving_conv_export": {
+      "model_sha256": "f3ee68170dd523f6417f3179cd413651b301c7da59174d50e5f247fecb70d02c",
+      "model_bytes": 134816,
+      "development": {
+        "targets": 184,
+        "hits": 177,
+        "non_targets": 730,
+        "false_wakes": 20
+      },
+      "adult_raw": {
+        "targets": 18,
+        "hits": 17,
+        "non_targets": 58,
+        "false_wakes": 2
+      },
+      "childlike_raw": {
+        "targets": 24,
+        "hits": 24,
+        "non_targets": 90,
+        "false_wakes": 2
+      },
+      "TRAIN_float_INT8_passed": false,
+      "host_Micro_exact_cases": 6,
+      "host_arena_bytes": 80752,
+      "result": "rejected; no fresh test or deployment",
+      "household_or_consumed_test_used": false,
+      "esp32_hardware_verified": false
+    },
+    "BC_BB_saved_checkpoint_comparison": {
+      "epochs": [
+        5,
+        9,
+        17
+      ],
+      "development_hits": [
+        171,
+        173,
+        179
+      ],
+      "development_targets": 184,
+      "false_wakes": [
+        16,
+        18,
+        22
+      ],
+      "development_negatives": 730,
+      "result": "all rejected; same development, not independent tests; no refit"
+    },
+    "BE_child_focused_TRAIN_generation": {
+      "raw_generated": 320,
+      "conditions": 40,
+      "adult_conditions": 8,
+      "fictional_childlike_conditions": 32,
+      "planned_targets": 160,
+      "planned_negatives": 160,
+      "status": "content screen complete; approved material merged, BF training started",
+      "family_or_test_used": false,
+      "new_model_download": false,
+      "content_approved": 288,
+      "merged_new_TRAIN_rows": 280,
+      "merged_adult_targets": 24,
+      "merged_adult_negatives": 30,
+      "merged_fictional_childlike_targets": 107,
+      "merged_fictional_childlike_negatives": 119
     }
   },
   "pending": [
-    "BA jointly trains the ordered temporal encoder at0.00005 from AZ weights after two additional TRAIN-only pi-ke negatives; same914development and646protected hashes. No newGoogle requests. V16 preassigns256newconditions, not generated until qualification and freeze.",
-    "Exact corpus/phone/fold cache proof allows reusing original float32 frontend arrays across architecture widths; every waveform rechecked against current protected hashes",
-    "Google TTS free daily quota reached; use existing reviewed data until reset, no paid fallback or project/model rotation",
-    "Next wake model must pass unchanged development, newly frozen independent test, ESP32/runtime and actual family tests"
+    "BF is training on280 new approved TRAIN rows (24adult targets,107fictional-childlike targets,149 negatives), with all914 development identities and646 protected hashes unchanged. Continue the explicit trained AT14class head and whole encoder at0.00005. No V15 or household rescoring.",
+    "The resume option validates original class order, architecture and checkpoint hash when recorded. Conv export preserves float function but BD did not improve INT8 quality, so it is experimental, not a release fix.",
+    "FreshV16 remains ungenerated until a new candidate passes development, quantization and Micro checks and is frozen. Synthetic childlike scores do not establish actual child performance.",
+    "Completed bounded Google runs used one worker and at least65 seconds between Standard requests. Stop only the model reporting a quota/error; no paid fallback or project/billing changes. No new cloud calls are scheduled in this offline continuation.",
+    "No USB operations while the device is at home; no heartbeat recreation. ESP32 timing, frozen-candidate household testing and family acceptance remain pending."
   ],
   "notes": [
     "ChildMandarin original TRAIN transcripts supervise phonetic research; ordinary child speech is not positive wake evidence.",
@@ -724,11 +839,13 @@
     "not_used": "Paid Pro TTS, paid Batch API, other projects or billing changes"
   },
   "software_regression": {
-    "training": 110,
+    "training": 114,
     "skipped": 0,
     "new_google_curriculum_focused": 8,
     "other_suites": "unchanged; previously passed, not rerun unnecessarily",
-    "new_negative_spellings_and_fresh_plan": true
+    "new_negative_spellings_and_fresh_plan": true,
+    "execution": "110 passed in full discovery; four optional upstream checks subsequently rerun with the pinned checkout and passed; six tests in those targeted modules passed in total",
+    "new_child_curriculum_resume_and_conv_export": true
   },
   "V16_plan": {
     "status": "preassigned-only-not-generated",
@@ -743,5 +860,13 @@
     "literal_English_targets_per_style": 32,
     "groups_seeds_instructions_disjoint_from_V11_through_V15_and_blind_supplement": true,
     "threshold_or_recall_gate_relaxed": false
+  },
+  "BB_acoustic_source": {
+    "original_child_phonetic_epochs": 46,
+    "phone_error_on_internal_speaker_fold": 0.49036244581757815,
+    "phone_metric_is_not_wake_acceptance": true,
+    "same_raw_frontend_fingerprint_as_BA": true,
+    "fresh_test_status": "V16 not generated",
+    "household_or_consumed_test_used": false
   }
 }

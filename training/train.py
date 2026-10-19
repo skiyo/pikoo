@@ -125,6 +125,7 @@ def main():
     p.add_argument('--max-model-bytes',type=int,default=65536,help='Explicit experimental flash budget, 65536..524288 bytes; does not change accuracy gates')
     p.add_argument('--save-epoch-checkpoints',action='store_true',help='Keep each private epoch for actual streaming development validation')
     p.add_argument('--export-only',action='store_true',help='Export a specified --resume-weights checkpoint without another training step; still checks provenance and quantization inputs')
+    p.add_argument('--conv-dense-export',action='store_true',help='Export-only function-preserving Dense-as-1x1-Conv experiment; independently recheck INT8 accuracy and Micro kernels')
     p.add_argument('--classifier-head-units',type=int,default=0,help='Optional 16..256-unit residual readout; freeze the original encoder and logit')
     p.add_argument('--head-backbone-weights',type=Path,help='Plain-model encoder initialization; resume is allowed only for export of a trained readout')
     p.add_argument('--freeze-batch-normalization',action='store_true',help='Fine-tune convolution weights while retaining pretrained normalization statistics')
@@ -139,16 +140,19 @@ def main():
     p.add_argument('--train-sequence-encoder',action='store_true',help='Explicit joint acoustic-sequence experiment; retain pretrained normalization statistics')
     p.add_argument('--contrastive-classes',action='store_true',help='Separate complete near-phrase classes during sequence training; export scalar wake probability')
     p.add_argument('--plain-contrastive',action='store_true',help='Warm-start a plain binary checkpoint into near-phrase classes while preserving its initial probability; explicit retraining only')
+    p.add_argument('--resume-contrastive-weights',type=Path,help='Continue a compatible trained plain near-phrase head after explicit binary initialization; requires its original report.json')
     p.add_argument('--relu6',action='store_true',help='Experimental bounded acoustic/sequence activations; requires explicit joint retraining and full revalidation')
     p.add_argument('--train-temporal-encoder',action='store_true',help='Train the ordered temporal head and its encoder jointly; separate fresh-training experiment')
     a=p.parse_args()
     if a.plain_contrastive:
-        if not a.resume_weights or a.export_only or a.head_backbone_weights or a.classifier_head_units or a.sequence_readout or a.phonetic_readout or a.temporal_readout or a.phone_head or a.widen_from or a.dropout:
-            raise ValueError('Plain contrast training requires only one plain binary resume checkpoint; export-only is unsupported')
+        if not a.resume_weights or (a.export_only and not a.resume_contrastive_weights) or a.head_backbone_weights or a.classifier_head_units or a.sequence_readout or a.phonetic_readout or a.temporal_readout or a.phone_head or a.widen_from or a.dropout:
+            raise ValueError('Plain contrast requires explicit binary initialization; export-only also requires trained contrastive weights')
         a.contrastive_classes=True
+    if a.resume_contrastive_weights and not a.plain_contrastive:raise ValueError('Trained plain contrastive resume requires --plain-contrastive')
     os.umask(0o077)
     if not 65536<=a.max_model_bytes<=524288:raise ValueError('Model flash budget must be 64..512 KiB')
     if a.export_only and (not a.resume_weights or a.widen_from):raise ValueError('Export-only requires one explicit resume checkpoint')
+    if a.conv_dense_export and not a.export_only:raise ValueError('Dense convolution is an explicit export-only experiment')
     if a.classifier_head_units and not 16<=a.classifier_head_units<=256:raise ValueError('Classifier head must have 16..256 units')
     if a.head_backbone_weights and (not (a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head or a.sequence_readout) or (a.resume_weights and not a.export_only) or a.widen_from):raise ValueError('Head backbone requires a readout; resume is export-only and widening is separate')
     if a.sequence_readout and (not a.head_backbone_weights or a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head or a.dropout or a.widen_from):raise ValueError('Sequence readout requires only its explicit phonetic encoder initialization')
@@ -262,6 +266,10 @@ def main():
         for split,labels in contrast_labels.items():
             if len(labels)!=len(sets[split][1]) or not np.array_equal(labels==1,sets[split][1]==1):raise ValueError('Contrast labels do not match cached binary examples')
         readout.update(supervision='explicit-complete-near-phrase-classes',classes=PHRASES)
+        if a.resume_contrastive_weights:
+            from contrastive_readout import resume_readout
+            readout['resumed_trained_readout']=resume_readout(fit_model,model,a.resume_contrastive_weights,
+                sets['train'][0][:8],{'filters':a.filters,'first_filters':a.first_filters,'kernels':kernels})
     if a.resume_weights and not a.plain_contrastive:model.load_weights(a.resume_weights)
     if a.freeze_batch_normalization:
         from residual_readout import freeze_normalization
@@ -293,6 +301,7 @@ def main():
     history=None if a.export_only else fit_model.fit(batches(x,fit_y,True),epochs=a.epochs,validation_data=batches(vx,fit_vy,False),class_weight=weights,callbacks=callbacks,shuffle=False,verbose=2)
     model.save_weights(a.output/'checkpoint.weights.h5')
     report={'status':'experimental','feature_config':feature_config,'filters':a.filters,'first_filters':a.first_filters,'kernels':kernels,'test_deferred':a.defer_test,'data_sources':{name:sum(r.get('source','unknown')==name for r in manifest) for name in set(r.get('source','unknown') for r in manifest)},'real_child_clips':sum(bool(r.get('real_child')) for r in manifest),'restricted_data':any(r.get('restricted',False) for r in manifest),'samples':{s:len(v[1]) for s,v in sets.items()},'epochs':len(history.history['loss']) if history else 0,'export_only':a.export_only,'metrics':{}}
+    report['checkpoint_weights_sha256']=hashlib.sha256((a.output/'checkpoint.weights.h5').read_bytes()).hexdigest()
     if history:(a.output/'training-history.json').write_text(json.dumps(history.history,indent=2)+'\n')
     if a.resume_weights:report['resume_weights_sha256']=hashlib.sha256(a.resume_weights.read_bytes()).hexdigest()
     report['class_weights']=weights
@@ -318,6 +327,13 @@ def main():
         difference=float(np.max(np.abs(model(x[:8],training=False).numpy()-before)))
         if difference>1e-5:raise ValueError('Integer-state anchor changed the trained function')
         report['integer_state_anchor_max_difference']=difference
+    if a.conv_dense_export:
+        from conv_dense_export import replace_dense
+        before=model(x[:8],training=False).numpy()
+        model,details=replace_dense(model)
+        difference=float(np.max(np.abs(model(x[:8],training=False).numpy()-before)))
+        if difference>1e-5:raise ValueError('Dense convolution export changed the trained function')
+        report['dense_convolution_export']={**details,'TRAIN_initial_max_probability_difference':difference}
     streaming=utils.to_streaming_inference(model,config,modes.Modes.STREAM_INTERNAL_STATE_INFERENCE)
     archive=tf.keras.export.ExportArchive();archive.track(streaming);archive.add_endpoint(name='serve',fn=streaming.call,input_signature=[tf.TensorSpec(streaming.input.shape,tf.float32)])
     archive.write_out(str(a.output/'saved'),verbose=False)

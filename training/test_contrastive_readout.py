@@ -27,6 +27,28 @@ class LabelsTest(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec('tensorflow'),'Optional TensorFlow unavailable')
 class ModelTest(unittest.TestCase):
+    def test_trained_class_resume_preserves_all_classes_and_rejects_reordered_labels(self):
+        import tempfile,json,hashlib
+        from pathlib import Path
+        import tensorflow as tf
+        from contrastive_readout import attach,resume_readout
+        tf.keras.utils.set_random_seed(73)
+        inp=tf.keras.Input((8,));binary=tf.keras.Model(inp,tf.keras.layers.Dense(1,activation='sigmoid')(inp))
+        fit,view=attach(binary,warm_start=True);fixture=np.random.default_rng(73).normal(size=(6,8)).astype('float32')
+        fit.compile(optimizer=tf.keras.optimizers.SGD(.1),loss='sparse_categorical_crossentropy')
+        fit.train_on_batch(fixture,np.array([0,1,2,3,4,5],np.float32));expected=fit(fixture).numpy()
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);path=root/'checkpoint.weights.h5';view.save_weights(path)
+            architecture={'filters':128,'first_filters':64,'kernels':[5,9]}
+            report={**architecture,'classifier_readout':{'type':'warm-plain-near-phrase','classes':PHRASES},
+                    'checkpoint_weights_sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+            (root/'report.json').write_text(json.dumps(report))
+            fresh,scalar=attach(binary,warm_start=True);proof=resume_readout(fresh,scalar,path,fixture,architecture)
+            self.assertTrue(proof['class_order_verified'])
+            np.testing.assert_allclose(fresh(fixture).numpy(),expected,atol=1e-7)
+            report['classifier_readout']['classes']=list(reversed(PHRASES));(root/'report.json').write_text(json.dumps(report))
+            with self.assertRaisesRegex(ValueError,'class mapping'):resume_readout(fresh,scalar,path,fixture,architecture)
+
     def test_warm_start_preserves_nonzero_sigmoid_and_initial_non_target_mass(self):
         import tensorflow as tf
         from contrastive_readout import attach

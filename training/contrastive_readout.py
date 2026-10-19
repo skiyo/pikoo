@@ -4,6 +4,9 @@ Ordinary speech and causal prefixes stay non-targets. Full near phrases get
 separate training classes, so their shared greeting cannot solve the task.
 """
 import math
+import hashlib
+import json
+from pathlib import Path
 import numpy as np
 from review_google_corpus import normalize
 
@@ -60,3 +63,23 @@ def attach(binary,warm_start=False):
     x=tf.keras.layers.Cropping1D((1,count-2))(x)
     inference=tf.keras.Model(binary.inputs[0],tf.keras.layers.Flatten()(x))
     return training,inference
+
+
+def resume_readout(training,inference,checkpoint,features,architecture):
+    """Resume an explicitly described trained class mapping, not a new head."""
+    checkpoint=Path(checkpoint);metadata=checkpoint.parent/'report.json'
+    report=json.loads(metadata.read_text());readout=report.get('classifier_readout',{})
+    if readout.get('type')!='warm-plain-near-phrase' or readout.get('classes')!=PHRASES:
+        raise ValueError('Incompatible trained near-phrase class mapping')
+    for key,value in architecture.items():
+        if report.get(key)!=value:raise ValueError('Trained readout architecture differs: '+key)
+    digest=hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    if report.get('checkpoint_weights_sha256',digest)!=digest:
+        raise ValueError('Trained checkpoint hash differs from its report')
+    inference.load_weights(checkpoint)
+    all_probabilities=training(features,training=False).numpy()
+    difference=float(np.max(np.abs(inference(features,training=False).numpy()-all_probabilities[:,1:2])))
+    if difference>1e-6:raise ValueError('Resumed scalar and class views disagree')
+    return {'checkpoint_sha256':digest,'metadata_sha256':hashlib.sha256(metadata.read_bytes()).hexdigest(),
+            'source_manifest_sha256':report.get('training_manifest_sha256'),
+            'class_order_verified':True,'shared_view_max_difference':difference}
