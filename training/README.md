@@ -268,6 +268,20 @@ coverage is still insufficient after conservative exclusions. Clean-data
 retraining starts from random weights; no candidate is accepted or flashed.
 Recall/false-wake limits are unchanged and old failures remain failures.
 
+`generate_local_tts.py --clean-development --limit 160` adds a separately
+preassigned development supplement: eight invented adult and eight invented
+childlike prompt conditions, each with six complete targets and four negatives.
+Literal Pikoo spellings deliberately have surplus examples because unreliable
+content is quarantined. These conditions are disjoint from previous curricula
+and V11–V17 independent-test plans. Generate with cached weights, review content
+before model scoring, and preserve the source split. This supplement is never
+reported as an independent test or actual child speech.
+
+`--clean-development --limit 160` 预先定义 8 个成人、8 个虚构童声条件，每个
+条件 6 条目标词、4 条非目标词。生成后先核对内容，再评估模型；未通过内容
+检查的样本隔离，不能为了凑数量改标签。该批属于开发集，不是新的独立测试，
+不能与 `--heldout` 或训练语料参数混用。家庭录音仍只供冻结候选后的测试。
+
 Checkpoint tools also verify saved-epoch provenance and preserve every trained
 near-phrase class when explicitly widening a network. Such software checks do
 not establish device memory use, latency, or a released model. Training-tool
