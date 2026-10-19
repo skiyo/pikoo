@@ -35,17 +35,27 @@ def expanded_labels(rows,positive_repeats,negative_repeats,hard_negative_repeats
     return result
 
 
-def attach(binary):
+def attach(binary,warm_start=False):
     import tensorflow as tf
     last=binary.layers[-1]
     if not isinstance(last,tf.keras.layers.Dense) or last.units!=1:
         raise ValueError('Contrast supervision requires the scalar sequence head')
-    if any(np.any(w!=0) for w in last.get_weights()):
+    if not warm_start and any(np.any(w!=0) for w in last.get_weights()):
         raise ValueError('Contrast initialization requires the zero wake classifier')
+    if warm_start and last.get_config()['activation']!='sigmoid':
+        raise ValueError('Warm contrast initialization requires a sigmoid classifier')
     count=len(PHRASES);bias=np.zeros(count,np.float32);bias[1]=math.log(count-1)
     probabilities=tf.keras.layers.Dense(count,activation='softmax',kernel_initializer='zeros',
         bias_initializer=tf.keras.initializers.Constant(bias),name='near_phrase_probability')(last.input)
     training=tf.keras.Model(binary.inputs[0],probabilities)
+    if warm_start:
+        # Identical non-target logits sum to count-1. Adding log(count-1)
+        # to the target logit preserves the original sigmoid probability.
+        original_kernel,original_bias=last.get_weights()
+        kernel=np.zeros((original_kernel.shape[0],count),np.float32)
+        kernel[:,1]=original_kernel[:,0]
+        bias[1]+=float(original_bias[0])
+        training.get_layer('near_phrase_probability').set_weights([kernel,bias])
     x=tf.keras.layers.Reshape((count,1))(probabilities)
     x=tf.keras.layers.Cropping1D((1,count-2))(x)
     inference=tf.keras.Model(binary.inputs[0],tf.keras.layers.Flatten()(x))

@@ -27,6 +27,22 @@ class LabelsTest(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec('tensorflow'),'Optional TensorFlow unavailable')
 class ModelTest(unittest.TestCase):
+    def test_warm_start_preserves_nonzero_sigmoid_and_initial_non_target_mass(self):
+        import tensorflow as tf
+        from contrastive_readout import attach
+        tf.keras.utils.set_random_seed(37)
+        inp=tf.keras.Input((8,));last=tf.keras.layers.Dense(1,activation='sigmoid')(inp)
+        binary=tf.keras.Model(inp,last)
+        fixture=np.random.default_rng(37).normal(size=(12,8)).astype('float32')
+        expected=binary(fixture).numpy().ravel()
+        with self.assertRaisesRegex(ValueError,'zero wake classifier'):attach(binary)
+        train,infer=attach(binary,warm_start=True)
+        np.testing.assert_allclose(infer(fixture).numpy().ravel(),expected,atol=2e-7)
+        probabilities=train(fixture).numpy()
+        np.testing.assert_allclose(probabilities.sum(axis=1),1.,atol=2e-7)
+        for index in [0,2,len(PHRASES)-1]:
+            np.testing.assert_allclose(probabilities[:,index],(1-expected)/(len(PHRASES)-1),atol=2e-7)
+
     def test_scalar_probability_preserved_and_shared_multiclass_weights_train(self):
         import tensorflow as tf
         from contrastive_readout import attach

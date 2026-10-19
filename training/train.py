@@ -138,9 +138,14 @@ def main():
     p.add_argument('--sequence-readout',action='store_true',help='Train an ordered nonlinear wake head over an explicit zero-head phonetic encoder')
     p.add_argument('--train-sequence-encoder',action='store_true',help='Explicit joint acoustic-sequence experiment; retain pretrained normalization statistics')
     p.add_argument('--contrastive-classes',action='store_true',help='Separate complete near-phrase classes during sequence training; export scalar wake probability')
+    p.add_argument('--plain-contrastive',action='store_true',help='Warm-start a plain binary checkpoint into near-phrase classes while preserving its initial probability; explicit retraining only')
     p.add_argument('--relu6',action='store_true',help='Experimental bounded acoustic/sequence activations; requires explicit joint retraining and full revalidation')
     p.add_argument('--train-temporal-encoder',action='store_true',help='Train the ordered temporal head and its encoder jointly; separate fresh-training experiment')
     a=p.parse_args()
+    if a.plain_contrastive:
+        if not a.resume_weights or a.export_only or a.head_backbone_weights or a.classifier_head_units or a.sequence_readout or a.phonetic_readout or a.temporal_readout or a.phone_head or a.widen_from or a.dropout:
+            raise ValueError('Plain contrast training requires only one plain binary resume checkpoint; export-only is unsupported')
+        a.contrastive_classes=True
     os.umask(0o077)
     if not 65536<=a.max_model_bytes<=524288:raise ValueError('Model flash budget must be 64..512 KiB')
     if a.export_only and (not a.resume_weights or a.widen_from):raise ValueError('Export-only requires one explicit resume checkpoint')
@@ -148,7 +153,7 @@ def main():
     if a.head_backbone_weights and (not (a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head or a.sequence_readout) or (a.resume_weights and not a.export_only) or a.widen_from):raise ValueError('Head backbone requires a readout; resume is export-only and widening is separate')
     if a.sequence_readout and (not a.head_backbone_weights or a.classifier_head_units or a.phonetic_readout or a.temporal_readout or a.phone_head or a.dropout or a.widen_from):raise ValueError('Sequence readout requires only its explicit phonetic encoder initialization')
     if a.train_sequence_encoder and not a.sequence_readout:raise ValueError('Sequence encoder fine-tuning requires its explicit ordered head')
-    if a.contrastive_classes and not a.sequence_readout:raise ValueError('Contrast supervision requires the explicit sequence readout')
+    if a.contrastive_classes and not (a.sequence_readout or a.plain_contrastive):raise ValueError('Contrast supervision requires an explicit sequence or plain warm-start readout')
     if a.phone_head and (not a.head_backbone_weights or a.temporal_readout or a.phonetic_readout or a.classifier_head_units or a.dropout or a.widen_from):raise ValueError('Phone bottleneck requires one explicit matching encoder initialization')
     if a.phone_logits and not a.phone_head:raise ValueError('Phone logits requires a matching phone head')
     if a.phone_logit_clip and (not a.phone_logits or not 1<=a.phone_logit_clip<=32):raise ValueError('Clip requires phone logits and a finite 1..32 bound')
@@ -245,12 +250,19 @@ def main():
     contrast_labels=None
     if a.contrastive_classes:
         from contrastive_readout import attach,expanded_labels,PHRASES
-        fit_model,model=attach(model)
+        if a.plain_contrastive:
+            model.load_weights(a.resume_weights)
+            before=model(sets['train'][0][:8],training=False).numpy()
+        fit_model,model=attach(model,warm_start=a.plain_contrastive)
+        if a.plain_contrastive:
+            difference=float(np.max(np.abs(model(sets['train'][0][:8],training=False).numpy()-before)))
+            if difference>1e-5:raise ValueError('Warm contrast initialization changed the binary function')
+            readout={'type':'warm-plain-near-phrase','backbone_frozen':False,'initial_max_probability_difference':difference}
         contrast_labels=expanded_labels(manifest,a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.negative_prefixes)
         for split,labels in contrast_labels.items():
             if len(labels)!=len(sets[split][1]) or not np.array_equal(labels==1,sets[split][1]==1):raise ValueError('Contrast labels do not match cached binary examples')
         readout.update(supervision='explicit-complete-near-phrase-classes',classes=PHRASES)
-    if a.resume_weights:model.load_weights(a.resume_weights)
+    if a.resume_weights and not a.plain_contrastive:model.load_weights(a.resume_weights)
     if a.freeze_batch_normalization:
         from residual_readout import freeze_normalization
         freeze_normalization(model)

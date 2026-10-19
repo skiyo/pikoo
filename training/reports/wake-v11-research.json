@@ -426,10 +426,37 @@
       "host_Micro_exact_cases": 6,
       "host_arena_bytes": 52096,
       "result": "failed adult synthetic recall; no device/family acceptance"
+    },
+    "AQ_new_level_data_frozen64": {
+      "development_hits": 165,
+      "development_targets": 184,
+      "development_false_wakes": 0,
+      "development_non_targets": 730,
+      "raw_adult_hits": 15,
+      "raw_adult_targets": 18,
+      "raw_childlike_hits": 23,
+      "raw_childlike_targets": 24,
+      "TRAIN_float_int8_passed": 8,
+      "host_Micro_exact_cases": 6,
+      "result": "failed recall, not deployed"
+    },
+    "AR_full128_low_rate": {
+      "bytes": 189936,
+      "development_hits": 180,
+      "development_targets": 184,
+      "development_false_wakes": 3,
+      "development_non_targets": 730,
+      "raw_adult_hits": 17,
+      "raw_adult_targets": 18,
+      "raw_childlike_hits": 24,
+      "raw_childlike_targets": 24,
+      "TRAIN_float_int8_passed": 8,
+      "host_Micro_exact_cases": 6,
+      "result": "recall groups passed but false wakes failed, not deployed"
     }
   },
   "pending": [
-    "AP new96-row TRAIN-only pī kū curriculum (eight adult/four fictional childlike families), offline content screen, then AQ frozen-encoder readout; no new test generation before qualified candidate freeze",
+    "AS --plain-contrastive warm-start from AR preserves initial sigmoid before explicit near-phrase training; same914cases, scalar INT8 output; no new test or hardware acceptance",
     "Exact corpus/phone/fold cache proof allows reusing original float32 frontend arrays across architecture widths; every waveform rechecked against current protected hashes",
     "Google TTS free daily quota reached; use existing reviewed data until reset, no paid fallback or project/model rotation",
     "Next wake model must pass unchanged development, newly frozen independent test, ESP32/runtime and actual family tests"
@@ -477,6 +504,17 @@
       "quota": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
       "daily_limit": 10,
       "no_paid_fallback_or_model_rotation": true
+    },
+    "AP_level_only": {
+      "planned": 96,
+      "valid_generated": 94,
+      "content_approved": 80,
+      "retained_new_rows_after_dedup_and_duration": 76,
+      "new_adult_targets": 21,
+      "new_childlike_targets": 13,
+      "new_non_targets": 42,
+      "development_cases_unchanged": 914,
+      "real_children_or_household_synthesis": false
     }
   },
   "observed_Google_quota": {
