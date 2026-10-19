@@ -53,19 +53,20 @@ class Monitor:
         raise RuntimeError('设备未回到所需的待机状态，停止测试')
 
 
-def summarize(rows, expected):
+def summarize(rows, expected, diagnostic=False):
     hits = sum(bool(row['detected']) for row in rows)
     target = math.ceil(expected * .9)
     clean = all(not row.get(key, 0) for row in rows for key in
                 ['wake_error_delta', 'wake_drop_delta', 'uploaded_sample_delta', 'rebooted'])
     return {'completed': len(rows), 'expected': expected, 'hits': hits,
             'required_hits': target, 'complete': len(rows) == expected, 'runtime_clean': clean,
-            'met_target': len(rows) == expected and hits >= target and clean}
+            'diagnostic_only': diagnostic,
+            'met_target': not diagnostic and len(rows) == expected and hits >= target and clean}
 
 
 @contextmanager
-def trial_session(monitor):
-    """Restore standby on window close, interruption, or result-write failure."""
+def trial_session(monitor, leave_muted=False):
+    """Restore the requested microphone state even if the trial is interrupted."""
     signals = [signal.SIGHUP, signal.SIGTERM]
     previous = {number: signal.getsignal(number) for number in signals}
 
@@ -84,7 +85,7 @@ def trial_session(monitor):
             try:
                 monitor.command('wake test off')
             finally:
-                monitor.settle(False)
+                monitor.settle(leave_muted)
         finally:
             for number, handler in previous.items():
                 signal.signal(number, handler)
@@ -99,6 +100,7 @@ def main():
     p.add_argument('--tester', choices=['adult', 'child'], required=True, help='User-provided role; never inferred from voice')
     p.add_argument('--trials', type=int, default=20)
     p.add_argument('--ready', action='store_true', help='Use only after the human explicitly says they are ready')
+    p.add_argument('--diagnostic',action='store_true',help='Explicit short engineering trial; never reports acceptance of an unqualified model')
     a = p.parse_args()
     if not 1 <= a.trials <= 100:
         raise ValueError('Invalid trial count')
@@ -113,33 +115,39 @@ def main():
         raise RuntimeError('已有唤醒测试窗口，请先完成或关闭它；不会中断另一测试') from None
     monitor = Monitor(a.socket, a.status_file)
     firmware = json.loads(a.firmware_manifest.read_text())
+    if firmware.get('offline_qualified') is False and not a.diagnostic:
+        raise ValueError('Unqualified model may only receive an explicitly labeled diagnostic trial')
     report = {'status': 'real-person-trials-incomplete', 'tester_role_user_selected': a.tester,
               'distance': 'instructed 1 metre; not measured by software',
               'model_sha256_from_verified_flash_manifest': firmware['model_sha256'],
               'source_commit': firmware['source_commit'], 'started_at_unix': time.time(),
               'raw_audio_saved': False, 'training_performed': False,
               'cloud_sessions_disabled_during_trials': True, 'trials': []}
+    report.update(diagnostic_only=a.diagnostic,offline_qualified=firmware.get('offline_qualified'),
+                  frozen_candidate_identity=firmware.get('frozen_candidate_identity'),
+                  wake_phrase='你好 Pikoo',pronunciation='pi1-ku1')
     a.output.parent.mkdir(parents=True, exist_ok=True)
 
     def say(text):
         subprocess.run(['/usr/bin/say', '-v', 'Tingting', '-r', '175', text], check=True)
 
     def save():
-        report['summary'] = summarize(report['trials'], a.trials)
+        report['summary'] = summarize(report['trials'], a.trials, a.diagnostic)
         temporary = a.output.with_suffix('.tmp')
         temporary.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
         temporary.chmod(0o600)
         temporary.replace(a.output)
 
-    print('请将设备放在约一米处。每次短音后，用平常音量说一次“你好皮酷”，不用按 BOOT。')
+    print('请将设备放在约一米处。每次短音后，用平常音量说一次“你好 Pikoo”，名字读 pī kū，两个第一声，不用按 BOOT。')
     print('一轮请由同一位测试者完成；换人前先停止，再单独开始新一轮。')
     print('本工具开启本地评测，只统计唤醒，不连接语音服务器。不会保存录音或训练模型。')
+    if a.diagnostic:print('本轮仅为工程短测，无论命中几次都不认定正式验收通过。')
     if not a.ready:
         input('准备好后按回车开始；现在不方便可直接关闭窗口。')
-    with trial_session(monitor):
+    with trial_session(monitor, leave_muted=a.diagnostic):
         try:
             monitor.settle(True)
-            say('开始唤醒测试。每次短音后，只说一次，你好皮酷。')
+            say('开始唤醒测试。每次短音后，只说一次，你好，批枯。最后两个字都读第一声。')
             for number in range(1, a.trials + 1):
                 monitor.settle(True)
                 monitor.command('wake test on')
@@ -175,16 +183,16 @@ def main():
                 print(f'{number}/{a.trials}：' + ('识别到了' if detected else '本次未识别'), flush=True)
                 say('识别到了。' if detected else '这次未识别。')
             report['status'] = 'real-person-trials-complete'
-            say('本轮测试结束。设备即将恢复正常待机。')
+            say('本轮测试结束。麦克风将保持关闭。' if a.diagnostic else '本轮测试结束。设备即将恢复正常待机。')
         finally:
             save()
     print(json.dumps(report['summary'], ensure_ascii=False, indent=2))
-    print('已经恢复正常待机。结果只保存在本机。')
+    print('诊断结束，麦克风保持关闭。结果只保存在本机。' if a.diagnostic else '已经恢复正常待机。结果只保存在本机。')
 
 
 if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        print('\n测试已中止；已尝试恢复普通待机。未完成的测试不计为通过。')
+        print('\n测试已中止；已尝试清理测试状态。未完成的测试不计为通过。')
         sys.exit(130)
