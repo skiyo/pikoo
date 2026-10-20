@@ -11,6 +11,7 @@ A DIY voice pet with expressive dual eyes, local Mandarin wake-word detection, r
 ## Features
 
 - Original cartoon eyes: closed-eye standby, coordinated gaze, blinking, listening and speaking expressions.
+- [Quiet companion mode](docs/companion.md): opt-in selective responses while an explicitly awakened physical device stays connected.
 - Local wake-word pipeline targeting “你好 Pikoo” (Mandarin greeting + pī kū, both name syllables first tone); updated pronunciation acceptance is pending. Standby audio stays on the device or local computer.
 - Continuous Mandarin conversation, playback cancellation, interruption handling, and reconnection.
 - Server-managed persona, shared Markdown memory, and session-summary integration.

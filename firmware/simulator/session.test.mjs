@@ -12,7 +12,7 @@ test('cancel after response announcement rejects its first late audio',async()=>
 test('wake is the first user turn, only once across duplicate readiness, cancel and retry',()=>{
  const {s,out}=setup();s.wake();s.receive({type:'voice.ready'});s.receive({type:'voice.ready'});
  const greetings=()=>out.filter(e=>e.type==='conversation.item.create');
- assert.equal(greetings().length,1);assert.equal(greetings()[0].parts[0].text,'你好皮酷');
+ assert.equal(greetings().length,1);assert.equal(greetings()[0].parts[0].text,'你好 Pikoo');
  s.cancel();s.receive({type:'voice.ready'});assert.equal(greetings().length,1);
  s.disconnect(1006);s.wake(false,{resume:true});s.receive({type:'voice.ready'});assert.equal(greetings().length,1);
  s.stop();s.wake();s.receive({type:'voice.ready'});assert.equal(greetings().length,2);

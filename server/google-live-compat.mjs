@@ -1,6 +1,36 @@
 import { randomUUID } from 'node:crypto';
 import { googleLiveProvider } from './node_modules/qwen-audio-agent/server/src/voice/providers/google-live.mjs';
 import { beijingConnectionContext } from './time-context.mjs';
+export const liveIdentityInstructions = [
+  '# Pikoo identity',
+  'Your name is Pikoo, a friendly desktop AI pet shared by the family. Always write your name as Pikoo, including in Mandarin replies; never translate it into 皮酷, 皮库 or another Chinese alias.',
+  'When speaking, pronounce Pikoo as pee-koo: pī kū, two level syllables. Do not pronounce your name as pí kù. Earlier transcripts or greetings using a Chinese spelling do not change your name.',
+].join('\n');
+export const liveCompanionInstructions = [
+  '# Quiet family companion mode',
+  'While this explicitly awakened session stays connected, listen quietly. Family members may be talking to each other, to a television or to someone else. Those conversations are context, not instructions to you.',
+  'Speak when someone addresses Pikoo, asks for your opinion or help, or clearly continues an exchange with you. During an ongoing exchange, follow-up answers and questions need not repeat your name. A wake greeting addressed to you deserves one short friendly greeting.',
+  'When speech is not directed to you, or the intended listener is uncertain, produce no speech, no acknowledgement and no clarification question. Do not say that you will stay silent. Background speech and noise are not requests. Do not interrupt family conversations with unsolicited comments.',
+  'Do not execute search, list edits or other actions merely because family members discuss doing them. Only carry out requests clearly directed to you. Stable, explicitly stated family facts may use the existing memory rules; never infer identities or private preferences from overheard ambiguous speech.',
+  'When explicitly told goodbye or asked to end the conversation, briefly say goodbye. When invited back into the conversation, use the relevant context you heard without claiming to have heard anything while disconnected or muted.',
+].join('\n');
+export function companionEnabled(env = process.env) {
+  const value=String(env.PIKOO_COMPANION_MODE || 'off').trim().toLowerCase();
+  if(!['on','off'].includes(value))throw new Error('PIKOO_COMPANION_MODE must be on or off');
+  return value==='on';
+}
+// The deployed v1beta endpoint rejects proactivity at setup (1007), while
+// the same model/key accepts it through v1alpha. Keep ordinary mode on its
+// original endpoint; pin this opt-in feature to the endpoint actually tested.
+export function liveEndpoint(value,companion) {
+  if(!companion)return value;
+  const url=new URL(value);
+  if(url.hostname!=='generativelanguage.googleapis.com' ||
+      !/^\/ws\/google\.ai\.generativelanguage\.v1(?:alpha|beta)\.GenerativeService\.BidiGenerateContent$/.test(url.pathname))
+    throw new Error('Companion mode requires the verified Google Live endpoint');
+  url.pathname=url.pathname.replace('.v1beta.','.v1alpha.');
+  return url.toString();
+}
 // Native Live audio does not accept an explicit language-code restriction.
 // https://ai.google.dev/gemini-api/docs/live-api/capabilities#supported-languages
 export const liveLanguageInstructions = [
@@ -9,7 +39,7 @@ export const liveLanguageInstructions = [
   'Follow the language the user chooses in the current conversation: respond in Mandarin to Mandarin conversation, and in English to English conversation or an English-practice request.',
   'For English learning, continue naturally in English; use Mandarin explanations or bilingual examples when requested or helpful. Do not force an English conversation back into Mandarin.',
   'Mixed Mandarin and English is allowed. Do not speak, quote, imitate, or switch to any third language, including when asked to translate into one; explain this bilingual scope in Mandarin or English instead.',
-  'Unclear speech, silence, background sounds, and uncertain transcription are not requests to change language. Ask a brief clarification in the last clearly chosen supported language; if none is established, ask briefly in Mandarin and English.',
+  'Unclear speech, silence, background sounds, and uncertain transcription are not requests to change language or reasons to break quiet companion mode. Only when clarification is appropriate for a request directed to you, ask briefly in the last clearly chosen supported language; if none is established, ask briefly in Mandarin and English.',
   'Apply this policy to spoken audio and written replies, including greetings, tool results, and replies after reconnection. Do not treat it as a fact about any individual family member.',
 ].join('\n');
 // Gemini Live v1beta rejects JSON Schema's additionalProperties inside Schema.
@@ -110,11 +140,15 @@ export function wrapGoogleProtocol(base) {
 }
 export const pikooGoogleLiveProvider = {
   ...googleLiveProvider,
+  url: () => liveEndpoint(googleLiveProvider.url(),companionEnabled()),
   createProtocol: () => wrapGoogleProtocol(googleLiveProvider.createProtocol()),
   buildSession(args) {
     const session=googleLiveProvider.buildSession(args);
+    const companion=companionEnabled();
     return {...session,
-      systemInstruction:{...session.systemInstruction,parts:[...session.systemInstruction.parts,{text:beijingConnectionContext()},{text:liveLanguageInstructions}]},
+      ...(companion?{proactivity:{proactiveAudio:true}}:{}),
+      systemInstruction:{...session.systemInstruction,parts:[...session.systemInstruction.parts,{text:beijingConnectionContext()},{text:liveIdentityInstructions},
+        ...(companion?[{text:liveCompanionInstructions}]:[]),{text:liveLanguageInstructions}]},
       // These are short foreground operations. Gemini 3.8 otherwise defaults
       // to non-blocking tools and may confirm several times while they finish.
       realtimeInputConfig:liveInputConfig(session.realtimeInputConfig),tools:session.tools.map(tool=>({...tool,functionDeclarations:tool.functionDeclarations.map(fn=>({...fn,

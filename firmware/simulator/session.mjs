@@ -1,6 +1,6 @@
 export function isFarewell(text) {
-  const normalized=String(text||'').replace(/[\s，。！？、；：～·“”‘’,.!?;:~"']/gu,'');
-  return new Set(['再见','拜拜','拜','皮酷再见','再见皮酷','皮酷拜拜','拜拜皮酷','好了再见','好再见','好的再见','谢谢再见','谢谢你再见','那再见','我们下次再聊','下次再聊','结束对话','结束通话','不聊了','晚安','皮酷晚安','晚安皮酷']).has(normalized);
+  const normalized=String(text||'').replace(/[\s，。！？、；：～·“”‘’,.!?;:~"']/gu,'').toLowerCase();
+  return new Set(['再见','拜拜','拜','皮酷再见','再见皮酷','皮酷拜拜','拜拜皮酷','好了再见','好再见','好的再见','谢谢再见','谢谢你再见','那再见','我们下次再聊','下次再聊','结束对话','结束通话','不聊了','晚安','皮酷晚安','晚安皮酷','pikoo再见','再见pikoo','pikoo拜拜','拜拜pikoo','pikoo晚安','晚安pikoo','goodbye','byebye','goodbyepikoo','pikoogoodbye','byepikoo','pikoobye']).has(normalized);
 }
 export class DeviceSession {
   constructor({send,stopAudio,playAudio,stateChanged,now=()=>Date.now(),conversationId=null,newConversationId=()=>`pikoo-${globalThis.crypto.randomUUID()}`,conversationChanged=()=>{},ended=()=>{}}) {
@@ -22,9 +22,9 @@ export class DeviceSession {
   text(text) { if(this.ready&&!this.muted&&!this.farewell) {this.lastActivity=this.now();this.send(this.event('conversation.item.create',{parts:[{type:'text',text}]}));} }
   async receive(e) {
     if(e.type==='session.ping')return this.send(this.event('session.pong',{request_event_id:e.event_id}));
-    if(e.type==='voice.ready') {if(this.state==='connecting'&&!this.muted){this.ready=true;this.lastActivity=this.now();this.stateTo('listening');if(this.greetingPending){this.greetingPending=false;this.text('你好皮酷');}}return;}
+    if(e.type==='voice.ready') {if(this.state==='connecting'&&!this.muted){this.ready=true;this.lastActivity=this.now();this.stateTo('listening');if(this.greetingPending){this.greetingPending=false;this.text('你好 Pikoo');}}return;}
     if(e.type==='response.started'&&typeof e.responseId==='string'){this.latestResponse={id:e.responseId,turn:e.turnId,done:false};if(this.farewell&&!this.farewell.id&&(!this.farewell.turn||!e.turnId||this.farewell.turn===e.turnId))this.farewell.id=e.responseId;if(this.ready)this.announced.add(e.responseId);else this.invalid.add(e.responseId);return;}
-    if(e.type==='voice.state'&&e.state==='processing'&&this.ready){this.stateTo('thinking');return;}
+    if(e.type==='voice.state'&&this.ready){if(e.state==='processing')this.stateTo('thinking');else if(['idle','listening'].includes(e.state)&&!this.responses.size)this.stateTo('listening');return;}
     if(e.type==='playback.clear'){this.clear(true);if(this.ready)this.stateTo('listening');return;}
     if(e.type==='transcript.delta'||e.type==='transcript.final'){
       this.lastActivity=this.now();

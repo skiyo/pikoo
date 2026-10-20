@@ -15,11 +15,14 @@ inline bool is_farewell(const std::string &text) {
     auto part=text.substr(i,n);i+=n;
     if(n==1&&(c<=32||std::string(",.!?;:~\"'").find(char(c))!=std::string::npos))continue;
     if(n>1&&punctuation.find(part)!=std::string::npos)continue;
+    if(n==1&&c>='A'&&c<='Z')part[0]=char(c-'A'+'a');
     normalized+=part;
   }
   for(const char *phrase:{"再见","拜拜","拜","皮酷再见","再见皮酷","皮酷拜拜","拜拜皮酷",
        "好了再见","好再见","好的再见","谢谢再见","谢谢你再见","那再见","我们下次再聊",
-       "下次再聊","结束对话","结束通话","不聊了","晚安","皮酷晚安","晚安皮酷"})
+       "下次再聊","结束对话","结束通话","不聊了","晚安","皮酷晚安","晚安皮酷",
+       "pikoo再见","再见pikoo","pikoo拜拜","拜拜pikoo","pikoo晚安","晚安pikoo",
+       "goodbye","byebye","goodbyepikoo","pikoogoodbye","byepikoo","pikoobye"})
     if(normalized==phrase)return true;
   return false;
 }

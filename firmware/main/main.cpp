@@ -49,6 +49,7 @@ pikoo::Playback playback;
 pikoo::Session session;
 pikoo::Interaction interaction;
 std::atomic<bool> voice_connected{false};
+std::atomic<bool> companion_mode{false};
 std::mutex play_mutex, in_mutex, out_mutex, tx_mutex, tx_io_mutex;
 std::deque<std::string> incoming, outgoing;
 struct ControlMessage { uint32_t connection; std::string json; };
@@ -416,7 +417,7 @@ void receive(const std::string &raw) {
         auto parts=cJSON_AddArrayToObject(greeting,"parts");
         auto part=cJSON_CreateObject();
         cJSON_AddStringToObject(part,"type","text");
-        cJSON_AddStringToObject(part,"text","你好皮酷");
+        cJSON_AddStringToObject(part,"text","你好 Pikoo");
         cJSON_AddItemToArray(parts,part);
         if(send(greeting)) {
           interaction.greeting_sent();
@@ -473,9 +474,13 @@ void receive(const std::string &raw) {
       playback.announce(id);
     else
       playback.reject(id);
-  } else if (type == "voice.state" && field(o, "state") == "processing" &&
-             session.ready) {
-    session.state = State::Thinking;
+  } else if (type == "voice.state" && session.ready) {
+    const auto state=field(o,"state");
+    if(state=="processing")session.state=State::Thinking;
+    else if(state=="idle"||state=="listening") {
+      std::lock_guard<std::mutex> lock(play_mutex);
+      if(!playback.busy())session.state=State::Listening;
+    }
   } else if (type == "audio.done") {
     ESP_LOGI("pikoo","audio response complete");
     std::lock_guard<std::mutex> lock(play_mutex);
@@ -739,7 +744,7 @@ void diagnostics() {
 #endif
   wifi_ap_record_t ap{};
   int rssi=esp_wifi_sta_get_ap_info(&ap)==ESP_OK?ap.rssi:0;
-  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu volume_db=%d dac_reg=%d rssi=%d playback_gaps=%lu playback_gap_max_us=%lu wake_score=%.3f wake_peak=%.3f wake_raw_peak=%.3f wake_hits=%lu wake_errors=%lu wake_dropped=%lu wake_test=%d veto_candidates=%lu veto_rejected=%lu veto_cancelled=%lu veto_errors=%lu veto_last_us=%lu frame_tx=%lu frame_tx_errors=%lu stop_max_us=%lu upload_pending=%u session_steps=%lu tx_holds=%lu sender_stack_free=%u",
+  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu volume_db=%d dac_reg=%d rssi=%d playback_gaps=%lu playback_gap_max_us=%lu wake_score=%.3f wake_peak=%.3f wake_raw_peak=%.3f wake_hits=%lu wake_errors=%lu wake_dropped=%lu wake_test=%d veto_candidates=%lu veto_rejected=%lu veto_cancelled=%lu veto_errors=%lu veto_last_us=%lu frame_tx=%lu frame_tx_errors=%lu stop_max_us=%lu upload_pending=%u session_steps=%lu tx_holds=%lu sender_stack_free=%u companion=%d",
     board::Name,esp_app_get_description()->version,int(visual_state.load()),int(wifi_ready.load()),int(muted.load()),int(uploading.load()),
     (unsigned long)upload_count.load(),(unsigned long)reconnect_count.load(),unsigned(esp_get_free_heap_size()),unsigned(esp_get_minimum_free_heap_size()),
     unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),board::display_fps(),board::microphone_level(),board::reference_level(),board::output_level(),
@@ -756,7 +761,7 @@ void diagnostics() {
     0UL,0UL,0UL,0UL,0UL
 #endif
     ,(unsigned long)pikoo::coalesced_frames(),(unsigned long)pikoo::frame_write_errors(),
-    (unsigned long)transport_stop_max_us.load(),unsigned(uxQueueMessagesWaiting(upload_queue)),(unsigned long)session_steps.load(),(unsigned long)tx_holds.load(),unsigned(sender_handle?uxTaskGetStackHighWaterMark(sender_handle):0)
+    (unsigned long)transport_stop_max_us.load(),unsigned(uxQueueMessagesWaiting(upload_queue)),(unsigned long)session_steps.load(),(unsigned long)tx_holds.load(),unsigned(sender_handle?uxTaskGetStackHighWaterMark(sender_handle):0),int(companion_mode.load())
   );
 }
 void controls_task(void *) {
@@ -789,6 +794,17 @@ void controls_task(void *) {
         else if(!strcmp(command,"volume normal"))board::set_volume(-24);
         else if(!strcmp(command,"volume higher"))board::set_volume(-12);
         else if(!strcmp(command,"volume louder"))board::set_volume(-6);
+        else if(!strcmp(command,"companion on")||!strcmp(command,"companion off")) {
+          const bool enabled=!strcmp(command,"companion on");
+          nvs_handle_t n;
+          if(nvs_open("pikoo",NVS_READWRITE,&n)==ESP_OK){
+            const auto stored=nvs_set_u8(n,"companion",enabled?1:0);
+            const auto committed=stored==ESP_OK?nvs_commit(n):stored;
+            nvs_close(n);
+            if(committed==ESP_OK){companion_mode=enabled;ESP_LOGI("pikoo","companion=%d",int(enabled));}
+            else ESP_LOGW("pikoo","companion setting not saved");
+          }
+        }
         else if(!strcmp(command,"rotate 90")||!strcmp(command,"rotate 270")) {
           int angle=!strcmp(command,"rotate 90")?90:270;
           board::display_rotation(angle);nvs_handle_t n;
@@ -939,7 +955,7 @@ void session_task(void *) {
     if (session.ready && !playing && session.state == State::Speaking) {
       session.state = State::Listening;
     }
-    if (interaction.finish_due(now(),playing)||session.idle_due(now(), playing)) {
+    if (interaction.finish_due(now(),playing)||session.idle_due(now(), playing,companion_mode)) {
       bool farewell=interaction.closing();
       end_socket();
       // Silence closes the transport for privacy/power, not the topic. Keep
@@ -984,6 +1000,7 @@ extern "C" void app_main() {
   endpoint = setting(nvs, "endpoint");
   token = setting(nvs, "token");
   conversation_id=setting(nvs,"conversation");
+  uint8_t companion=0;nvs_get_u8(nvs,"companion",&companion);companion_mode=companion==1;
   nvs_get_i64(nvs,"conv_at",&conversation_at);
   int32_t rotation=90;nvs_get_i32(nvs,"rotation",&rotation);board::display_rotation(rotation);
   nvs_close(nvs);

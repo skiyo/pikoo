@@ -1,6 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { liveSchema,liveInputConfig,pikooGoogleLiveProvider,liveLanguageInstructions } from './google-live-compat.mjs';
+import { liveSchema,liveInputConfig,pikooGoogleLiveProvider,liveLanguageInstructions,liveIdentityInstructions,liveCompanionInstructions,companionEnabled,liveEndpoint } from './google-live-compat.mjs';
+test('only opted-in companion connections use the verified alpha endpoint and preserve credentials without exposing them',()=>{
+ const u='wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=private-test';
+ assert.equal(liveEndpoint(u,false),u);
+ const v=new URL(liveEndpoint(u,true));assert(v.pathname.includes('.v1alpha.'));
+ assert.equal(v.searchParams.get('key'),'private-test');
+ assert.throws(()=>liveEndpoint('wss://example.org/ws',true));
+});
+test('companion mode explicitly enables native selective audio on every connection without changing tools or bilingual identity',()=>{
+ const old=process.env.PIKOO_COMPANION_MODE;
+ try {
+  for(const mode of ['off','on','on']){
+   process.env.PIKOO_COMPANION_MODE=mode;
+   const s=pikooGoogleLiveProvider.buildSession({agentContext:{},sessionOptions:{}});
+   assert.deepEqual(s.proactivity,mode==='on'?{proactiveAudio:true}:undefined);
+   assert(s.systemInstruction.parts.some(p=>p.text===liveIdentityInstructions));
+   assert.equal(s.systemInstruction.parts.some(p=>p.text===liveCompanionInstructions),mode==='on');
+   assert.equal(s.systemInstruction.parts.at(-1).text,liveLanguageInstructions);
+  }
+  assert.equal(companionEnabled({}),false);
+  assert.throws(()=>companionEnabled({PIKOO_COMPANION_MODE:'maybe'}));
+ } finally {if(old===undefined)delete process.env.PIKOO_COMPANION_MODE;else process.env.PIKOO_COMPANION_MODE=old;}
+});
 test('every new or reconnected Live session carries the bilingual policy without a single-language API field',()=>{
  const original={persona:{},frontend:{}};
  for(let n=0;n<2;n++){

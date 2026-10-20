@@ -6,7 +6,9 @@ import { createRealtimeProviderRegistry } from 'qwen-audio-agent/realtime-provid
 import { config } from './node_modules/qwen-audio-agent/server/src/core/config.mjs';
 import { pikooGoogleLiveProvider } from './google-live-compat.mjs';
 import { familyToolsOptions } from './family-tools.mjs';
+import { installCompanionInput } from './companion-runtime.mjs';
 process.env.TZ='Asia/Shanghai';
+installCompanionInput();
 const contextLearning=installContextLearning();
 const lease=acquireGatewayLease(config.stateDirectory,{owner:'pikoo-systemd'});
 process.env.QWEN_AUDIO_GATEWAY_INSTANCE_ID=lease.instanceId;

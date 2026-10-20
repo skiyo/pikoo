@@ -142,7 +142,7 @@ def main():
     p.add_argument('--build', type=Path, default=ROOT/'firmware/build-dualeye')
     p.add_argument('--config', type=Path)
     p.add_argument('--backup', type=Path)
-    p.add_argument('--command', default='status', choices=['status', 'wake', 'stop', 'end', 'mute', 'unmute', 'takeover', 'tone', 'volume low', 'volume normal', 'volume higher','volume louder','rotate 90','rotate 270'])
+    p.add_argument('--command', default='status', choices=['status', 'wake', 'stop', 'end', 'mute', 'unmute', 'takeover', 'tone', 'volume low', 'volume normal', 'volume higher','volume louder','rotate 90','rotate 270','companion on','companion off'])
     p.add_argument('--dry-run', action='store_true')
     a = p.parse_args()
     os.umask(0o077)

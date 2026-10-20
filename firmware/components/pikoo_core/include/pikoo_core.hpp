@@ -249,8 +249,8 @@ public:
     return ready && (state == State::Listening || state == State::Speaking ||
                      state == State::Thinking);
   }
-  bool idle_due(uint64_t now, bool playback) const {
-    return upload() && !playback && now >= last_activity &&
+  bool idle_due(uint64_t now, bool playback, bool companion = false) const {
+    return !companion && upload() && !playback && now >= last_activity &&
            now - last_activity >= 30000;
   }
 };

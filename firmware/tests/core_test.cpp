@@ -11,7 +11,7 @@ int main() {
   flow.wake();assert(flow.greeting_pending());flow.greeting_sent();
   // Transport reconnects and provider rebuilds never call wake().
   assert(!flow.greeting_pending());
-  for(auto text:{"再见！","皮酷，再见。","拜拜","好了，再见","晚安皮酷"})assert(is_farewell(text));
+  for(auto text:{"再见！","皮酷，再见。","拜拜","好了，再见","晚安皮酷","Pikoo，再见。","再见 Pikoo","Goodbye, Pikoo!"})assert(is_farewell(text));
   for(auto text:{"不要说再见","再见是什么意思","你会说再见吗","故事里他说再见","再见之后呢","你好皮酷"})assert(!is_farewell(text));
   assert(!flow.transcript("assistant",true,"再见","t",0));
   assert(!flow.transcript("user",false,"再见","t",0));
@@ -142,6 +142,8 @@ int main() {
   assert(!s.idle_due(30000, false));
   assert(s.idle_due(30001, false));
   assert(!s.idle_due(40000, true));
+  assert(!s.idle_due(3600000, false, true));
+  assert(s.idle_due(3600000, false, false));
   s.mute();
   s.voice_ready(2);
   s.wake(3);
