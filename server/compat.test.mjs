@@ -12,6 +12,9 @@ test('every new or reconnected Live session carries the bilingual policy without
   assert.match(liveLanguageInstructions,/Unclear speech, silence, background sounds/);
   assert.equal(session.generationConfig.speechConfig?.languageCode,undefined);
   assert.deepEqual(session.generationConfig.responseModalities,['AUDIO']);
+  for(const fn of session.tools.flatMap(t=>t.functionDeclarations)){
+   if(['web_search','fetch_url','notes'].includes(fn.name))assert.equal(fn.behavior,'BLOCKING');
+  }
   assert.ok(session.systemInstruction.parts.some(p=>p.text.includes('Asia/Shanghai')));
  }
  assert.deepEqual(original,{persona:{},frontend:{}});
@@ -41,6 +44,30 @@ test('voice runtime provider preserves the Google native model and contract',()=
 });
 import { wrapGoogleProtocol } from './google-live-compat.mjs';
 import { createGoogleLiveProtocol } from './node_modules/qwen-audio-agent/server/src/voice/providers/google-live-protocol.mjs';
+import { RealtimeFrontend } from './node_modules/qwen-audio-agent/server/src/voice/realtime-provider.mjs';
+test('real frontend delivery writes no Google frame for a cancelled late result',async()=>{
+ const frames=[];const f=new RealtimeFrontend({provider:pikooGoogleLiveProvider});
+ f.ready=true;f.ws={readyState:1,send:wire=>frames.push(JSON.parse(wire))};
+ f.protocol.normalizeIncoming({toolCall:{functionCalls:[{id:'slow',name:'fetch_url',args:{url:'https://example.org'}}]}});
+ f.protocol.responseCancel();await f.sendFunctionOutput('slow',{content:'late page'});
+ assert.deepEqual(frames,[]);
+ f.protocol.normalizeIncoming({toolCall:{functionCalls:[{id:'fresh',name:'notes',args:{action:'lists'}}]}});
+ await f.sendFunctionOutput('fresh',{status:'empty'});
+ assert.equal(frames.length,1);assert.equal(frames[0].toolResponse.functionResponses[0].id,'fresh');
+ f.ws=null;
+});
+test('native tool results cannot restart speech after cancellation or barge-in',()=>{
+ for(const cancel of [p=>p.responseCancel(),p=>p.normalizeIncoming({toolCallCancellation:{ids:['old']}}),p=>p.normalizeIncoming({serverContent:{interrupted:true}})]){
+  const p=wrapGoogleProtocol(createGoogleLiveProtocol());
+  p.normalizeIncoming({toolCall:{functionCalls:[{id:'old',name:'web_search',args:{query:'cat'}}]}});
+  cancel(p);
+  assert.equal(p.conversationItemCreate(p.functionOutputItem('old',{results:[]})),null);
+  p.normalizeIncoming({toolCall:{functionCalls:[{id:'new',name:'notes',args:{action:'lists'}}]}});
+  const out=p.conversationItemCreate(p.functionOutputItem('new',{status:'ok'}));
+  assert.equal(out.toolResponse.functionResponses[0].name,'notes');
+  assert.equal(p.conversationItemCreate(p.functionOutputItem('new',{status:'ok'})),null);
+ }
+});
 test('split Gemini speech becomes one completed transcript before response audio',()=>{
  const p=wrapGoogleProtocol(createGoogleLiveProtocol());
  const first=p.normalizeIncoming({serverContent:{inputTranscription:{text:'我们家'}}});

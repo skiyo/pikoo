@@ -48,7 +48,7 @@ flowchart LR
     Train[Offline training and evaluation] -.->|Local model file| Local
 ```
 
-The device listens, wakes, plays audio and displays expressions. The server manages conversations and memory. Provider keys and household information remain in private server storage. Training runs separately from the online voice path. Read [how the modules cooperate](docs/architecture.md) and [context, memory and Beijing time](docs/context-memory.md).
+The device listens, wakes, plays audio and displays expressions. The server manages conversations and memory. Provider keys and household information remain in private server storage. Training runs separately from the online voice path. Read [how the modules cooperate](docs/architecture.md), [context, memory and Beijing time](docs/context-memory.md), and [search, web reading and family lists](docs/family-tools.md).
 
 Reconnection restores recent saved text with the same conversation identifier. It does not resume the original audio stream or guarantee unlimited history. Explicitly ending a conversation starts a new topic on the next connection.
 

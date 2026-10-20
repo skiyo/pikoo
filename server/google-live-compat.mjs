@@ -35,6 +35,7 @@ export function liveInputConfig(base = {}, env = process.env) {
 }
 export function wrapGoogleProtocol(base) {
   let input = null;
+  const pendingTools=new Set();
   const list = x => !x ? [] : Array.isArray(x) ? x : [x];
   function begin(out) {
     if (input) return;
@@ -65,8 +66,25 @@ export function wrapGoogleProtocol(base) {
     }
     return result;
   }
-  return {...base, normalizeIncoming(event) {
+  return {...base,
+    responseCancel(...args){pendingTools.clear();return base.responseCancel(...args);},
+    conversationItemCreate(item,options){
+      if(item?.type!=='function_call_output')return base.conversationItemCreate(item,options);
+      const current=pendingTools.delete(String(item.call_id||''));
+      const payload=base.conversationItemCreate(item,options);
+      if(current)return payload;
+      // Google resumes speech as soon as toolResponse arrives. Do not send a
+      // cancelled result; consume the base adapter's automatic-response flag.
+      base.responseCreate({});return null;
+    },
+    normalizeIncoming(event) {
     const content=event?.serverContent;
+    if(content?.interrupted)pendingTools.clear();
+    for(const id of event?.toolCallCancellation?.ids||[])pendingTools.delete(String(id));
+    for(const call of event?.toolCall?.functionCalls||[]){
+      if(pendingTools.size>=500)pendingTools.delete(pendingTools.values().next().value);
+      pendingTools.add(String(call.id));
+    }
     if(!content){
       if(event?.toolCall && input){const out=[];finish(out);out.push(...list(base.normalizeIncoming(event)));return decorate(out);}
       return decorate(base.normalizeIncoming(event));
@@ -97,6 +115,10 @@ export const pikooGoogleLiveProvider = {
     const session=googleLiveProvider.buildSession(args);
     return {...session,
       systemInstruction:{...session.systemInstruction,parts:[...session.systemInstruction.parts,{text:beijingConnectionContext()},{text:liveLanguageInstructions}]},
-      realtimeInputConfig:liveInputConfig(session.realtimeInputConfig),tools:session.tools.map(tool=>({...tool,functionDeclarations:tool.functionDeclarations.map(fn=>({...fn,parameters:liveSchema(fn.parameters)}))}))};
+      // These are short foreground operations. Gemini 3.8 otherwise defaults
+      // to non-blocking tools and may confirm several times while they finish.
+      realtimeInputConfig:liveInputConfig(session.realtimeInputConfig),tools:session.tools.map(tool=>({...tool,functionDeclarations:tool.functionDeclarations.map(fn=>({...fn,
+        ...(['web_search','fetch_url','notes'].includes(fn.name)?{behavior:'BLOCKING'}:{}),
+        parameters:liveSchema(fn.parameters)}))}))};
   },
 };

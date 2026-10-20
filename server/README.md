@@ -9,7 +9,7 @@
 - `/var/lib/pikoo/qwaudio/`：权限受保护的配置、身份、记忆、摘要和状态。
 - `/etc/mihomo/config.yaml`：私有代理资料；仅接管 `pikoo` 的实际 UID，控制端口/混合端口仅本机。
 
-以 root 建立用户和目录，复制 `host.mjs`、`google-live-compat.mjs`、`memory-timeout.mjs`、`context-runtime.mjs`、`context-learning.mjs`、`time-context.mjs`、`provider-check.mjs`、package 文件到应用目录并安装。将 `deploy/config.env.example` 填入 `QWAUDIO_CONFIG_DIR/config.env`，权限 600、归属 pikoo。家庭人设从 `persona/*.example` 另行填写，真实内容不提交。所有持久路径以固定版 `qwenaudio config` 输出和当前配置为准，不直接覆盖旧目录。
+以 root 建立用户和目录，复制 `host.mjs`、`google-live-compat.mjs`、`deepseek-search.mjs`、`family-tools.mjs`、`memory-timeout.mjs`、`context-runtime.mjs`、`context-learning.mjs`、`time-context.mjs`、`provider-check.mjs`、package 文件到应用目录并安装。将 `deploy/config.env.example` 填入 `QWAUDIO_CONFIG_DIR/config.env`，权限 600、归属 pikoo。家庭人设从 `persona/*.example` 另行填写，真实内容不提交。所有持久路径以固定版 `qwenaudio config` 输出和当前配置为准，不直接覆盖旧目录。
 
 将 `deploy/` 中 systemd 模板安装到 `/etc/systemd/system/`，Nginx 配置安装到对应目录；按主机实际 UID/地址更新 mihomo 和防火墙模板。代理节点务必验证 TLS；模板默认不跳过证书校验。根用户的 SSH/系统流量不应被 TUN 全局接管。
 
@@ -58,7 +58,7 @@ pikoo-admin backup
 
 双眼设备调试中，较高播放音量下曾在安静测试里出现服务端取消回答。可在 systemd 服务环境中设置 `PIKOO_GOOGLE_LIVE_START_SENSITIVITY=low`、`PIKOO_GOOGLE_LIVE_PREFIX_PADDING_MS=180`，重启后对新会话生效。它们使用 [Google 官方活动检测参数](https://ai.google.dev/api/live#AutomaticActivityDetection)，保留自动检测和自然插话；不配置则保留上游默认行为。前者支持 `low` / `high`，后者支持 20–1000 毫秒。降低敏感度可能影响轻声和短句插话，必须配合真实人声验证，不能替代硬件 AEC。Pikoo 自定义参数必须进入进程环境（例如 systemd drop-in），不能只依赖上游配置文件识别它们。
 
-先区分网络超时、地区限制、凭证错误和额度不足。地区错误先检查实际运行 UID 的代理出口，不靠盲目轮换模型解决。未开通付费，不自动切换收费服务。查看日志前注意其中可能有会话内容；提交 issue 前脱敏。
+先区分网络超时、地区限制、凭证错误和额度不足。地区错误先检查实际运行 UID 的代理出口，不靠盲目轮换模型解决。Google 模型不自动切换收费服务；DeepSeek Search 按使用者授权和账号当前计费规则执行，余额不足时返回错误，不自动充值。查看日志前注意其中可能有会话内容；提交 issue 前脱敏。
 
 2026-10-13 `npm audit` 报告上游依赖 MCP SDK 1.30.0 的 OAuth 凭证泄露风险（已修复版本 ≥1.31.0，但固定上游包未提供自动修复）。当前配置 `AGENT_PROTOCOL=none` 且未配置 MCP OAuth 客户端，不启用受影响流程。升级依赖前做适配/记忆回归，不宣称审计零告警。
 
@@ -67,3 +67,7 @@ pikoo-admin backup
 实现与保留边界见[中文说明](../docs/context-memory.zh-CN.md)及[English](../docs/context-memory.md)。设备自动待机继续使用同一会话，网关的会话投影 TTL 配为 24 小时。默认开启自动记忆和话题回溯；后台模型为经验证的免费层 `gemini-3.5-flash-lite`，实时语音仍是 `gemini-3.8-live`。`gemini-3.8-flash` 后台接口曾连续返回 503，失败记录保留。
 
 `state/pikoo-context-learning.json` 保存有界的待整理文字，权限 600，必须包含在私密备份中。队列为单进程串行处理，正常调用至少间隔 15 秒；临时错误退避，额度错误至少等待 15 分钟，不切换收费服务。`GET /api/pikoo/context-status` 需要现有鉴权，只返回当前 owner 的队列状态，不返回正文。修改或删除记忆会废弃旧整理任务；更正/删除时保守清除此 owner 的旧话题索引，防止摘要把删除内容补回。它不会删除原始会话日志。
+
+## 搜索、网页阅读和家庭清单
+
+部署与费用边界见[双语工具说明](../docs/family-tools.zh-CN.md)。开启网页与清单工具后，Pikoo 注入 DeepSeek 搜索适配器；`AGENT_PROTOCOL=none` 保持不变。缺少搜索 Key 不影响其他工具，不自动切换默认搜索供应商。

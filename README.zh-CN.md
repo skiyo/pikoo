@@ -48,7 +48,7 @@ flowchart LR
     Train[离线训练与评估] -.->|本地模型文件| Local
 ```
 
-设备负责听、唤醒、播放和表情；服务器负责对话与记忆。模型服务 Key 和家庭资料留在服务器私密目录。训练独立于在线通话链路。详见[模块协作说明](docs/architecture.zh-CN.md)及[上下文、默认记忆与北京时间](docs/context-memory.zh-CN.md)。
+设备负责听、唤醒、播放和表情；服务器负责对话与记忆。模型服务 Key 和家庭资料留在服务器私密目录。训练独立于在线通话链路。详见[模块协作说明](docs/architecture.zh-CN.md)、[上下文、默认记忆与北京时间](docs/context-memory.zh-CN.md)及[搜索、网页阅读与家庭清单](docs/family-tools.zh-CN.md)。
 
 断线后使用相同会话编号，可恢复已保存的近期文本；不恢复原始音频流，也不保证无限历史。主动结束对话后，下次连接开始新话题。
 

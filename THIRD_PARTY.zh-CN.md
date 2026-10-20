@@ -48,6 +48,7 @@ Pikoo 原创代码、双眼图形和项目文档采用 Apache-2.0。安装依赖
 | [Muse Gadget SDK 模拟器](https://github.com/facebookincubator/muse-gadget-sdk/blob/main/esp32/simulator/README.md) | 模拟器组织、动画节奏参考 | 未复制 Muse 代码或 Jollybot 素材；Pikoo 绘制、网页和画面原创 |
 | [微雪双眼文档](https://docs.waveshare.net/ESP32-S3-DualEye-LCD-1.28/) | 规格、原理图和驱动参考入口 | 硬件/资料参考，不重新授权商家材料 |
 | [Google Gemini API](https://ai.google.dev/gemini-api/docs) | 外部实时、文本及可选 TTS 语料生成服务 | 地区、额度、价格和服务条款独立，不是开源组件 |
+| [DeepSeek Search API](https://api-docs.deepseek.com/zh-cn/guides/search/) | 外部原始网页搜索服务，Pikoo 原创适配器接入 | 账号、服务与计费条款独立；不打包 DeepSeek LLM 或供应商源码 |
 | [Let's Encrypt](https://letsencrypt.org/) | 外部证书服务 | 运维需维护续签并遵守服务要求 |
 
 ## 音频、数据与模型
