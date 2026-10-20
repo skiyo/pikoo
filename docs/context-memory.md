@@ -35,6 +35,14 @@ No speaker identity is inferred. Anonymous “I” statements are not assigned t
 
 Explicit memory edits invalidate queued and in-flight older learning. On restart, jobs with changed memory revisions are discarded. Corrections/deletions conservatively clear that owner's previous topic index, including late summaries; this can remove unrelated old topic summaries too. Subsequent summaries use new post-edit observations. Original conversation journals are separate and are not erased by a memory edit. Historical failed observations are not blindly reprocessed.
 
+## Bilingual output
+
+Realtime replies use Mandarin Chinese and English only, with neither language taking priority. Follow the current conversation language and explicit English-practice requests; bilingual explanations are allowed for learning. Unclear speech, background noise and uncertain transcription do not trigger a switch to a third language; ask briefly for clarification in the current language.
+
+Every new or restored Live connection receives the same system instruction, aligned with the persona template. This follows [Google's native-audio language guidance](https://ai.google.dev/gemini-api/docs/live-api/capabilities#supported-languages), without unsupported language codes or an invented two-language array. It is a model instruction, not a deterministic audio-language filter; human listening acceptance remains separate.
+
+2026-10-20: all 20 server software checks passed. Five real Google Live checks passed on one connection using the deployed provider and service UID: Mandarin, English, an English-practice request in Mandarin, bilingual teaching, and a request for a third language. This direct-provider check used text input and inspected generated audio and its transcript; audio was discarded and no household gateway history or memory was created. It is not microphone or hardware listening acceptance. Ambient companion mode was not enabled.
+
 ## Time and operations
 
 All Pikoo clients specify `Asia/Shanghai`. Each provider connection includes a server-generated Beijing clock snapshot. Current time/date/weekday and relative-date questions use the official `get_current_time` tool; a connection snapshot is not a continuously current clock. The host clock must be NTP-synchronised.

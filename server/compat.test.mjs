@@ -1,6 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { liveSchema,liveInputConfig,pikooGoogleLiveProvider } from './google-live-compat.mjs';
+import { liveSchema,liveInputConfig,pikooGoogleLiveProvider,liveLanguageInstructions } from './google-live-compat.mjs';
+test('every new or reconnected Live session carries the bilingual policy without a single-language API field',()=>{
+ const original={persona:{},frontend:{}};
+ for(let n=0;n<2;n++){
+  const session=pikooGoogleLiveProvider.buildSession({agentContext:original,sessionOptions:{}});
+  assert.equal(session.systemInstruction.parts.at(-1).text,liveLanguageInstructions);
+  assert.match(liveLanguageInstructions,/Neither language has priority/);
+  assert.match(liveLanguageInstructions,/English-practice request/);
+  assert.match(liveLanguageInstructions,/Do not force an English conversation back into Mandarin/);
+  assert.match(liveLanguageInstructions,/Unclear speech, silence, background sounds/);
+  assert.equal(session.generationConfig.speechConfig?.languageCode,undefined);
+  assert.deepEqual(session.generationConfig.responseModalities,['AUDIO']);
+  assert.ok(session.systemInstruction.parts.some(p=>p.text.includes('Asia/Shanghai')));
+ }
+ assert.deepEqual(original,{persona:{},frontend:{}});
+});
 test('optional speech detection tuning preserves interruption and rejects invalid settings',()=>{
  const base={activityHandling:'START_OF_ACTIVITY_INTERRUPTS',automaticActivityDetection:{disabled:false,silenceDurationMs:600}};
  assert.equal(liveInputConfig(base,{}),base);

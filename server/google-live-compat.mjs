@@ -1,6 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import { googleLiveProvider } from './node_modules/qwen-audio-agent/server/src/voice/providers/google-live.mjs';
 import { beijingConnectionContext } from './time-context.mjs';
+// Native Live audio does not accept an explicit language-code restriction.
+// https://ai.google.dev/gemini-api/docs/live-api/capabilities#supported-languages
+export const liveLanguageInstructions = [
+  '# Pikoo output language policy',
+  'Speak and write only in Mandarin Chinese and English. Neither language has priority.',
+  'Follow the language the user chooses in the current conversation: respond in Mandarin to Mandarin conversation, and in English to English conversation or an English-practice request.',
+  'For English learning, continue naturally in English; use Mandarin explanations or bilingual examples when requested or helpful. Do not force an English conversation back into Mandarin.',
+  'Mixed Mandarin and English is allowed. Do not speak, quote, imitate, or switch to any third language, including when asked to translate into one; explain this bilingual scope in Mandarin or English instead.',
+  'Unclear speech, silence, background sounds, and uncertain transcription are not requests to change language. Ask a brief clarification in the last clearly chosen supported language; if none is established, ask briefly in Mandarin and English.',
+  'Apply this policy to spoken audio and written replies, including greetings, tool results, and replies after reconnection. Do not treat it as a fact about any individual family member.',
+].join('\n');
 // Gemini Live v1beta rejects JSON Schema's additionalProperties inside Schema.
 // Validation still runs in the upstream memory/tool runtime; only its wire declaration changes.
 export function liveSchema(value) {
@@ -85,7 +96,7 @@ export const pikooGoogleLiveProvider = {
   buildSession(args) {
     const session=googleLiveProvider.buildSession(args);
     return {...session,
-      systemInstruction:{...session.systemInstruction,parts:[...session.systemInstruction.parts,{text:beijingConnectionContext()}]},
+      systemInstruction:{...session.systemInstruction,parts:[...session.systemInstruction.parts,{text:beijingConnectionContext()},{text:liveLanguageInstructions}]},
       realtimeInputConfig:liveInputConfig(session.realtimeInputConfig),tools:session.tools.map(tool=>({...tool,functionDeclarations:tool.functionDeclarations.map(fn=>({...fn,parameters:liveSchema(fn.parameters)}))}))};
   },
 };
