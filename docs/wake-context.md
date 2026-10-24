@@ -561,3 +561,22 @@ three childlike negatives. Six of the 19 input clips remain quarantined with
 their evidence; no labels or source audio were changed/deleted. The delta is
 not fitted, does not certify the entire TRAIN corpus clean, and is not an
 independent or human acceptance test.
+
+
+## Content review with separate audio files
+
+Google's [input documentation](https://ai.google.dev/gemini-api/docs/generate-content/audio)
+allows multiple audio files per request. Explicit `--separate-files` mode uses
+`gemini-3.1-flash-lite` with an independent media part per recording and only a
+hash identity, never expected text or labels. The response must contain exactly
+the requested identities with string values. Missing, extra, duplicate keys or
+wrong types are rejected; recording identity does not rely on silence splitting.
+
+One eight-file TRAIN control matched all eight earlier single-file content
+decisions with complete identities and unchanged prior reviews. See the
+[interface control record](../training/reports/wake-multifile-content-probe-20261024.json).
+Remaining review can then use eight separate files per request, retaining at
+least a30-second pause, one worker and zero automatic retries. Cached recordings
+are neither resent nor overwritten; manifests/gates stay unchanged.23 file mapping,
+existing content and transport regressions passed. This reduces review requests
+and elapsed time; it is not wake-model improvement or physical acceptance.

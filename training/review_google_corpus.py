@@ -157,6 +157,54 @@ def review_text(model, response):
     raise ValueError('Unsupported content review model')
 
 
+def file_review_request(model, clips):
+    """Keep each recording in its own media part, identified without labels.
+
+    Unlike concatenation, a clip's identity does not depend on detecting a
+    silence boundary or counting repeated utterances. ASR remains a content
+    screen, not a proof of tone, age or human wake performance.
+    """
+    if model != 'gemini-3.1-flash-lite' or not 1 <= len(clips) <= 8:
+        raise ValueError('Separate-file review requires1..8 clips and the explicit3.1Lite model')
+    ids = [identifier for identifier, data in clips]
+    if (len(set(ids)) != len(ids) or any(not re.fullmatch('[0-9a-f]{64}', key) for key in ids)
+            or any(not isinstance(data, str) or not data for key, data in clips)):
+        raise ValueError('Expected unique audio hashes and nonempty inline data')
+    prompt = ('Transcribe each separate audio file verbatim. Include Chinese-English mixed speech '
+              'and English names. Do not correct words, infer intended names, copy speech between '
+              'files, or infer missing syllables. Each file is introduced by its clip_id. '
+              'Return one JSON object mapping each exact clip_id to only that file\'s transcript. '
+              'Do not add keys or explanations. If a file has no speech, return an empty string for it.')
+    parts = [{'text': prompt}]
+    for identifier, data in clips:
+        parts.extend([{'text': 'clip_id: ' + identifier},
+                      {'inlineData': {'mimeType': 'audio/wav', 'data': data}}])
+    schema = {'type': 'object', 'properties': {key: {'type': 'string'} for key in ids},
+              'required': ids, 'additionalProperties': False}
+    return ('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent',
+            {'contents': [{'parts': parts}], 'generationConfig': {
+                'responseMimeType': 'application/json', 'responseJsonSchema': schema,
+                'maxOutputTokens': 2400, 'thinkingConfig': {'thinkingLevel': 'minimal'}}})
+
+
+def checked_file_transcripts(text, identifiers):
+    if not identifiers or len(set(identifiers)) != len(identifiers):
+        raise ValueError('Expected unique file identities')
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('Duplicate ASR file identity')
+            result[key] = value
+        return result
+    records = json.loads(text, object_pairs_hook=unique_object)
+    if (not isinstance(records, dict) or set(records) != set(identifiers)
+            or not all(isinstance(value, str) for value in records.values())):
+        raise ValueError('ASR file identities or transcript types differ')
+    return [records[key] for key in identifiers]
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--manifest', type=Path, required=True)
@@ -166,6 +214,7 @@ def main():
     p.add_argument('--model', default='gemini-3.8-flash', choices=['gemini-3.8-flash', 'gemini-2.5-flash','gemini-3.1-flash-lite'])
     p.add_argument('--interval', type=float, default=15, help='Seconds between ASR requests')
     p.add_argument('--batch-size', type=int, choices=range(1,9), default=8, help='1..8 utterances per request; use 1 to avoid multi-utterance alignment ambiguity')
+    p.add_argument('--separate-files', action='store_true', help='Explicit3.1Lite per-file media parts and exact hash-keyed responses, instead of concatenation')
     p.add_argument('--request-timeout',type=float,default=55,help='Bounded API read timeout, 10..180 seconds')
     p.add_argument('--network-retries',type=int,default=0,help='0..3 retries for transport faults only; HTTP/quota/auth errors still stop')
     p.add_argument('--network-retry-delay',type=float,default=65,help='65..600 seconds when transport retries are explicitly enabled')
@@ -174,6 +223,8 @@ def main():
     a = p.parse_args()
     if a.interval < 0:
         raise ValueError('interval must be nonnegative')
+    if a.separate_files and a.model != 'gemini-3.1-flash-lite':
+        raise ValueError('Separate-file mode requires the explicit3.1Lite model')
     os.umask(0o077)
     rows = json.loads(a.manifest.read_text())
     if a.allow_local_synthetic and not a.protected_hashes:raise ValueError('Local synthetic review requires a household exclusion ledger')
@@ -195,18 +246,27 @@ def main():
                 report.append(reviewed)
                 cached[row['sha256']] = reviewed
             continue
+        # Never re-query or overwrite an existing recording's review merely
+        # because another member of its original batch is still missing.
+        group = [row for row in group if row['sha256'] not in cached]
         audio = []
+        separate = []
         for row in group:
             with wave.open(str(a.manifest.parent / row['path'])) as w:
                 if (w.getnchannels(), w.getsampwidth(), w.getframerate()) != (1, 2, 16000):
                     raise ValueError('Expected generated PCM16 16kHz audio')
                 audio.append(np.frombuffer(w.readframes(w.getnframes()), '<i2'))
                 audio.append(np.zeros(16000, '<i2'))
+            if a.separate_files:
+                separate.append((row['sha256'], base64.b64encode((a.manifest.parent / row['path']).read_bytes()).decode()))
         out = io.BytesIO()
         with wave.open(out, 'wb') as w:
             w.setparams((1, 2, 16000, 0, 'NONE', 'not compressed'))
             w.writeframes(np.concatenate(audio).tobytes())
-        url, payload = review_request(a.model, base64.b64encode(out.getvalue()).decode(), len(group))
+        if a.separate_files:
+            url, payload = file_review_request(a.model, separate)
+        else:
+            url, payload = review_request(a.model, base64.b64encode(out.getvalue()).decode(), len(group))
         request = Request(url,
             data=json.dumps(payload).encode(), headers={'x-goog-api-key': key, 'Content-Type': 'application/json'})
         try:
@@ -224,13 +284,13 @@ def main():
             a.output.with_name('review-api-error.json').write_text(json.dumps(safe,indent=2)+'\n')
             raise
         text = review_text(a.model, data)
-        transcripts = checked_transcripts(text, len(group))
+        transcripts = checked_file_transcripts(text, [row['sha256'] for row in group]) if a.separate_files else checked_transcripts(text, len(group))
         for row, transcript in zip(group, transcripts):
             approved = content_matches(row['text'], transcript)
             report.append({'sha256': row['sha256'], 'path': row['path'], 'label': row['label'],
                 'transcript': transcript, 'approved': approved, 'model': a.model,
                 'rule': 'exact-transcript-with-target-homophones-v3-no-extra-Latin',
-                'method': 'Google-ASR-sanity-check-not-human-review'})
+                'method': 'Google-ASR-separate-file-hash-identified-screen' if a.separate_files else 'Google-ASR-sanity-check-not-human-review'})
             cached[row['sha256']] = report[-1]
         write_cache(a.output, rows, cached)
         print(json.dumps({'reviewed': len(cached), 'approved': sum(r['approved'] for r in cached.values())}), flush=True)

@@ -1,0 +1,15 @@
+{
+  "status": "eight-file-content-control-passed-not-wake-acceptance",
+  "model": "gemini-3.1-flash-lite",
+  "controls": 8,
+  "single_vs_separate_file_content_decisions_agreed": 8,
+  "exact_identity_mapping": true,
+  "inputs": "previously reviewed fictional TRAIN clips, distinct expected texts, hash-order selection without wake scores",
+  "one_bounded_request": true,
+  "request_seconds": 12.083835,
+  "private_or_real_child_uploaded": false,
+  "original_reviews_changed": false,
+  "next": "Switch remaining review to8independent media parts with exact hash-keyed transcripts, retaining all old single-file reviews, same30second minimum pause and zero automatic retries",
+  "source": "https://ai.google.dev/gemini-api/docs/generate-content/audio",
+  "limitations": "ASR interface consistency, not tone proof, independent wake test or physical acceptance"
+}
