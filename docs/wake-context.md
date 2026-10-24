@@ -198,8 +198,14 @@ generally cannot help. It was not flashed.
 
 A separate content-only audit now covers the **entire 181-recording supplement**,
 without using model scores to select clips. It checks fictional TTS with another
-ASR model, eight utterances per request and 30 seconds between requests, stopping
-on API errors. No household or independent wake-test recordings are included.
+ASR model. The first eight-utterance request produced eight valid reviews, but
+the next response had a different utterance count and was rejected without
+assigning labels. Subsequent requests explicitly use `--batch-size 1`, with
+30 seconds between requests; the eight valid cached reviews are retained.
+Quota/API errors still stop the run. Exact transcript screening also rejects
+unexpected English or digits instead of erasing them during normalization;
+alignment and content guards have regression tests.
+No household or independent wake-test recordings are included.
 ASR disagreements require inspection; they do not authorize deleting failed
 model scores or calling a corrected corpus an independent test. Existing gates
 and manifests remain unchanged.

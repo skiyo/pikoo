@@ -2,7 +2,8 @@
 """Transcript sanity check for newly generated TTS only, never household audio.
 
 Automated ASR is a label-quality screen, not independent human validation.
-Only hash-verified Google synthetic clips are eligible for upload to Gemini.
+Only hash-verified fictional synthesis is eligible for upload to Gemini;
+local Qwen synthesis requires an explicit opt-in and a protected-audio ledger.
 """
 import argparse
 import base64
@@ -45,6 +46,20 @@ def normalize(text):
     return re.sub(r'[皮披批匹癖痞屁坯][酷裤库枯哭苦窟]', '皮酷', text)
 
 
+def checked_transcripts(text, count):
+    transcripts = json.loads(text)
+    if not isinstance(transcripts, list) or len(transcripts) != count or not all(isinstance(t, str) for t in transcripts):
+        raise ValueError('ASR utterance count mismatch')
+    return transcripts
+
+
+def content_matches(text, transcript):
+    # Do not let punctuation cleanup silently erase extra spoken English or
+    # digits. Only the already-supported complete name may be normalized away.
+    remaining = re.sub(r'pikoo|piku|pee[- ](?:koo|coo)', '', transcript, flags=re.I)
+    return not re.search('[A-Za-z0-9]', remaining) and normalize(transcript) == normalize(text)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--manifest', type=Path, required=True)
@@ -53,6 +68,7 @@ def main():
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--model', default='gemini-3.8-flash', choices=['gemini-3.8-flash', 'gemini-2.5-flash'])
     p.add_argument('--interval', type=float, default=15, help='Seconds between ASR requests')
+    p.add_argument('--batch-size', type=int, choices=range(1,9), default=8, help='1..8 utterances per request; use 1 to avoid multi-utterance alignment ambiguity')
     p.add_argument('--request-timeout',type=float,default=55,help='Bounded API read timeout, 10..180 seconds')
     p.add_argument('--network-retries',type=int,default=0,help='0..3 retries for transport faults only; HTTP/quota/auth errors still stop')
     p.add_argument('--network-retry-delay',type=float,default=65,help='65..600 seconds when transport retries are explicitly enabled')
@@ -83,13 +99,13 @@ def main():
     report = []
     prior = json.loads(a.output.read_text()) if a.output.exists() else []
     cached = {r['sha256']: r for r in prior}
-    for start in range(0, len(rows), 8):
-        group = rows[start:start + 8]
+    for start in range(0, len(rows), a.batch_size):
+        group = rows[start:start + a.batch_size]
         if all(r['sha256'] in cached for r in group):
             for row in group:
                 reviewed = {**cached[row['sha256']]}
-                reviewed['approved'] = normalize(reviewed['transcript']) == normalize(row['text'])
-                reviewed['rule'] = 'exact-transcript-with-target-homophones-v2'
+                reviewed['approved'] = content_matches(row['text'], reviewed['transcript'])
+                reviewed['rule'] = 'exact-transcript-with-target-homophones-v3-no-extra-Latin'
                 report.append(reviewed)
             a.output.write_text(json.dumps(report, ensure_ascii=False, indent=2))
             continue
@@ -124,19 +140,16 @@ def main():
             except (ValueError,OSError):pass
             raise RuntimeError(f'Synthetic review HTTP {error.code}; stopped without further requests') from None
         text = ''.join(p.get('text', '') for p in data['candidates'][0]['content']['parts'])
-        transcripts = json.loads(text)
-        if not isinstance(transcripts, list) or len(transcripts) != len(group) or not all(isinstance(t, str) for t in transcripts):
-            raise ValueError('ASR utterance count mismatch')
+        transcripts = checked_transcripts(text, len(group))
         for row, transcript in zip(group, transcripts):
-            normalized = normalize(transcript)
-            approved = normalized == normalize(row['text'])
+            approved = content_matches(row['text'], transcript)
             report.append({'sha256': row['sha256'], 'path': row['path'], 'label': row['label'],
                 'transcript': transcript, 'approved': approved, 'model': a.model,
-                'rule': 'exact-transcript-with-target-homophones-v2',
+                'rule': 'exact-transcript-with-target-homophones-v3-no-extra-Latin',
                 'method': 'Google-ASR-sanity-check-not-human-review'})
         a.output.write_text(json.dumps(report, ensure_ascii=False, indent=2))
         print(json.dumps({'reviewed': len(report), 'approved': sum(r['approved'] for r in report)}), flush=True)
-        if start + 8 < len(rows):
+        if start + a.batch_size < len(rows):
             time.sleep(a.interval)
 
 
