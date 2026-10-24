@@ -30,6 +30,31 @@ private. Adult/child physical acceptance and long-duration tests remain pending.
 See the [trial record](../training/reports/wake-fallback-trial-20261024.json).
 Restricted weights and firmware are not published.
 
+The owner subsequently confirmed one informal spoken wake and a normal greeting.
+That single unrecorded observation does not establish the adult/child acceptance rates.
+
+## Historical literal-name source admission, 2026-10-24
+
+Twenty unused fictional TRAIN recordings, selected from previously registered
+metadata rather than model scores, received blind independent single-file
+content review. Fourteen agreed with the existing local screen: six adult and
+eight childlike. Six remain quarantined in the frozen research corpus. With
+three separately reviewed Google TRAIN recordings, that corpus retains 9,973
+TRAIN occurrences and quarantines 495; the 907 validation rows are unchanged.
+These recordings are historical synthesis, not additional real children.
+
+One quarantined recording exposed a comparator defect. Its source text is
+`Ni hao, pee coo.`, with a predeclared spoken transcript `你好皮酷`. The unchanged
+independent transcript is `你好Piku`; both prior local observations are
+`Nihao Piku.`. Comparing the independent transcript to the romanized source
+text rejects the otherwise matching utterance. A separate
+[TRAIN-only reassessment helper](../training/experiments/reassess_phonetic_surface.py)
+records a derived correction, embeds the original failure and requires local
+corroboration, explicit synthetic provenance and a protected-audio guard.
+The running corpus and old decisions remain unchanged; the corrected
+observation has not been fitted. This is content evidence, not tone or wake
+acceptance. See the [source-admission report](../training/reports/wake-historical-literal-source-admission-20261024.json).
+
 ## Same-corpus compact control, 2026-10-24
 
 A separate fixed 12-epoch raw96 experiment reused the exact 9,956 retained

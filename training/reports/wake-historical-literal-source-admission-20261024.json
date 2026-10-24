@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-24",
+  "scope": "twenty previously unused fictional TRAIN positives with existing local reviews",
+  "raw_single_file_review": {
+    "total": 20,
+    "content_agreements": 14,
+    "quarantined": 6,
+    "adult_admitted": 6,
+    "childlike_admitted": 8
+  },
+  "new_audio_or_real_speakers": 0,
+  "current_research_corpus": {
+    "retained_TRAIN_occurrences": 9973,
+    "quarantined_TRAIN_occurrences": 495,
+    "validation_rows_unchanged": 907,
+    "existing_Google_TRAIN_additions": 3
+  },
+  "comparator_correction": {
+    "status": "versioned-evidence-only-not-in-current-fit",
+    "source_text": "Ni hao, pee coo.",
+    "predeclared_expected_spoken_transcript": "你好皮酷",
+    "unchanged_Google_transcript": "你好Piku",
+    "unchanged_local_transcripts": [
+      "Nihao Piku.",
+      "Nihao Piku."
+    ],
+    "raw_approved": false,
+    "derived_approved": true,
+    "rule": "train-english-phonetic-surface-comparator-reassessment-v1",
+    "full_raw_observations_preserved": true,
+    "assessment_only": true,
+    "legacy_failure_not_relabelled_as_old_pass": true
+  },
+  "full_source_audit_incomplete": true,
+  "household_or_independent_test_used": false,
+  "current_device_changed": false,
+  "synthetic_not_real_child_acceptance": true
+}

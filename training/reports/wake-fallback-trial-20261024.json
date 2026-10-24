@@ -95,5 +95,12 @@
     "initial runtime smoke is not long-term acceptance"
   ],
   "household_recordings_used_for_training_or_calibration": false,
-  "weights_audio_credentials_and_firmware_private": true
+  "weights_audio_credentials_and_firmware_private": true,
+  "owner_informal_single_call_feedback": {
+    "wake_succeeded": true,
+    "greeting_normal": true,
+    "not_recorded": true,
+    "formal_20_trial_adult_or_child_acceptance": false,
+    "distance_and_speaker_not_controlled": true
+  }
 }
