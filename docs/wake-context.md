@@ -2,6 +2,30 @@
 
 [English](wake-context.md) | [简体中文](wake-context.zh-CN.md)
 
+## Phonetic TRAIN source recovery, 2026-10-24
+
+Twelve historical fictional `Pee Koo` / `Pee Coo` TRAIN positives had local
+content approval but had not entered the current corpus; they lacked the
+required independent recognizer. A blind single-file review retained six
+(two adult, four childlike); the other six remain quarantined. No new audio
+or speaker identities were created. All original 96 source records and their
+local review decisions remain preserved.
+
+With these six and all newly available reliable content evidence, the research
+corpus contains 9,956 retained TRAIN occurrences, 489 quarantined occurrences
+and the same 907 validation rows. The source audit is still incomplete. The
+fixed 12-epoch wider candidate passes original development at 182/195, with
+zero false wakes in 712 non-targets. Supplementary development improves to
+64/72 and zero false wakes in 109 non-targets, but still fails: adult 34/39,
+adult literal-name 11/13, childlike 30/33 and childlike literal-name 7/9.
+
+Float/INT8 consistency also fails: one of eight TRAIN numerical cases reaches
+0.192553 maximum absolute error against the unchanged 0.15 limit. The original
+development pass is therefore **not** an overall candidate pass. Full continuous
+acceptance and independent testing were not run, and nothing was flashed.
+The [sanitized report](../training/reports/wake-phonetic-source-recovery-20261024.json)
+preserves both progress and failures. Household recordings were not used.
+
 ## Capacity control, 2026-10-24
 
 Doubling the raw projection to 192 filters, intermediate channels to 48 and
