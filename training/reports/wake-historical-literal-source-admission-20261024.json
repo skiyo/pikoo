@@ -34,5 +34,15 @@
   "full_source_audit_incomplete": true,
   "household_or_independent_test_used": false,
   "current_device_changed": false,
-  "synthetic_not_real_child_acceptance": true
+  "synthetic_not_real_child_acceptance": true,
+  "explicit_boundary_integration_v2": {
+    "status": "actual-TRAIN-record-derived-evidence-verified-not-fitted",
+    "v1_observation_retained_unchanged": true,
+    "derived_rule": "train-english-phonetic-surface-comparator-reassessment-v2",
+    "Chinese_English_adjacency_corrected_only_in_experimental_policy": true,
+    "foreign_text_after_name_rejected": true,
+    "raw_failure_still_quarantined": true,
+    "other_reliable_disagreement_still_quarantined": true,
+    "default_cleaner_and_frozen_manifests_unchanged": true
+  }
 }

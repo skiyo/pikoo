@@ -33,6 +33,26 @@ Restricted weights and firmware are not published.
 The owner subsequently confirmed one informal spoken wake and a normal greeting.
 That single unrecorded observation does not establish the adult/child acceptance rates.
 
+## Fixed positive-event loss control, 2026-10-24
+
+A single predeclared control doubles only the positive five-step event loss.
+The network, threshold, negative-event penalty and all 20,058 prepared TRAIN
+feature/label/mask examples are unchanged from the source-expansion run.
+After the same fixed 12 epochs, original development reaches 185/195 but
+introduces one false wake among 712 non-targets. Supplementary development is
+64/72 with zero false wakes among 109 non-targets; adult literal-name recall
+is 8/13 and childlike literal-name recall 8/9. Quantization consistency passes
+(maximum error 0.122594), but recognition gates fail. No continuous acceptance,
+independent test or flash followed. See the [failed control report](../training/reports/wake-positive-event2-control-20261024.json)
+and [research patch](../training/experiments/positive-event2.patch).
+
+The separate [phonetic surface policy](../training/experiments/phonetic_surface_policy.py)
+fixes Chinese/English token adjacency without discarding extra foreign speech.
+Nine tests cover content comparisons, protected inputs, versioned reassessment
+and cleaner integration. The live default and frozen corpora are unchanged;
+raw rejected observations still quarantine a clip. A v2 derived observation
+must be explicit, and any other reliable disagreement continues to exclude it.
+
 ## Fixed source-expansion result, 2026-10-24
 
 The fixed 12-epoch compact run with the 14 admitted historical targets and

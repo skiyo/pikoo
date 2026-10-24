@@ -11,10 +11,10 @@ import json
 import re
 
 from review_google_corpus import content_matches
-from review_local_corpus import content_approved
+from phonetic_surface_policy import content_approved
 from corpus_ancestry import parents
 
-RULE = 'train-english-phonetic-surface-comparator-reassessment-v1'
+RULE = 'train-english-phonetic-surface-comparator-reassessment-v2'
 OLD_RULE = 'exact-transcript-with-target-homophones-v3-no-extra-Latin'
 
 
@@ -48,7 +48,7 @@ def reassess(row, record, local_records, protected_hashes):
         raise ValueError('Requires unchanged independent Google comparator failure')
     heard = record['transcript']
     if (content_matches(row['text'], heard)
-            or not content_matches(row['expected_spoken_transcript'], heard)):
+            or not content_approved(row, heard)):
         raise ValueError('Not the predeclared phonetic-surface comparison defect')
     if not local_records:
         raise ValueError('Requires existing agreeing local observations')

@@ -45,7 +45,7 @@ class PhoneticSurfaceTest(unittest.TestCase):
 
     def test_incomplete_near_word_and_extra_speech_rejected(self):
         for heard in ['你好皮','你好Tikoo','你好皮克','你好屁股','Hello 你好Piku',
-                      '你好Piku2','Piku']:
+                      '你好Piku2','Piku','你好Pikuありがとう']:
             with self.subTest(heard=heard), self.assertRaises(ValueError):
                 self.apply(raw=dict(self.raw,transcript=heard))
 

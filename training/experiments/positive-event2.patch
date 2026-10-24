@@ -1,0 +1,23 @@
+--- a/training/completion_mil.py
++++ b/training/completion_mil.py
+@@ -36,7 +36,7 @@
+     target_mass = tf.reduce_sum(tf.where(labels == 1, weights, tf.zeros_like(weights)), axis=1)/tf.cast(steps, weights.dtype)
+     per_step = tf.keras.losses.sparse_categorical_crossentropy(labels, probabilities)
+     other_loss = tf.reduce_sum(per_step*tf.where(labels == 1, tf.zeros_like(weights), weights), axis=1)/tf.cast(steps, weights.dtype)
+-    event_loss = -tf.math.log(tf.clip_by_value(best, 1e-7, 1.))*target_mass
++    event_loss = -tf.math.log(tf.clip_by_value(best, 1e-7, 1.))*target_mass*2.0
+     if negative_events:
+         # A brief false event can be diluted by hundreds of correct frames.
+         # Sum non-wake classes directly instead of subtracting a rounded1.0
+--- a/training/train_causal.py
++++ b/training/train_causal.py
+@@ -256,7 +256,8 @@
+         'pipeline_sha256': pipeline, 'data_contract': 'causal-waveform-uncertainty-mask-v2' if a.mask_completion_uncertainty else 'causal-complete-waveform-v1',
+         'repetitions': {'target': 8, 'hard_negative': 4, 'real_child_ordinary': 1, 'other': 2},
+         'learning_rate': .0003, 'batch_size': a.batch_size,
+-        'positive_objective': 'one-eligible-five-step-event' if a.mil_target_completion else 'all-post-completion-frames',
++        'positive_event_coefficient': 2.0,
++        'positive_objective': 'two-times-one-eligible-five-step-event' if a.mil_target_completion else 'all-post-completion-frames',
+         'trained_sequence_export_parity': {'passed': True, 'cases': len(sequence_parity['cases']),
+             'max_absolute_error': max(c['max_absolute_error'] for c in sequence_parity['cases'])},
+         'negative_objective': 'all-valid-frame-categorical-plus-worst-five-step-event' if a.mil_negative_events
