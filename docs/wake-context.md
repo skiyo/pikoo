@@ -639,6 +639,26 @@ TRAIN steps plus integer static checks. Three branch regressions passed.
 This is a hypothesis, not a trained/accepted candidate. Micro arena, timing and
 accuracy remain pending. See the [span/prototype record](../training/reports/wake-context-span-20261024.json).
 
+The untrained raw72 graph subsequently allocated 65,520 bytes in the pinned
+**host** Micro runtime, within its 262,144-byte arena. Across the eight original
+TRAIN prototype cases, all 200 step outputs matched `BUILTIN_REF` byte-for-byte
+in each of three reset rounds. An additional 300 extreme/zero-feature calls
+completed. This confirms host portability of this graph, not trained accuracy,
+ESP32 allocation, real-time performance or concurrent audio/display behavior.
+See the [host Micro record](../training/reports/wake-raw72-host-micro-20261024.json).
+
+The next T experiment is predeclared with that 72-step branch, the frozen
+original encoder/logits and the existing positive/negative five-step event
+objective. It uses a fixed final epoch after 12 epochs; the detector remains
+five-inference mean 0.90. This combines content-cleaned data with longer context,
+so it cannot isolate a data-only effect. Its finite local batch waits for the
+complete 931-source and 20-new-clip single-file audits, freezes provenance and
+content decisions, then fits and evaluates the unchanged full development
+gates. It stops on source drift, incomplete coverage or stage failure and never
+flashes. T is queued, not trained or accepted. A qualifying result still needs
+a frozen new independent test and final device checks. See the
+[predeclared plan](../training/reports/wake-context-t-plan-20261024.json).
+
 Google's [troubleshooting guide](https://ai.google.dev/gemini-api/docs/troubleshooting)
 recommends bounded exponential backoff for temporary overload. Content-review
 retry defaults remain zero. Explicit `--capacity-retries 3` permits only three

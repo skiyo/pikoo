@@ -1,0 +1,52 @@
+{
+  "status": "T-predeclared-waiting-for-complete-content-audit-not-trained",
+  "date": "2026-10-24",
+  "architecture": {
+    "raw_filters": 96,
+    "ordered_steps": 72,
+    "trainable_branch_context_seconds_approx": 2.9,
+    "trainable_parameters": 23166,
+    "untrained_prototype_bytes": 242960,
+    "host_Micro_arena_bytes": 65520,
+    "original_encoder_and_logits_frozen": true
+  },
+  "training": {
+    "original_encoder_and_logits_frozen": true,
+    "raw_filters": 96,
+    "branch_channels": 24,
+    "ordered_steps": 72,
+    "hidden_units": 32,
+    "epochs": 12,
+    "batch_size": 16,
+    "learning_rate": 0.0003,
+    "seed": 42,
+    "completion_uncertainty_mask": true,
+    "positive_five_step_MIL": true,
+    "negative_five_step_event_loss": true,
+    "checkpoint_selection": "fixed final epoch, no household or development checkpoint selection"
+  },
+  "data_requirements": {
+    "full931_single_file_source_audit": true,
+    "new20_single_file_source_audit": true,
+    "preserve_original_rows_and_observations": true,
+    "quarantine_by_content_and_provenance_only": true,
+    "contextual_reviews_diagnostic_only": true,
+    "no_household_or_consumed_tests": true
+  },
+  "release_gates": {
+    "rolling_inferences": 5,
+    "threshold": 0.9,
+    "original_and_additional_each_group_recall": 0.9,
+    "non_target_false_wakes": 0,
+    "full_continuous_conditions_required": true,
+    "TRAIN_quantization_error_max": 0.15,
+    "fresh_frozen_independent_test_required": true,
+    "final_trained_Micro_parity_and_device_timing_required": true,
+    "human_adult_and_eligible_child20_each_at1m_min18": true,
+    "background8h_max_false_wakes": 1
+  },
+  "batch_pipeline": "one finite dependency chain; stops on incomplete audit, source drift, insufficient coverage or stage failure; no scheduler or automatic flashing",
+  "trained": false,
+  "flashed": false,
+  "human_acceptance": false
+}

@@ -1,0 +1,68 @@
+{
+  "status": "untrained-host-micro-reference-exact",
+  "model_sha256": "4499b09fa7f1a319429d8198559fe8eea711079ee28c964e3607cf2c7438977a",
+  "source_sha256": "6c42aed46c8cacdf64c6b7abbd154816ba658b4f859f66b39cad1f41d91ded35",
+  "cases": [
+    {
+      "train_sha256": "000593543153c959a96f65eaba881ed344851ba197259920b5f12fe8b53429eb",
+      "steps": 200,
+      "rounds": 3,
+      "byte_exact": true,
+      "host_arena_used_bytes": 65520
+    },
+    {
+      "train_sha256": "000f0527c44109dedbfe11e2ce4cf19eb6cedca5f3cb38acb280c2c567bfcbec",
+      "steps": 200,
+      "rounds": 3,
+      "byte_exact": true,
+      "host_arena_used_bytes": 65520
+    },
+    {
+      "train_sha256": "001919c5761ab12580bf240dd0ee67e779f754f5ee8d046f8fa1de15f48d4f46",
+      "steps": 200,
+      "rounds": 3,
+      "byte_exact": true,
+      "host_arena_used_bytes": 65520
+    },
+    {
+      "train_sha256": "001e3fc0284f3690b4e09f35d59f2d393a21206ffcc26ea818542f9d8932933d",
+      "steps": 200,
+      "rounds": 3,
+      "byte_exact": true,
+      "host_arena_used_bytes": 65520
+    },
+    {
+      "train_sha256": "0008bbdc2cfb6e280e61fee8c09e6cfb4a271a5d987657e94381aa57d0dd0250",
+      "steps": 200,
+      "rounds": 3,
+      "byte_exact": true,
+      "host_arena_used_bytes": 65520
+    },
+    {
+      "train_sha256": "00640a1fd23a6cd453a7027e277e4ae1eb1da70b0c323224d831fa19fac9225c",
+      "steps": 200,
+      "rounds": 3,
+      "byte_exact": true,
+      "host_arena_used_bytes": 65520
+    },
+    {
+      "train_sha256": "00b00165a857f386f98aefd901da79d9363f8347a06d22fc84b9ffa285c5d8c5",
+      "steps": 200,
+      "rounds": 3,
+      "byte_exact": true,
+      "host_arena_used_bytes": 65520
+    },
+    {
+      "train_sha256": "01935b92eb94d075a0ddb1c9d0e42f42192b4cc6a9f347fe37a387471625ef34",
+      "steps": 200,
+      "rounds": 3,
+      "byte_exact": true,
+      "host_arena_used_bytes": 65520
+    }
+  ],
+  "trained": false,
+  "accuracy_evaluated": false,
+  "ESP32_allocation_or_timing": false,
+  "device_changed": false,
+  "scope": "untrained raw72 prototype; host portability only, no physical acceptance"
+}
