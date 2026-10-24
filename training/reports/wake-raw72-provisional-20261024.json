@@ -117,10 +117,12 @@
     "new_recordings": 0,
     "threshold": 0.9,
     "rolling_inferences": 5,
-    "same_existing_augmentation_draws_reweighted": true,
     "not_a_new_independent_sample_count": true,
     "fixed_epochs": 12,
-    "release_eligible": false
+    "release_eligible": false,
+    "same_source_recordings_and_per_source_augmentation_seeds": true,
+    "stateful_TRAIN_prefix_draws_can_differ": true,
+    "sampling_description_corrected_by": "wake-literal-weight-control-20261024.json"
   },
   "content_diagnosis": {
     "literal_target_misses_with_independent_ASR_agreement": {

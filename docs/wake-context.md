@@ -673,10 +673,20 @@ It is rejected, not a release, and consumes no new independent or household test
 Only five adult and three childlike retained TRAIN positives used literal
 `Pikoo` text, among 496 total positive occurrences. A predeclared research
 control weights all eight sources eight times, preserving every original row
-and the same existing augmentation draws. Its 56 additional sampling copies
+and per-source augmentation seeds. Stateful TRAIN prefix draws can differ.
+Its 56 additional sampling copies
 are not new recordings or independent speakers. The detector remains 0.90/5;
 the full original/additional gates and final source-audit requirement stay in
 force. See the [probe and control record](../training/reports/wake-raw72-provisional-20261024.json).
+
+That control also failed: original targets 179/195, supplementary targets 61/72,
+zero false wakes in each set, literal adult 8/13 and childlike 7/9. Quantization
+passed (worst error 0.11023). A feature audit confirmed all original 20,436
+feature/label/mask examples unchanged; of 448 additional sampling examples,
+273 match their same-seed originals and 175 have different TRAIN context draws.
+This corrects the earlier overly broad description of identical augmentation
+draws. No new recordings, independent speakers or household data were added.
+See the [failed weighting result](../training/reports/wake-literal-weight-control-20261024.json).
 
 The 20 new 3.8 TTS clips have now completed single-file review. Google agreed
 with 17 labels and local ASR with 10; combining all reliable evidence retains
