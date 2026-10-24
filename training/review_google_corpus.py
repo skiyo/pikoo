@@ -23,6 +23,15 @@ import numpy as np
 from corpus_ancestry import parents
 
 
+def curl_transport_error(code):
+    """Keep certificate/configuration failures out of optional network retries."""
+    if code in {51,58,60,77,83,90,91}:
+        return URLError(ssl.SSLCertVerificationError('curl TLS trust failure '+str(code)))
+    if code in {5,6,7,18,28,35,52,55,56}:
+        return URLError('curl transient transport failure '+str(code))
+    return RuntimeError('curl non-retryable failure '+str(code))
+
+
 def post_json(opener,request,timeout=55,retries=0,retry_delay=65,sleep=time.sleep,
               capacity_retries=0,capacity_delay=65,jitter=random.random):
     """Explicit bounded transport/503 retry budgets; quota/auth never retry."""
@@ -58,7 +67,9 @@ def post_json(opener,request,timeout=55,retries=0,retry_delay=65,sleep=time.slee
             transport_attempt+=1
             print(json.dumps({'phase':'transient-network-retry','attempt':transport_attempt,
                 'wait_seconds':retry_delay,'error_type':type(reason).__name__}),flush=True)
-            sleep(retry_delay)
+            remaining=retry_delay
+            while remaining>0:
+                part=min(60.,remaining);sleep(part);remaining-=part
 
 
 def normalize(text):

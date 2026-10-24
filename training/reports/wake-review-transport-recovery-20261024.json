@@ -1,0 +1,42 @@
+{
+  "status": "bounded-transport-continuation-prepared-not-model-acceptance",
+  "date": "2026-10-24",
+  "terminal_incidents": [
+    {
+      "curl_exit": 52,
+      "kind": "empty reply",
+      "primary_reviews_preserved": 35,
+      "new20_reviews_preserved": 16
+    },
+    {
+      "curl_exit": 28,
+      "kind": "120second timeout",
+      "primary_reviews_preserved": 69,
+      "new20_reviews_preserved": 20
+    }
+  ],
+  "fresh_metadata_health_check_HTTP": [
+    200,
+    200
+  ],
+  "model_or_proxy_changed": false,
+  "transport_retries_explicit": 2,
+  "transport_retry_delay_seconds": 65,
+  "transport_retries_default": 0,
+  "separate_503_retries_explicit": 3,
+  "maximum_HTTP_attempts_per_recording": 6,
+  "single_wait_chunk_max_seconds": 60,
+  "never_retry": [
+    "TLS trust",
+    "local curl configuration",
+    "invalid JSON",
+    "content identity mismatch",
+    "authentication",
+    "credits",
+    "quota"
+  ],
+  "cache_or_original_labels_overwritten": false,
+  "relevant_regressions_passed": 16,
+  "model_trained_or_flashed": false,
+  "no_new_provider_or_paid_enablement": true
+}

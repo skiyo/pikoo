@@ -1,6 +1,6 @@
 import io,ssl,unittest
 from urllib.error import HTTPError,URLError
-from review_google_corpus import post_json, checked_transcripts, content_matches, review_request, review_text, validated_cache, write_cache, validate
+from review_google_corpus import post_json, checked_transcripts, content_matches, review_request, review_text, validated_cache, write_cache, validate, curl_transport_error
 
 
 class ReviewTransportTest(unittest.TestCase):
@@ -107,7 +107,19 @@ class ReviewTransportTest(unittest.TestCase):
     def test_transient_faults_retry_at_low_rate_and_return_first_valid_response(self):
         opener=self.opener([TimeoutError(),URLError(ssl.SSLEOFError('EOF')),'{"ok":true}']);sleeps=[]
         self.assertEqual(post_json(opener,object(),90,2,65,sleeps.append),{'ok':True})
-        self.assertEqual(opener.calls,3);self.assertEqual(sleeps,[65,65])
+        self.assertEqual(opener.calls,3);self.assertEqual(sum(sleeps),130)
+        self.assertLessEqual(max(sleeps),60)
+
+    def test_curl_timeouts_can_retry_but_trust_and_configuration_failures_cannot(self):
+        for code in [28,52,56]:
+            opener=self.opener([curl_transport_error(code),'{"ok":true}']);sleeps=[]
+            self.assertEqual(post_json(opener,object(),90,2,65,sleeps.append),{'ok':True})
+            self.assertEqual(opener.calls,2);self.assertEqual(sum(sleeps),65)
+        for code in [3,51,58,60,77,83,90,91]:
+            opener=self.opener([curl_transport_error(code),'{"ok":true}']);sleeps=[]
+            with self.subTest(code=code),self.assertRaises((RuntimeError,URLError)):
+                post_json(opener,object(),90,2,65,sleeps.append)
+            self.assertEqual(opener.calls,1);self.assertFalse(sleeps)
 
     def test_http_quota_auth_and_region_errors_never_retry(self):
         for code in [400,401,403,429,503]:
@@ -127,6 +139,7 @@ class ReviewTransportTest(unittest.TestCase):
     def test_retry_budget_is_finite_and_unsafe_rate_bounds_are_rejected(self):
         opener=self.opener([TimeoutError(),TimeoutError()]);sleeps=[]
         with self.assertRaises(TimeoutError):post_json(opener,object(),90,1,65,sleeps.append)
-        self.assertEqual(opener.calls,2);self.assertEqual(sleeps,[65])
+        self.assertEqual(opener.calls,2);self.assertEqual(sum(sleeps),65)
+        self.assertLessEqual(max(sleeps),60)
         for timeout,retries,delay in [(0,1,65),(181,1,65),(90,4,65),(90,1,1)]:
             with self.assertRaises(ValueError):post_json(self.opener([]),object(),timeout,retries,delay)

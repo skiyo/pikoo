@@ -678,6 +678,15 @@ chunks stay at most 60 seconds. Authentication, credits, quota and other HTTP
 errors still stop. Four new retry regressions plus 24 existing review/transport
 checks passed. TTS generation retains its separate no-retry policy.
 
+Two later single-file runs stopped on transport failures (empty reply and
+120-second timeout), preserving their caches. After fresh model-metadata health
+checks, an explicit continuation enables at most two transport retries, with
+65-second spacing. Certificate, local configuration, malformed JSON and content
+identity failures still stop; defaults remain zero. Waits use chunks no longer
+than 60 seconds. Together with the separate three-503 budget, this bounds one
+recording to six HTTP attempts. 16 relevant transport/capacity regressions passed.
+See the [recovery record](../training/reports/wake-review-transport-recovery-20261024.json).
+
 An explicit 3.8 Flash Interactions probe completed for one fictional TRAIN clip,
 but its eight-file probe ended with an empty reply. Those outcomes and the
 content disagreement are preserved, not treated as model progress. Production
