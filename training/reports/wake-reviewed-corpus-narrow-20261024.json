@@ -1,0 +1,142 @@
+{
+  "date": "2026-10-24",
+  "status": "narrow-same-reviewed-corpus-rejected-not-flashed",
+  "scope": "fixed9956TRAIN corpus and12epochs, raw96 branch versus raw192 control",
+  "model_sha256": "3e744c2e48a8efcf2738f7115ce7c4fbf3c62ef0fc33f5923b55b5614d1be7a5",
+  "model_bytes": 243504,
+  "architecture": "short-context-raw96-24x3-recent72-hidden32",
+  "source_manifest_sha256": "32a8a6a50453cc9997f62bf6a2abc68d1388362177826110cf8a3210052c410d",
+  "source_audit_incomplete": true,
+  "original_development": {
+    "status": "passed-level-tone-development",
+    "passed": true,
+    "contract": "pikoo-level-tone-only-v1",
+    "failures": [],
+    "streaming_development": {
+      "targets": 195,
+      "hits": 184,
+      "non_targets": 712,
+      "false_wakes": 0
+    },
+    "raw_style_groups": {
+      "adult": {
+        "targets": 36,
+        "hits": 34,
+        "non_targets": 78,
+        "false_wakes": 0
+      },
+      "childlike": {
+        "targets": 32,
+        "hits": 31,
+        "non_targets": 113,
+        "false_wakes": 0
+      }
+    },
+    "pitch_tempo": {
+      "targets": 127,
+      "hits": 119,
+      "non_targets": 131,
+      "false_wakes": 0
+    },
+    "model_bytes": 243504,
+    "old_mandarin_pronunciation": "unspecified, not a negative",
+    "household_or_independent_test_used": false,
+    "hardware_or_real_child_accepted": false
+  },
+  "additional_development": {
+    "status": "failed-additional-development",
+    "passed": false,
+    "original_gate_required": true,
+    "failures": [
+      "adult:recall",
+      "adult:English-recall",
+      "childlike:English-recall"
+    ],
+    "groups": {
+      "adult": {
+        "targets": 39,
+        "hits": 34,
+        "non_targets": 51,
+        "false_wakes": 0
+      },
+      "adult:literal-English": {
+        "targets": 13,
+        "hits": 10,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "childlike": {
+        "targets": 33,
+        "hits": 30,
+        "non_targets": 58,
+        "false_wakes": 0
+      },
+      "childlike:literal-English": {
+        "targets": 9,
+        "hits": 7,
+        "non_targets": 0,
+        "false_wakes": 0
+      }
+    },
+    "streaming_development": {
+      "targets": 72,
+      "hits": 64,
+      "non_targets": 109,
+      "false_wakes": 0
+    },
+    "independent_test": false,
+    "household_or_real_child_accepted": false
+  },
+  "quantization": {
+    "status": "passed-float-int8-diagnostic",
+    "cases": 8,
+    "max_absolute_error": 0.13767051696777344,
+    "maximum_case_mean_error": 0.004974294781398951
+  },
+  "trained_sequence_export_parity": {
+    "passed": true,
+    "cases": 8,
+    "max_absolute_error": 1.1324882507324219e-06
+  },
+  "same_operator_shape_class_as_trial2_but_own_device_timing_not_measured": true,
+  "independent_or_household_used": false,
+  "threshold_gates_or_DEV_labels_changed": false,
+  "device_changed": false,
+  "release_eligible": false,
+  "prepared_TRAIN_control": {
+    "status": "all-prepared-TRAIN-features-labels-masks-byte-exact",
+    "examples": 19928,
+    "new_recordings": 0,
+    "model_or_DEVELOPMENT_or_household_used": false,
+    "arrays": [
+      {
+        "name": "causal-features.npy",
+        "shape": [
+          19928,
+          600,
+          40
+        ],
+        "dtype": "float32",
+        "byte_exact": true
+      },
+      {
+        "name": "causal-labels.npy",
+        "shape": [
+          19928,
+          200
+        ],
+        "dtype": "uint8",
+        "byte_exact": true
+      },
+      {
+        "name": "causal-mask.npy",
+        "shape": [
+          19928,
+          200
+        ],
+        "dtype": "float32",
+        "byte_exact": true
+      }
+    ]
+  }
+}

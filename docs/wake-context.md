@@ -30,6 +30,26 @@ private. Adult/child physical acceptance and long-duration tests remain pending.
 See the [trial record](../training/reports/wake-fallback-trial-20261024.json).
 Restricted weights and firmware are not published.
 
+## Same-corpus compact control, 2026-10-24
+
+A separate fixed 12-epoch raw96 experiment reused the exact 9,956 retained
+TRAIN occurrences from the wider phonetic-source experiment. All 19,928
+prepared feature, label and mask examples are bytewise identical, isolating
+the architecture change rather than a different training draw. The compact
+model is 243,504 bytes; original development reaches 184/195 and supplementary
+development 64/72, with zero false wakes in the same 821 non-target clips.
+
+The supplementary adult group remains 34/39, adult literal-name 10/13,
+childlike 30/33 and childlike literal-name 7/9. It therefore still fails the
+unchanged group gates. Float/INT8 numerical consistency passes (maximum
+absolute error 0.137671 across eight TRAIN cases), and trained sequence export
+parity passes. Its own trained Micro/device timing has not been measured;
+sharing operator shapes with the private trial does not prove that result.
+Full continuous acceptance and independent testing were not run. The source
+audit remains incomplete. This research model was not flashed, and household
+recordings were not used. See the
+[compact control report](../training/reports/wake-reviewed-corpus-narrow-20261024.json).
+
 ## Phonetic TRAIN source recovery, 2026-10-24
 
 Twelve historical fictional `Pee Koo` / `Pee Coo` TRAIN positives had local
