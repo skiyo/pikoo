@@ -661,6 +661,23 @@ flashes. T is queued, not trained or accepted. A qualifying result still needs
 a frozen new independent test and final device checks. See the
 [predeclared plan](../training/reports/wake-context-t-plan-20261024.json).
 
+A separate bounded raw72 research probe overlaps the slow full-source review;
+formal T and its complete-audit requirement remain unchanged. It used all
+10,021 currently content-approved TRAIN occurrences, retaining the 412 source
+quarantines and all original development cases. After 12 epochs its 243,504-byte
+model passed eight TRAIN float/INT8 checks (worst error 0.09990), but failed
+development: 179/195 original targets and 61/72 supplementary targets, with zero
+false wakes in each set. Literal-name adult/childlike hits were 7/13 and 7/9.
+It is rejected, not a release, and consumes no new independent or household test.
+
+Only five adult and three childlike retained TRAIN positives used literal
+`Pikoo` text, among 496 total positive occurrences. A predeclared research
+control weights all eight sources eight times, preserving every original row
+and the same existing augmentation draws. Its 56 additional sampling copies
+are not new recordings or independent speakers. The detector remains 0.90/5;
+the full original/additional gates and final source-audit requirement stay in
+force. See the [probe and control record](../training/reports/wake-raw72-provisional-20261024.json).
+
 The 20 new 3.8 TTS clips have now completed single-file review. Google agreed
 with 17 labels and local ASR with 10; combining all reliable evidence retains
 only eight TRAIN clips: four fictional childlike targets and four childlike
