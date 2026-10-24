@@ -4,6 +4,19 @@ from review_google_corpus import post_json, checked_transcripts, content_matches
 
 
 class ReviewTransportTest(unittest.TestCase):
+    def test_admission_cannot_silently_upgrade_legacy_or_diagnostic_cache(self):
+        rows=[{'sha256':'fixture','label':0}]
+        record=dict(rows[0],model='gemini-3.1-flash-lite',transcript='fixture')
+        for flags in [{},{'admission_eligible':True},
+                      {'admission_eligible':False,'diagnostic_only':True},
+                      {'admission_eligible':True,'diagnostic_only':True}]:
+            with self.subTest(flags=flags), self.assertRaisesRegex(ValueError,'single-file provenance'):
+                validated_cache(rows,[dict(record,**flags)],record['model'],require_independent=True)
+        proved=dict(record,admission_eligible=True,diagnostic_only=False)
+        self.assertEqual(validated_cache(rows,[proved],record['model'],require_independent=True),{'fixture':proved})
+        self.assertNotIn('admission_eligible',record)
+        self.assertEqual(validated_cache(rows,[record],record['model']),{'fixture':record})
+
     def test_original_level_tts_is_opt_in_and_protected_audio_never_uploads(self):
         import hashlib,tempfile
         from pathlib import Path

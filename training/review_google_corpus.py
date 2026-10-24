@@ -77,7 +77,7 @@ def checked_transcripts(text, count):
     return transcripts
 
 
-def validated_cache(rows, prior, model):
+def validated_cache(rows, prior, model, *, require_independent=False):
     expected = {row['sha256']: row for row in rows}
     cached = {}
     for review in prior:
@@ -86,6 +86,9 @@ def validated_cache(rows, prior, model):
                 or review.get('label') != expected[digest]['label']
                 or not isinstance(review.get('transcript'), str)):
             raise ValueError('Review cache model, recording, label or uniqueness mismatch')
+        if require_independent and (review.get('admission_eligible') is not True
+                                    or review.get('diagnostic_only') is not False):
+            raise ValueError('Cache lacks verified single-file provenance; preserve it and use a new output')
         cached[digest] = review
     return cached
 
@@ -275,9 +278,7 @@ def main():
     opener = build_opener(ProxyHandler({'http': a.proxy, 'https': a.proxy} if a.proxy else {}))
     report = []
     prior = json.loads(a.output.read_text()) if a.output.exists() else []
-    cached = validated_cache(rows, prior, a.model)
-    if not a.diagnostic_batches and any(r.get('diagnostic_only') or r.get('admission_eligible') is False for r in cached.values()):
-        raise ValueError('Use a new output for independent single-file reviews; diagnostic observations must be preserved')
+    cached = validated_cache(rows, prior, a.model, require_independent=not a.diagnostic_batches)
     for start in range(0, len(rows), a.batch_size):
         group = rows[start:start + a.batch_size]
         if all(r['sha256'] in cached for r in group):

@@ -16,8 +16,10 @@ are retained as diagnostic evidence and excluded from TRAIN admission. Existing
 single-file reviews are reused; remaining admission reviews use one file per
 request. The CLI defaults to one file and requires `--diagnostic-batches` for
 larger requests. Cleaning retains diagnostic observations without using them
-to approve a clip or override independent content evidence. Original wake
-labels, gates and failed model results remain unchanged. This is a review-method
+to approve a clip or override independent content evidence.
+Legacy caches without explicit single-file provenance cannot be silently
+resumed for admission; their original observations must be preserved separately.
+Original wake labels, gates and failed model results remain unchanged. This is a review-method
 correction, not an accuracy gain or physical pass. See the
 [control and policy record](../training/reports/wake-single-review-protocol-20261024.json).
 
