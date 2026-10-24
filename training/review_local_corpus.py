@@ -11,12 +11,15 @@ import os
 import re
 from pathlib import Path
 from review_google_corpus import normalize
+from corpus_ancestry import parents
 
 
 def validate(rows,root,protected):
     for row in rows:
-        if row.get('source') not in {'Google-Gemini-TTS-synthetic','Qwen3-TTS-synthetic-local','Google-TTS-level-tone-synthetic','Google-TTS-incomplete-prefix','TTS-matched-incomplete-prefix'} or not row.get('synthetic') or row.get('evaluation_only') or row.get('real_child') or row.get('reference_audio_used') or row.get('family_inputs_used'):
+        if row.get('source') not in {'Google-Gemini-TTS-synthetic','Qwen3-TTS-synthetic-local','Google-TTS-level-tone-synthetic','Google-TTS-incomplete-prefix','TTS-matched-incomplete-prefix'} or not row.get('synthetic') or row.get('evaluation_only') or row.get('frozen_holdout') or row.get('real_child') or row.get('reference_audio_used') or row.get('family_inputs_used'):
             raise ValueError('Only fictional synthesis without reference audio is eligible')
+        if parents(row) & protected:
+            raise ValueError('Protected source recording cannot enter local content review through a derivative')
         p=(root/row['path']).resolve()
         if not p.is_relative_to(root.resolve()):raise ValueError('Synthetic path escapes corpus')
         digest=hashlib.sha256(p.read_bytes()).hexdigest()

@@ -1,0 +1,22 @@
+{
+  "input_rows": 10400,
+  "output_rows": 10400,
+  "labels_changed": 0,
+  "row_occurrences_removed": 0,
+  "audio_changed": false,
+  "private_or_test_admitted": false,
+  "source_manifest_sha256": "76a9c8f232999aa508ee4a8ada8dab6b3ca88f37a876a168c6ab2374ce1708fd",
+  "original_manifest_modified": false,
+  "training_waveform_features_labels_and_occurrences_unchanged": true,
+  "no_new_fit": true,
+  "status": "TRAINbyte-identical-ancestry-metadata-repair-verified",
+  "duplicate_groups": 22,
+  "public_child_background_groups": 20,
+  "fictional_synthetic_negative_groups": 2,
+  "repaired_self_parent_rows": 18,
+  "restored_existing_upstream_origins": 6,
+  "alternate_origin_groups": 4,
+  "method": "For each identity copy require matching metadata and actual file hashes; restore its nonselfantecedent ancestry. For identical-byte alternate origins retain all declared parents and row occurrences. All lineageguards cover ancestry_parents.",
+  "source_files_deleted": 0,
+  "model_accuracy_or_physical_acceptance": false
+}

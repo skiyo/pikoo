@@ -81,7 +81,7 @@ def main():
                 ('train_causal.py', 'causal_model.py', 'causal_data.py',
                  'contrastive_readout.py', 'speech_context.py', 'acoustic_augment.py',
                  'sequence_export_check.py', 'train.py', 'review_google_corpus.py',
-                 'epoch_provenance.py', 'check_esp32_model.py', 'calibration_extent.py')}
+                 'epoch_provenance.py', 'check_esp32_model.py', 'calibration_extent.py', 'corpus_ancestry.py')}
     if a.short_context:
         pipeline['causal_branch.py'] = sha(Path(__file__).with_name('causal_branch.py'))
     if a.mil_target_completion:

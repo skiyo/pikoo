@@ -19,6 +19,7 @@ from urllib.error import HTTPError,URLError
 from urllib.request import build_opener, ProxyHandler, Request
 import wave
 import numpy as np
+from corpus_ancestry import parents
 
 
 def post_json(opener,request,timeout=55,retries=0,retry_delay=65,sleep=time.sleep):
@@ -87,8 +88,7 @@ def validate(rows, root, protected, allow_local_synthetic=False):
             raise ValueError('Only fictional generated TTS without protected/reference audio may be uploaded')
         if row['source'] == 'Google-TTS-level-tone-synthetic' and not str(row.get('source_terms', '')).startswith('https://ai.google.dev/'):
             raise ValueError('Level-tone synthesis requires its Google source record')
-        parents = {row.get('parent_sha256'), row.get('augmentation', {}).get('parent_sha256')}
-        if (parents-{None}) & protected:
+        if parents(row) & protected:
             raise ValueError('Protected source recording cannot be uploaded through a derivative')
         path = (root/row['path']).resolve()
         if not path.is_relative_to(root):

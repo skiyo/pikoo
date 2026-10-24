@@ -9,6 +9,7 @@ import hashlib
 from pathlib import Path
 import numpy as np
 from contrastive_readout import category
+from corpus_ancestry import parents
 
 
 def training_rows(rows, root, protected):
@@ -29,8 +30,7 @@ def training_rows(rows, root, protected):
             raise ValueError('Speaker/group leaks across splits')
         groups[group] = split
         digest = row['sha256']
-        parents = {row.get('parent_sha256'), row.get('augmentation', {}).get('parent_sha256')}
-        if digest in protected or bool((parents-{None}) & protected):
+        if digest in protected or bool(parents(row) & protected):
             raise ValueError('Protected recording hash in preparation manifest')
         if digest in hashes and hashes[digest] != split:
             raise ValueError('Waveform leaks across splits')

@@ -63,7 +63,8 @@ class CleanCorpusTest(unittest.TestCase):
         for changes in [{'evaluation_only':True},{'frozen_holdout':True},{'split':'test'},
                         {'source':'private-family'},{'family_inputs_used':True},
                         {'reference_audio_used':True},{'parent_sha256':'sealed'},
-                        {'augmentation':{'parent_sha256':'sealed'}}]:
+                        {'augmentation':{'parent_sha256':'sealed'}},
+                        {'ancestry_parents':['sealed']}]:
             with self.subTest(changes=changes),self.assertRaises(ValueError):
                 clean([{**sample(),**changes}],[review()],protected={'sealed'})
         with self.assertRaises(ValueError):clean([sample()],[review()],protected={'original'})

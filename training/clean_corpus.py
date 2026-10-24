@@ -14,6 +14,7 @@ from pathlib import Path
 import re
 
 from review_local_corpus import content_approved
+from corpus_ancestry import parents
 
 
 RULE = 'content-quarantine-v1'
@@ -24,12 +25,6 @@ SYNTHETIC = {'Qwen3-TTS-synthetic-local', 'Google-Gemini-TTS-synthetic',
              'Google-TTS-level-tone-synthetic', 'Google-TTS-incomplete-prefix',
              'TTS-matched-incomplete-prefix', 'pitch-tempo-augmented-Qwen3-TTS',
              'pitch-tempo-augmented-Google-TTS', 'pitch-tempo-augmented-Google-level-tone'}
-
-
-def parents(row):
-    values = {row.get('parent_sha256'),
-              (row.get('augmentation') or {}).get('parent_sha256')}
-    return values - {None, ''}
 
 
 def guard(rows, protected):
