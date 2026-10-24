@@ -2,6 +2,27 @@
 
 [English](wake-context.md) | [简体中文](wake-context.zh-CN.md)
 
+## Additional TRAIN review, 2026-10-24
+
+Nine newly generated fictional Google 3.1 TTS clips received local and
+independent single-file content reviews. Three were retained: two adult target
+clips and one adult near-word negative. The other six, including the childlike
+clip, remain quarantined. This is not a wake-accuracy result.
+
+One negative's raw transcript was `你好，匹克`, correctly representing the
+existing non-target pi-ke category, but the older Google comparator rejected
+its spelling against `你好皮克`. The versioned
+[reassessment helper](../training/reassess_content.py) corrects only this
+documented TRAIN-negative comparison defect. It embeds the complete original
+observation and changes neither the transcript nor label. Other reliable
+disagreements still quarantine the clip. Ambiguous `P库`, `Pku`, `Pi`, `Pico`
+and `屁股` observations have not been automatically approved. Development
+labels, thresholds and previous failed results remain unchanged.
+
+The tenth generation request reached the provider's daily quota; it was not
+retried. No weights, recordings or credentials are distributed. See the
+[sanitized admission record](../training/reports/wake-diverse31-train-admission-20261024.json).
+
 ## Content-review protocol correction, 2026-10-24
 
 Separate media parts and correct file identities do **not** make transcripts
