@@ -88,3 +88,5 @@ The NET6 device follow-up had no supply gaps before it failed on an audio append
 CTX1 fixes idle sleep incorrectly clearing the NVS conversation identifier. It logs identity reuse without printing the identifier. The default PCM queue now bounds bursts to 30 seconds / 1.44 MB in PSRAM; the initial playback prefill remains 900 ms. An ordinary NET7 turn reached 7960 ms queued and refused the next 80 ms packet (capacity cause 4), which previously forced a reconnect. The larger bound is not a guarantee against arbitrarily long provider bursts. See [context and memory](context-memory.md) for server restoration, automatic learning and Beijing time.
 
 Explicit companion mode overrides the ordinary 30-second inactivity rule; see [companion settings](companion.md).
+
+For an explicitly requested installed-device volume upgrade when USB commands cannot be acknowledged, build with `-DPIKOO_VOLUME_BOOT_UPGRADE=ON`. This opt-in build migrates the saved DAC setting to 0 dB once and marks `volume_v3` in NVS. Subsequent manual reductions are preserved; ordinary builds default this option to OFF. Verify saved values and human listening separately.

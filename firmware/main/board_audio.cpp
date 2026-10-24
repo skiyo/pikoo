@@ -6,6 +6,7 @@
 #include "driver/i2s_std.h"
 #include "esp_codec_dev_defaults.h"
 #include "esp_timer.h"
+#include "esp_log.h"
 #include "nvs.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -62,9 +63,22 @@ esp_err_t audio_init() {
   ESP_ERROR_CHECK(dac->set_fs(dac,&fs));
   fs.channel=4;ESP_ERROR_CHECK(adc->set_fs(adc,&fs));
   nvs_handle_t saved;
-  if(nvs_open("pikoo",NVS_READONLY,&saved)==ESP_OK){
+  if(nvs_open("pikoo",NVS_READWRITE,&saved)==ESP_OK){
     int32_t level=-24;
     if(nvs_get_i32(saved,"volume_db",&level)==ESP_OK&&level>=-50&&level<=0)volume=level;
+#ifdef PIKOO_VOLUME_BOOT_UPGRADE
+    // One-time, explicitly requested installed-device volume upgrade. USB
+    // diagnostics can be unavailable after a USB/JTAG reset; apply at boot
+    // rather than assuming an unacknowledged serial command was executed.
+    // Later manual reductions must survive every subsequent restart.
+    uint8_t upgraded=0;
+    if(nvs_get_u8(saved,"volume_v3",&upgraded)!=ESP_OK||upgraded!=1){
+      if(nvs_set_i32(saved,"volume_db",0)==ESP_OK &&
+         nvs_set_u8(saved,"volume_v3",1)==ESP_OK && nvs_commit(saved)==ESP_OK)
+        volume=0;
+      else ESP_LOGW("audio","Volume upgrade could not be saved");
+    }
+#endif
     nvs_close(saved);
   }
   ESP_ERROR_CHECK(dac->enable(dac,true));ESP_ERROR_CHECK(dac->set_vol(dac,volume.load()));
