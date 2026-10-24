@@ -332,3 +332,57 @@ TRAIN checks still include three failures (worst absolute error 0.304). Cold
 recall is 181/195 with 2/712 false wakes; the supplement stays at 63/72. This
 control does not establish Dense weight precision as the main cause. Neither
 J nor K is deployable; see the [K report](../training/reports/wake-context-k-20261024.json).
+
+## Ordered acoustic branch (L)
+
+The next hypothesis adds local acoustic order that a correction of frozen
+whole-phrase features cannot recover. L keeps the original encoder/logits
+fixed and learns a separate branch from its first stride-three activation:
+24-channel kernels 5/9/13, an ordered 20-step ending kernel, and a 32-unit
+head, with 9,470 trainable parameters. New branch activations use ReLU6;
+the original encoder is unchanged. Initial zero correction preserves every
+original class probability. Training data/objective and fixed 12-epoch budget
+remain J's, with bytewise cache comparison required after fitting.
+
+A nonzero-branch regression verifies all-step batch/stream equality, frozen
+weights after fitting, and an export identity anchor. The full prototype's
+1,600 steps have maximum float difference 7.46e-7. Its first export correctly
+failed because the shared original phrase-pooling state remained float.
+A unit-depthwise identity consumer preserves the function while making that
+state quantizable; the second 223,568-byte export passes the unchanged strict
+all-integer/operator/shape check. Micro allocation, actual timing, accuracy,
+and child acceptance are still pending. See the [prototype record](../training/reports/wake-context-branch-prototype-20261024.json).
+Pass `--short-context` to both proof and training commands to select this
+experimental architecture; its own hash-matched proof is required.
+
+The content-only 3.1 audit stopped at 72/181 on a read timeout. A model-metadata
+request succeeded, and one explicit cached continuation uses a 90-second
+timeout with the same 30-second pacing and zero automatic retries. Reviews
+are now atomically persisted as a complete cache, including already-reviewed
+later rows; mixed-model/label/hash caches are rejected. Nine reviewer tests
+pass. ASR disagreement alone still never edits labels or erases model failures.
+
+L finished and passed the eight-case TRAIN float/INT8 diagnostic (maximum
+absolute error 0.094), but failed accuracy: 177/195 cold targets, 2/712 false
+wakes, and 58/72 supplementary targets. Literal-English groups scored 7/13
+adult and 5/9 childlike. All three feature/label/mask cache files match J
+bytewise. The 224,120-byte trained export was not flashed; see the
+[L report](../training/reports/wake-context-l-20261024.json).
+
+## Completion uncertainty (M, in progress)
+
+A TRAIN-only energy diagnosis of all 723 distinct positive files finds 131
+with more than 200 ms of trailing quiet and 14 with more than 500 ms. This
+is not phonetic alignment. It exposes a supervision ambiguity: a completed
+keyword followed by quiet can still receive an other label before file end.
+
+M retains L's model, features and numeric labels, but ignores uncertain target
+ending loss. An optional `--mask-completion-uncertainty` masks the interval
+from conservative final energy activity minus 240 ms until full waveform end.
+Energy never assigns positive labels or trims a word. Only the complete file
+boundary assigns wake labels; every post-completion positive step remains
+supervised. Negatives are unchanged. Per-example weights are renormalized,
+with the same fixed class-weight rule and 12-epoch budget. Four data regressions
+cover unchanged features/classes and ignored-region semantics. Legacy defaults
+stay unchanged; M must prove identical feature/class caches and a changed mask,
+then pass all unchanged gates. It is a training hypothesis, not a release.

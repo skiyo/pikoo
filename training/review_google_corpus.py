@@ -53,6 +53,27 @@ def checked_transcripts(text, count):
     return transcripts
 
 
+def validated_cache(rows, prior, model):
+    expected = {row['sha256']: row for row in rows}
+    cached = {}
+    for review in prior:
+        digest = review['sha256']
+        if (digest not in expected or digest in cached or review.get('model') != model
+                or review.get('label') != expected[digest]['label']
+                or not isinstance(review.get('transcript'), str)):
+            raise ValueError('Review cache model, recording, label or uniqueness mismatch')
+        cached[digest] = review
+    return cached
+
+
+def write_cache(path, rows, cached):
+    """Preserve all known reviews, including later rows, with atomic replacement."""
+    records = [cached[row['sha256']] for row in rows if row['sha256'] in cached]
+    temporary = path.with_name(path.name+'.tmp')
+    temporary.write_text(json.dumps(records, ensure_ascii=False, indent=2))
+    temporary.replace(path)
+
+
 def content_matches(text, transcript):
     # Do not let punctuation cleanup silently erase extra spoken English or
     # digits. Only the already-supported complete name may be normalized away.
@@ -148,7 +169,7 @@ def main():
     opener = build_opener(ProxyHandler({'http': a.proxy, 'https': a.proxy} if a.proxy else {}))
     report = []
     prior = json.loads(a.output.read_text()) if a.output.exists() else []
-    cached = {r['sha256']: r for r in prior}
+    cached = validated_cache(rows, prior, a.model)
     for start in range(0, len(rows), a.batch_size):
         group = rows[start:start + a.batch_size]
         if all(r['sha256'] in cached for r in group):
@@ -157,7 +178,7 @@ def main():
                 reviewed['approved'] = content_matches(row['text'], reviewed['transcript'])
                 reviewed['rule'] = 'exact-transcript-with-target-homophones-v3-no-extra-Latin'
                 report.append(reviewed)
-            a.output.write_text(json.dumps(report, ensure_ascii=False, indent=2))
+                cached[row['sha256']] = reviewed
             continue
         audio = []
         for row in group:
@@ -178,10 +199,15 @@ def main():
         except HTTPError as error:
             try:
                 decoded=json.loads(error.read()).get('error',{})
-                safe={'code':error.code,'status':decoded.get('status'),'details':decoded.get('details',[]),'retry_after':error.headers.get('Retry-After')}
+                safe={'model':a.model,'code':error.code,'status':decoded.get('status'),'details':decoded.get('details',[]),'retry_after':error.headers.get('Retry-After')}
                 a.output.with_name('review-api-error.json').write_text(json.dumps(safe,indent=2)+'\n')
             except (ValueError,OSError):pass
             raise RuntimeError(f'Synthetic review HTTP {error.code}; stopped without further requests') from None
+        except (TimeoutError,URLError,ConnectionError,ssl.SSLError) as error:
+            safe={'model':a.model,'status':'transport-failure','error_type':type(error).__name__,
+                  'cached_reviews':len(cached),'request_timeout':a.request_timeout}
+            a.output.with_name('review-api-error.json').write_text(json.dumps(safe,indent=2)+'\n')
+            raise
         text = review_text(a.model, data)
         transcripts = checked_transcripts(text, len(group))
         for row, transcript in zip(group, transcripts):
@@ -190,10 +216,12 @@ def main():
                 'transcript': transcript, 'approved': approved, 'model': a.model,
                 'rule': 'exact-transcript-with-target-homophones-v3-no-extra-Latin',
                 'method': 'Google-ASR-sanity-check-not-human-review'})
-        a.output.write_text(json.dumps(report, ensure_ascii=False, indent=2))
-        print(json.dumps({'reviewed': len(report), 'approved': sum(r['approved'] for r in report)}), flush=True)
+            cached[row['sha256']] = report[-1]
+        write_cache(a.output, rows, cached)
+        print(json.dumps({'reviewed': len(cached), 'approved': sum(r['approved'] for r in cached.values())}), flush=True)
         if start + a.batch_size < len(rows):
             time.sleep(a.interval)
+    write_cache(a.output, rows, cached)
 
 
 if __name__ == '__main__':

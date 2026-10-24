@@ -8,6 +8,27 @@ from causal_data import training_rows, frame_targets, example
 
 
 class CausalDataTest(unittest.TestCase):
+    def test_uncertain_complete_word_region_is_ignored_never_relabeled_positive(self):
+        ends = np.arange(1, 13)*160
+        labels, weights = frame_targets(ends, 1600, 1, 15, ambiguous_start_sample=800)
+        np.testing.assert_array_equal(labels, [0, 0, 0, 1, 0])
+        np.testing.assert_array_equal(weights > 0, [True, False, False, True, False])
+        self.assertAlmostEqual(float(weights.sum()), 5)
+        with self.assertRaises(ValueError):frame_targets(ends, 1600, 3, 15, ambiguous_start_sample=800)
+        row = dict(split='train', label=1, text='你好Pikoo')
+        pcm = np.concatenate([np.sin(np.arange(16000)*.12)*10000, np.zeros(8000)])
+        def frontend(wave):
+            count = len(wave)//160-2
+            return np.zeros((count,40),np.float32), np.arange(3,count+3)*160
+        with patch('causal_data.timestamped_features', side_effect=frontend):
+            original = example(pcm,row,np.random.default_rng(31))
+            masked = example(pcm,row,np.random.default_rng(31),completion_uncertainty=True)
+        np.testing.assert_array_equal(original[0],masked[0])
+        np.testing.assert_array_equal(original[1],masked[1])
+        self.assertGreater(np.count_nonzero(original[2]),np.count_nonzero(masked[2]))
+        # Every post-completion positive step survives the uncertainty mask.
+        np.testing.assert_array_equal(original[2][original[1]==1] > 0,masked[2][masked[1]==1] > 0)
+
     def test_group_and_hash_guards_do_not_decode_validation(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

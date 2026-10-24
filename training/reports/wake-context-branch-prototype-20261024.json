@@ -1,0 +1,38 @@
+{
+  "status": "prototype-parity-and-all-integer-static-export-passed-not-accuracy-or-device-acceptance",
+  "source_checkpoint_sha256": "24f816eb7bea18ed1ed2181705d3f93f081909b2e9469d6080dc8617f0fdc845",
+  "model_bytes": 223568,
+  "model_sha256": "9391c6885ac70b5de32d957c172d58df5985357248d8d2f9e1a40720329260d1",
+  "all_class_steps": 1600,
+  "all_class_max_float_difference": 7.450580596923828e-07,
+  "static_check": "static-check-passed",
+  "architecture": {
+    "kernels": [
+      5,
+      9,
+      13
+    ],
+    "channels": 24,
+    "ordered_steps": 20,
+    "hidden_units": 32,
+    "activation": "relu6",
+    "original_encoder_and_logits_frozen": true,
+    "trainable_parameters": 9470
+  },
+  "inference_input_shape": [
+    1,
+    3,
+    40
+  ],
+  "inference_output_shape": [
+    1,
+    1
+  ],
+  "first_export_failure": "Shared phrase-pooling recurrent state remained float; rejected before training",
+  "export_repair": "Unit-depthwise identity consumer at phrase buffer; float function preserved, all-integer static check passed",
+  "regression": "Nonzero correction stream/batch all-step parity, zero-head source equality, anchor equality, frozen weights after training",
+  "L_status": "failed development:177/195 cold targets,2/712false,58/72supplement; eight-case TRAIN quantization check passed; not flashed",
+  "household_or_development_used_for_fit": false,
+  "device_modified": false,
+  "real_child_acceptance": false
+}

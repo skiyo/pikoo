@@ -56,7 +56,7 @@ def timestamped_features(pcm):
     return np.asarray(features, np.float32), np.asarray(ends, np.int64)
 
 
-def frame_targets(ends, completion_sample, complete_class, frames=600):
+def frame_targets(ends, completion_sample, complete_class, frames=600, ambiguous_start_sample=None):
     """Align to the last consumed feature; mask right-padding with weight zero."""
     if frames < 3 or frames % 3:
         raise ValueError('Feature frame budget must be a multiple of three')
@@ -72,10 +72,19 @@ def frame_targets(ends, completion_sample, complete_class, frames=600):
     if steps:
         labels[:steps] = np.where(ends[2:steps*3:3] >= completion_sample, complete_class, 0)
         weights[:steps] = (frames//3)/steps
+        if ambiguous_start_sample is not None:
+            if complete_class != 1 or not 0 <= ambiguous_start_sample < completion_sample:
+                raise ValueError('Completion uncertainty is valid only for an annotated target')
+            times = ends[2:steps*3:3]
+            weights[:steps][(times >= ambiguous_start_sample) & (times < completion_sample)] = 0
+            count = np.count_nonzero(weights)
+            if not count:
+                raise ValueError('No unambiguous causal supervision remains')
+            weights[weights > 0] = (frames//3)/count
     return labels, weights
 
 
-def example(pcm, row, rng, background=None, frames=600):
+def example(pcm, row, rng, background=None, frames=600, completion_uncertainty=False):
     """One cold/warm example. Synthetic augmentation only; no held-out input."""
     if row['split'] != 'train' or row.get('evaluation_only') or row.get('frozen_holdout'):
         raise ValueError('Only TRAIN examples may be augmented')
@@ -101,6 +110,19 @@ def example(pcm, row, rng, background=None, frames=600):
         complete_class, full_phrase = 0, False
     factor = float(rng.uniform(.9, 1.1))
     pcm = np.interp(np.arange(0, len(pcm), factor), np.arange(len(pcm)), pcm)
+    uncertain_offset = None
+    if completion_uncertainty and row['label']:
+        # Energy is NOT a phonetic endpoint. It only widens an ignored region,
+        # never creates positive labels or trims a word. Full-waveform end is
+        # still the only boundary after which target supervision is assigned.
+        if len(pcm) < 320:
+            raise ValueError('Annotated target too short for conservative energy screen')
+        windows = np.lib.stride_tricks.sliding_window_view(pcm, 320)[::160]
+        rms = np.sqrt(np.mean(windows*windows, axis=1))
+        active = np.flatnonzero(rms > max(3., float(rms.max())*.01))
+        if not len(active):
+            raise ValueError('No detectable target activity; do not fabricate an endpoint')
+        uncertain_offset = max(0, int(active[-1])*160+320-3840)
     if rng.random() < .25:
         from acoustic_augment import augment
         pcm = augment(pcm, rng)
@@ -123,7 +145,8 @@ def example(pcm, row, rng, background=None, frames=600):
     features, ends = features[drop:], ends[drop:]
     if complete_class and (not len(ends) or completion > ends[-1]-5*480):
         raise ValueError('Insufficient complete-word TRAIN supervision')
-    labels, weights = frame_targets(ends, completion, complete_class, frames)
+    ambiguous = completion-len(pcm)+uncertain_offset if uncertain_offset is not None else None
+    labels, weights = frame_targets(ends, completion, complete_class, frames, ambiguous)
     valid = len(features)//3*3
     result = np.zeros((frames, 40), np.float32)
     result[:valid] = features[:valid]

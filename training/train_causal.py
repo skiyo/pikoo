@@ -27,6 +27,8 @@ def main():
         p.add_argument('--'+name, required=True, type=Path)
     p.add_argument('--epochs', type=int, default=12)
     p.add_argument('--batch-size', type=int, default=16)
+    p.add_argument('--short-context', action='store_true', help='Learn an ordered acoustic branch; requires its prototype proof')
+    p.add_argument('--mask-completion-uncertainty', action='store_true', help='Ignore ambiguous target endings; never infer positive labels from energy')
     a = p.parse_args()
     if not 1 <= a.epochs <= 32 or not 1 <= a.batch_size <= 64:
         raise ValueError('Invalid fixed training budget')
@@ -52,12 +54,20 @@ def main():
             or any(c['all_class_max_difference'] > 1e-5 for c in proof['cases'])
             or proof['static']['status'] != 'static-check-passed'):
         raise ValueError('Missing compatible all-step prototype proof')
+    if a.short_context:
+        if (proof['graph'].get('architecture') != 'short-context-24x3-recent20-hidden32'
+                or proof.get('causal_branch_sha256') != sha(Path(__file__).with_name('causal_branch.py'))):
+            raise ValueError('Missing compatible short-context branch proof')
+    elif proof['graph'].get('architecture'):
+        raise ValueError('Do not use a branch proof for the residual-only model')
     rows = json.loads(a.manifest.read_text())
     protection = json.loads(a.protected_hashes.read_text())
     selected = training_rows(rows, a.manifest.parent, set(protection['audio_sha256'].values()))
     pipeline = {name: sha(Path(__file__).with_name(name)) for name in
                 ('train_causal.py', 'causal_model.py', 'causal_data.py',
                  'contrastive_readout.py', 'speech_context.py', 'acoustic_augment.py')}
+    if a.short_context:
+        pipeline['causal_branch.py'] = sha(Path(__file__).with_name('causal_branch.py'))
     # Fixed, balanced cold/warm repetitions; no held-out model score selection.
     jobs = []
     for row in selected:
@@ -69,6 +79,7 @@ def main():
         'manifest_sha256': sha(a.manifest), 'checkpoint_sha256': sha(a.checkpoint),
         'parity_proof_sha256': sha(a.parity_proof), 'fixed_epochs': a.epochs,
         'pipeline_sha256': pipeline,
+        'mask_completion_uncertainty': a.mask_completion_uncertainty,
         'class_order': PHRASES, 'household_or_development_used': False,
     }, indent=2)+'\n')
     x = np.lib.format.open_memmap(a.output/'causal-features.npy', mode='w+', dtype=np.float32, shape=(len(jobs), 600, 40))
@@ -85,7 +96,8 @@ def main():
         seed = int(hashlib.sha256((row['sha256']+':causal-j:'+str(repeat)).encode()).hexdigest()[:16], 16)
         rng = np.random.default_rng(seed)
         warm = bool(rng.random() < .5)
-        features, labels, weights, info = example(pcm, row, rng, context if warm else None)
+        features, labels, weights, info = example(pcm, row, rng, context if warm else None,
+            completion_uncertainty=a.mask_completion_uncertainty)
         if not np.all(np.isfinite(features)):
             raise ValueError('Non-finite MicroFrontend feature')
         x[index], y[index], w[index] = features, labels, weights
@@ -107,8 +119,12 @@ def main():
     source, view = attach(mixednet.model(flags, (399, 40), None), warm_start=True)
     source_proof = resume_readout(source, view, a.checkpoint, np.asarray(x[:2, -399:], np.float32),
         {'filters': 128, 'first_filters': 64, 'kernels': [5, 9, 13, 21, 31, 43]})
-    residual, _ = attach_frozen_residual(source, 64)
-    fit, graph = sequence_view(residual, 600)
+    if a.short_context:
+        from causal_branch import attach as attach_branch
+        fit, graph = attach_branch(source, 600)
+    else:
+        residual, _ = attach_frozen_residual(source, 64)
+        fit, graph = sequence_view(residual, 600)
     frozen = {layer.name: layer.get_weights() for layer in fit.layers if not layer.trainable}
 
     class Batches(tf.keras.utils.PyDataset):
@@ -136,6 +152,14 @@ def main():
     fit.save_weights(a.output/'checkpoint.weights.h5')
     (a.output/'training-history.json').write_text(json.dumps(history.history, indent=2)+'\n')
     wake = scalar_view(fit)
+    if a.short_context:
+        from causal_branch import integer_anchor
+        anchored = integer_anchor(fit)
+        before = fit(x[:8], training=False).numpy()
+        after = anchored(x[:8], training=False).numpy()
+        if np.max(abs(before-after)) > 1e-5:
+            raise ValueError('Integer-state export anchor changed trained probabilities')
+        wake = scalar_view(anchored)
     model = streaming(wake)
     archive = tf.keras.export.ExportArchive()
     archive.track(model)
@@ -170,11 +194,12 @@ def main():
         'model_bytes': compatibility['bytes'], 'model_sha256': compatibility['sha256'],
         'training_manifest_sha256': sha(a.manifest), 'source': source_proof,
         'parity_proof_sha256': sha(a.parity_proof), 'graph': graph, 'dataset': summary,
-        'pipeline_sha256': pipeline, 'data_contract': 'causal-complete-waveform-v1',
+        'pipeline_sha256': pipeline, 'data_contract': 'causal-waveform-uncertainty-mask-v2' if a.mask_completion_uncertainty else 'causal-complete-waveform-v1',
         'repetitions': {'target': 8, 'hard_negative': 4, 'real_child_ordinary': 1, 'other': 2},
         'learning_rate': .0003, 'batch_size': a.batch_size,
-        'classifier_readout': {'type': 'causal-frame-frozen-residual', 'classes': PHRASES,
-            'residual_hidden_units': 64, 'original_encoder_and_logits_frozen': True},
+        'classifier_readout': {'type': 'causal-frame-short-context' if a.short_context else 'causal-frame-frozen-residual',
+            'classes': PHRASES, 'residual_hidden_units': 32 if a.short_context else 64,
+            'original_encoder_and_logits_frozen': True},
         'threshold': .9, 'rolling_inferences': 5,
         'frozen_source_weights_unchanged': True, 'household_or_development_used': False,
         'checkpoint_weights_sha256': sha(a.output/'checkpoint.weights.h5'),

@@ -1,9 +1,25 @@
 import io,ssl,unittest
 from urllib.error import HTTPError,URLError
-from review_google_corpus import post_json, checked_transcripts, content_matches, review_request, review_text
+from review_google_corpus import post_json, checked_transcripts, content_matches, review_request, review_text, validated_cache, write_cache
 
 
 class ReviewTransportTest(unittest.TestCase):
+    def test_resume_preserves_later_reviews_and_rejects_mixed_model_cache(self):
+        import json,tempfile
+        from pathlib import Path
+        rows=[{'sha256':str(i),'label':i%2} for i in range(3)]
+        review=lambda i:dict(rows[i],model='gemini-3.1-flash-lite',transcript='fixture',approved=True)
+        cached=validated_cache(rows,[review(2)],'gemini-3.1-flash-lite')
+        cached['0']=review(0)
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'review.json'
+            write_cache(path,rows,cached)
+            self.assertEqual([x['sha256'] for x in json.loads(path.read_text())],['0','2'])
+            self.assertFalse(path.with_name('review.json.tmp').exists())
+        for bad in [[review(0),review(0)], [dict(review(0),model='gemini-2.5-flash')],
+                    [dict(review(0),label=1)], [dict(review(0),sha256='unknown')]]:
+            with self.assertRaises(ValueError):validated_cache(rows,bad,'gemini-3.1-flash-lite')
+
     def test_audio_requests_use_the_selected_model_protocol_without_transcript_hint(self):
         url,body=review_request('gemini-3.8-flash','fixture-base64',2)
         self.assertTrue(url.endswith('/interactions'))
