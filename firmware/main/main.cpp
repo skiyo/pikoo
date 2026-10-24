@@ -794,6 +794,7 @@ void controls_task(void *) {
         else if(!strcmp(command,"volume normal"))board::set_volume(-24);
         else if(!strcmp(command,"volume higher"))board::set_volume(-12);
         else if(!strcmp(command,"volume louder"))board::set_volume(-6);
+        else if(!strcmp(command,"volume full"))board::set_volume(0);
         else if(!strcmp(command,"companion on")||!strcmp(command,"companion off")) {
           const bool enabled=!strcmp(command,"companion on");
           nvs_handle_t n;

@@ -64,7 +64,7 @@ esp_err_t audio_init() {
   nvs_handle_t saved;
   if(nvs_open("pikoo",NVS_READONLY,&saved)==ESP_OK){
     int32_t level=-24;
-    if(nvs_get_i32(saved,"volume_db",&level)==ESP_OK&&level>=-50&&level<=-6)volume=level;
+    if(nvs_get_i32(saved,"volume_db",&level)==ESP_OK&&level>=-50&&level<=0)volume=level;
     nvs_close(saved);
   }
   ESP_ERROR_CHECK(dac->enable(dac,true));ESP_ERROR_CHECK(dac->set_vol(dac,volume.load()));
@@ -153,7 +153,8 @@ float output_level(){return out_level;}
 uint32_t capture_errors(){return read_errors;}
 uint32_t playback_errors(){return write_errors;}
 esp_err_t set_volume(int db){
-  if(db < -50 || db > -6)return ESP_ERR_INVALID_ARG;
+  // Unity digital gain is the ceiling; do not amplify PCM above full scale.
+  if(db < -50 || db > 0)return ESP_ERR_INVALID_ARG;
   auto result=dac->set_vol(dac,db);if(result!=ESP_OK)return result;
   volume=db;int reg=-1;if(dac->get_reg(dac,0x32,&reg)==ESP_OK)volume_reg=reg;
   nvs_handle_t saved;

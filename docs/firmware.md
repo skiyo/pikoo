@@ -57,7 +57,7 @@ Keep one USB connection open for endurance observation:
 python tools/monitor.py --port PORT --private-log /private/device.log
 ```
 
-Opening a fresh USB serial connection may restart the board. Commands: `status`, `wake`, `stop`, `end`, `mute`, `unmute`, `takeover`, `tone`, `volume low`, `volume normal`, `volume higher`, `volume louder`, `rotate 90`, `rotate 270`. Short tones are available only in standby. First-start DAC is -24 dB. Presets are low -36 dB, normal -24 dB, higher -12 dB and louder -6 dB; allowed range is -50 to -6 dB. Volume is saved in NVS and restored at startup. Diagnostics report the selected dB and DAC register readback. Stop immediately if the speaker heats up.
+Opening a fresh USB serial connection may restart the board. Commands: `status`, `wake`, `stop`, `end`, `mute`, `unmute`, `takeover`, `tone`, `volume low`, `volume normal`, `volume higher`, `volume louder`, `volume full`, `rotate 90`, `rotate 270`. Short tones are available only in standby. First-start DAC is -24 dB. Presets are low -36 dB, normal -24 dB, higher -12 dB, louder -6 dB and full 0 dB; allowed range is -50 to 0 dB. The full preset adds 6 dB over the previous ceiling and does not add software PCM amplification. Volume is saved in NVS and restored at startup. Diagnostics report the selected dB and DAC register readback. Stop immediately if the speaker heats up.
 
 Metrics exclude credentials, transcripts and family facts: uptime/reset reason, heap/internal/PSRAM, frame rate, microphone/reference/output levels, I2S errors, upload frames, reconnects and wake inference time. USB controls do not add public GCP events.
 
