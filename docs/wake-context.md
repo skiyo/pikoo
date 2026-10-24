@@ -265,3 +265,70 @@ passed one live single-clip compatibility check; a separately recorded full
 181-clip review is now running at one request every 30 seconds, with no automatic
 retries or paid-tier enablement. Its results do not overwrite the 2.5 audit.
 This does not change the server's Live provider.
+
+## Causal per-step experiment (J)
+
+G/H/I did not qualify. J changes the TRAIN objective: supervise every causal
+step, including cold initial states, instead of only a complete clip's final
+output. The original encoder and fourteen class logits stay frozen; only the
+64-unit residual head learns. Per-layer padding matches zero streaming states.
+The existing 17-step pooling horizon is preserved. A 600-frame TRAIN sequence
+still exports input `[1,3,40]`, one scalar output, and the original inference
+receptive field.
+
+Three graph regressions pass, including all-class/all-step equality and frozen
+weights after fitting. An actual checkpoint prototype checks 1,600 streaming
+steps with maximum float difference 5.37e-7 and exports a 202,968-byte INT8
+graph passing static operator/shape/budget checks. A small one-epoch TRAIN
+smoke run completes fitting/export with frozen weights unchanged. This is
+implementation evidence, not accuracy, Micro runtime, or child acceptance.
+See the [prototype record](../training/reports/wake-context-causal-prototype-20261024.json).
+
+J uses 22,860 TRAIN examples and a fixed 12 epochs without held-out early
+stopping. Actual frontend emission timestamps determine labels at the last
+of each three consumed features. Before the complete annotated waveform,
+labels are other; afterward, complete targets/near-phrases receive their class.
+Long cropped non-targets remain other. Positive words are never cropped;
+following sentences are excluded when an annotated wake endpoint exists.
+Right-padding has zero loss weight; valid steps are normalized per example.
+Only authorized TRAIN speech supplies warm context. Three data regressions
+cover split/hash guards, timestamp alignment, padding, and complete-word rules.
+Feature caches retain float32 values losslessly; an initial uint16 storage
+smoke attempt rejected fractional features before any fitting.
+
+Reproduction requires an authorized trained class checkpoint with provenance,
+a TRAIN manifest, a protected-hash ledger, and the existing pinned environment.
+No weights or audio are distributed here:
+
+```sh
+python training/prove_causal.py --upstream "$UPSTREAM" --manifest "$MANIFEST" \
+  --checkpoint "$CHECKPOINT" --protected-hashes "$PROTECTED" --output "$PROTOTYPE"
+python training/train_causal.py --upstream "$UPSTREAM" --manifest "$MANIFEST" \
+  --checkpoint "$CHECKPOINT" --protected-hashes "$PROTECTED" \
+  --parity-proof "$PROTOTYPE/report.json" --output "$NEW_RUN" --epochs 12
+```
+
+The final fixed epoch must still pass the unchanged full 907/181 streaming
+gates and continuous-context checks, then frozen independent tests and Micro
+checks. These commands never flash a board.
+
+J finished all 12 epochs but failed: 181/195 cold targets, 2/712 false wakes,
+and 63/72 supplemental targets. Literal-English groups scored 8/13 adult and
+8/9 childlike. Three of eight TRAIN float/INT8 diagnostics also failed, with
+maximum absolute difference 0.345. J was not flashed and did not proceed to
+full context or independent testing. See the [J report](../training/reports/wake-context-j-20261024.json).
+The standalone public prototype command also completed its eight-case all-step
+proof and static export; neither prototype's success overrides J's failures.
+
+An export-only K control is checking the same trained J checkpoint and same
+100 calibration examples with Dense layers expressed as identical 1x1
+convolutions. This enables per-output-channel weight scales in the supported
+reference kernels. Three regressions cover rank-two/rank-four float functions
+and integer reference portability. K does not retrain, change the cutoff, or
+waive any accuracy gate; a quantization improvement alone would not qualify it.
+
+K also failed. The export is float-identical and 205,776 bytes, but the eight
+TRAIN checks still include three failures (worst absolute error 0.304). Cold
+recall is 181/195 with 2/712 false wakes; the supplement stays at 63/72. This
+control does not establish Dense weight precision as the main cause. Neither
+J nor K is deployable; see the [K report](../training/reports/wake-context-k-20261024.json).

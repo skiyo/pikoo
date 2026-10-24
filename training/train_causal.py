@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""Experimental frozen-encoder per-step supervision, never automatic flashing.
+
+Requires an independently recorded all-class/all-step prototype parity proof.
+The fixed final epoch is exported; legacy streaming development gates remain
+external, unchanged, and mandatory. No validation/test waveform is decoded.
+"""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import sys
+from types import SimpleNamespace
+import numpy as np
+
+os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '2')
+
+
+def sha(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    for name in ('upstream', 'manifest', 'checkpoint', 'protected-hashes', 'parity-proof', 'output'):
+        p.add_argument('--'+name, required=True, type=Path)
+    p.add_argument('--epochs', type=int, default=12)
+    p.add_argument('--batch-size', type=int, default=16)
+    a = p.parse_args()
+    if not 1 <= a.epochs <= 32 or not 1 <= a.batch_size <= 64:
+        raise ValueError('Invalid fixed training budget')
+    os.umask(0o077)
+    sys.path.insert(0, str(a.upstream.resolve()))
+    import tensorflow as tf
+    from microwakeword import mixednet
+    from train import load
+    from contrastive_readout import attach, resume_readout, attach_frozen_residual, PHRASES
+    from causal_model import sequence_view, scalar_view, streaming
+    from causal_data import training_rows, example
+    from speech_context import SpeechContext
+    from check_esp32_model import check
+    tf.config.threading.set_intra_op_parallelism_threads(4)
+    tf.config.threading.set_inter_op_parallelism_threads(2)
+    tf.keras.utils.set_random_seed(42)
+    proof = json.loads(a.parity_proof.read_text())
+    if (proof.get('status') != 'all-step-float-parity-and-static-export-passed-not-trained-or-flashed'
+            or proof['source']['checkpoint_sha256'] != sha(a.checkpoint)
+            or proof['graph']['input_frames'] != 600 or proof['graph']['source_pool_steps'] != 17
+            or proof.get('causal_model_sha256') != sha(Path(__file__).with_name('causal_model.py'))
+            or len(proof.get('cases', [])) < 8
+            or any(c['all_class_max_difference'] > 1e-5 for c in proof['cases'])
+            or proof['static']['status'] != 'static-check-passed'):
+        raise ValueError('Missing compatible all-step prototype proof')
+    rows = json.loads(a.manifest.read_text())
+    protection = json.loads(a.protected_hashes.read_text())
+    selected = training_rows(rows, a.manifest.parent, set(protection['audio_sha256'].values()))
+    pipeline = {name: sha(Path(__file__).with_name(name)) for name in
+                ('train_causal.py', 'causal_model.py', 'causal_data.py',
+                 'contrastive_readout.py', 'speech_context.py', 'acoustic_augment.py')}
+    # Fixed, balanced cold/warm repetitions; no held-out model score selection.
+    jobs = []
+    for row in selected:
+        count = 8 if row['label'] else 4 if row.get('hard_negative') else 1 if row.get('real_child') else 2
+        jobs.extend((row, repeat) for repeat in range(count))
+    a.output.mkdir(parents=True, exist_ok=False)
+    (a.output/'preparation.json').write_text(json.dumps({
+        'stage': 'building-TRAIN-only-causal-cache', 'examples': len(jobs),
+        'manifest_sha256': sha(a.manifest), 'checkpoint_sha256': sha(a.checkpoint),
+        'parity_proof_sha256': sha(a.parity_proof), 'fixed_epochs': a.epochs,
+        'pipeline_sha256': pipeline,
+        'class_order': PHRASES, 'household_or_development_used': False,
+    }, indent=2)+'\n')
+    x = np.lib.format.open_memmap(a.output/'causal-features.npy', mode='w+', dtype=np.float32, shape=(len(jobs), 600, 40))
+    y = np.lib.format.open_memmap(a.output/'causal-labels.npy', mode='w+', dtype=np.uint8, shape=(len(jobs), 200))
+    w = np.lib.format.open_memmap(a.output/'causal-mask.npy', mode='w+', dtype=np.float32, shape=(len(jobs), 200))
+    context = SpeechContext(selected, a.manifest.parent, 43)
+    summary = {'examples': len(jobs), 'warm': 0, 'cold': 0, 'partial_non_targets': 0,
+               'valid_class_steps': [0]*14, 'household_or_development_used': False}
+    last_path, pcm = None, None
+    for index, (row, repeat) in enumerate(jobs):
+        path = a.manifest.parent / row['path']
+        if path != last_path:
+            pcm, last_path = load(path), path
+        seed = int(hashlib.sha256((row['sha256']+':causal-j:'+str(repeat)).encode()).hexdigest()[:16], 16)
+        rng = np.random.default_rng(seed)
+        warm = bool(rng.random() < .5)
+        features, labels, weights, info = example(pcm, row, rng, context if warm else None)
+        if not np.all(np.isfinite(features)):
+            raise ValueError('Non-finite MicroFrontend feature')
+        x[index], y[index], w[index] = features, labels, weights
+        summary['warm' if warm else 'cold'] += 1
+        summary['partial_non_targets'] += int(not info['full_phrase_retained'])
+        summary['valid_class_steps'] = (np.asarray(summary['valid_class_steps']) +
+            np.bincount(labels[weights > 0], minlength=14)).tolist()
+        if (index+1) % 500 == 0:
+            print(json.dumps({'stage': 'prepare', 'completed': index+1, 'total': len(jobs)}), flush=True)
+    x.flush(); y.flush(); w.flush()
+    counts = np.asarray(summary['valid_class_steps'], np.float64)
+    # Cap rare-class weights; ordinary-speech prefixes never lose their loss.
+    class_weights = np.minimum(16., np.maximum(1., np.sqrt(counts[0]/np.maximum(counts, 1))))
+    summary['class_weights'] = class_weights.tolist()
+    (a.output/'dataset-summary.json').write_text(json.dumps(summary, indent=2)+'\n')
+    flags = SimpleNamespace(pointwise_filters=','.join(['128']*6), repeat_in_block=','.join(['1']*6),
+        mixconv_kernel_sizes='[5],[9],[13],[21],[31],[43]', residual_connection=','.join(['0']*6),
+        first_conv_filters=64, first_conv_kernel_size=3, stride=3, spatial_attention=0, pooled=1, max_pool=0)
+    source, view = attach(mixednet.model(flags, (399, 40), None), warm_start=True)
+    source_proof = resume_readout(source, view, a.checkpoint, np.asarray(x[:2, -399:], np.float32),
+        {'filters': 128, 'first_filters': 64, 'kernels': [5, 9, 13, 21, 31, 43]})
+    residual, _ = attach_frozen_residual(source, 64)
+    fit, graph = sequence_view(residual, 600)
+    frozen = {layer.name: layer.get_weights() for layer in fit.layers if not layer.trainable}
+
+    class Batches(tf.keras.utils.PyDataset):
+        def __init__(self):
+            super().__init__(workers=1, use_multiprocessing=False, max_queue_size=2)
+            self.rng = np.random.default_rng(44)
+            self.indices = self.rng.permutation(len(jobs))
+
+        def __len__(self):
+            return (len(jobs)+a.batch_size-1)//a.batch_size
+
+        def __getitem__(self, batch):
+            indices = self.indices[batch*a.batch_size:(batch+1)*a.batch_size]
+            labels = np.asarray(y[indices], np.int32)
+            return np.asarray(x[indices], np.float32), labels, np.asarray(w[indices])*class_weights[labels]
+
+        def on_epoch_end(self):
+            self.indices = self.rng.permutation(len(jobs))
+
+    fit.compile(optimizer=tf.keras.optimizers.Adam(.0003, clipnorm=5), loss='sparse_categorical_crossentropy')
+    history = fit.fit(Batches(), epochs=a.epochs, verbose=2)
+    for name, weights in frozen.items():
+        for expected, actual in zip(weights, fit.get_layer(name).get_weights()):
+            np.testing.assert_array_equal(actual, expected)
+    fit.save_weights(a.output/'checkpoint.weights.h5')
+    (a.output/'training-history.json').write_text(json.dumps(history.history, indent=2)+'\n')
+    wake = scalar_view(fit)
+    model = streaming(wake)
+    archive = tf.keras.export.ExportArchive()
+    archive.track(model)
+    archive.add_endpoint(name='serve', fn=model.call, input_signature=[tf.TensorSpec(model.input.shape, tf.float32)])
+    archive.write_out(str(a.output/'saved'), verbose=False)
+    rng = np.random.default_rng(43)
+    targets = np.asarray([row['label'] for row, repeat in jobs])
+    calibration = []
+    for label in (0, 1):
+        pool = np.flatnonzero(targets == label)
+        calibration.extend(rng.choice(pool, min(50, len(pool)), replace=False).tolist())
+    rng.shuffle(calibration)
+
+    def representative():
+        for index in calibration:
+            valid_steps = np.count_nonzero(w[index])
+            for step in range(valid_steps):
+                yield [np.asarray(x[index:index+1, step*3:step*3+3], np.float32)]
+
+    converter = tf.lite.TFLiteConverter.from_saved_model(str(a.output/'saved'))
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter._experimental_variable_quantization = True
+    converter._experimental_disable_per_channel_quantization_for_dense_layers = True
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    converter.inference_input_type, converter.inference_output_type = tf.int8, tf.uint8
+    converter.representative_dataset = representative
+    (a.output/'nihao_pikoo.tflite').write_bytes(converter.convert())
+    compatibility = check(a.output/'nihao_pikoo.tflite', Path(__file__).parents[1]/'firmware/main/wake_model.cpp', 524288)
+    (a.output/'esp32-static-check.json').write_text(json.dumps(compatibility, indent=2)+'\n')
+    report = {'status': 'experimental-final-fixed-epoch-not-evaluated-or-flashed',
+        'epochs': a.epochs, 'filters': 128, 'first_filters': 64, 'kernels': [5, 9, 13, 21, 31, 43],
+        'model_bytes': compatibility['bytes'], 'model_sha256': compatibility['sha256'],
+        'training_manifest_sha256': sha(a.manifest), 'source': source_proof,
+        'parity_proof_sha256': sha(a.parity_proof), 'graph': graph, 'dataset': summary,
+        'pipeline_sha256': pipeline, 'data_contract': 'causal-complete-waveform-v1',
+        'repetitions': {'target': 8, 'hard_negative': 4, 'real_child_ordinary': 1, 'other': 2},
+        'learning_rate': .0003, 'batch_size': a.batch_size,
+        'classifier_readout': {'type': 'causal-frame-frozen-residual', 'classes': PHRASES,
+            'residual_hidden_units': 64, 'original_encoder_and_logits_frozen': True},
+        'threshold': .9, 'rolling_inferences': 5,
+        'frozen_source_weights_unchanged': True, 'household_or_development_used': False,
+        'checkpoint_weights_sha256': sha(a.output/'checkpoint.weights.h5'),
+        'device_modified': False}
+    (a.output/'report.json').write_text(json.dumps(report, indent=2)+'\n')
+    print(json.dumps({'stage': 'exported-not-qualified', 'bytes': report['model_bytes'], 'sha256': report['model_sha256']}), flush=True)
+
+
+if __name__ == '__main__':
+    main()

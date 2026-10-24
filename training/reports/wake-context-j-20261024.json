@@ -1,0 +1,105 @@
+{
+  "status": "failed-prerequisite-development-not-flashed",
+  "candidate_sha256": "54cdd8f69c153df09c433c6eb560a46eda702ac28f740796c3e936d773ee978d",
+  "model_bytes": 203536,
+  "epochs_trained": 12,
+  "training_examples": 22860,
+  "threshold": 0.9,
+  "rolling_inferences": 5,
+  "original_development": {
+    "status": "failed-level-tone-development",
+    "passed": false,
+    "contract": "pikoo-level-tone-only-v1",
+    "failures": [
+      "false-wakes"
+    ],
+    "streaming_development": {
+      "targets": 195,
+      "hits": 181,
+      "non_targets": 712,
+      "false_wakes": 2
+    },
+    "raw_style_groups": {
+      "adult": {
+        "targets": 36,
+        "hits": 34,
+        "non_targets": 78,
+        "false_wakes": 0
+      },
+      "childlike": {
+        "targets": 32,
+        "hits": 30,
+        "non_targets": 113,
+        "false_wakes": 0
+      }
+    },
+    "pitch_tempo": {
+      "targets": 127,
+      "hits": 117,
+      "non_targets": 131,
+      "false_wakes": 2
+    },
+    "model_bytes": 203536,
+    "old_mandarin_pronunciation": "unspecified, not a negative",
+    "household_or_independent_test_used": false,
+    "hardware_or_real_child_accepted": false
+  },
+  "additional_development": {
+    "status": "failed-additional-development",
+    "passed": false,
+    "original_gate_required": true,
+    "failures": [
+      "original-development-gate",
+      "adult:recall",
+      "adult:English-recall",
+      "childlike:English-recall"
+    ],
+    "groups": {
+      "adult": {
+        "targets": 39,
+        "hits": 32,
+        "non_targets": 51,
+        "false_wakes": 0
+      },
+      "adult:literal-English": {
+        "targets": 13,
+        "hits": 8,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "childlike": {
+        "targets": 33,
+        "hits": 31,
+        "non_targets": 58,
+        "false_wakes": 0
+      },
+      "childlike:literal-English": {
+        "targets": 9,
+        "hits": 8,
+        "non_targets": 0,
+        "false_wakes": 0
+      }
+    },
+    "streaming_development": {
+      "targets": 72,
+      "hits": 63,
+      "non_targets": 109,
+      "false_wakes": 0
+    },
+    "independent_test": false,
+    "household_or_real_child_accepted": false
+  },
+  "continuous_development": "not run: already rejected by prerequisite gates",
+  "development_qualified": false,
+  "float_int8_small_TRAIN_check": {
+    "passed": false,
+    "cases": 8,
+    "failed_cases": 3,
+    "worst_max_absolute_error": 0.3454139828681946
+  },
+  "objective": "per-step causal complete-waveform labels",
+  "original_encoder_and_logits_frozen": true,
+  "inference_horizon_changed": false,
+  "household_or_independent_test_used": false,
+  "device_modified": false
+}

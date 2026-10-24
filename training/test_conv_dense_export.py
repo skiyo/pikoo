@@ -4,6 +4,23 @@ from pathlib import Path
 
 @unittest.skipUnless(importlib.util.find_spec('tensorflow'),'Optional pinned TensorFlow unavailable')
 class ConvDenseExportTest(unittest.TestCase):
+    def test_rank_four_causal_heads_preserve_all_time_steps_and_classes(self):
+        import numpy as np
+        import tensorflow as tf
+        from conv_dense_export import replace_dense
+        tf.keras.utils.set_random_seed(184)
+        inp=tf.keras.Input((21,1,9))
+        x=tf.keras.layers.Dense(7,activation='relu')(inp)
+        out=tf.keras.layers.Dense(14,activation='softmax')(x)
+        model=tf.keras.Model(inp,out)
+        fixture=np.random.default_rng(184).normal(size=(3,21,1,9)).astype('float32')
+        expected=model(fixture,training=False).numpy()
+        converted,report=replace_dense(model)
+        np.testing.assert_allclose(converted(fixture,training=False),expected,atol=2e-7,rtol=2e-6)
+        self.assertEqual(converted.output.shape,(None,21,1,14))
+        self.assertEqual(len(report['layers']),2)
+        self.assertFalse(any(isinstance(layer,tf.keras.layers.Dense) for layer in converted.layers))
+
     def test_nonzero_hidden_and_softmax_weights_preserve_all_probabilities(self):
         import numpy as np
         import tensorflow as tf

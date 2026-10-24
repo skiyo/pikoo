@@ -1,0 +1,45 @@
+{
+  "status": "causal-prototype-and-small-training-pipeline-passed-not-accuracy-acceptance",
+  "source_checkpoint_sha256": "24f816eb7bea18ed1ed2181705d3f93f081909b2e9469d6080dc8617f0fdc845",
+  "all_class_steps_checked": 1600,
+  "all_class_float_max_difference": 5.364418029785156e-07,
+  "prototype_int8_bytes": 202968,
+  "prototype_static_check": "static-check-passed",
+  "inference_input_shape": [
+    1,
+    3,
+    40
+  ],
+  "inference_output_shape": [
+    1,
+    1
+  ],
+  "inference_horizon_changed": false,
+  "regression_tests": {
+    "causal_graph": 3,
+    "data_guards_and_alignment": 3
+  },
+  "small_TRAIN_pipeline": {
+    "epochs": 1,
+    "examples": 28,
+    "frozen_source_weights_unchanged": true,
+    "int8_bytes": 203536,
+    "static_check": "passed"
+  },
+  "full_J": {
+    "state": "failed-prerequisite-development-not-flashed",
+    "examples": 22860,
+    "fixed_epochs": 12,
+    "heldout_selection": false,
+    "independent_tests_started": false
+  },
+  "household_or_development_used_for_fitting": false,
+  "device_modified": false,
+  "real_child_acceptance": false,
+  "public_entrypoint": {
+    "status": "all-step-float-parity-and-static-export-passed",
+    "steps": 1600,
+    "max_all_class_difference": 7.450580596923828e-07,
+    "model_bytes": 202968
+  }
+}

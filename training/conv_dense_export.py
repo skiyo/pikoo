@@ -13,18 +13,18 @@ def replace_dense(model):
     def call(layer,*args,**kwargs):
         if not isinstance(layer,tf.keras.layers.Dense):return layer(*args,**kwargs)
         value=args[0]
-        if len(value.shape)!=2 or value.shape[-1] is None:
-            raise ValueError('Dense convolution export requires known rank-two features')
+        if len(value.shape) not in (2,4) or value.shape[-1] is None:
+            raise ValueError('Dense convolution export requires known rank-two or rank-four features')
         names=[layer.name+suffix for suffix in ['_conv_input','_quant_conv','_conv_output']]
         if any(name in original for name in names):raise ValueError('Dense export name collision')
         created.update(names)
         conv=tf.keras.layers.Conv2D(layer.units,(1,1),activation=layer.activation,
             use_bias=layer.use_bias,trainable=layer.trainable,name=names[1])
-        output=conv(tf.keras.layers.Reshape((1,1,int(value.shape[-1])),name=names[0])(value))
+        output=conv(tf.keras.layers.Reshape((1,1,int(value.shape[-1])),name=names[0])(value)) if len(value.shape)==2 else conv(value)
         weights=original[layer.name].get_weights()
         conv.set_weights([weights[0].reshape(1,1,*weights[0].shape),*weights[1:]])
         replaced.append(layer.name)
-        return tf.keras.layers.Reshape((layer.units,),name=names[2])(output)
+        return tf.keras.layers.Reshape((layer.units,),name=names[2])(output) if len(value.shape)==2 else output
     converted=tf.keras.models.clone_model(model,call_function=call)
     copied=set()
     for layer in converted.layers:
