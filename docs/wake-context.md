@@ -580,3 +580,21 @@ least a30-second pause, one worker and zero automatic retries. Cached recordings
 are neither resent nor overwritten; manifests/gates stay unchanged.23 file mapping,
 existing content and transport regressions passed. This reduces review requests
 and elapsed time; it is not wake-model improvement or physical acceptance.
+
+## Ancestry of byte-identical TRAIN recordings
+
+Preparing the next TRAIN manifest exposed 22 duplicate-byte provenance groups:
+20 public ChildMandarin background-negative groups and two fictional synthetic
+negative groups. Verified hashes and matching metadata permit repairing 18
+identity-copy self edges; six restore an already recorded upstream origin.
+Four other groups retain both recorded origins through `ancestry_parents`.
+Training, cleaning and local/remote review protection all cover that field.
+The original manifest, audio, labels and all 10,400 input occurrences/weights
+remain unchanged. The private pre-cleaning draft plus delta has 10,413 rows
+and is not fitted. See the [ancestry record](../training/reports/wake-training-ancestry-repair-20261024.json).
+
+56 provenance, isolation, data and existing review regressions passed. The
+full review stopped on Google 503 at 51/931, with its cache intact and no
+automatic retry. A controlled continuation will reduce independent files
+per request from eight to four, retaining a 30-second pause and stopping
+on another error. This is data preparation, not model or physical acceptance.
