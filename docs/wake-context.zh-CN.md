@@ -489,6 +489,13 @@ Google [官方输入说明](https://ai.google.dev/gemini-api/docs/generate-conte
 尚未训练或通过；开发通过后仍需冻结候选、新独立测试与最终实机检查。
 见[预先固定的训练方案](../training/reports/wake-context-t-plan-20261024.json)。
 
+新增 20 条 3.8 TTS 语料已完成单文件审核：Google 转写与 17 条标注一致，
+本机 ASR 与 10 条一致；合并全部可靠证据后只保留八条 TRAIN 音频，
+包括四条虚构童声正例和四条童声近似词负例。12 条隔离来源和 20 条
+上下文诊断观察均保留；两条新增成人正例都没有通过两套检查。
+该增量尚未拟合，T 训练仍等待原 931 条来源审核完整结束。
+见[语料准入记录](../training/reports/wake-google38-train-admission-20261024.json)。
+
 Google [官方排查说明](https://ai.google.dev/gemini-api/docs/troubleshooting)
 建议对临时过载采用有界指数退避。审核器默认仍零重试；显式
 `--capacity-retries 3` 只允许单批最多三次 503 重试，从 65 秒起指数退避

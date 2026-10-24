@@ -1,0 +1,53 @@
+{
+  "completed_at": "2026-10-24T08:29:25.964895+00:00",
+  "scope": "private content-reviewed TRAIN delta, not fitted, no development labels or model results changed",
+  "source_inputs": 20,
+  "retained": 8,
+  "quarantined": 12,
+  "all_input_counts": {
+    "adult:1": 2,
+    "childlike:1": 14,
+    "childlike:0": 4
+  },
+  "retained_counts": {
+    "childlike:1": 4,
+    "childlike:0": 4
+  },
+  "raw_single_Google_content_agreements": 17,
+  "raw_local_content_agreements": 10,
+  "diagnostic_batch_observations_preserved": 20,
+  "rejection_reasons": {
+    "content-review-disagreement": 12
+  },
+  "signal_findings": [],
+  "household_real_child_or_model_scores_used": false,
+  "childlike_means_fictional_synthesis_not_real_children": true,
+  "labels_changed": 0,
+  "source_audio_deleted": 0,
+  "fitted": false,
+  "flashed": false,
+  "does_not_certify_full931_source_audit": true,
+  "status": "new20-content-audit-complete-TRAIN-delta-not-fitted",
+  "retained_manifest_sha256": "947398f1f60e09e1560cbaefd770eda933f4727637b1c602b715ef42ff8fe1c7",
+  "retained_generator_counts": {
+    "gemini-3.8-flash-lite-tts": 3,
+    "gemini-3.8-flash-tts": 5
+  },
+  "retained_target_surfaces": {
+    "你好Pikoo！": 1,
+    "你好，Pee Coo。": 1,
+    "你好批枯": 1,
+    "你好披哭": 1
+  },
+  "old907_and181_gates": "unchanged, failures retained",
+  "full931_source_audit": "continues in existing worker; T batch waits for completion",
+  "contextual_vs_single_method_diagnostic": {
+    "recording_identity_set_equal": true,
+    "decision_flips": 5,
+    "directions": {
+      "batchTrue-singleFalse": 3,
+      "batchFalse-singleTrue": 2
+    },
+    "not_wake_accuracy": true
+  }
+}

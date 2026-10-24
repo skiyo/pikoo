@@ -661,6 +661,14 @@ flashes. T is queued, not trained or accepted. A qualifying result still needs
 a frozen new independent test and final device checks. See the
 [predeclared plan](../training/reports/wake-context-t-plan-20261024.json).
 
+The 20 new 3.8 TTS clips have now completed single-file review. Google agreed
+with 17 labels and local ASR with 10; combining all reliable evidence retains
+only eight TRAIN clips: four fictional childlike targets and four childlike
+near-word negatives. All 12 quarantined sources and 20 contextual diagnostic
+observations remain available. Neither new adult target survived both screens.
+The delta is not fitted; the full 931-source audit still precedes T training.
+See the [admission record](../training/reports/wake-google38-train-admission-20261024.json).
+
 Google's [troubleshooting guide](https://ai.google.dev/gemini-api/docs/troubleshooting)
 recommends bounded exponential backoff for temporary overload. Content-review
 retry defaults remain zero. Explicit `--capacity-retries 3` permits only three
