@@ -1,0 +1,112 @@
+{
+  "status": "failed-prerequisite-development-not-flashed",
+  "candidate_sha256": "643355647418e74caf65dd79c386bb54d73a7bf109d49bb670ff3658cff77fc1",
+  "model_bytes": 239896,
+  "refit": false,
+  "source_float_candidate": "P",
+  "source_float_checkpoint_sha256": "43820e34d21c0915c4d50ec201dd2ffa65ceba551b04f975f8ba21c362b2715b",
+  "threshold": 0.9,
+  "rolling_inferences": 5,
+  "original_development": {
+    "status": "passed-level-tone-development",
+    "passed": true,
+    "contract": "pikoo-level-tone-only-v1",
+    "failures": [],
+    "streaming_development": {
+      "targets": 195,
+      "hits": 181,
+      "non_targets": 712,
+      "false_wakes": 0
+    },
+    "raw_style_groups": {
+      "adult": {
+        "targets": 36,
+        "hits": 34,
+        "non_targets": 78,
+        "false_wakes": 0
+      },
+      "childlike": {
+        "targets": 32,
+        "hits": 30,
+        "non_targets": 113,
+        "false_wakes": 0
+      }
+    },
+    "pitch_tempo": {
+      "targets": 127,
+      "hits": 117,
+      "non_targets": 131,
+      "false_wakes": 0
+    },
+    "model_bytes": 239896,
+    "old_mandarin_pronunciation": "unspecified, not a negative",
+    "household_or_independent_test_used": false,
+    "hardware_or_real_child_accepted": false
+  },
+  "additional_development": {
+    "status": "failed-additional-development",
+    "passed": false,
+    "original_gate_required": true,
+    "failures": [
+      "adult:recall",
+      "adult:English-recall",
+      "childlike:English-recall"
+    ],
+    "groups": {
+      "adult": {
+        "targets": 39,
+        "hits": 31,
+        "non_targets": 51,
+        "false_wakes": 0
+      },
+      "adult:literal-English": {
+        "targets": 13,
+        "hits": 7,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "childlike": {
+        "targets": 33,
+        "hits": 30,
+        "non_targets": 58,
+        "false_wakes": 0
+      },
+      "childlike:literal-English": {
+        "targets": 9,
+        "hits": 7,
+        "non_targets": 0,
+        "false_wakes": 0
+      }
+    },
+    "streaming_development": {
+      "targets": 72,
+      "hits": 61,
+      "non_targets": 109,
+      "false_wakes": 0
+    },
+    "independent_test": false,
+    "household_or_real_child_accepted": false
+  },
+  "development_qualified": false,
+  "continuous_development": "not run: already rejected by prerequisite gates",
+  "float_int8_small_TRAIN_check": {
+    "passed": false,
+    "cases": 8,
+    "failed_cases": 1,
+    "worst_max_error": 0.16623646020889282
+  },
+  "calibration": "same100balancedTRAINexamples; last valid mask extent, retaining interior zero-weight real inputs",
+  "household_or_independent_used": false,
+  "device_modified": false,
+  "export_change": "Fused two linear logit heads; trained probabilities preserved, no fitting",
+  "float_all_class_proof": {
+    "cases": 8,
+    "steps": 1600,
+    "worst_error": 3.5762786865234375e-07
+  },
+  "trained_sequence_export": {
+    "cases": 8,
+    "steps": 1600,
+    "worst_error": 1.043081283569336e-06
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "status": "TRAIN-coverage-diagnosis-not-accuracy",
+  "current_target_training_rows_including_variants": 723,
+  "current_original_literal_Pikoo_targets": {
+    "adult": 2,
+    "childlike": 0
+  },
+  "current_literal_Pikoo_variants": {
+    "adult": 10,
+    "childlike": 0
+  },
+  "scope_note": "Chinese-surface targets also teach the intended pi-ku phonemes; these counts document a prompt/synthesis-domain gap, not verified real-child or phonetic coverage.",
+  "existing_literal_TRAIN_recovery": {
+    "original_rows": 32,
+    "prior_content_agreements": 12,
+    "adult": 7,
+    "childlike": 5,
+    "prior_disagreements_retained_in_quarantine": 20,
+    "second_recognizer_review": "completed, not fitted",
+    "second_recognizer_agreements": 7,
+    "second_recognizer_disagreements": 5,
+    "two_recognizer_agreed_styles": {
+      "adult": 5,
+      "childlike": 2
+    }
+  },
+  "full_TRAIN_synthetic_anchor_review": {
+    "anchors": 931,
+    "local_completed": 931,
+    "local_transcript_agreements": 930,
+    "local_reused_same_hash_transcripts": 891,
+    "local_new_transcripts": 40,
+    "external_review": "in progress, paced, stop on request failure"
+  },
+  "model_scores_used_for_corpus_selection": false,
+  "household_or_frozen_test_used": false,
+  "labels_changed": false,
+  "reviewed_expansion": {
+    "input_delta_rows": 19,
+    "retained_rows": 13,
+    "quarantined_rows": 6,
+    "retained_groups": {
+      "adult:1": 5,
+      "childlike:1": 5,
+      "childlike:0": 3
+    },
+    "retained_literal_Pikoo_targets": {
+      "adult": 5,
+      "childlike": 2
+    },
+    "labels_changed": 0,
+    "source_audio_deleted": 0,
+    "no_fitting_yet": true
+  }
+}

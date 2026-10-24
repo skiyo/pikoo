@@ -81,7 +81,7 @@ def main():
                 ('train_causal.py', 'causal_model.py', 'causal_data.py',
                  'contrastive_readout.py', 'speech_context.py', 'acoustic_augment.py',
                  'sequence_export_check.py', 'train.py', 'review_google_corpus.py',
-                 'epoch_provenance.py', 'check_esp32_model.py')}
+                 'epoch_provenance.py', 'check_esp32_model.py', 'calibration_extent.py')}
     if a.short_context:
         pipeline['causal_branch.py'] = sha(Path(__file__).with_name('causal_branch.py'))
     if a.mil_target_completion:
@@ -226,9 +226,11 @@ def main():
     rng.shuffle(calibration)
 
     def representative():
+        from calibration_extent import valid_steps
         for index in calibration:
-            valid_steps = np.count_nonzero(w[index])
-            for step in range(valid_steps):
+            # An ignored interior target ending is real input, not padding.
+            # Dropping its count from the extent truncated the actual tail.
+            for step in range(valid_steps(w[index])):
                 yield [np.asarray(x[index:index+1, step*3:step*3+3], np.float32)]
 
     converter = tf.lite.TFLiteConverter.from_saved_model(str(a.output/'saved'))

@@ -438,7 +438,7 @@ idea that the new branch was ignored: its trained feature RMS is 2.35 versus
 1.15 for original pooled features; zeroing it changes some probabilities by
 almost one. See the [TRAIN event summary](../training/reports/wake-training-events-o-20261024.json).
 
-## Negative event objective (P, next control)
+## Negative event objective (P)
 
 `--mil-negative-events` adds a unit-weight rejection loss for each negative
 example's strongest valid five-step event, retaining its original per-frame
@@ -448,8 +448,8 @@ gradients even when a wake probability rounds to one. Padding is excluded;
 positive events get no added rejection penalty. Nine objective regressions
 cover both modes, saturated errors, padding, and frozen-encoder training.
 A one-epoch real-architecture smoke, static export, source snapshots and trained
-sequence check passed. P will keep O's network/data and fixed 12-epoch budget;
-all feature/class/mask caches must remain byte-identical. Inference stays at
+sequence check passed. P kept O's network/data and fixed 12-epoch budget;
+all feature/class/mask caches remained byte-identical. Inference stays at
 the original 0.90/five rule. No qualification or flashing is implied.
 
 Runs now snapshot their source files and input manifest, and reject source or
@@ -467,7 +467,7 @@ scores remain unchanged. ASR spelling cannot establish exact vowels or tones.
 
 A separate modern Google TTS TRAIN experiment obtained seven of eight planned
 childlike clips (four targets, three near-negatives). All seven pass the local
-content screen; external review is separate and incomplete. The project's
+content screen; external review is separate and is now complete (six agreements). The project's
 3.1 Flash TTS API returned its ten-request/day free-tier quota and generation
 stopped. No paid fallback was enabled. Explicit bounded read timeouts preserve
 cached results; timeout/HTTP errors never automatically retry.
@@ -481,3 +481,83 @@ not uploaded. The current manifest's 1,142 distinct parent references have no
 protected-ledger intersection. Upload/training guards also reject protected
 parent hashes, sealed flags, reference audio and directory escapes. No fitting
 label or development gate has been edited from this preparation.
+
+
+## P result and calibration extent correction
+
+P completed its fixed 12 epochs. The original 907-recording gate passed:
+181/195 targets and 0/712 false wakes. The entire 181-recording supplement still
+failed: 60/72 targets, with literal-English adult and childlike groups at 7/13
+and 7/9; non-target false wakes were 0/109. One of eight TRAIN quantization
+cases exceeded the original 0.15 maximum-error limit (0.1845). These failures
+remain recorded; no independent acceptance or flashing followed. See the
+[P report](../training/reports/wake-context-p-20261024.json).
+
+The calibration range incorrectly counted interior uncertainty-mask zeros as
+right padding, truncating real tail features. The correction uses the last
+valid weight and retains all intervening real inputs. Three regressions cover
+interior gaps, padding and invalid masks. Q only re-exports P's unchanged float
+weights using the same 100 TRAIN calibration examples; it still failed (see below).
+Development labels, threshold and the five-inference detector stay unchanged.
+
+External content screening of seven new Google TRAIN clips is now complete:
+six transcript agreements and one disagreement. The disagreement is quarantined,
+not automatically relabeled negative; none entered P/Q. The full 931-anchor
+TRAIN review has started, one request per 30 seconds and no automatic retry.
+Local screening reuses 891 existing same-hash transcripts and runs the existing
+offline recognizer only for the missing 40. Household and real-child audio are
+not uploaded.
+
+
+## Export controls Q–S and immutable evaluation outputs
+
+These controls did not refit P or change its learned float probabilities:
+
+| Control | Export change | Bytes | Original hits /195 | False wakes /712 | Supplement hits /72 | Worst TRAIN quantization error |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| [Q](../training/reports/wake-context-q-20261024.json) | Corrected real-step calibration extent | 241,008 | 181 | 0 | 61 | 0.1923 |
+| [R](../training/reports/wake-context-r-20261024.json) | Fuse two linear logit projections before rounding | 239,896 | 181 | 0 | 61 | 0.1662 |
+| [S](../training/reports/wake-context-s-20261024.json) | Also fold a softmax-invariant common logit shift into weights | 239,896 | 181 | 0 | 61 | 0.1805 |
+
+All failed the original 0.15 quantization ceiling and supplemental recall gate.
+R/S first proved all-class float equality and unchanged original batch-to-saved
+stream behavior over eight TRAIN cases /1,600 steps; these are numeric controls,
+not accuracy acceptance. No failed candidate was flashed. Four fusion regressions
+cover unchanged probabilities, source immutability, nonlinear-head rejection and
+centering without added runtime reduction ops. Fusion remains export research;
+it is not silently enabled in the ordinary training path.
+
+An experiment-wrapper output-name collision was recovered from untouched stage
+reports; models, scores and audio did not change. Future evaluation uses
+`training/evaluate_candidate.py` with explicit inputs and a fresh output directory,
+never copied candidate letters. Existing directories are refused and input/model
+fingerprints are rechecked between stages. Two identity regressions passed. Its
+first full software replay reproduced S's original/additional gates and exact
+quantization report; this repeated development check is not a fresh test.
+
+## TRAIN coverage finding
+
+The current 723 positive TRAIN rows include only **two original adult literal
+Pikoo clips and no original childlike literal Pikoo clips** (plus ten adult
+variants). Chinese-surface homophones also teach pi-ku; the counts describe a
+prompt/synthesis-domain gap, not verified phonetic or real-child coverage.
+An existing modern Qwen3 TRAIN source contains 32 literal-name originals:
+12 have prior content agreement (seven adult /five childlike). Second-recognizer
+review is complete: seven agree with both (five adult /two childlike).
+The original other 20 remain quarantined with their original
+evidence. No model score selected these clips, no new large model was downloaded,
+and none has yet entered fitting. See the [coverage record](../training/reports/wake-training-coverage-20261024.json).
+
+The 931-anchor local pass is complete: 930 transcript agreements and one
+negative-utterance disagreement. It reused 891 same-hash transcripts and decoded
+only the missing 40 with the existing offline recognizer. External review is
+still in progress; the 12 priority literal-name reviews have finished and the
+full worker has resumed. Only one low-rate API worker runs at a time. ASR agreement
+does not verify tone or actual child wake performance.
+
+The seven two-recognizer-agreed original TRAIN names plus six new Google content
+agreements form a private delta: five adult targets, five childlike targets and
+three childlike negatives. Six of the 19 input clips remain quarantined with
+their evidence; no labels or source audio were changed/deleted. The delta is
+not fitted, does not certify the entire TRAIN corpus clean, and is not an
+independent or human acceptance test.
