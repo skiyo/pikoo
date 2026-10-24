@@ -401,3 +401,83 @@ with both `--short-context --raw-branch`. Two branch regressions pass, including
 nonzero-correction all-step parity and frozen original weights; the full
 checkpoint/static prototype is still running. No new fitting or deployment
 is authorized by unit tests alone, and no inference cutoff is changed.
+
+The raw projection prototype completed: 240,464 bytes, 21,918 trainable branch
+parameters, all-integer static checks passed, and maximum all-class float
+difference 7.46e-7 across 1,600 steps. N then trained all 12 epochs but failed:
+188/195 cold targets, 3/712 false wakes, and 62/72 supplemental targets. Its
+eight-case TRAIN float/INT8 diagnostic passed (worst error 0.049). See the
+[N report](../training/reports/wake-context-n-20261024.json). No full context,
+independent test, or flashing followed a failed prerequisite.
+
+## Positive event objective (O)
+
+O tests the actual detector's five-step event instead of requiring every late
+positive frame to remain high. `--mil-target-completion` requires the explicit
+completion-uncertainty mask. Positives use the strongest complete five-step
+window inside that existing region; padding and early incomplete prefixes
+cannot satisfy the objective. The original positive supervision mass is kept.
+All non-target per-frame categorical loss remains unchanged in this control.
+Six initial regressions and a one-epoch real-architecture TRAIN smoke passed.
+The training-only wrapper is not part of the exported inference network.
+
+O still failed: 184/195 cold targets, 2/712 false wakes and 61/72 supplemental
+targets, with adult/childlike literal-English groups at 8/13 and 6/9. The
+241,008-byte export's eight-case quantization check passed. Its learned batch
+sequence also matches the saved stateful stream on eight balanced TRAIN examples,
+including all 1,600 steps and fresh states per example (maximum error 6.86e-7).
+That numeric contract is now mandatory for future causal exports and has a
+regression that detects an intentionally corrupted export. It is not accuracy
+or device acceptance. See the [O report](../training/reports/wake-context-o-20261024.json).
+
+An all-TRAIN fitting diagnosis used the same 22,860 correlated augmented examples:
+5,498/5,784 positive eligible events fired, while 37/17,076 non-target examples
+still produced false events. These counts are not independent evaluation or
+real-child wake acceptance. A separate 16-TRAIN feature probe disproved the
+idea that the new branch was ignored: its trained feature RMS is 2.35 versus
+1.15 for original pooled features; zeroing it changes some probabilities by
+almost one. See the [TRAIN event summary](../training/reports/wake-training-events-o-20261024.json).
+
+## Negative event objective (P, next control)
+
+`--mil-negative-events` adds a unit-weight rejection loss for each negative
+example's strongest valid five-step event, retaining its original per-frame
+class loss. This addresses a short mistake being diluted by many correct
+frames. Non-wake probabilities are summed directly to retain finite reject
+gradients even when a wake probability rounds to one. Padding is excluded;
+positive events get no added rejection penalty. Nine objective regressions
+cover both modes, saturated errors, padding, and frozen-encoder training.
+A one-epoch real-architecture smoke, static export, source snapshots and trained
+sequence check passed. P will keep O's network/data and fixed 12-epoch budget;
+all feature/class/mask caches must remain byte-identical. Inference stays at
+the original 0.90/five rule. No qualification or flashing is implied.
+
+Runs now snapshot their source files and input manifest, and reject source or
+manifest drift before fitting/export. O's earlier source state was reconstructed
+byte-for-byte against all eight stored training fingerprints; its failed
+results and weights were not changed.
+
+## Completed content audit and next data review
+
+The full 181-recording second-ASR audit completed: **136 transcript agreements
+and 45 disagreements**, not 45 proven bad recordings. See the [content record](../training/reports/wake-content-development-20261024.json).
+Two target disagreements, selected by hash within each synthetic style without
+model scores, await human listening. Existing labels/gates and all failed
+scores remain unchanged. ASR spelling cannot establish exact vowels or tones.
+
+A separate modern Google TTS TRAIN experiment obtained seven of eight planned
+childlike clips (four targets, three near-negatives). All seven pass the local
+content screen; external review is separate and incomplete. The project's
+3.1 Flash TTS API returned its ten-request/day free-tier quota and generation
+stopped. No paid fallback was enabled. Explicit bounded read timeouts preserve
+cached results; timeout/HTTP errors never automatically retry.
+
+A model-score-independent private review pack is prepared for 931 TRAIN
+synthetic anchors: 901 native originals, 29 explicitly PSOLA-derived pitch-level
+anchors, and one recovered original TRAIN ancestor. It covers the lineage of
+all 723 current positive training rows. PSOLA anchors are not claimed to be
+native pronunciation. Real ChildMandarin recordings and household audio are
+not uploaded. The current manifest's 1,142 distinct parent references have no
+protected-ledger intersection. Upload/training guards also reject protected
+parent hashes, sealed flags, reference audio and directory escapes. No fitting
+label or development gate has been edited from this preparation.

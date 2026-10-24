@@ -1,0 +1,12 @@
+{
+  "completed": true,
+  "model": "gemini-3.1-flash-lite",
+  "rows": 181,
+  "content_agreements": 136,
+  "content_disagreements": 45,
+  "scope": "Content-only audit; ASR cannot verify first tones or actual children",
+  "independent_wake_test": false,
+  "household_used": false,
+  "automatic_dataset_or_label_edits": false,
+  "original_model_failures_preserved": true
+}

@@ -9,6 +9,23 @@ AVAILABLE = importlib.util.find_spec('numpy') is not None
 
 @unittest.skipUnless(AVAILABLE, 'Optional synthesis runtime is not installed')
 class GoogleCorpusTest(unittest.TestCase):
+    def test_tts_timeout_is_explicit_and_transport_or_quota_errors_never_retry(self):
+        from urllib.error import HTTPError
+        from generate_google import request_json
+        class Fake:
+            def __init__(self, result):self.result=result;self.timeouts=[]
+            def open(self,request,timeout):
+                self.timeouts.append(timeout)
+                if isinstance(self.result,Exception):raise self.result
+                return io.StringIO(self.result)
+        opener=Fake('{"ok":true}')
+        self.assertEqual(request_json(opener,object(),120),{'ok':True})
+        self.assertEqual(opener.timeouts,[120])
+        for error in [TimeoutError(),HTTPError('https://example.invalid',429,'quota',{},None)]:
+            opener=Fake(error)
+            with self.assertRaises(type(error)):request_json(opener,object(),120)
+            self.assertEqual(opener.timeouts,[120])
+
     def test_level_only_curriculum_retains_splits_and_near_phrase_negatives(self):
         from generate_google import jobs
         original=jobs();rows=jobs(level_contrasts=True)

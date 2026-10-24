@@ -38,6 +38,14 @@ STYLES = [
 NEGATIVES = ['你好皮球', '你好朋友', '给我讲一个故事', '皮球在哪里']
 
 
+def request_json(opener, request, timeout=55):
+    """One bounded TTS request. Never retry a timeout, quota or HTTP error."""
+    if not 10 <= timeout <= 180:
+        raise ValueError('TTS timeout must be10..180 seconds')
+    with opener.open(request, timeout=timeout) as reply:
+        return json.load(reply)
+
+
 def jobs(mixed_pronunciation=False,phonetic_spelling=False,near_phrase_contrasts=False,level_contrasts=False):
     """Assign voice identities to splits before any generation or augmentation."""
     rows = []
@@ -154,6 +162,7 @@ def main():
     p.add_argument('--workers', type=int, default=2, choices=[1, 2])
     p.add_argument('--limit', type=int, default=96, help='Bound this invocation; cached clips cost no calls')
     p.add_argument('--interval', type=float, default=15, help='Minimum seconds between requests to respect free-tier rate limits')
+    p.add_argument('--request-timeout', type=float, default=55, help='Bounded read timeout10..180 seconds; no automatic retries')
     p.add_argument('--batch-voices', action='store_true', help='Eight utterances per voice/request, with strict pause alignment')
     p.add_argument('--model', choices=FREE_TTS_MODELS, default=MODEL)
     p.add_argument('--childlike-voices', nargs='*', default=[], help='Synthetic youthful delivery only; never labeled real children')
@@ -179,6 +188,8 @@ def main():
         raise ValueError('limit must be between 1 and 96')
     if a.interval < 0:
         raise ValueError('interval must be nonnegative')
+    if not 10 <= a.request_timeout <= 180:
+        raise ValueError('TTS timeout must be10..180 seconds')
     if a.utterance_indices and (a.batch_voices or len(set(a.utterance_indices))!=len(a.utterance_indices) or any(i not in range(8) for i in a.utterance_indices)):
         raise ValueError('Unique utterance indices 0..7 require single-utterance generation')
     rate_lock = threading.Lock()
@@ -257,8 +268,7 @@ def main():
             time.sleep(delay)
         next_request[0] = time.monotonic() + a.interval
         try:
-            with opener.open(request, timeout=55) as reply:
-                response = json.load(reply)
+            response = request_json(opener, request, a.request_timeout)
         except HTTPError as error:
             decoded = json.loads(error.read())
             details = decoded.get('error', decoded)
@@ -307,8 +317,7 @@ def main():
                     time.sleep(delay)
                 next_request[0] = time.monotonic() + a.interval
             try:
-                with opener.open(request, timeout=55) as reply:
-                    response = json.load(reply)
+                response = request_json(opener, request, a.request_timeout)
             except HTTPError as error:
                 try:
                     decoded=json.loads(error.read())
@@ -373,6 +382,7 @@ def main():
         (a.output / 'generation-status.json').write_text(json.dumps({
             'completed_manifest_rows': len(completed), 'expected': len(selected),
             'model': a.model, 'synthetic_not_human': True,
+            'request_timeout_seconds': a.request_timeout,
             'rejected_batches': rejected,
             'finished_unix': int(time.time())}, indent=2))
 

@@ -1,0 +1,131 @@
+{
+  "status": "TRAIN-diagnostic-not-accuracy-or-device-acceptance",
+  "model_sha256": "520ceca35449d6e42f58377be62df56d85bfd132dea979bddf6d8b95b5ec0786",
+  "threshold": 0.9,
+  "rolling_inferences": 5,
+  "examples": 22860,
+  "correlated_augmented_examples_not_independent_recordings": true,
+  "summary": {
+    "all": {
+      "targets": 5784,
+      "hits": 5498,
+      "non_targets": 17076,
+      "false_wakes": 37,
+      "early_positive_candidates": 25
+    },
+    "licensed-real-child-ordinary": {
+      "targets": 0,
+      "hits": 0,
+      "non_targets": 9130,
+      "false_wakes": 12,
+      "early_positive_candidates": 0
+    },
+    "licensed-real-child-ordinary::warm": {
+      "targets": 0,
+      "hits": 0,
+      "non_targets": 4560,
+      "false_wakes": 7,
+      "early_positive_candidates": 0
+    },
+    "licensed-real-child-ordinary::cold": {
+      "targets": 0,
+      "hits": 0,
+      "non_targets": 4570,
+      "false_wakes": 5,
+      "early_positive_candidates": 0
+    },
+    "synthetic-unspecified": {
+      "targets": 144,
+      "hits": 140,
+      "non_targets": 232,
+      "false_wakes": 0,
+      "early_positive_candidates": 0
+    },
+    "synthetic-unspecified::warm": {
+      "targets": 65,
+      "hits": 61,
+      "non_targets": 112,
+      "false_wakes": 0,
+      "early_positive_candidates": 0
+    },
+    "synthetic-unspecified::cold": {
+      "targets": 79,
+      "hits": 79,
+      "non_targets": 120,
+      "false_wakes": 0,
+      "early_positive_candidates": 0
+    },
+    "synthetic-adult": {
+      "targets": 2408,
+      "hits": 2289,
+      "non_targets": 2498,
+      "false_wakes": 6,
+      "early_positive_candidates": 1
+    },
+    "synthetic-adult::warm": {
+      "targets": 1209,
+      "hits": 1108,
+      "non_targets": 1227,
+      "false_wakes": 4,
+      "early_positive_candidates": 1
+    },
+    "synthetic-adult::cold": {
+      "targets": 1199,
+      "hits": 1181,
+      "non_targets": 1271,
+      "false_wakes": 2,
+      "early_positive_candidates": 0
+    },
+    "synthetic-childlike": {
+      "targets": 3232,
+      "hits": 3069,
+      "non_targets": 3834,
+      "false_wakes": 15,
+      "early_positive_candidates": 24
+    },
+    "synthetic-childlike::warm": {
+      "targets": 1613,
+      "hits": 1462,
+      "non_targets": 1899,
+      "false_wakes": 11,
+      "early_positive_candidates": 7
+    },
+    "synthetic-childlike::cold": {
+      "targets": 1619,
+      "hits": 1607,
+      "non_targets": 1935,
+      "false_wakes": 4,
+      "early_positive_candidates": 17
+    },
+    "licensed-ordinary": {
+      "targets": 0,
+      "hits": 0,
+      "non_targets": 1382,
+      "false_wakes": 4,
+      "early_positive_candidates": 0
+    },
+    "licensed-ordinary::warm": {
+      "targets": 0,
+      "hits": 0,
+      "non_targets": 675,
+      "false_wakes": 2,
+      "early_positive_candidates": 0
+    },
+    "licensed-ordinary::cold": {
+      "targets": 0,
+      "hits": 0,
+      "non_targets": 707,
+      "false_wakes": 2,
+      "early_positive_candidates": 0
+    },
+    "synthetic-adult::literal-English": {
+      "targets": 96,
+      "hits": 88,
+      "non_targets": 0,
+      "false_wakes": 0,
+      "early_positive_candidates": 0
+    }
+  },
+  "household_or_development_used": false,
+  "labels_or_model_changed": false
+}

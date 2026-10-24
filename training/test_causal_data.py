@@ -39,6 +39,10 @@ class CausalDataTest(unittest.TestCase):
             self.assertEqual(training_rows([train, validation], root, set()), [train])
             with self.assertRaisesRegex(ValueError, 'Protected'):
                 training_rows([train], root, {digest})
+            for lineage in [{'parent_sha256':'protected-parent'},
+                            {'augmentation':{'parent_sha256':'protected-parent'}}]:
+                with self.assertRaisesRegex(ValueError, 'Protected'):
+                    training_rows([{**train,**lineage}],root,{'protected-parent'})
             with self.assertRaisesRegex(ValueError, 'leaks'):
                 training_rows([train, dict(validation, group='train')], root, set())
             with self.assertRaisesRegex(ValueError, 'leaks'):

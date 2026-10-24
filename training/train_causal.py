@@ -30,9 +30,15 @@ def main():
     p.add_argument('--short-context', action='store_true', help='Learn an ordered acoustic branch; requires its prototype proof')
     p.add_argument('--mask-completion-uncertainty', action='store_true', help='Ignore ambiguous target endings; never infer positive labels from energy')
     p.add_argument('--raw-branch', action='store_true', help='Learn a separate96-filter raw projection; requires its prototype proof')
+    p.add_argument('--mil-target-completion', action='store_true', help='TRAIN positives using one eligible five-step event; inference is unchanged')
+    p.add_argument('--mil-negative-events', action='store_true', help='Also reject the strongest valid negative five-step event; inference unchanged')
     a = p.parse_args()
     if a.raw_branch and not a.short_context:
         raise ValueError('Raw projection requires the explicit short-context architecture')
+    if a.mil_target_completion and not a.mask_completion_uncertainty:
+        raise ValueError('Positive MIL requires the explicit completion-uncertainty region')
+    if a.mil_negative_events and not a.mil_target_completion:
+        raise ValueError('Negative events require the explicit positive-event training objective')
     if not 1 <= a.epochs <= 32 or not 1 <= a.batch_size <= 64:
         raise ValueError('Invalid fixed training budget')
     os.umask(0o077)
@@ -64,26 +70,54 @@ def main():
             raise ValueError('Missing compatible short-context branch proof')
     elif proof['graph'].get('architecture'):
         raise ValueError('Do not use a branch proof for the residual-only model')
-    rows = json.loads(a.manifest.read_text())
-    protection = json.loads(a.protected_hashes.read_text())
+    manifest_bytes = a.manifest.read_bytes()
+    manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
+    rows = json.loads(manifest_bytes)
+    protection_bytes = a.protected_hashes.read_bytes()
+    protection_sha256 = hashlib.sha256(protection_bytes).hexdigest()
+    protection = json.loads(protection_bytes)
     selected = training_rows(rows, a.manifest.parent, set(protection['audio_sha256'].values()))
     pipeline = {name: sha(Path(__file__).with_name(name)) for name in
                 ('train_causal.py', 'causal_model.py', 'causal_data.py',
-                 'contrastive_readout.py', 'speech_context.py', 'acoustic_augment.py')}
+                 'contrastive_readout.py', 'speech_context.py', 'acoustic_augment.py',
+                 'sequence_export_check.py', 'train.py', 'review_google_corpus.py',
+                 'epoch_provenance.py', 'check_esp32_model.py')}
     if a.short_context:
         pipeline['causal_branch.py'] = sha(Path(__file__).with_name('causal_branch.py'))
+    if a.mil_target_completion:
+        pipeline['completion_mil.py'] = sha(Path(__file__).with_name('completion_mil.py'))
     # Fixed, balanced cold/warm repetitions; no held-out model score selection.
     jobs = []
     for row in selected:
         count = 8 if row['label'] else 4 if row.get('hard_negative') else 1 if row.get('real_child') else 2
         jobs.extend((row, repeat) for repeat in range(count))
     a.output.mkdir(parents=True, exist_ok=False)
+    snapshot = a.output/'source-snapshot'
+    snapshot.mkdir()
+    for name, digest in pipeline.items():
+        content = Path(__file__).with_name(name).read_bytes()
+        if hashlib.sha256(content).hexdigest() != digest:
+            raise ValueError('Training source changed during snapshot: '+name)
+        (snapshot/name).write_bytes(content)
+    (a.output/'input-manifest.json').write_bytes(manifest_bytes)
+
+    def assert_frozen_inputs():
+        if sha(a.manifest) != manifest_sha256:
+            raise ValueError('Training manifest changed during this run')
+        if sha(a.protected_hashes) != protection_sha256:
+            raise ValueError('Protection ledger changed during this run')
+        for name, digest in pipeline.items():
+            if sha(Path(__file__).with_name(name)) != digest:
+                raise ValueError('Training source changed during this run: '+name)
     (a.output/'preparation.json').write_text(json.dumps({
         'stage': 'building-TRAIN-only-causal-cache', 'examples': len(jobs),
-        'manifest_sha256': sha(a.manifest), 'checkpoint_sha256': sha(a.checkpoint),
+        'manifest_sha256': manifest_sha256, 'checkpoint_sha256': sha(a.checkpoint),
         'parity_proof_sha256': sha(a.parity_proof), 'fixed_epochs': a.epochs,
         'pipeline_sha256': pipeline,
+        'protected_ledger_sha256': protection_sha256,
         'mask_completion_uncertainty': a.mask_completion_uncertainty,
+        'mil_target_completion': a.mil_target_completion,
+        'mil_negative_events': a.mil_negative_events,
         'class_order': PHRASES, 'household_or_development_used': False,
     }, indent=2)+'\n')
     x = np.lib.format.open_memmap(a.output/'causal-features.npy', mode='w+', dtype=np.float32, shape=(len(jobs), 600, 40))
@@ -117,6 +151,7 @@ def main():
     class_weights = np.minimum(16., np.maximum(1., np.sqrt(counts[0]/np.maximum(counts, 1))))
     summary['class_weights'] = class_weights.tolist()
     (a.output/'dataset-summary.json').write_text(json.dumps(summary, indent=2)+'\n')
+    assert_frozen_inputs()
     flags = SimpleNamespace(pointwise_filters=','.join(['128']*6), repeat_in_block=','.join(['1']*6),
         mixconv_kernel_sizes='[5],[9],[13],[21],[31],[43]', residual_connection=','.join(['0']*6),
         first_conv_filters=64, first_conv_kernel_size=3, stride=3, spatial_attention=0, pooled=1, max_pool=0)
@@ -148,8 +183,16 @@ def main():
         def on_epoch_end(self):
             self.indices = self.rng.permutation(len(jobs))
 
-    fit.compile(optimizer=tf.keras.optimizers.Adam(.0003, clipnorm=5), loss='sparse_categorical_crossentropy')
-    history = fit.fit(Batches(), epochs=a.epochs, verbose=2)
+    optimizer = tf.keras.optimizers.Adam(.0003, clipnorm=5)
+    if a.mil_target_completion:
+        from completion_mil import trainer
+        learner = trainer(fit, negative_events=a.mil_negative_events)
+        learner.compile(optimizer=optimizer)
+    else:
+        learner = fit
+        learner.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy')
+    history = learner.fit(Batches(), epochs=a.epochs, verbose=2)
+    assert_frozen_inputs()
     for name, weights in frozen.items():
         for expected, actual in zip(weights, fit.get_layer(name).get_weights()):
             np.testing.assert_array_equal(actual, expected)
@@ -169,8 +212,13 @@ def main():
     archive.track(model)
     archive.add_endpoint(name='serve', fn=model.call, input_signature=[tf.TensorSpec(model.input.shape, tf.float32)])
     archive.write_out(str(a.output/'saved'), verbose=False)
-    rng = np.random.default_rng(43)
+    from sequence_export_check import check as check_sequence
     targets = np.asarray([row['label'] for row, repeat in jobs])
+    sequence_parity = check_sequence(wake, a.output/'saved', x, targets)
+    (a.output/'trained-sequence-parity.json').write_text(json.dumps(sequence_parity, indent=2)+'\n')
+    if sequence_parity['status'] != 'passed-trained-sequence-export-parity':
+        raise ValueError('Trained batch view and saved stateful stream differ')
+    rng = np.random.default_rng(43)
     calibration = []
     for label in (0, 1):
         pool = np.flatnonzero(targets == label)
@@ -196,11 +244,18 @@ def main():
     report = {'status': 'experimental-final-fixed-epoch-not-evaluated-or-flashed',
         'epochs': a.epochs, 'filters': 128, 'first_filters': 64, 'kernels': [5, 9, 13, 21, 31, 43],
         'model_bytes': compatibility['bytes'], 'model_sha256': compatibility['sha256'],
-        'training_manifest_sha256': sha(a.manifest), 'source': source_proof,
+        'training_manifest_sha256': manifest_sha256, 'source': source_proof,
+        'training_source_snapshot': 'source-snapshot',
+        'protected_ledger_sha256': protection_sha256,
         'parity_proof_sha256': sha(a.parity_proof), 'graph': graph, 'dataset': summary,
         'pipeline_sha256': pipeline, 'data_contract': 'causal-waveform-uncertainty-mask-v2' if a.mask_completion_uncertainty else 'causal-complete-waveform-v1',
         'repetitions': {'target': 8, 'hard_negative': 4, 'real_child_ordinary': 1, 'other': 2},
         'learning_rate': .0003, 'batch_size': a.batch_size,
+        'positive_objective': 'one-eligible-five-step-event' if a.mil_target_completion else 'all-post-completion-frames',
+        'trained_sequence_export_parity': {'passed': True, 'cases': len(sequence_parity['cases']),
+            'max_absolute_error': max(c['max_absolute_error'] for c in sequence_parity['cases'])},
+        'negative_objective': 'all-valid-frame-categorical-plus-worst-five-step-event' if a.mil_negative_events
+            else 'unchanged-all-valid-frame-categorical-crossentropy',
         'classifier_readout': {'type': 'causal-frame-short-context' if a.short_context else 'causal-frame-frozen-residual',
             'classes': PHRASES, 'residual_hidden_units': 32 if a.short_context else 64,
             'original_encoder_and_logits_frozen': True},

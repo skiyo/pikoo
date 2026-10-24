@@ -29,7 +29,8 @@ def training_rows(rows, root, protected):
             raise ValueError('Speaker/group leaks across splits')
         groups[group] = split
         digest = row['sha256']
-        if digest in protected:
+        parents = {row.get('parent_sha256'), row.get('augmentation', {}).get('parent_sha256')}
+        if digest in protected or bool((parents-{None}) & protected):
             raise ValueError('Protected recording hash in preparation manifest')
         if digest in hashes and hashes[digest] != split:
             raise ValueError('Waveform leaks across splits')

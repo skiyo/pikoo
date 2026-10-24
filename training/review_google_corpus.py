@@ -74,6 +74,32 @@ def write_cache(path, rows, cached):
     temporary.replace(path)
 
 
+def validate(rows, root, protected, allow_local_synthetic=False):
+    """Only declared fictional synthesis may leave the machine for review."""
+    root = root.resolve()
+    allowed = {'Google-Gemini-TTS-synthetic'}
+    if allow_local_synthetic:
+        allowed.update({'Qwen3-TTS-synthetic-local', 'Google-TTS-level-tone-synthetic'})
+    for row in rows:
+        if (row.get('source') not in allowed or not row.get('synthetic')
+                or row.get('evaluation_only') or row.get('frozen_holdout')
+                or row.get('reference_audio_used') or row.get('family_inputs_used') or row.get('real_child')):
+            raise ValueError('Only fictional generated TTS without protected/reference audio may be uploaded')
+        if row['source'] == 'Google-TTS-level-tone-synthetic' and not str(row.get('source_terms', '')).startswith('https://ai.google.dev/'):
+            raise ValueError('Level-tone synthesis requires its Google source record')
+        parents = {row.get('parent_sha256'), row.get('augmentation', {}).get('parent_sha256')}
+        if (parents-{None}) & protected:
+            raise ValueError('Protected source recording cannot be uploaded through a derivative')
+        path = (root/row['path']).resolve()
+        if not path.is_relative_to(root):
+            raise ValueError('Generated audio path escapes corpus directory')
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if digest in protected:
+            raise ValueError('Protected household/sealed audio must not be uploaded')
+        if digest != row['sha256']:
+            raise ValueError('Synthetic audio hash mismatch')
+
+
 def content_matches(text, transcript):
     # Do not let punctuation cleanup silently erase extra spoken English or
     # digits. Only the already-supported complete name may be normalized away.
@@ -152,18 +178,7 @@ def main():
     rows = json.loads(a.manifest.read_text())
     if a.allow_local_synthetic and not a.protected_hashes:raise ValueError('Local synthetic review requires a household exclusion ledger')
     protected=set(json.loads(a.protected_hashes.read_text())['audio_sha256'].values()) if a.protected_hashes else set()
-    for row in rows:
-        allowed={'Google-Gemini-TTS-synthetic'}
-        if a.allow_local_synthetic:allowed.add('Qwen3-TTS-synthetic-local')
-        if row.get('source') not in allowed or not row.get('synthetic') or row.get('evaluation_only') or row.get('reference_audio_used') or row.get('family_inputs_used') or row.get('real_child'):
-            raise ValueError('Only generated fictional TTS without reference/household audio may be uploaded for review')
-        path = (a.manifest.parent / row['path']).resolve()
-        if not path.is_relative_to(a.manifest.parent.resolve()):
-            raise ValueError('Generated audio path escapes corpus directory')
-        digest=hashlib.sha256(path.read_bytes()).hexdigest()
-        if digest in protected:raise ValueError('Protected household audio must not be uploaded')
-        if digest != row['sha256']:
-            raise ValueError('Synthetic audio hash mismatch')
+    validate(rows, a.manifest.parent, protected, a.allow_local_synthetic)
     key = next(line.split('=', 1)[1].strip().strip('\"\'') for line in a.key_file.read_text().splitlines()
                if line.startswith(('GOOGLE_API_KEY=', 'GEMINI_API_KEY=')))
     opener = build_opener(ProxyHandler({'http': a.proxy, 'https': a.proxy} if a.proxy else {}))

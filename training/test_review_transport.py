@@ -1,9 +1,28 @@
 import io,ssl,unittest
 from urllib.error import HTTPError,URLError
-from review_google_corpus import post_json, checked_transcripts, content_matches, review_request, review_text, validated_cache, write_cache
+from review_google_corpus import post_json, checked_transcripts, content_matches, review_request, review_text, validated_cache, write_cache, validate
 
 
 class ReviewTransportTest(unittest.TestCase):
+    def test_original_level_tts_is_opt_in_and_protected_audio_never_uploads(self):
+        import hashlib,tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);(root/'clip.wav').write_bytes(b'fictional-test-audio')
+            digest=hashlib.sha256((root/'clip.wav').read_bytes()).hexdigest()
+            row=dict(source='Google-TTS-level-tone-synthetic',source_terms='https://ai.google.dev/gemini-api/terms',
+                     synthetic=True,path='clip.wav',sha256=digest)
+            validate([row],root,set(),True)
+            with self.assertRaises(ValueError):validate([row],root,set(),False)
+            with self.assertRaises(ValueError):validate([row],root,{digest},True)
+            for lineage in [{'parent_sha256':'protected-parent'},
+                            {'augmentation':{'parent_sha256':'protected-parent'}}]:
+                with self.assertRaises(ValueError):validate([{**row,**lineage}],root,{'protected-parent'},True)
+            for flag in ['evaluation_only','frozen_holdout','real_child','reference_audio_used','family_inputs_used']:
+                with self.assertRaises(ValueError):validate([{**row,flag:True,'path':'must-not-read.wav'}],root,set(),True)
+            with self.assertRaises(ValueError):validate([{**row,'source_terms':''}],root,set(),True)
+            with self.assertRaises(ValueError):validate([{**row,'path':'../outside.wav'}],root,set(),True)
+
     def test_resume_preserves_later_reviews_and_rejects_mixed_model_cache(self):
         import json,tempfile
         from pathlib import Path
