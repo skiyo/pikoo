@@ -2,6 +2,40 @@
 
 [English](wake-context.md) | [简体中文](wake-context.zh-CN.md)
 
+## Capacity control, 2026-10-24
+
+Doubling the raw projection to 192 filters, intermediate channels to 48 and
+hidden units to 64 did not qualify the candidate. The fixed 12-epoch model is
+287,368 bytes: original development 178/195, supplementary development 61/72,
+zero false wakes in 821 non-target clips. Its adult literal-name group remains
+8/13 and childlike literal-name group 7/9. All 20,436 prepared TRAIN feature,
+label and mask examples are bytewise identical to the narrower comparison.
+No threshold, development label or admission gate changed.
+
+A separate research subset reuses the first 12 raw development hashes per
+style and label, 24 targets and 24 non-targets total. Old BM17 results were
+reused from its completed full baseline. These are correlated replays, not
+new independent tests or real children:
+
+| Condition | BM17 adult / childlike | Raw96 adult / childlike | Raw192 adult / childlike |
+|---|---|---|---|
+| Cold | 12/12 · 11/12 | 12/12 · 11/12 | 12/12 · 11/12 |
+| Speech directly before target | 3/12 · 5/12 | 7/12 · 10/12 | 9/12 · 10/12 |
+| Speech, 1-second gap | 11/12 · 11/12 | 9/12 · 10/12 | 11/12 · 10/12 |
+
+No subset non-target or prefix window crossed the cutoff. Adjacent-speech
+recall improved locally; other conditions and the full development checks
+still fail. Full continuous acceptance and independent testing remain pending;
+these results do not qualify a flash. The untrained wider prototype used
+71,040 bytes of host Micro arena; that is not trained-model ESP32 timing or
+concurrent audio/display acceptance.
+
+See the [capacity report](../training/reports/wake-wide72-capacity-20261024.json),
+[context subset report](../training/reports/wake-capacity-context-subset-20261024.json)
+and [experimental source patch](../training/experiments/wide72-capacity.patch).
+The patch is recorded against source at `3ed9afe`; apply only to a separate
+research checkout. The default architecture and running device were unchanged.
+
 ## Additional TRAIN review, 2026-10-24
 
 Nine newly generated fictional Google 3.1 TTS clips received local and

@@ -1,0 +1,103 @@
+--- a/training/causal_branch.py
++++ b/training/causal_branch.py
+@@ -11,8 +11,8 @@
+     import tensorflow as tf
+     from microwakeword.layers.stream import Stream
+     from causal_model import sequence_view
+-    if raw_filters not in (0, 96):
+-        raise ValueError('Raw acoustic branch is either disabled or explicitly96 filters')
++    if raw_filters not in (0, 192):
++        raise ValueError('Raw acoustic branch is either disabled or explicitly192 filters')
+     if type(ordered_steps) is not int or ordered_steps not in (20, 72):
+         raise ValueError('Ordered context must be the explicit20 or72 step control')
+     for layer in source.layers:
+@@ -39,7 +39,7 @@
+                      use_one_step=False, pad_time_dim='causal', name=f'short_context_buffer_{i}')(net)
+         net = tf.keras.layers.DepthwiseConv2D((size, 1), use_bias=False,
+                  name=f'short_context_depthwise_{i}')(net)
+-        net = tf.keras.layers.Conv2D(24, 1, activation='relu6',
++        net = tf.keras.layers.Conv2D(48, 1, activation='relu6',
+                  name=f'short_context_mix_{i}')(net)
+     # A learned ordered temporal kernel, rather than flattening the buffer,
+     # also supplies its state with a quantizable integer consumer.
+@@ -48,7 +48,7 @@
+     net = tf.keras.layers.DepthwiseConv2D((ordered_steps, 1), activation='relu6',
+               name='short_context_ordered_ending')(net)
+     net = tf.keras.layers.Concatenate(name='short_context_and_phrase')([head.input, net])
+-    net = tf.keras.layers.Conv2D(32, 1, activation='relu6', name='short_context_hidden')(net)
++    net = tf.keras.layers.Conv2D(64, 1, activation='relu6', name='short_context_hidden')(net)
+     net = tf.keras.layers.Dropout(.1, name='short_context_dropout')(net)
+     correction = tf.keras.layers.Conv2D(14, 1, kernel_initializer='zeros', bias_initializer='zeros',
+         kernel_regularizer=tf.keras.regularizers.l2(1e-4), name='short_context_correction')(net)
+@@ -56,10 +56,10 @@
+         tf.keras.layers.Add(name='short_context_corrected_logits')([logits, correction]))
+     output = tf.keras.layers.Reshape((-1, 14), name='short_context_classes')(probabilities)
+     model = tf.keras.Model(sequence.inputs[0], output)
+-    graph.update(architecture=f'short-context-raw96-24x3-recent{ordered_steps}-hidden32' if raw_filters else f'short-context-24x3-recent{ordered_steps}-hidden32',
+-        short_context={'kernels': [5, 9, 13], 'channels': 24, 'ordered_steps': ordered_steps,
++    graph.update(architecture=f'short-context-raw192-48x3-recent{ordered_steps}-hidden64' if raw_filters else f'short-context-48x3-recent{ordered_steps}-hidden64',
++        short_context={'kernels': [5, 9, 13], 'channels': 48, 'ordered_steps': ordered_steps,
+                        'raw_first_filters': raw_filters,
+-                       'hidden_units': 32, 'activation': 'relu6',
++                       'hidden_units': 64, 'activation': 'relu6',
+                        'original_encoder_and_logits_frozen': True,
+                        'trainable_parameters': int(sum(np.prod(v.shape) for v in model.trainable_weights))})
+     return model, graph
+--- a/training/train_causal.py
++++ b/training/train_causal.py
+@@ -29,7 +29,7 @@
+     p.add_argument('--batch-size', type=int, default=16)
+     p.add_argument('--short-context', action='store_true', help='Learn an ordered acoustic branch; requires its prototype proof')
+     p.add_argument('--mask-completion-uncertainty', action='store_true', help='Ignore ambiguous target endings; never infer positive labels from energy')
+-    p.add_argument('--raw-branch', action='store_true', help='Learn a separate96-filter raw projection; requires its prototype proof')
++    p.add_argument('--raw-branch', action='store_true', help='Learn a separate192-filter raw projection; requires its prototype proof')
+     p.add_argument('--ordered-steps', type=int, choices=[20,72], default=20, help='Explicit ordered context, default unchanged;72 requires raw branch and matching proof')
+     p.add_argument('--mil-target-completion', action='store_true', help='TRAIN positives using one eligible five-step event; inference is unchanged')
+     p.add_argument('--mil-negative-events', action='store_true', help='Also reject the strongest valid negative five-step event; inference unchanged')
+@@ -67,7 +67,7 @@
+             or proof['static']['status'] != 'static-check-passed'):
+         raise ValueError('Missing compatible all-step prototype proof')
+     if a.short_context:
+-        architecture = f'short-context-raw96-24x3-recent{a.ordered_steps}-hidden32' if a.raw_branch else f'short-context-24x3-recent{a.ordered_steps}-hidden32'
++        architecture = f'short-context-raw192-48x3-recent{a.ordered_steps}-hidden64' if a.raw_branch else f'short-context-48x3-recent{a.ordered_steps}-hidden64'
+         if (proof['graph'].get('architecture') != architecture
+                 or proof.get('causal_branch_sha256') != sha(Path(__file__).with_name('causal_branch.py'))):
+             raise ValueError('Missing compatible short-context branch proof')
+@@ -163,7 +163,7 @@
+         {'filters': 128, 'first_filters': 64, 'kernels': [5, 9, 13, 21, 31, 43]})
+     if a.short_context:
+         from causal_branch import attach as attach_branch
+-        fit, graph = attach_branch(source, 600, raw_filters=96 if a.raw_branch else 0, ordered_steps=a.ordered_steps)
++        fit, graph = attach_branch(source, 600, raw_filters=192 if a.raw_branch else 0, ordered_steps=a.ordered_steps)
+     else:
+         residual, _ = attach_frozen_residual(source, 64)
+         fit, graph = sequence_view(residual, 600)
+@@ -262,7 +262,7 @@
+         'negative_objective': 'all-valid-frame-categorical-plus-worst-five-step-event' if a.mil_negative_events
+             else 'unchanged-all-valid-frame-categorical-crossentropy',
+         'classifier_readout': {'type': 'causal-frame-short-context' if a.short_context else 'causal-frame-frozen-residual',
+-            'classes': PHRASES, 'residual_hidden_units': 32 if a.short_context else 64,
++            'classes': PHRASES, 'residual_hidden_units': 64 if a.short_context else 64,
+             'original_encoder_and_logits_frozen': True},
+         'threshold': .9, 'rolling_inferences': 5,
+         'frozen_source_weights_unchanged': True, 'household_or_development_used': False,
+--- a/training/prove_causal.py
++++ b/training/prove_causal.py
+@@ -19,7 +19,7 @@
+     for name in ('upstream', 'manifest', 'checkpoint', 'protected-hashes', 'output'):
+         p.add_argument('--'+name, required=True, type=Path)
+     p.add_argument('--short-context', action='store_true', help='Prove the experimental ordered acoustic branch')
+-    p.add_argument('--raw-branch', action='store_true', help='Use a separate trainable96-filter raw projection')
++    p.add_argument('--raw-branch', action='store_true', help='Use a separate trainable192-filter raw projection')
+     p.add_argument('--ordered-steps', type=int, choices=[20,72], default=20, help='Explicit ordered temporal context;72 requires the raw branch')
+     a = p.parse_args()
+     if a.raw_branch and not a.short_context:
+@@ -59,7 +59,7 @@
+         {'filters': 128, 'first_filters': 64, 'kernels': [5, 9, 13, 21, 31, 43]})
+     if a.short_context:
+         from causal_branch import attach as attach_branch
+-        sequence, graph = attach_branch(source, 600, raw_filters=96 if a.raw_branch else 0, ordered_steps=a.ordered_steps)
++        sequence, graph = attach_branch(source, 600, raw_filters=192 if a.raw_branch else 0, ordered_steps=a.ordered_steps)
+     else:
+         residual, _ = attach_frozen_residual(source, 64)
+         sequence, graph = sequence_view(residual, 600)

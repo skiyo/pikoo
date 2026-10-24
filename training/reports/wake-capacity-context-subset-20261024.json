@@ -1,0 +1,155 @@
+{
+  "date": "2026-10-24",
+  "status": "research-subset-not-full-gate-or-release",
+  "selection": "first12 distinct raw validation audio hashes per adult/childlike and positive/negative, no model scores",
+  "unique_targets": 24,
+  "unique_non_targets": 24,
+  "same_audio_replayed_across_models_and_conditions": true,
+  "prefix_seconds": 30,
+  "gaps_seconds": [
+    0,
+    1
+  ],
+  "prefix": "identical authorized TRAIN ordinary speech as existing full baseline; concatenated, not simultaneous mixing",
+  "BM17_cases_reused_not_recomputed": true,
+  "summary": {
+    "BM17": {
+      "adult/cold": {
+        "targets": 12,
+        "hits": 12,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "adult/speech-gap-0s": {
+        "targets": 12,
+        "hits": 3,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "adult/speech-gap-1s": {
+        "targets": 12,
+        "hits": 11,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "childlike/cold": {
+        "targets": 12,
+        "hits": 11,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "childlike/speech-gap-0s": {
+        "targets": 12,
+        "hits": 5,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "childlike/speech-gap-1s": {
+        "targets": 12,
+        "hits": 11,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      }
+    },
+    "raw96": {
+      "adult/cold": {
+        "targets": 12,
+        "hits": 12,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "adult/speech-gap-0s": {
+        "targets": 12,
+        "hits": 7,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "adult/speech-gap-1s": {
+        "targets": 12,
+        "hits": 9,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "childlike/cold": {
+        "targets": 12,
+        "hits": 11,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "childlike/speech-gap-0s": {
+        "targets": 12,
+        "hits": 10,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "childlike/speech-gap-1s": {
+        "targets": 12,
+        "hits": 10,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      }
+    },
+    "raw192": {
+      "adult/cold": {
+        "targets": 12,
+        "hits": 12,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "adult/speech-gap-0s": {
+        "targets": 12,
+        "hits": 9,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "adult/speech-gap-1s": {
+        "targets": 12,
+        "hits": 11,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "childlike/cold": {
+        "targets": 12,
+        "hits": 11,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "childlike/speech-gap-0s": {
+        "targets": 12,
+        "hits": 10,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      },
+      "childlike/speech-gap-1s": {
+        "targets": 12,
+        "hits": 10,
+        "prefix_above_threshold_windows": 0,
+        "non_targets": 12,
+        "false_wakes": 0
+      }
+    }
+  },
+  "threshold": 0.9,
+  "rolling_inferences": 5,
+  "full_gate_pass": false,
+  "independent_or_household_used": false,
+  "real_child_acceptance": false,
+  "device_modified": false
+}
