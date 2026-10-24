@@ -186,3 +186,20 @@ receive the changes. No development recording is transformed or copied into
 training. Correlated derivatives are augmentation, not new independent speakers
 or child acceptance. F retains the fixed threshold and all prerequisite gates;
 training and a small file size do not establish an acceptable release.
+
+F completed eight epochs with the same 192,688-byte export. It failed with
+186/195 cold targets, 5/712 false wakes, and 61/72 supplemental targets. The
+literal-English groups scored 9/13 adult and 6/9 childlike. All 907 original
+manifest validation features remain bitwise-identical. The small eight-TRAIN-case
+float/INT8 check passed, but the full streaming gates failed; no independent or
+physical test followed. See the [F report](../training/reports/wake-context-f-20261024.json).
+This bounded combined continuation does not prove that tempo augmentation
+generally cannot help. It was not flashed.
+
+A separate content-only audit now covers the **entire 181-recording supplement**,
+without using model scores to select clips. It checks fictional TTS with another
+ASR model, eight utterances per request and 30 seconds between requests, stopping
+on API errors. No household or independent wake-test recordings are included.
+ASR disagreements require inspection; they do not authorize deleting failed
+model scores or calling a corrected corpus an independent test. Existing gates
+and manifests remain unchanged.
