@@ -33,6 +33,18 @@ Restricted weights and firmware are not published.
 The owner subsequently confirmed one informal spoken wake and a normal greeting.
 That single unrecorded observation does not establish the adult/child acceptance rates.
 
+## Fixed source-expansion result, 2026-10-24
+
+The fixed 12-epoch compact run with the 14 admitted historical targets and
+three reviewed Google sources did not improve the result: original development
+179/195, supplementary 60/72 and zero false wakes in 821 non-target clips.
+Supplementary adult recall is 30/39 and adult literal-name 7/13; childlike
+recall is 30/33 and childlike literal-name 7/9. Quantization consistency passes,
+but the group gates fail. Full continuous and independent testing were not run,
+and this model was not flashed. Adding sources also changes training order and
+sampled TRAIN contexts; the regression cannot be assigned to particular clips
+from this single run. See the [complete failed-run record](../training/reports/wake-literal-source-expansion-result-20261024.json).
+
 ## Historical literal-name source admission, 2026-10-24
 
 Twenty unused fictional TRAIN recordings, selected from previously registered
