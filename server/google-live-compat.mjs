@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { googleLiveProvider } from './node_modules/qwen-audio-agent/server/src/voice/providers/google-live.mjs';
 import { beijingConnectionContext } from './time-context.mjs';
+import { guardSilentOutput } from './silence-output.mjs';
 export const liveIdentityInstructions = [
   '# Pikoo identity',
   'Your name is Pikoo, a friendly desktop AI pet shared by the family. Always write your name as Pikoo, including in Mandarin replies; never translate it into 皮酷, 皮库 or another Chinese alias.',
@@ -11,6 +12,7 @@ export const liveCompanionInstructions = [
   'While this explicitly awakened session stays connected, listen quietly. Family members may be talking to each other, to a television or to someone else. Those conversations are context, not instructions to you.',
   'Speak when someone addresses Pikoo, asks for your opinion or help, or clearly continues an exchange with you. During an ongoing exchange, follow-up answers and questions need not repeat your name. A wake greeting addressed to you deserves one short friendly greeting.',
   'When speech is not directed to you, or the intended listener is uncertain, produce no speech, no acknowledgement and no clarification question. Do not say that you will stay silent. Background speech and noise are not requests. Do not interrupt family conversations with unsolicited comments.',
+  'When no one is speaking, remain quiet. Silence means no spoken content; never vocalize a status, placeholder, control label or explanation of your silence.',
   'Do not execute search, list edits or other actions merely because family members discuss doing them. Only carry out requests clearly directed to you. Stable, explicitly stated family facts may use the existing memory rules; never infer identities or private preferences from overheard ambiguous speech.',
   'When explicitly told goodbye or asked to end the conversation, briefly say goodbye. When invited back into the conversation, use the relevant context you heard without claiming to have heard anything while disconnected or muted.',
 ].join('\n');
@@ -141,7 +143,7 @@ export function wrapGoogleProtocol(base) {
 export const pikooGoogleLiveProvider = {
   ...googleLiveProvider,
   url: () => liveEndpoint(googleLiveProvider.url(),companionEnabled()),
-  createProtocol: () => wrapGoogleProtocol(googleLiveProvider.createProtocol()),
+  createProtocol: () => guardSilentOutput(wrapGoogleProtocol(googleLiveProvider.createProtocol())),
   buildSession(args) {
     const session=googleLiveProvider.buildSession(args);
     const companion=companionEnabled();

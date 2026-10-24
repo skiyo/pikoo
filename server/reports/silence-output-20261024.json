@@ -1,0 +1,135 @@
+{
+  "date": "2026-10-24",
+  "status": "server-deployed-physical-listening-pending",
+  "request": "Keep native Google selective responses; no mandatory name gate. Suppress reserved silence placeholders.",
+  "evidence": {
+    "production": "Repeated assistant messages with reserved no-speech marker, not an application-generated phrase.",
+    "isolated_first_run": {
+      "accepted": false,
+      "observed_native_transcript": "<no speech>{pause}",
+      "raw_audio_chunks": 5,
+      "initial_exact_marker_filter_missed_pause_suffix": true,
+      "all_original_results_retained_privately": true,
+      "late_turns_not_valid_for_per_case_comparison": "Initial harness could advance before a late reply finished; v2 waits for completed reply and output drain."
+    }
+  },
+  "fixes": [
+    "Known silence metadata and initial PCM are suppressed before presentation/history; lifecycle completion still runs.",
+    "Initial output waits for transcription classification; buffer is bounded, cancellation discards it, audio-only fallback waits for turn completion.",
+    "Prior assistant-only silence labels are excluded from restored Live context without editing original history.",
+    "Native proactivity and natural follow-ups remain; no keyword/name gate."
+  ],
+  "software": {
+    "server_tests": 43,
+    "passed": 43,
+    "failed": 0,
+    "environment": "Deployed Node.js 24 runtime and pinned qwen-audio-agent2.0.1"
+  },
+  "native_isolated": {
+    "passed": true,
+    "same_model": "models/gemini-3.8-live",
+    "proactivity": {
+      "proactiveAudio": true
+    },
+    "cases": [
+      {
+        "name": "silence-before",
+        "expectReply": false,
+        "passed": true,
+        "rawAudioChunks": 0,
+        "deliveredAudioChunks": 0,
+        "oldMarkerReplies": 0,
+        "newMarkerReplies": 0,
+        "complete": false
+      },
+      {
+        "name": "other-zh",
+        "expectReply": false,
+        "passed": true,
+        "rawAudioChunks": 0,
+        "deliveredAudioChunks": 0,
+        "oldMarkerReplies": 0,
+        "newMarkerReplies": 0,
+        "complete": false
+      },
+      {
+        "name": "direct-en",
+        "expectReply": true,
+        "passed": true,
+        "rawAudioChunks": 10,
+        "deliveredAudioChunks": 10,
+        "oldMarkerReplies": 0,
+        "newMarkerReplies": 0,
+        "complete": true
+      },
+      {
+        "name": "follow-en",
+        "expectReply": true,
+        "passed": true,
+        "rawAudioChunks": 22,
+        "deliveredAudioChunks": 22,
+        "oldMarkerReplies": 0,
+        "newMarkerReplies": 0,
+        "complete": true
+      },
+      {
+        "name": "other-en",
+        "expectReply": false,
+        "passed": true,
+        "rawAudioChunks": 0,
+        "deliveredAudioChunks": 0,
+        "oldMarkerReplies": 0,
+        "newMarkerReplies": 0,
+        "complete": false
+      },
+      {
+        "name": "direct-zh",
+        "expectReply": true,
+        "passed": true,
+        "rawAudioChunks": 8,
+        "deliveredAudioChunks": 8,
+        "oldMarkerReplies": 0,
+        "newMarkerReplies": 0,
+        "complete": true
+      },
+      {
+        "name": "silence-after",
+        "expectReply": false,
+        "passed": true,
+        "rawAudioChunks": 0,
+        "deliveredAudioChunks": 0,
+        "oldMarkerReplies": 0,
+        "newMarkerReplies": 0,
+        "complete": false
+      }
+    ],
+    "startup_buffer_extra_wait_ms": [
+      0,
+      0,
+      0
+    ],
+    "silence_status": {
+      "silentTurns": 0,
+      "overflowTurns": 0,
+      "maxHeldBytes": 29454,
+      "audioOnlyTurns": 0
+    },
+    "limits": "v2 native run produced no silence label; marker suppression itself is covered by observed-format protocol replay and real-frontend regressions, not claimed as a v2 live occurrence."
+  },
+  "deployment": {
+    "installed_code_sha256": {
+      "silence-output.mjs": "c53d0b929ded52f01a45548ff23bf9a9be21c9bb8aebcfaccaa8024101dc2093",
+      "google-live-compat.mjs": "8c3465421e591512cdb1e1d3c7a5c887b715a92130287a8f3dd83c431f56ffc5",
+      "host.mjs": "682602658951b4dd07f37615000d001f7dd53bb4c3a21c827d48f4a0a1848c73"
+    },
+    "production_health_ok": true,
+    "existing_ESP32_reconnected": true,
+    "provider_errors_after_restart": 0,
+    "no_firmware_config_or_family_memory_overwritten": true
+  },
+  "limitations": [
+    "Native addressee judgment can still make mistakes; this is not deterministic keyword gating.",
+    "Physical speaker listening and long-duration household observation remain pending.",
+    "Raw provider audio and household contents are not published."
+  ]
+}

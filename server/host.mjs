@@ -7,8 +7,10 @@ import { config } from './node_modules/qwen-audio-agent/server/src/core/config.m
 import { pikooGoogleLiveProvider } from './google-live-compat.mjs';
 import { familyToolsOptions } from './family-tools.mjs';
 import { installCompanionInput } from './companion-runtime.mjs';
+import { installSilentHistoryFilter } from './silence-output.mjs';
 process.env.TZ='Asia/Shanghai';
 installCompanionInput();
+installSilentHistoryFilter();
 const contextLearning=installContextLearning();
 const lease=acquireGatewayLease(config.stateDirectory,{owner:'pikoo-systemd'});
 process.env.QWEN_AUDIO_GATEWAY_INSTANCE_ID=lease.instanceId;

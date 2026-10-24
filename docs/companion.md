@@ -30,3 +30,29 @@ Recent context and family memory retain the [existing rules](context-memory.md):
 The original household wake recordings remain test-only. Generic synthetic audio is only protocol/behavior evidence, not child wake-word, acoustic echo-cancellation, or long-duration hardware acceptance.
 
 See [actual validation and pending checks](companion-validation.md).
+
+## Silence-label fix, 2026-10-24
+
+Google's native selective audio is enabled. It can choose silence; it is not
+a deterministic addressee or name check. Pikoo keeps that behavior and natural
+follow-ups, with no mandatory name keyword.
+
+The provider has emitted the reserved `<no speech>` label, sometimes followed
+by `{pause}`. Older composition treated it as assistant dialogue. The new
+`silence-output.mjs` suppresses known label forms and their initial buffered
+PCM before presentation or history. Normal speech is released once ordinary
+transcription arrives; audio-only output falls back at turn completion. The
+initial buffer is bounded, cancellation clears it and lifecycle completion
+continues. Existing assistant-only label messages are omitted from restored
+Live context; original stored history is retained. User quotations and normal
+English explanations remain intact.
+
+43 server checks passed on the production Node runtime. Seven isolated real
+Google scenarios passed: silence before/after, Chinese/English background
+conversation, directed Chinese/English replies and an English follow-up without
+repeating the name. The final native run did not generate a silence label;
+known-format suppression is verified separately in protocol/frontend tests.
+The first failed native run, including the suffix defect, is retained. The
+fix is deployed and the existing ESP32 reconnected. No firmware was flashed.
+Physical listening and longer household observation remain pending. See the
+[sanitized validation record](../server/reports/silence-output-20261024.json).

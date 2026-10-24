@@ -9,7 +9,7 @@
 - `/var/lib/pikoo/qwaudio/`：权限受保护的配置、身份、记忆、摘要和状态。
 - `/etc/mihomo/config.yaml`：私有代理资料；仅接管 `pikoo` 的实际 UID，控制端口/混合端口仅本机。
 
-以 root 建立用户和目录，复制 `host.mjs`、`google-live-compat.mjs`、`deepseek-search.mjs`、`family-tools.mjs`、`memory-timeout.mjs`、`context-runtime.mjs`、`context-learning.mjs`、`time-context.mjs`、`provider-check.mjs`、package 文件到应用目录并安装。将 `deploy/config.env.example` 填入 `QWAUDIO_CONFIG_DIR/config.env`，权限 600、归属 pikoo。家庭人设从 `persona/*.example` 另行填写，真实内容不提交。所有持久路径以固定版 `qwenaudio config` 输出和当前配置为准，不直接覆盖旧目录。
+以 root 建立用户和目录，复制 `host.mjs`、`google-live-compat.mjs`、`companion-runtime.mjs`、`silence-output.mjs`、`deepseek-search.mjs`、`family-tools.mjs`、`memory-timeout.mjs`、`context-runtime.mjs`、`context-learning.mjs`、`time-context.mjs`、`provider-check.mjs`、package 文件到应用目录并安装。将 `deploy/config.env.example` 填入 `QWAUDIO_CONFIG_DIR/config.env`，权限 600、归属 pikoo。家庭人设从 `persona/*.example` 另行填写，真实内容不提交。所有持久路径以固定版 `qwenaudio config` 输出和当前配置为准，不直接覆盖旧目录。
 
 将 `deploy/` 中 systemd 模板安装到 `/etc/systemd/system/`，Nginx 配置安装到对应目录；按主机实际 UID/地址更新 mihomo 和防火墙模板。代理节点务必验证 TLS；模板默认不跳过证书校验。根用户的 SSH/系统流量不应被 TUN 全局接管。
 
@@ -71,3 +71,12 @@ pikoo-admin backup
 ## 搜索、网页阅读和家庭清单
 
 部署与费用边界见[双语工具说明](../docs/family-tools.zh-CN.md)。开启网页与清单工具后，Pikoo 注入 DeepSeek 搜索适配器；`AGENT_PROTOCOL=none` 保持不变。缺少搜索 Key 不影响其他工具，不自动切换默认搜索供应商。
+
+## 静默标记适配
+
+`silence-output.mjs` 拦截 Google 的 `<no speech>` 及 `{pause}` 后缀等已知静默标记。
+开始的音频在首段转写判定前有界暂存，标记不会进入播放和助手消息；取消会丢弃暂存，
+正常语音及时释放。提供音频但没有转写时，在回合结束后保留音频兼容路径。历史里的纯
+助手静默标记不注入重连上下文，原始记录不删除。它没有增加叫名字的规则，是否应答仍
+交给原生 `proactivity`。部署需同时复制新模块和更新后的 `host.mjs`，在空闲窗口重启。
+见[陪伴说明](../docs/companion.zh-CN.md)及[实际记录](reports/silence-output-20261024.json)。
