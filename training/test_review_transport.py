@@ -1,9 +1,41 @@
 import io,ssl,unittest
 from urllib.error import HTTPError,URLError
-from review_google_corpus import post_json, checked_transcripts, content_matches
+from review_google_corpus import post_json, checked_transcripts, content_matches, review_request, review_text
 
 
 class ReviewTransportTest(unittest.TestCase):
+    def test_audio_requests_use_the_selected_model_protocol_without_transcript_hint(self):
+        url,body=review_request('gemini-3.8-flash','fixture-base64',2)
+        self.assertTrue(url.endswith('/interactions'))
+        self.assertFalse(body['store'])
+        content=body['input'][0]['content']
+        self.assertEqual(content[1],{'type':'audio','data':'fixture-base64','mime_type':'audio/wav'})
+        self.assertNotIn('Pikoo',content[0]['text'])
+        self.assertEqual(body['response_format']['schema']['minItems'],2)
+        self.assertEqual(body['response_format']['schema']['maxItems'],2)
+        self.assertNotIn('temperature',body['generation_config'])
+        url,body=review_request('gemini-2.5-flash','fixture-base64',1)
+        self.assertTrue(url.endswith('/models/gemini-2.5-flash:generateContent'))
+        self.assertEqual(body['generationConfig']['thinkingConfig'],{'thinkingBudget':0})
+        url,body=review_request('gemini-3.1-flash-lite','fixture-base64',1)
+        self.assertTrue(url.endswith('/models/gemini-3.1-flash-lite:generateContent'))
+        self.assertEqual(body['generationConfig']['thinkingConfig'],{'thinkingLevel':'minimal'})
+        self.assertEqual(body['generationConfig']['responseJsonSchema']['minItems'],1)
+        self.assertNotIn('temperature',body['generationConfig'])
+        with self.assertRaises(ValueError):review_request('other-model','data',1)
+
+    def test_only_completed_model_text_can_supply_transcript_labels(self):
+        response={'status':'completed','steps':[
+            {'type':'thought','content':[{'type':'text','text':'not a transcript'}]},
+            {'type':'model_output','content':[{'type':'text','text':'["你好"'},{'type':'text','text':']'}]}]}
+        self.assertEqual(checked_transcripts(review_text('gemini-3.8-flash',response),1),['你好'])
+        for value in [{'status':'in_progress','steps':response['steps']},{'status':'completed','steps':[]}]:
+            with self.assertRaises(ValueError):review_text('gemini-3.8-flash',value)
+        with self.assertRaises(ValueError):review_text('gemini-2.5-flash',{'candidates':[{'finishReason':'MAX_TOKENS'}]})
+        legacy={'candidates':[{'finishReason':'STOP','content':{'parts':[{'thought':True,'text':'hidden'},{'text':'["你好"]'}]}}]}
+        self.assertEqual(review_text('gemini-2.5-flash',legacy),'["你好"]')
+        self.assertEqual(review_text('gemini-3.1-flash-lite',legacy),'["你好"]')
+
     def test_merged_missing_and_non_string_transcripts_cannot_shift_labels(self):
         for text,count in [('[]',1),('["one"]',2),('["one",3]',2),('{"0":"one"}',1),('["unfinished"',1)]:
             with self.assertRaises(ValueError):checked_transcripts(text,count)

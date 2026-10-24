@@ -92,6 +92,33 @@ def resume_readout(training,inference,checkpoint,features,architecture):
             **({'source_epoch':epoch_proof} if epoch_proof else {})}
 
 
+def attach_frozen_residual(training,units):
+    """Keep a trained encoder/logits intact; learn a small class-logit correction.
+
+    Zero correction preserves all fourteen initial class probabilities, not
+    just the scalar wake output. Only the new nonlinear head is trainable.
+    """
+    import tensorflow as tf
+    if not isinstance(units,int) or not 16<=units<=256:
+        raise ValueError('Residual class head must have 16..256 units')
+    head=training.get_layer('near_phrase_probability')
+    if not isinstance(head,tf.keras.layers.Dense) or head.units!=len(PHRASES) or head.get_config()['activation']!='softmax':
+        raise ValueError('Expected the complete trained near-phrase Dense classifier')
+    for layer in training.layers:layer.trainable=False
+    original=tf.keras.layers.Dense(len(PHRASES),trainable=False,name='frozen_near_phrase_logits')
+    logits=original(head.input);original.set_weights(head.get_weights())
+    hidden=tf.keras.layers.Dense(units,activation='relu',name='context_residual_hidden')(head.input)
+    hidden=tf.keras.layers.Dropout(.1,name='context_residual_dropout')(hidden)
+    correction=tf.keras.layers.Dense(len(PHRASES),kernel_initializer='zeros',bias_initializer='zeros',
+        kernel_regularizer=tf.keras.regularizers.l2(1e-4),name='context_residual_logits')(hidden)
+    probabilities=tf.keras.layers.Softmax(name='near_phrase_probability')(
+        tf.keras.layers.Add(name='context_corrected_logits')([logits,correction]))
+    fit=tf.keras.Model(training.inputs[0],probabilities)
+    x=tf.keras.layers.Reshape((len(PHRASES),1))(probabilities)
+    x=tf.keras.layers.Cropping1D((1,len(PHRASES)-2))(x)
+    return fit,tf.keras.Model(training.inputs[0],tf.keras.layers.Flatten()(x))
+
+
 def widen_readout(training,inference,checkpoint,features,architecture,binary_builder):
     """Copy every trained class into a wider encoder; verify all probabilities."""
     checkpoint=Path(checkpoint);report=json.loads((checkpoint.parent/'report.json').read_text())

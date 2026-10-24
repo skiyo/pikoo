@@ -27,6 +27,28 @@ class LabelsTest(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec('tensorflow'),'Optional TensorFlow unavailable')
 class ModelTest(unittest.TestCase):
+    def test_residual_classes_preserve_initial_probabilities_and_frozen_encoder(self):
+        import tensorflow as tf
+        from contrastive_readout import attach,attach_frozen_residual,PHRASES
+        inp=tf.keras.Input((8,));norm=tf.keras.layers.BatchNormalization()
+        base=tf.keras.Model(inp,tf.keras.layers.Dense(1,activation='sigmoid')(norm(inp)))
+        original,_=attach(base,warm_start=True)
+        rng=np.random.default_rng(4);head=original.get_layer('near_phrase_probability')
+        head.set_weights([rng.normal(0,.1,(8,len(PHRASES))).astype(np.float32),rng.normal(0,.1,len(PHRASES)).astype(np.float32)])
+        x=rng.normal(size=(20,8)).astype(np.float32);before=original(x,training=False).numpy()
+        fit,view=attach_frozen_residual(original,32)
+        np.testing.assert_allclose(fit(x,training=False),before,atol=1e-6)
+        np.testing.assert_allclose(view(x,training=False),before[:,1:2],atol=1e-6)
+        frozen={layer.name:[v.copy() for v in layer.get_weights()] for layer in fit.layers if not layer.trainable}
+        fit.compile(optimizer=tf.keras.optimizers.Adam(.01),loss='sparse_categorical_crossentropy')
+        for _ in range(3):fit.train_on_batch(x,np.arange(20)%len(PHRASES))
+        for layer in fit.layers:
+            if layer.name in frozen:
+                for a,b in zip(frozen[layer.name],layer.get_weights()):np.testing.assert_array_equal(a,b)
+        np.testing.assert_array_equal(original(x,training=False),before)
+        self.assertGreater(float(np.max(abs(fit(x,training=False).numpy()-before))),1e-5)
+        np.testing.assert_allclose(view(x,training=False),fit(x,training=False)[:,1:2],atol=1e-6)
+
     def test_freezing_scalar_view_keeps_shared_training_normalization_fixed(self):
         import tensorflow as tf
         from contrastive_readout import attach

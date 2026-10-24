@@ -209,3 +209,59 @@ No household or independent wake-test recordings are included.
 ASR disagreements require inspection; they do not authorize deleting failed
 model scores or calling a corrected corpus an independent test. Existing gates
 and manifests remain unchanged.
+
+## Follow-up diagnosis and G/H/I results
+
+A replay of 17 selected existing development failures/control clips compared
+the float streaming graph with the correct INT8 reference backend. Four of the
+five false wakes also occur in float; one additional false wake crosses the
+cutoff only after quantization. Ten of the eleven selected missed positives
+also miss in float. Thus export error alone cannot explain this candidate's
+failure. Frame-level differences do expose gaps in the small eight-TRAIN-case
+parity diagnostic (worst absolute error 0.245 on this selected set). These are
+failure diagnostics, not an unbiased accuracy estimate or independent test.
+See the [diagnosis](../training/reports/wake-context-f-diagnosis-20261024.json).
+
+The raw ordinary-speech parent and its five pitch variants all transcribe
+locally as “给我讲一个故事”. This automated content evidence does not justify
+deleting their negative labels; no labels or original failures were removed.
+G marks all 120 previously unmarked synthetic TRAIN recordings of the two
+existing ordinary phrases as hard negatives. They gain eight repetitions,
+including four causal prefixes, across all included training voices/variants.
+It starts from E, adds the two reviewed adult targets, and omits F's new fast
+derivatives. The same full 181-row supplement and legacy gates remain required.
+
+The predeclared H control reused exactly G's features but started
+from the original BM17 checkpoint and freeze its normalization. BM17's prior
+full supplement scored 67/72 (adult literal-English 11/13, childlike 8/9), still
+below the required English-name gates. D froze already-adapted A statistics;
+it did not test preserving the original BM17 statistics. Neither G nor H qualified. G scored 188/195 cold targets, 2/712 false wakes
+and 64/72 supplemental targets; H scored 185/195, 3/712 and 61/72.
+I kept the original encoder and all fourteen original logits frozen, adding
+a zero-initialized 64-unit nonlinear correction. It preserved every initial
+class probability, but still failed: 187/195, 5/712 and 64/72. Its 203,496-byte
+export (9,166 trainable parameters) fitting the budget does not establish
+accuracy. See the [G](../training/reports/wake-context-g-20261024.json),
+[H](../training/reports/wake-context-h-20261024.json) and
+[I](../training/reports/wake-context-i-20261024.json) reports.
+No full context or new independent tests followed the failed prerequisite
+gates; none was flashed. The original external 907/181 audio replays remain
+unchanged. Increased TRAIN repetitions advanced the legacy shared RNG: 517/907
+internal validation windows differ from A. G/H/I share identical arrays, but
+we do not claim their internal windows are identical to A. The opt-in
+`--stable-split-rng` now isolates each split; legacy default/cache behavior is
+unchanged. Regression tests verify this separation.
+
+The external content audit stopped at **24/181**, with 19 transcript matches
+and five disagreements: the API returned a 20-request/day free-tier quota for
+2.5 Flash. No quota retry was started. The 3.8 reviewer now uses the documented
+[Interactions audio input](https://ai.google.dev/gemini-api/docs/audio) and
+[structured JSON format](https://ai.google.dev/gemini-api/docs/structured-output),
+with stored interactions disabled. Eight focused protocol/transport tests pass,
+but both the legacy and Interactions live probes timed out; the whole content
+audit remains incomplete. A text-only 3.8 control also timed out, so the failure
+is not proven to be specific to audio or request schema. Stable 3.1 Flash-Lite
+passed one live single-clip compatibility check; a separately recorded full
+181-clip review is now running at one request every 30 seconds, with no automatic
+retries or paid-tier enablement. Its results do not overwrite the 2.5 audit.
+This does not change the server's Live provider.

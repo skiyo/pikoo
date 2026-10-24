@@ -60,13 +60,63 @@ def content_matches(text, transcript):
     return not re.search('[A-Za-z0-9]', remaining) and normalize(transcript) == normalize(text)
 
 
+def review_request(model, audio_data, count):
+    if not 1 <= count <= 8:
+        raise ValueError('Invalid transcript batch size')
+    prompt = ('Transcribe the speech verbatim, including any Chinese-English mixed speech and English names. '
+              'Do not correct words or infer intended names. It contains '
+              + str(count) + ' separate utterances separated by silence. Return a JSON array '
+              'of strings, one string per utterance, in original order. Do not add explanations or merge repeats.')
+    if model == 'gemini-3.8-flash':
+        # The documented 3.8 audio-understanding interface uses Interactions.
+        # Keep utterance text out of the prompt and disable stored interactions.
+        return ('https://generativelanguage.googleapis.com/v1beta/interactions', {
+            'model': model, 'store': False,
+            'input': [{'type': 'user_input', 'content': [
+                {'type': 'text', 'text': prompt},
+                {'type': 'audio', 'data': audio_data, 'mime_type': 'audio/wav'}]}],
+            'response_format': {'type': 'text', 'mime_type': 'application/json',
+                'schema': {'type': 'array', 'items': {'type': 'string'}, 'minItems': count, 'maxItems': count}},
+            'generation_config': {'max_output_tokens': 1200, 'thinking_level': 'low'}})
+    if model in {'gemini-2.5-flash','gemini-3.1-flash-lite'}:
+        config = {'responseMimeType': 'application/json', 'maxOutputTokens': 1200}
+        if model == 'gemini-2.5-flash':
+            config.update(temperature=0,thinkingConfig={'thinkingBudget':0})
+        else:
+            config.update(thinkingConfig={'thinkingLevel':'minimal'},
+                responseJsonSchema={'type':'array','items':{'type':'string'},'minItems':count,'maxItems':count})
+        return ('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+            'contents': [{'parts': [{'text': prompt},
+                {'inlineData': {'mimeType': 'audio/wav', 'data': audio_data}}]}],
+            'generationConfig': config})
+    raise ValueError('Unsupported content review model')
+
+
+def review_text(model, response):
+    if model == 'gemini-3.8-flash':
+        if response.get('status') != 'completed':
+            raise ValueError('Incomplete ASR interaction')
+        chunks = [part['text'] for step in response.get('steps', [])
+                  if step.get('type') == 'model_output' for part in step.get('content', [])
+                  if part.get('type') == 'text' and isinstance(part.get('text'), str)]
+        if not chunks:
+            raise ValueError('ASR interaction has no model text')
+        return ''.join(chunks)
+    if model in {'gemini-2.5-flash','gemini-3.1-flash-lite'}:
+        candidate = response['candidates'][0]
+        if candidate.get('finishReason') != 'STOP':
+            raise ValueError('Incomplete ASR generation')
+        return ''.join(part.get('text', '') for part in candidate['content']['parts'] if not part.get('thought'))
+    raise ValueError('Unsupported content review model')
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--manifest', type=Path, required=True)
     p.add_argument('--key-file', type=Path, required=True)
     p.add_argument('--proxy')
     p.add_argument('--output', type=Path, required=True)
-    p.add_argument('--model', default='gemini-3.8-flash', choices=['gemini-3.8-flash', 'gemini-2.5-flash'])
+    p.add_argument('--model', default='gemini-3.8-flash', choices=['gemini-3.8-flash', 'gemini-2.5-flash','gemini-3.1-flash-lite'])
     p.add_argument('--interval', type=float, default=15, help='Seconds between ASR requests')
     p.add_argument('--batch-size', type=int, choices=range(1,9), default=8, help='1..8 utterances per request; use 1 to avoid multi-utterance alignment ambiguity')
     p.add_argument('--request-timeout',type=float,default=55,help='Bounded API read timeout, 10..180 seconds')
@@ -120,15 +170,8 @@ def main():
         with wave.open(out, 'wb') as w:
             w.setparams((1, 2, 16000, 0, 'NONE', 'not compressed'))
             w.writeframes(np.concatenate(audio).tobytes())
-        payload = {'contents': [{'parts': [
-            {'text': 'Transcribe the speech verbatim, including any Chinese-English mixed speech and English names. Do not correct words or infer intended names. It contains '
-                + str(len(group)) + ' separate utterances separated by silence. Return a JSON array '
-                'of strings, one string per utterance. Do not add explanations or merge repeats.'},
-            {'inlineData': {'mimeType': 'audio/wav', 'data': base64.b64encode(out.getvalue()).decode()}}]}],
-            'generationConfig': {'responseMimeType': 'application/json', 'temperature': 0, 'maxOutputTokens': 1200}}
-        if a.model == 'gemini-2.5-flash':
-            payload['generationConfig']['thinkingConfig'] = {'thinkingBudget': 0}
-        request = Request('https://generativelanguage.googleapis.com/v1beta/models/' + a.model + ':generateContent',
+        url, payload = review_request(a.model, base64.b64encode(out.getvalue()).decode(), len(group))
+        request = Request(url,
             data=json.dumps(payload).encode(), headers={'x-goog-api-key': key, 'Content-Type': 'application/json'})
         try:
             data=post_json(opener,request,a.request_timeout,a.network_retries,a.network_retry_delay)
@@ -139,7 +182,7 @@ def main():
                 a.output.with_name('review-api-error.json').write_text(json.dumps(safe,indent=2)+'\n')
             except (ValueError,OSError):pass
             raise RuntimeError(f'Synthetic review HTTP {error.code}; stopped without further requests') from None
-        text = ''.join(p.get('text', '') for p in data['candidates'][0]['content']['parts'])
+        text = review_text(a.model, data)
         transcripts = checked_transcripts(text, len(group))
         for row, transcript in zip(group, transcripts):
             approved = content_matches(row['text'], transcript)

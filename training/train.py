@@ -29,7 +29,7 @@ def validate_training_manifest(manifest):
     if any(row.get('evaluation_only') or row.get('frozen_holdout') or str(row.get('source','')).startswith('private-') for row in manifest):
         raise ValueError('evaluation_only recordings require a separate evaluation manifest')
 
-def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative_repeats=5,hard_negative_repeats=5,min_snr=10,negative_prefixes=False,pcm_context=False,acoustic_augmentation=False,acoustic_probability=1.,negative_tail_seconds=.12,positive_tail_seconds=.12,speech_context_probability=0.,speech_context_negatives=False):
+def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative_repeats=5,hard_negative_repeats=5,min_snr=10,negative_prefixes=False,pcm_context=False,acoustic_augmentation=False,acoustic_probability=1.,negative_tail_seconds=.12,positive_tail_seconds=.12,speech_context_probability=0.,speech_context_negatives=False,stable_split_rng=False):
     validate_training_manifest(manifest)
     if not 0<=speech_context_probability<=1:raise ValueError('Speech context probability must be 0..1')
     if speech_context_negatives and not speech_context_probability:raise ValueError('Negative speech context requires a nonzero probability')
@@ -39,9 +39,12 @@ def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative
         context=SpeechContext(manifest,root,seed+1)
     if not .12<=negative_tail_seconds<=1.5:raise ValueError('Negative tail must be between 0.12 and 1.5 seconds')
     if not .12<=positive_tail_seconds<=.6:raise ValueError('Positive tail must be between 0.12 and 0.6 seconds')
-    rng=np.random.default_rng(seed);sets={k:([],[]) for k in ['train','validation','test']}
+    legacy_rng=np.random.default_rng(seed)
+    split_rngs={split:np.random.default_rng(seed+index) for index,split in enumerate(['train','validation','test'])}
+    sets={k:([],[]) for k in ['train','validation','test']}
     groups={};clips={}
     for row in manifest:
+        rng=split_rngs[row['split']] if stable_split_rng else legacy_rng
         group=row.get('speaker',row.get('voice',row['group']))
         if group in groups and groups[group]!=row['split']:raise ValueError('speaker/group leaks between splits')
         groups[group]=row['split'];digest=hashlib.sha256((root/row['path']).read_bytes()).hexdigest()
@@ -109,6 +112,7 @@ def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative
             sets[row['split']][0].append(spec);sets[row['split']][1].append(row['label'])
     # Negative silence and unstructured noise are needed, in addition to speech.
     for split in sets:
+        rng=split_rngs[split] if stable_split_rng else legacy_rng
         for _ in range(100 if split=='train' else 20):
             pcm=rng.normal(0,rng.uniform(0,200),(window_frames+2)*160).astype(np.int16)
             sets[split][0].append(features(pcm)[-window_frames:]);sets[split][1].append(0)
@@ -121,6 +125,7 @@ def main():
     p.add_argument('--first-filters',type=int,default=16);p.add_argument('--defer-test',action='store_true')
     p.add_argument('--kernels',default='5,9,13,21')
     p.add_argument('--hard-negative-repeats',type=int,default=5);p.add_argument('--min-snr',type=float,default=10)
+    p.add_argument('--stable-split-rng',action='store_true',help='Separate TRAIN/validation/test randomness so TRAIN repetition changes cannot perturb development windows; explicit new feature-cache contract')
     p.add_argument('--negative-prefixes',action='store_true')
     p.add_argument('--negative-tail-seconds',type=float,default=.12,help='TRAIN non-target tail range; 0.12..1.5 seconds; positive and evaluation alignment unchanged')
     p.add_argument('--positive-tail-seconds',type=float,default=.12,help='TRAIN complete-target tail range; 0.12..0.6 seconds, capped to preserve the entire phrase; evaluation unchanged')
@@ -155,6 +160,7 @@ def main():
     p.add_argument('--contrastive-classes',action='store_true',help='Separate complete near-phrase classes during sequence training; export scalar wake probability')
     p.add_argument('--plain-contrastive',action='store_true',help='Warm-start a plain binary checkpoint into near-phrase classes while preserving its initial probability; explicit retraining only')
     p.add_argument('--resume-contrastive-weights',type=Path,help='Continue/export a compatible trained plain near-phrase head; requires original class metadata and audited provenance for epoch files')
+    p.add_argument('--frozen-contrastive-residual-units',type=int,default=0,help='Freeze the resumed complete near-phrase encoder/logits and train only a zero-initialized residual class head, 16..256 units')
     p.add_argument('--widen-contrastive-from',type=Path,help='Explicitly train a wider complete near-phrase encoder, preserving every source class initially; requires its original report.json')
     p.add_argument('--relu6',action='store_true',help='Experimental bounded acoustic/sequence activations; requires explicit joint retraining and full revalidation')
     p.add_argument('--train-temporal-encoder',action='store_true',help='Train the ordered temporal head and its encoder jointly; separate fresh-training experiment')
@@ -168,6 +174,8 @@ def main():
             raise ValueError('Wider trained contrast requires a separate explicit training experiment')
         a.contrastive_classes=True
     if a.resume_contrastive_weights and not a.plain_contrastive:raise ValueError('Trained plain contrastive resume requires --plain-contrastive')
+    if a.frozen_contrastive_residual_units and (not 16<=a.frozen_contrastive_residual_units<=256 or not a.plain_contrastive or not a.resume_contrastive_weights or a.export_only or a.freeze_batch_normalization):
+        raise ValueError('Frozen residual class refinement requires explicit compatible pretrained classes and a new training run')
     os.umask(0o077)
     if not 65536<=a.max_model_bytes<=524288:raise ValueError('Model flash budget must be 64..512 KiB')
     if a.export_only and (not (a.resume_weights or (a.plain_contrastive and a.resume_contrastive_weights)) or a.widen_from):raise ValueError('Export-only requires one explicit resume checkpoint')
@@ -209,6 +217,7 @@ def main():
     feature_config={'window_frames':a.window_frames,'positive_repeats':a.positive_repeats,'negative_repeats':a.negative_repeats,'hard_negative_repeats':a.hard_negative_repeats,'min_snr':a.min_snr,'negative_prefixes':a.negative_prefixes,'pcm_context':a.pcm_context,'acoustic_augmentation':a.acoustic_augmentation,'acoustic_probability':a.acoustic_probability,'negative_tail_seconds':a.negative_tail_seconds,'positive_tail_seconds':a.positive_tail_seconds}
     if a.speech_context_probability:feature_config['speech_context_probability']=a.speech_context_probability
     if a.speech_context_negatives:feature_config['speech_context_negatives']=True
+    if a.stable_split_rng:feature_config['stable_split_rng']=True
     fingerprint=hashlib.sha256(b'pikoo-features-v5-mined-child-hard-negatives'+json.dumps(feature_config,sort_keys=True).encode()+a.manifest.read_bytes())
     for row in manifest:
         digest=hashlib.sha256((a.manifest.parent/row['path']).read_bytes()).digest()
@@ -303,6 +312,15 @@ def main():
             from contrastive_readout import resume_readout
             readout['resumed_trained_readout']=resume_readout(fit_model,model,a.resume_contrastive_weights,
                 sets['train'][0][:8],{'filters':a.filters,'first_filters':a.first_filters,'kernels':kernels})
+        if a.frozen_contrastive_residual_units:
+            from contrastive_readout import attach_frozen_residual
+            before=fit_model(sets['train'][0][:8],training=False).numpy()
+            fit_model,model=attach_frozen_residual(fit_model,a.frozen_contrastive_residual_units)
+            difference=float(np.max(np.abs(fit_model(sets['train'][0][:8],training=False).numpy()-before)))
+            if difference>1e-5:raise ValueError('Residual initialization changed the original class probabilities')
+            readout.update(type='frozen-near-phrase-residual',backbone_frozen=True,original_logits_frozen=True,
+                residual_units=a.frozen_contrastive_residual_units,residual_dropout=.1,residual_l2=1e-4,
+                initial_all_class_max_difference=difference)
     if a.resume_weights and not a.plain_contrastive:model.load_weights(a.resume_weights)
     if a.freeze_batch_normalization:
         from residual_readout import freeze_normalization
@@ -344,7 +362,7 @@ def main():
     report['protected_audio_hashes_checked']=len(protected)
     if widening:report['widening']=widening
     if readout:report['classifier_readout']=readout
-    report['batch_normalization_frozen']=a.freeze_batch_normalization
+    report['batch_normalization_frozen']=bool(a.freeze_batch_normalization or a.frozen_contrastive_residual_units)
     report['training_regularization']={'dropout':a.dropout,'early_stop_patience':a.early_stop_patience}
     for split,xx,yy in [('validation',vx,vy),('test',tx,ty)]:
         if split=='test' and a.defer_test:continue

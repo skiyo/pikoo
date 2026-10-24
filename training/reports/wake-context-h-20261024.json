@@ -1,0 +1,106 @@
+{
+  "status": "failed-prerequisite-development-not-flashed",
+  "candidate_sha256": "d65bdd39726e9f3261957a160281ef492fd2c3be79a25f0b95ffed98882b4db7",
+  "model_bytes": 192688,
+  "epochs_trained": 8,
+  "threshold": 0.9,
+  "rolling_inferences": 5,
+  "household_or_independent_test_used": false,
+  "device_modified": false,
+  "original_development": {
+    "status": "failed-level-tone-development",
+    "passed": false,
+    "contract": "pikoo-level-tone-only-v1",
+    "failures": [
+      "false-wakes"
+    ],
+    "streaming_development": {
+      "targets": 195,
+      "hits": 185,
+      "non_targets": 712,
+      "false_wakes": 3
+    },
+    "raw_style_groups": {
+      "adult": {
+        "targets": 36,
+        "hits": 34,
+        "non_targets": 78,
+        "false_wakes": 0
+      },
+      "childlike": {
+        "targets": 32,
+        "hits": 31,
+        "non_targets": 113,
+        "false_wakes": 0
+      }
+    },
+    "pitch_tempo": {
+      "targets": 127,
+      "hits": 120,
+      "non_targets": 131,
+      "false_wakes": 3
+    },
+    "model_bytes": 192688,
+    "old_mandarin_pronunciation": "unspecified, not a negative",
+    "household_or_independent_test_used": false,
+    "hardware_or_real_child_accepted": false
+  },
+  "additional_development": {
+    "status": "failed-additional-development",
+    "passed": false,
+    "original_gate_required": true,
+    "failures": [
+      "original-development-gate",
+      "adult:recall",
+      "adult:English-recall",
+      "childlike:recall",
+      "childlike:English-recall"
+    ],
+    "groups": {
+      "adult": {
+        "targets": 39,
+        "hits": 33,
+        "non_targets": 51,
+        "false_wakes": 0
+      },
+      "adult:literal-English": {
+        "targets": 13,
+        "hits": 9,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "childlike": {
+        "targets": 33,
+        "hits": 28,
+        "non_targets": 58,
+        "false_wakes": 0
+      },
+      "childlike:literal-English": {
+        "targets": 9,
+        "hits": 6,
+        "non_targets": 0,
+        "false_wakes": 0
+      }
+    },
+    "streaming_development": {
+      "targets": 72,
+      "hits": 61,
+      "non_targets": 109,
+      "false_wakes": 0
+    },
+    "independent_test": false,
+    "household_or_real_child_accepted": false
+  },
+  "continuous_development": "not run: already rejected by prerequisite gates",
+  "development_qualified": false,
+  "legacy_internal_training_validation_window_changes": {
+    "rows": 517,
+    "labels_and_waveforms_changed": false,
+    "reason": "Historical shared RNG advances on added TRAIN repetitions",
+    "external_streaming_replay_changed": false
+  },
+  "float_int8_small_train_check_passed": true,
+  "source": "original BM17",
+  "normalization_frozen": true,
+  "feature_cache_identical_to_g": true
+}

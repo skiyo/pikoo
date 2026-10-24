@@ -1,0 +1,27 @@
+{
+  "completed": true,
+  "source_model_sha256": "1080f93322927985e814b0a851e714a754e912b9509060069094497d51a20918",
+  "scope": "Selected existing development failures and raw parent; debugging only, not independent evaluation or hardware validation",
+  "household_or_independent_used": false,
+  "cases": 17,
+  "negative_cases": 6,
+  "negative_float_above_threshold": 4,
+  "negative_int8_above_threshold": 5,
+  "negative_quantization_threshold_crossings": 1,
+  "positive_cases": 11,
+  "positive_float_below_threshold": 10,
+  "positive_int8_below_threshold": 11,
+  "max_absolute_frame_error": 0.24465584754943848,
+  "mean_frame_error_max_case": 0.045596455114264245,
+  "threshold": 0.9,
+  "rolling_inferences": 5,
+  "interpretation": "Quantization worsens one negative threshold crossing, but float also produces four false wakes. Inspect acoustic discrimination and synthetic labels; do not deploy F or use the small TRAIN parity pass as accuracy acceptance.",
+  "story_lineage_local_asr": {
+    "clips": 6,
+    "transcripts_match_declared_ordinary_request": 6,
+    "includes_raw_parent": true,
+    "synthetic": true,
+    "human_review": false,
+    "labels_changed": false
+  }
+}
