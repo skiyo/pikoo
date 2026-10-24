@@ -1,0 +1,107 @@
+{
+  "status": "development-diagnostic-not-independent-or-hardware-acceptance",
+  "completed": true,
+  "threshold": 0.9,
+  "rolling_inferences": 5,
+  "seed": 42,
+  "model_sha256": "383f3bc8f49302e1a9e8d45aff517cf107d6c3e888d81ca33d690f18f21fb4b2",
+  "manifest_sha256": "4aaacb49c717d7418607b2b4bea72c601929661f0818d67a9e6e36206fe197fa",
+  "prefix_split": "train",
+  "prefix_seconds": 30.0,
+  "gaps_seconds": [
+    0.0,
+    0.3,
+    1.0
+  ],
+  "prefix_shared_across_targets": true,
+  "includes_validation_non_targets": true,
+  "target_audio": "synthetic and/or manifest-declared development audio; not real-child acceptance",
+  "summary": {
+    "unspecified/cold": {
+      "targets": 0,
+      "hits": 0,
+      "prefix_above_threshold_windows": 0,
+      "non_targets": 390,
+      "false_wakes": 0
+    },
+    "unspecified/speech-gap-0s": {
+      "targets": 0,
+      "hits": 0,
+      "prefix_above_threshold_windows": 0,
+      "non_targets": 390,
+      "false_wakes": 0
+    },
+    "unspecified/speech-gap-0.3s": {
+      "targets": 0,
+      "hits": 0,
+      "prefix_above_threshold_windows": 0,
+      "non_targets": 390,
+      "false_wakes": 0
+    },
+    "unspecified/speech-gap-1s": {
+      "targets": 0,
+      "hits": 0,
+      "prefix_above_threshold_windows": 0,
+      "non_targets": 390,
+      "false_wakes": 0
+    },
+    "adult/cold": {
+      "targets": 101,
+      "hits": 97,
+      "prefix_above_threshold_windows": 0,
+      "non_targets": 136,
+      "false_wakes": 0
+    },
+    "adult/speech-gap-0s": {
+      "targets": 101,
+      "hits": 42,
+      "prefix_above_threshold_windows": 0,
+      "non_targets": 136,
+      "false_wakes": 0
+    },
+    "adult/speech-gap-0.3s": {
+      "targets": 101,
+      "hits": 65,
+      "prefix_above_threshold_windows": 0,
+      "non_targets": 136,
+      "false_wakes": 0
+    },
+    "adult/speech-gap-1s": {
+      "targets": 101,
+      "hits": 95,
+      "prefix_above_threshold_windows": 0,
+      "non_targets": 136,
+      "false_wakes": 0
+    },
+    "childlike/cold": {
+      "targets": 94,
+      "hits": 89,
+      "prefix_above_threshold_windows": 0,
+      "non_targets": 186,
+      "false_wakes": 0
+    },
+    "childlike/speech-gap-0s": {
+      "targets": 94,
+      "hits": 24,
+      "prefix_above_threshold_windows": 0,
+      "non_targets": 186,
+      "false_wakes": 1
+    },
+    "childlike/speech-gap-0.3s": {
+      "targets": 94,
+      "hits": 41,
+      "prefix_above_threshold_windows": 0,
+      "non_targets": 186,
+      "false_wakes": 1
+    },
+    "childlike/speech-gap-1s": {
+      "targets": 94,
+      "hits": 90,
+      "prefix_above_threshold_windows": 0,
+      "non_targets": 186,
+      "false_wakes": 1
+    }
+  },
+  "prefix_recordings_count": 10,
+  "scope_note": "Same 195 existing synthetic development targets and 712 non-targets, repeated under four conditions; one shared concatenated TRAIN non-target speech prefix; no household or independent test input; no model, threshold or firmware update. Repeated conditions are correlated."
+}

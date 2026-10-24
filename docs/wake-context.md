@@ -1,0 +1,125 @@
+# Continuous-context wake diagnostics
+
+[English](wake-context.md) | [简体中文](wake-context.zh-CN.md)
+
+## Finding on 2026-10-24
+
+The BM17 engineering model remains unqualified. A controlled development probe
+reproduced sensitivity to ordinary speech immediately before the wake phrase.
+This is a model/pipeline weakness, **not an established explanation of the
+household's intermittent misses**. A silent 90-second prefix did not reproduce
+the failure in the initial two-target probe.
+
+The subsequent complete development check used all 195 existing targets and
+a separate deterministic 30-second prefix assembled from TRAIN non-targets:
+
+| Condition | Adult synthetic hits | Childlike synthetic hits |
+|---|---:|---:|
+| Cold, 1-second silence | 97/101 | 89/94 |
+| Speech directly before target | 42/101 | 24/94 |
+| Speech, 0.3-second gap | 65/101 | 41/94 |
+| Speech, 1-second gap | 95/101 | 90/94 |
+
+The cold total is 186/195, matching the earlier clip-based development result.
+The adjacent-speech condition is much worse. The target set includes correlated
+pitch/tempo derivatives. These counts do not establish human recognition rates
+or a production pass. See the [sanitized report](../training/reports/wake-context-20261024.json).
+The full check also covered 712 non-targets: zero cold false wakes, but the
+same childlike non-target activated in each of the three speech-prefix
+conditions. These are correlated replays of one clip, not three independent
+false-wake events. Thus the current model also fails the new context check.
+
+An earlier 24-target isolation diagnostic kept the model and five-inference
+0.90 cutoff fixed:
+
+| Prefix before the target | Adult synthetic hits | Childlike synthetic hits |
+|---|---:|---:|
+| 1 second of silence | 12/12 | 12/12 |
+| 5 seconds of ordinary speech, no gap | 7/12 | 7/12 |
+| 90 seconds of ordinary speech, no gap | 6/12 | 4/12 |
+| Same 90 seconds, then 1 second of silence | 12/12 | 12/12 |
+| Same 90 seconds, then 3 seconds of silence | 12/12 | 12/12 |
+
+These are the same 24 existing development targets in every condition, not
+independent trials, speakers or real-child acceptance. The speech prefix was
+concatenated authorized ChildMandarin **TRAIN non-target** audio, not household
+audio and not simultaneous background mixing. Its reuse does not measure a
+false-wake rate per hour. No prefix windows exceeded the threshold in this
+probe. Model-only resets recovered 11/12 adult and 12/12 childlike targets;
+frontend-only resets recovered 8/12 and 6/12. Neither reset experiment proves
+a safe firmware fix. Periodic resets could introduce recognition blind spots.
+
+The model SHA-256 is
+`383f3bc8f49302e1a9e8d45aff517cf107d6c3e888d81ca33d690f18f21fb4b2`.
+Weights and licensed audio stay local. No model, microphone gain or wake
+threshold was changed during this investigation. Fresh device telemetry showed
+successful local wake, no inference errors and no dropped wake blocks; that
+snapshot does not exclude other microphone or enclosure effects.
+
+## Reproduce the development check
+
+The pinned [training environment](../training/requirements.txt) is required.
+Use a reviewed development manifest and a private protected-audio hash ledger:
+
+```sh
+python training/evaluate_context.py \
+  --model /private/candidate.tflite \
+  --manifest /private/reviewed-development/manifest.json \
+  --protected-hashes /private/protected-recordings.json \
+  --prefix-seconds 30 --gaps 0,0.3,1 --include-non-targets \
+  --output /private/context-development.json
+```
+
+The tool uses all validation targets and a deterministic shuffled prefix of
+non-target recordings. It uses the same reference kernels and input rounding
+as the firmware. It never scores the test split. Household/evaluation-only
+manifests and protected waveform copies are rejected. Reports record hashes,
+prefix selection, style, source, background threshold windows and target
+scores. Background windows are not counted as target hits or independent
+false-wake events. Decision windows crossing the prefix/target boundary are
+excluded from target scores. A report with `completed=false` is partial.
+`--include-non-targets` also checks all validation near-words and ordinary
+speech after the same prefixes; their activations are false wakes, not recall.
+
+Cold, adjacent-speech and short-gap results must remain separate in future
+candidate comparisons. Any resulting training change must use authorized
+TRAIN data, pass the original recall/false-wake checks and continuous-context
+development checks, then freeze before new independent and physical testing.
+Do not lower the threshold or tune using household acceptance recordings.
+
+## Offline training experiment
+
+`train.py --speech-context-probability 0.5` explicitly replaces the idle lead
+on half of TRAIN positive examples with ordinary TRAIN speech and a 0–300 ms
+gap. An extra speech prefix warms frontend state before the retained causal
+window. The complete target and completion tail remain intact. Only authorized
+ChildMandarin/MInDS TRAIN non-targets supply context, with a fixed independent
+random seed and hash checks. The new option defaults to zero, preserves the
+baseline random sequence and evaluation construction, and changes the feature
+cache key when enabled. This is a training hypothesis, not a deployed fix.
+
+The positive-only six-epoch experiment A improved cold streaming targets from
+186/195 to 193/195 but introduced **14/712 non-target false wakes**; it failed
+the original gate and was not flashed. `--speech-context-negatives` explicitly
+applies the same probability to TRAIN non-targets as well, including near-words.
+Experiment B tests this balanced construction from the original checkpoint;
+it does not inherit A's weights.
+
+A's adjacent-speech result was 99/101 adult and 93/94 childlike targets,
+compared with the baseline's 42/101 and 24/94. This confirms a useful direction
+but does not offset its false wakes. Its adjacent-speech non-target false wakes
+totaled 19/712, compared with 1/712 for the baseline. See the
+[failed A report](../training/reports/wake-context-a-20261024.json).
+
+B reduced cold false wakes to 4/712, with 187/195 targets. Its adjacent-speech
+result was 185/195 targets and 3/712 non-target false wakes. It also failed the
+complete 181-recording supplemental development gate, including English-name
+groups; it was not flashed. See the [failed B report](../training/reports/wake-context-b-20261024.json).
+
+The next bounded experiment C starts from A's stronger positive-recognition
+checkpoint, retaining balanced speech context and adding 136 causal hard
+negative prefixes mined from **all 9,534 TRAIN non-targets** with B. Of those,
+98 are real Chinese child ordinary-speech negatives, not child wake positives.
+Mining never reads validation, independent tests or household recordings. C
+must pass the same original, full supplemental and continuous-context checks;
+training completion alone does not authorize deployment.

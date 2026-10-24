@@ -1,5 +1,7 @@
 # “你好 Pikoo”训练与中文童声
 
+2026-10-24 连续讲话上下文诊断：[English](../docs/wake-context.md) | [简体中文](../docs/wake-context.zh-CN.md)。已复现前置普通讲话导致漏识别；模型和阈值未改，尚未确认家庭漏识别的完整原因。
+
 当前扩大网络试验及实机资源测量：[English](../docs/wake-capacity.md) | [简体中文](../docs/wake-capacity.zh-CN.md)。512 KiB 是显式实验预算，识别、内存与耗时分别验收。
 
 最新发音覆盖工作及 V10 混合语料策略：[English](../docs/wake-pronunciations.md) | [简体中文](../docs/wake-pronunciations.zh-CN.md)。声调增强不等于新的自然混读或儿童录音；NVIDIA NIM／Magpie 不参与当前训练。

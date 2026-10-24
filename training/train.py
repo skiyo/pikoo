@@ -29,8 +29,14 @@ def validate_training_manifest(manifest):
     if any(row.get('evaluation_only') or row.get('frozen_holdout') or str(row.get('source','')).startswith('private-') for row in manifest):
         raise ValueError('evaluation_only recordings require a separate evaluation manifest')
 
-def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative_repeats=5,hard_negative_repeats=5,min_snr=10,negative_prefixes=False,pcm_context=False,acoustic_augmentation=False,acoustic_probability=1.,negative_tail_seconds=.12,positive_tail_seconds=.12):
+def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative_repeats=5,hard_negative_repeats=5,min_snr=10,negative_prefixes=False,pcm_context=False,acoustic_augmentation=False,acoustic_probability=1.,negative_tail_seconds=.12,positive_tail_seconds=.12,speech_context_probability=0.,speech_context_negatives=False):
     validate_training_manifest(manifest)
+    if not 0<=speech_context_probability<=1:raise ValueError('Speech context probability must be 0..1')
+    if speech_context_negatives and not speech_context_probability:raise ValueError('Negative speech context requires a nonzero probability')
+    context=None
+    if speech_context_probability:
+        from speech_context import SpeechContext
+        context=SpeechContext(manifest,root,seed+1)
     if not .12<=negative_tail_seconds<=1.5:raise ValueError('Negative tail must be between 0.12 and 1.5 seconds')
     if not .12<=positive_tail_seconds<=.6:raise ValueError('Positive tail must be between 0.12 and 0.6 seconds')
     rng=np.random.default_rng(seed);sets={k:([],[]) for k in ['train','validation','test']}
@@ -91,6 +97,12 @@ def dataset(manifest,root,seed=42,window_frames=198,positive_repeats=32,negative
                 # Extract the entire causal window from quiet noisy PCM,
                 # including the context before and after the wake phrase.
                 x+=rng.normal(0,rng.uniform(2,80),len(x))
+            # A separate RNG preserves every historical validation/test
+            # feature and all baseline TRAIN augmentations. Only selected
+            # Selected TRAIN examples gain an ordinary-speech lead and frontend
+            # warmup. The negative option balances this for near-word examples.
+            if context and row['split']=='train' and (row['label'] or speech_context_negatives) and context.rng.random()<speech_context_probability:
+                x=context.apply(x,lead)
             spec=features(np.clip(x,-32768,32767).astype(np.int16))
             if len(spec)<window_frames:spec=np.pad(spec,((window_frames-len(spec),0),(0,0)))
             spec=spec[-window_frames:]
@@ -113,6 +125,8 @@ def main():
     p.add_argument('--negative-tail-seconds',type=float,default=.12,help='TRAIN non-target tail range; 0.12..1.5 seconds; positive and evaluation alignment unchanged')
     p.add_argument('--positive-tail-seconds',type=float,default=.12,help='TRAIN complete-target tail range; 0.12..0.6 seconds, capped to preserve the entire phrase; evaluation unchanged')
     p.add_argument('--pcm-context',action='store_true',help='Use a complete noisy PCM context rather than zero feature padding')
+    p.add_argument('--speech-context-probability',type=float,default=0.,help='TRAIN positives preceded by authorized TRAIN ordinary speech; 0..1, independent of evaluation construction')
+    p.add_argument('--speech-context-negatives',action='store_true',help='Apply the same speech-context probability to TRAIN non-targets and near-words')
     p.add_argument('--resume-weights',type=Path,help='Fine-tune a compatible local checkpoint; record its hash')
     p.add_argument('--negative-weight',type=float,default=1,help='Non-wake loss multiplier; calibrate on validation, not the test split')
     p.add_argument('--acoustic-augmentation',action='store_true',help='Synthetic band limits, early reflections, and -28 to +2dB gain; no household recordings')
@@ -175,6 +189,8 @@ def main():
     if a.dropout and (a.widen_from or a.classifier_head_units or a.phonetic_readout):raise ValueError('Dropout experiment requires a plain encoder')
     if not .12<=a.negative_tail_seconds<=1.5:raise ValueError('Negative tail must be between 0.12 and 1.5 seconds')
     if not .12<=a.positive_tail_seconds<=.6:raise ValueError('Positive tail must be between 0.12 and 0.6 seconds')
+    if not 0<=a.speech_context_probability<=1:raise ValueError('Speech context probability must be 0..1')
+    if a.speech_context_negatives and not a.speech_context_probability:raise ValueError('Negative speech context requires a nonzero probability')
     if a.window_frames%3 or a.window_frames<150 or min(a.positive_repeats,a.negative_repeats,a.hard_negative_repeats,a.filters,a.first_filters)<1 or not 0<=a.min_snr<35 or not 0<a.negative_weight<=16 or not 0<a.learning_rate<=.01 or not 0<=a.acoustic_probability<=1:raise ValueError('Invalid training dimensions')
     kernels=[int(k) for k in a.kernels.split(',')]
     if a.relu6 and not (a.sequence_readout and a.train_sequence_encoder):raise ValueError('ReLU6 requires explicit joint sequence retraining')
@@ -191,6 +207,8 @@ def main():
     household_count=protection.get('household_sha256_count',len(protected))
     if not isinstance(household_count,int) or not 0<=household_count<=len(protected):raise ValueError('Invalid protected household count')
     feature_config={'window_frames':a.window_frames,'positive_repeats':a.positive_repeats,'negative_repeats':a.negative_repeats,'hard_negative_repeats':a.hard_negative_repeats,'min_snr':a.min_snr,'negative_prefixes':a.negative_prefixes,'pcm_context':a.pcm_context,'acoustic_augmentation':a.acoustic_augmentation,'acoustic_probability':a.acoustic_probability,'negative_tail_seconds':a.negative_tail_seconds,'positive_tail_seconds':a.positive_tail_seconds}
+    if a.speech_context_probability:feature_config['speech_context_probability']=a.speech_context_probability
+    if a.speech_context_negatives:feature_config['speech_context_negatives']=True
     fingerprint=hashlib.sha256(b'pikoo-features-v5-mined-child-hard-negatives'+json.dumps(feature_config,sort_keys=True).encode()+a.manifest.read_bytes())
     for row in manifest:
         digest=hashlib.sha256((a.manifest.parent/row['path']).read_bytes()).digest()
