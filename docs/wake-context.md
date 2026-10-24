@@ -157,3 +157,32 @@ The project's Flash TTS API returned a free-tier limit of ten requests/day;
 that model was stopped. A separate bounded Flash-Lite experiment uses explicit
 first-tone homophone text and undergoes the same strict content review. This
 does not change the supported wake phrase.
+
+Both ASR content screens approved two Flash-Lite childlike TRAIN targets, and
+human listening confirmed that both complete name syllables use first tones.
+These are two clips from one fictional voice, not real child recordings or
+wake-model acceptance. Two adult Flash-Lite targets had conflicting ASR results
+and stayed quarantined. Three newly synthesized ordinary-speech negatives
+passed both screens. Together with four reviewed near-words, the nine new TRAIN
+clips entered E. E still failed: 186/195 cold targets, 2/712 false wakes, and
+64/72 supplemental targets. Literal-English name groups scored 11/13 adult and
+6/9 childlike. It was not flashed; see the [E report](../training/reports/wake-context-e-20261024.json).
+
+## Fast-speech training hypothesis
+
+Some missed supplemental targets have only about 0.8–1.1 seconds of active
+speech. This motivates a separate TRAIN-only tempo experiment; it does not
+establish the cause of household misses. `prepare_voice_variants.py --fast-speech`
+explicitly permits tempo up to 2.0 and rejects any non-TRAIN input, evaluation
+flags or protected recording hashes. The default tempo limit remains 1.25.
+Pitch-preserving duration and split protection have regression tests.
+
+F adds two independently content-screened 3.1 Flash TTS adult targets, then
+uses deterministic hash selection of 64 original TRAIN clips per style/label
+bucket (adult/childlike, target/non-target), with at most eight per prompt/voice
+group and 0.9–2.6-second source duration. The 256 sources produce 512 derivatives
+at 1.4× and 1.8× tempo, without pitch shift. Both target and near-word negatives
+receive the changes. No development recording is transformed or copied into
+training. Correlated derivatives are augmentation, not new independent speakers
+or child acceptance. F retains the fixed threshold and all prerequisite gates;
+training and a small file size do not establish an acceptable release.

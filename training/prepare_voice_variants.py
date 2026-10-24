@@ -21,11 +21,19 @@ PROFILES = [(2., .9), (4., 1.), (6., 1.15), (8., 1.), (5., .8)]
 ALLOWED_SOURCES = {'Google-Gemini-TTS-synthetic','Qwen3-TTS-synthetic-local','Google-TTS-level-tone-synthetic'}
 
 
-def validate(rows, root, protected):
+def validate_profiles(profiles, fast_speech=False):
+    maximum_tempo = 2. if fast_speech else 1.25
+    if len(profiles)>5 or any(not math.isfinite(s) or not math.isfinite(t) or not -2<=s<=8 or not .75<=t<=maximum_tempo for s,t in profiles):
+        raise ValueError(f'Use at most five finite profiles: -2..8 semitones and 0.75..{maximum_tempo} tempo')
+
+
+def validate(rows, root, protected, training_only=False):
     groups, hashes = {}, {}
     for row in rows:
         if row.get('evaluation_only') or row.get('frozen_holdout') or str(row.get('source', '')).startswith('private-'):
             raise ValueError('Household/evaluation audio cannot enter development')
+        if training_only and row['split'] != 'train':
+            raise ValueError('Fast speech derivatives require TRAIN-only input')
         if row['split'] not in ('train', 'validation'):
             raise ValueError('Test recordings cannot enter development')
         path = (root / row['path']).resolve()
@@ -70,14 +78,14 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--sources',nargs='+',choices=sorted(ALLOWED_SOURCES),default=['Google-Gemini-TTS-synthetic'])
     parser.add_argument('--profile',type=float,nargs=2,action='append',metavar=('SEMITONES','TEMPO'),help='Optional bounded profiles; default is the historical five-profile set')
+    parser.add_argument('--fast-speech',action='store_true',help='Explicitly allow tempo up to 2.0 on TRAIN-only input; never changes development audio')
     args = parser.parse_args()
     profiles=args.profile or PROFILES
-    if len(profiles)>5 or any(not math.isfinite(s) or not math.isfinite(t) or not -2<=s<=8 or not .75<=t<=1.25 for s,t in profiles):
-        raise ValueError('Use at most five finite profiles: -2..8 semitones and 0.75..1.25 tempo')
+    validate_profiles(profiles,args.fast_speech)
     os.umask(0o077)
     rows = json.loads(args.manifest.read_text())
     protected = set(json.loads(args.protected_hashes.read_text())['audio_sha256'].values())
-    validate(rows, args.manifest.parent, protected)
+    validate(rows, args.manifest.parent, protected,training_only=args.fast_speech)
     ffmpeg = shutil.which('ffmpeg')
     if not ffmpeg:
         raise RuntimeError('FFmpeg is required for explicit offline voice augmentation')
@@ -107,13 +115,14 @@ def main():
                 'real_child': False, 'augmentation': identity,
                 'label_scope': 'synthetic surrogate, not real child target speech'})
     combined = original + variants
-    validate(combined, args.output, protected)
+    validate(combined, args.output, protected,training_only=args.fast_speech)
     (args.output / 'manifest.json').write_text(json.dumps(combined, ensure_ascii=False, indent=2) + '\n')
     (args.output / 'variants-only.json').write_text(json.dumps(variants, ensure_ascii=False, indent=2) + '\n')
     report = {'status': 'synthetic-development-augmentation-not-child-acceptance',
         'source_manifest_sha256': hashlib.sha256(args.manifest.read_bytes()).hexdigest(),
         'ffmpeg_version': subprocess.check_output([ffmpeg, '-version'], text=True).splitlines()[0],
         'profiles': profiles, 'protected_hashes': len(protected),
+        'fast_speech_train_only':args.fast_speech,
         'counts': dict(Counter(f"{r['split']}:label={r['label']}" for r in variants)),
         'real_child_positive_recordings': 0, 'household_recordings_used': 0}
     (args.output / 'preparation-report.json').write_text(json.dumps(report, indent=2) + '\n')

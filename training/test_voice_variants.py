@@ -12,6 +12,31 @@ spec.loader.exec_module(module)
 
 
 class VoiceVariantSafetyTest(unittest.TestCase):
+    def test_fast_profiles_are_explicit_and_bounded(self):
+        with self.assertRaises(ValueError):module.validate_profiles([(0.,1.6)])
+        module.validate_profiles([(0.,1.6)],fast_speech=True)
+        for tempo in (float('nan'),float('inf'),2.01,.74):
+            with self.assertRaises(ValueError):module.validate_profiles([(0.,tempo)],fast_speech=True)
+
+    def test_fast_mode_rejects_development_before_reading_audio(self):
+        with self.assertRaisesRegex(ValueError,'TRAIN-only'):
+            module.validate([dict(split='validation')],Path('/unused'),set(),training_only=True)
+
+    @unittest.skipUnless(shutil.which('ffmpeg') and importlib.util.find_spec('numpy'), 'Optional FFmpeg/NumPy runtime')
+    def test_fast_transform_shortens_duration_without_raising_pitch(self):
+        import numpy as np
+        with tempfile.TemporaryDirectory() as tmp:
+            source,target=Path(tmp)/'source.wav',Path(tmp)/'target.wav'
+            pcm=(8000*np.sin(2*np.pi*220*np.arange(32000)/16000)).astype('<i2')
+            with wave.open(str(source),'wb') as audio:
+                audio.setparams((1,2,16000,0,'NONE','not compressed'));audio.writeframes(pcm.tobytes())
+            module.transform(shutil.which('ffmpeg'),source,target,0.,1.75)
+            with wave.open(str(target)) as audio:
+                output=np.frombuffer(audio.readframes(audio.getnframes()),'<i2')
+            self.assertLess(abs(len(output)/len(pcm)-1/1.75),.05)
+            peak=np.argmax(abs(np.fft.rfft(output)))*16000/len(output)
+            self.assertLess(abs(peak-220),5)
+
     @unittest.skipUnless(shutil.which('ffmpeg') and importlib.util.find_spec('numpy'), 'Optional FFmpeg/NumPy runtime')
     def test_pitch_changes_without_forcing_the_speech_to_become_faster(self):
         import numpy as np
