@@ -1,6 +1,6 @@
 {
   "date": "2026-10-24",
-  "status": "priorfree-TRAIN-prototype-passed-training-in-progress-not-qualified",
+  "status": "priorfree-TRAIN-prototype-passed-research-paused-by-owner-not-qualified",
   "source_patch_base": "43a6a98",
   "architecture": "short-context-raw96-24x3-recent72-hidden32-priorfree",
   "hypothesis": "Test whether a fixed original class-logit prior limits new name-variant readout learning; no causal conclusion yet.",
@@ -24,7 +24,8 @@
     "positive_event_coefficient": 1.0,
     "threshold": 0.9,
     "rolling_inferences": 5,
-    "same_frozen_TRAIN_manifest_as_source_expansion": true
+    "same_frozen_TRAIN_manifest_as_source_expansion": true,
+    "state": "paused-by-explicit-owner-request-before-final-evaluation"
   },
   "source_audit_incomplete": true,
   "independent_or_household_used": false,

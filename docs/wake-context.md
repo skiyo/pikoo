@@ -43,7 +43,8 @@ parity (200 steps each, maximum difference 0.000000551343), integer-state anchor
 identity and INT8/static export checks. Equality to the old classifier's
 probabilities is deliberately **not** claimed. The untrained prototype is
 242,856 bytes; its size is not a recognition, Micro timing or device pass.
-The fixed 12-epoch same-corpus fit is in progress, with no automatic flash.
+The fixed 12-epoch same-corpus research was explicitly paused by the owner
+before final evaluation; it is not a qualified model and no automatic flash occurs.
 See the [prototype record](../training/reports/wake-priorfree-prototype-20261024.json)
 and [research-only patch](../training/experiments/priorfree-classifier.patch).
 
