@@ -1,6 +1,7 @@
 #include "board_audio.hpp"
 #include "board.hpp"
 #include "pikoo_button.hpp"
+#include "pikoo_volume.hpp"
 #include "driver/usb_serial_jtag.h"
 #include "esp_app_desc.h"
 #include "esp_heap_caps.h"
@@ -775,6 +776,7 @@ void controls_task(void *) {
     while(usb_serial_jtag_read_bytes(&c,1,0)==1) {
       if(c=='\r'||c=='\n') {
         command[used]=0;
+        int requested_db=0;
         if(!strcmp(command,"status")) diagnostics();
         // Enter only after the session task has published a fully muted state,
         // so a concurrent wake cannot race the test's network-isolation gate.
@@ -795,6 +797,11 @@ void controls_task(void *) {
         else if(!strcmp(command,"volume higher"))board::set_volume(-12);
         else if(!strcmp(command,"volume louder"))board::set_volume(-6);
         else if(!strcmp(command,"volume full"))board::set_volume(0);
+        else if(pikoo::volume_command(command,requested_db)) {
+          const auto result=board::set_volume(requested_db);
+          if(result==ESP_OK)ESP_LOGI("audio","volume_db=%d dac_reg=%d",board::volume_db(),board::volume_register());
+          else ESP_LOGW("audio","Volume update failed: %s",esp_err_to_name(result));
+        }
         else if(!strcmp(command,"companion on")||!strcmp(command,"companion off")) {
           const bool enabled=!strcmp(command,"companion on");
           nvs_handle_t n;

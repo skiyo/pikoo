@@ -26,6 +26,13 @@ bash tools/check.sh
 
 `tools/Pikoo-USB.command` 和 `tools/device.py` 提供核对分区的双眼安装、升级、诊断和恢复，见[固件说明](firmware.zh-CN.md)。不要把旧板映射用于双眼板。配置含凭证，应保存在 Git 外，替换时撤销旧 token，按板商资料进入下载模式。
 
+## USB 音量调节
+
+USB 诊断支持 −50 到 0 dB 的整数音量，例如
+`python tools/device.py diagnose --port /dev/cu.usbmodem1101 --command 'volume -2'`。
+设置保存在设备 NVS。应核对新的 `status` 显示 `volume_db=-2`，不能把命令排队当作
+设备已执行。旧固件仅支持命名档位，使用此命令前需要升级应用程序。
+
 ## 文档与发布
 
 公开入口和核心文档以英文为默认；对应中文文件使用 `.zh-CN.md` 后缀。语言链接、示例和验证边界要保持一致。历史中文记录保留，并附带日期明确的英文摘要；模拟器界面暂维持中文。

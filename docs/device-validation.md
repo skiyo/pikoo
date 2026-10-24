@@ -4,6 +4,24 @@
 
 **Development testing is in progress. This is not the complete household release.** Simulator and software checks are separate from physical acceptance. Results below apply to a non-touch ESP32-S3-DualEye-LCD-1.28 with 16 MiB Flash and 8 MiB PSRAM.
 
+## Volume adjustment — 2026-10-24
+
+At the owner's request, application `0.2.0-cw24-vol1` adds exact integer USB
+volume commands. The installed setting changed from 0 to −2 dB; fresh device
+diagnostics confirmed `volume_db=-2`, DAC register 194, Wi-Fi connected and
+nonzero display FPS. The application write passed flash digest verification;
+the partition layout, private NVS and frozen wake-model bytes were preserved.
+Native audio/session tests and all 25 Python tooling tests passed. The new
+command uses existing NVS persistence, but a power-cycle persistence check and
+human confirmation that distortion has cleared were not performed. Wake-model
+training remains paused.
+
+按用户要求将音量从 0 降至 −2 dB，新增 USB 整数分贝调节。设备实读确认
+`volume_db=-2`、DAC 寄存器 194，Wi-Fi 和屏幕正常；仅升级应用，保留分区、
+私密 NVS 和原唤醒模型。原生音频／会话测试及 25 项 Python 工具测试通过。
+沿用 NVS 保存设置；本轮未做断电持久化测试，爆音是否消除仍待真人听感确认。
+唤醒训练继续暂停。下方保留此前各版本的历史记录。
+
 ## Speaker report correction
 
 The user subsequently corrected the heating report: the speaker had **not** heated, and explicitly requested another playback. The temporary mute/end stop was lifted for a short controlled replay at the normal conservative volume. The user subsequently confirmed smooth speech, while -24 dB and -18 dB remained too quiet; sustained speaker operation is not accepted by this correction alone.

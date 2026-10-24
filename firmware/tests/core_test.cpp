@@ -2,11 +2,20 @@
 #include "pikoo_button.hpp"
 #include "pikoo_audio_slots.hpp"
 #include "pikoo_interaction.hpp"
+#include "pikoo_volume.hpp"
 #include "eye_state.hpp"
 #include <cassert>
 #include <iostream>
 int main() {
   using namespace pikoo;
+  int db=123;
+  for(int level=-50;level<=0;++level){
+    assert(volume_command(("volume "+std::to_string(level)).c_str(),db));
+    assert(db==level);
+  }
+  for(auto command:{"volume -51","volume 1","volume -2junk","volume -2.0","volume ","volume  -2","volume +0","volume -99999999999999999","wake -2"}){
+    db=123;assert(!volume_command(command,db));assert(db==123);
+  }
   Interaction flow;
   flow.wake();assert(flow.greeting_pending());flow.greeting_sent();
   // Transport reconnects and provider rebuilds never call wake().

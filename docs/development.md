@@ -26,6 +26,14 @@ Build desktop graphics using `bash tools/build-eyes.sh`. Tests produce ignored a
 
 `tools/Pikoo-USB.command` and `tools/device.py` provide partition-checked DualEye installation, upgrades, diagnostics and recovery. See [firmware](firmware.md). Do not use the old board mapping on DualEye. Configuration contains secrets; store it outside Git, revoke replaced tokens, and follow the board's official download-mode instructions.
 
+## USB volume control
+
+USB diagnostics support exact integer attenuation from −50 to 0 dB, for example
+`python tools/device.py diagnose --port /dev/cu.usbmodem1101 --command 'volume -2'`.
+The setting is saved in device NVS. Confirm a fresh `status` reports
+`volume_db=-2`; a queued command alone is not an acknowledgment. Older firmware
+supports only the named presets and requires an application upgrade for this command.
+
 ## Documentation and releases
 
 English is the default for public entry and core docs; mirrored Chinese files end in `.zh-CN.md`. Keep language links, examples and acceptance boundaries consistent. Historical Chinese records remain intact with a dated English summary. Current UI language remains Chinese.
