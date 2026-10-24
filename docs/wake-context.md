@@ -116,10 +116,44 @@ result was 185/195 targets and 3/712 non-target false wakes. It also failed the
 complete 181-recording supplemental development gate, including English-name
 groups; it was not flashed. See the [failed B report](../training/reports/wake-context-b-20261024.json).
 
-The next bounded experiment C starts from A's stronger positive-recognition
+The bounded experiment C starts from A's stronger positive-recognition
 checkpoint, retaining balanced speech context and adding 136 causal hard
 negative prefixes mined from **all 9,534 TRAIN non-targets** with B. Of those,
 98 are real Chinese child ordinary-speech negatives, not child wake positives.
 Mining never reads validation, independent tests or household recordings. C
 must pass the same original, full supplemental and continuous-context checks;
 training completion alone does not authorize deployment.
+
+C finished eight epochs and failed with 189/195 cold targets and 3/712 false
+wakes; the full supplement scored 63/72 targets, including failures in the
+adult/childlike English-name groups. D reused the exact C feature cache and
+kept A's batch-normalization parameters/statistics fixed during training. It
+also failed: 188/195 cold targets, 4/712 false wakes and 60/72 supplementary
+targets. The shared training/scalar-view normalization freeze has a regression
+test. Neither model proceeded to the full continuous-context check after
+failing prerequisite gates; neither was flashed.
+
+See the [C report](../training/reports/wake-context-c-20261024.json) and
+[D report](../training/reports/wake-context-d-20261024.json). All 907 manifest
+validation clips retain bitwise-identical features in C/D. The 20 generated
+internal validation noise windows differ from A/B because the expanded TRAIN
+set advances the random generator; external streaming gates retain the original
+manifest and do not use these windows. C and D use identical arrays.
+
+The three C false wakes are pitch/tempo derivatives of the same existing
+development phrase, “给我讲一个故事”. They remain failures. New TRAIN-only
+utterances of that category and content-audited name examples are the next
+data experiment; validation recordings are never copied into training.
+
+## TTS content quality
+
+The small new corpus uses the [official Gemini TTS interface](https://ai.google.dev/gemini-api/docs/speech-generation),
+with text and `speech_metadata` separated. Requests are paced at 30 seconds,
+without retries after quota errors. Eight new Flash TTS clips were generated;
+all four target clips failed the local content screen (for example, “皮克” or
+“Pico” instead of the complete pi/ku target). They are quarantined, not relabeled
+or trained. ASR is a content screen, not human pronunciation/age acceptance.
+The project's Flash TTS API returned a free-tier limit of ten requests/day;
+that model was stopped. A separate bounded Flash-Lite experiment uses explicit
+first-tone homophone text and undergoes the same strict content review. This
+does not change the supported wake phrase.

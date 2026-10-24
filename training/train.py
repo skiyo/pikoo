@@ -183,7 +183,7 @@ def main():
     if a.temporal_readout and (a.classifier_head_units or a.phonetic_readout or a.widen_from or a.dropout):raise ValueError('Select one plain-encoder readout experiment')
     if a.train_temporal_encoder and not a.temporal_readout:raise ValueError('Joint temporal training requires the ordered head')
     if a.phonetic_readout and (a.classifier_head_units or a.widen_from):raise ValueError('Select one readout architecture')
-    if a.freeze_batch_normalization and not (a.resume_weights or a.widen_from):raise ValueError('Frozen normalization requires explicit pretrained weights')
+    if a.freeze_batch_normalization and not (a.resume_weights or a.resume_contrastive_weights or a.widen_from):raise ValueError('Frozen normalization requires explicit pretrained weights')
     if a.classifier_head_units and a.widen_from:raise ValueError('Widen the encoder and add a readout in separate experiments')
     if not 0<=a.dropout<=.4 or not 1<=a.early_stop_patience<=30:raise ValueError('Invalid regularization configuration')
     if a.dropout and (a.widen_from or a.classifier_head_units or a.phonetic_readout):raise ValueError('Dropout experiment requires a plain encoder')

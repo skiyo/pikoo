@@ -27,6 +27,23 @@ class LabelsTest(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec('tensorflow'),'Optional TensorFlow unavailable')
 class ModelTest(unittest.TestCase):
+    def test_freezing_scalar_view_keeps_shared_training_normalization_fixed(self):
+        import tensorflow as tf
+        from contrastive_readout import attach
+        from residual_readout import freeze_normalization
+        inp=tf.keras.Input((8,))
+        norm=tf.keras.layers.BatchNormalization()
+        base=tf.keras.Model(inp,tf.keras.layers.Dense(1,activation='sigmoid')(norm(inp)))
+        fit,view=attach(base,warm_start=True)
+        freeze_normalization(view)
+        before=[v.numpy().copy() for v in norm.weights]
+        head=fit.get_layer('near_phrase_probability')
+        head_before=[v.copy() for v in head.get_weights()]
+        fit.compile(optimizer=tf.keras.optimizers.SGD(.1),loss='sparse_categorical_crossentropy')
+        fit.train_on_batch(np.full((6,8),12.,np.float32),np.arange(6))
+        for original,actual in zip(before,norm.get_weights()):np.testing.assert_array_equal(original,actual)
+        self.assertTrue(any(not np.array_equal(a,b) for a,b in zip(head_before,head.get_weights())))
+
     def test_widened_trained_head_preserves_every_class_and_can_learn(self):
         import tempfile,json,hashlib
         from pathlib import Path
