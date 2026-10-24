@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-24",
+  "status": "priorfree-TRAIN-prototype-passed-training-in-progress-not-qualified",
+  "source_patch_base": "43a6a98",
+  "architecture": "short-context-raw96-24x3-recent72-hidden32-priorfree",
+  "hypothesis": "Test whether a fixed original class-logit prior limits new name-variant readout learning; no causal conclusion yet.",
+  "scope": "TRAIN-only priorfree sequence/stream prototype; original classifier probabilities deliberately not preserved",
+  "reference": "independently evaluated priorfree full sequence, not original class probabilities",
+  "readout_initialization": "glorot_uniform, seed42",
+  "original_classifier_probability_equality_claimed": false,
+  "original_encoder_frozen": true,
+  "prototype_bytes": 242856,
+  "prototype_sha256": "939aac63966fcca272b6fcd447d7fa6cf44a2a43fc7b63eb6e5d0c3645a7e4fa",
+  "float_parity": {
+    "cases": 8,
+    "steps_per_case": 200,
+    "all_class_max_difference": 5.513429641723633e-07,
+    "reference": "modified full sequence vs streaming and scalar"
+  },
+  "static_INT8_compatibility_passed": true,
+  "fixed_training": {
+    "epochs": 12,
+    "batch_size": 16,
+    "positive_event_coefficient": 1.0,
+    "threshold": 0.9,
+    "rolling_inferences": 5,
+    "same_frozen_TRAIN_manifest_as_source_expansion": true
+  },
+  "source_audit_incomplete": true,
+  "independent_or_household_used": false,
+  "Micro_or_device_timing_measured": false,
+  "device_changed": false,
+  "recognition_qualified": false,
+  "release_eligible": false
+}

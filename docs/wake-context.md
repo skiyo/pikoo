@@ -33,6 +33,20 @@ Restricted weights and firmware are not published.
 The owner subsequently confirmed one informal spoken wake and a normal greeting.
 That single unrecorded observation does not establish the adult/child acceptance rates.
 
+## Classifier-prior control prototype, 2026-10-24
+
+A new fixed control keeps the original acoustic encoder frozen but learns a
+fresh class readout without adding the old fixed class logits. It uses a
+seeded nonzero Glorot initialization so the prototype exercises the complete
+graph. Eight TRAIN inputs pass modified full-sequence versus streaming/scalar
+parity (200 steps each, maximum difference 0.000000551343), integer-state anchor
+identity and INT8/static export checks. Equality to the old classifier's
+probabilities is deliberately **not** claimed. The untrained prototype is
+242,856 bytes; its size is not a recognition, Micro timing or device pass.
+The fixed 12-epoch same-corpus fit is in progress, with no automatic flash.
+See the [prototype record](../training/reports/wake-priorfree-prototype-20261024.json)
+and [research-only patch](../training/experiments/priorfree-classifier.patch).
+
 ## Fixed positive-event loss control, 2026-10-24
 
 A single predeclared control doubles only the positive five-step event loss.

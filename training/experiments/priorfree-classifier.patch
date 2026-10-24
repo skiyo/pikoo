@@ -1,0 +1,102 @@
+--- a/training/causal_branch.py
++++ b/training/causal_branch.py
+@@ -32,7 +32,7 @@
+     original = tf.keras.layers.Conv2D(14, 1, trainable=False, name='short_context_original_logits')
+     logits = original(head.input)
+     kernel, bias = head.get_weights()
+-    original.set_weights([kernel.reshape(1, 1, *kernel.shape), bias])
++    original.set_weights([np.zeros_like(kernel).reshape(1, 1, *kernel.shape), np.zeros_like(bias)])
+     net = early
+     for i, size in enumerate((5, 9, 13)):
+         net = Stream(tf.keras.layers.Identity(), ring_buffer_size_in_time_dim=size-1,
+@@ -50,17 +50,18 @@
+     net = tf.keras.layers.Concatenate(name='short_context_and_phrase')([head.input, net])
+     net = tf.keras.layers.Conv2D(32, 1, activation='relu6', name='short_context_hidden')(net)
+     net = tf.keras.layers.Dropout(.1, name='short_context_dropout')(net)
+-    correction = tf.keras.layers.Conv2D(14, 1, kernel_initializer='zeros', bias_initializer='zeros',
++    correction = tf.keras.layers.Conv2D(14, 1, kernel_initializer='glorot_uniform', bias_initializer='zeros',
+         kernel_regularizer=tf.keras.regularizers.l2(1e-4), name='short_context_correction')(net)
+     probabilities = tf.keras.layers.Softmax(name='short_context_probability')(
+         tf.keras.layers.Add(name='short_context_corrected_logits')([logits, correction]))
+     output = tf.keras.layers.Reshape((-1, 14), name='short_context_classes')(probabilities)
+     model = tf.keras.Model(sequence.inputs[0], output)
+-    graph.update(architecture=f'short-context-raw96-24x3-recent{ordered_steps}-hidden32' if raw_filters else f'short-context-24x3-recent{ordered_steps}-hidden32',
++    graph.update(architecture=(f'short-context-raw96-24x3-recent{ordered_steps}-hidden32' if raw_filters else f'short-context-24x3-recent{ordered_steps}-hidden32')+'-priorfree',
+         short_context={'kernels': [5, 9, 13], 'channels': 24, 'ordered_steps': ordered_steps,
+                        'raw_first_filters': raw_filters,
+                        'hidden_units': 32, 'activation': 'relu6',
+-                       'original_encoder_and_logits_frozen': True,
++                       'original_encoder_frozen': True, 'original_class_prior_used': False,
++                       'readout_initialization': 'glorot_uniform',
+                        'trainable_parameters': int(sum(np.prod(v.shape) for v in model.trainable_weights))})
+     return model, graph
+ 
+--- a/training/train_causal.py
++++ b/training/train_causal.py
+@@ -58,7 +58,7 @@
+     tf.config.threading.set_inter_op_parallelism_threads(2)
+     tf.keras.utils.set_random_seed(42)
+     proof = json.loads(a.parity_proof.read_text())
+-    if (proof.get('status') != 'all-step-float-parity-and-static-export-passed-not-trained-or-flashed'
++    if (proof.get('status') != 'priorfree-batch-stream-float-parity-and-static-export-passed-not-trained-or-flashed'
+             or proof['source']['checkpoint_sha256'] != sha(a.checkpoint)
+             or proof['graph']['input_frames'] != 600 or proof['graph']['source_pool_steps'] != 17
+             or proof.get('causal_model_sha256') != sha(Path(__file__).with_name('causal_model.py'))
+@@ -67,7 +67,7 @@
+             or proof['static']['status'] != 'static-check-passed'):
+         raise ValueError('Missing compatible all-step prototype proof')
+     if a.short_context:
+-        architecture = f'short-context-raw96-24x3-recent{a.ordered_steps}-hidden32' if a.raw_branch else f'short-context-24x3-recent{a.ordered_steps}-hidden32'
++        architecture = (f'short-context-raw96-24x3-recent{a.ordered_steps}-hidden32' if a.raw_branch else f'short-context-24x3-recent{a.ordered_steps}-hidden32')+'-priorfree'
+         if (proof['graph'].get('architecture') != architecture
+                 or proof.get('causal_branch_sha256') != sha(Path(__file__).with_name('causal_branch.py'))):
+             raise ValueError('Missing compatible short-context branch proof')
+@@ -263,7 +263,8 @@
+             else 'unchanged-all-valid-frame-categorical-crossentropy',
+         'classifier_readout': {'type': 'causal-frame-short-context' if a.short_context else 'causal-frame-frozen-residual',
+             'classes': PHRASES, 'residual_hidden_units': 32 if a.short_context else 64,
+-            'original_encoder_and_logits_frozen': True},
++            'original_encoder_frozen': True, 'original_class_prior_used': False,
++            'readout_initialization': 'glorot_uniform'},
+         'threshold': .9, 'rolling_inferences': 5,
+         'frozen_source_weights_unchanged': True, 'household_or_development_used': False,
+         'checkpoint_weights_sha256': sha(a.output/'checkpoint.weights.h5'),
+--- a/training/prove_causal.py
++++ b/training/prove_causal.py
+@@ -64,23 +64,23 @@
+         residual, _ = attach_frozen_residual(source, 64)
+         sequence, graph = sequence_view(residual, 600)
+     wake = scalar_view(sequence)
+-    report = {'scope': 'TRAIN-only prototype, not accuracy or deployment acceptance',
++    report = {'scope': 'TRAIN-only priorfree sequence/stream prototype; original classifier probabilities deliberately not preserved',
++        'reference': 'independently evaluated priorfree full sequence, not original class probabilities',
+         'source': proof, 'graph': graph, 'cases': [], 'household_or_development_used': False,
+         'causal_model_sha256': hashlib.sha256(Path(__file__).with_name('causal_model.py').read_bytes()).hexdigest()}
+     if a.short_context:
+         report['causal_branch_sha256'] = hashlib.sha256(Path(__file__).with_name('causal_branch.py').read_bytes()).hexdigest()
+     a.output.mkdir(parents=True, exist_ok=False)
+     for row, feature in zip(chosen, features):
+-        original = replay(streaming(source), feature)
+         batch = sequence(feature[None], training=False).numpy()[0]
+         step = replay(streaming(sequence), feature)
+         scalar = replay(streaming(wake), feature)[:, 0]
+-        error = float(max(np.max(abs(original-batch)), np.max(abs(original-step)), np.max(abs(original[:, 1]-scalar))))
++        error = float(max(np.max(abs(batch-step)), np.max(abs(batch[:, 1]-scalar))))
+         report['cases'].append({'train_sha256': row['sha256'], 'label': row['label'],
+                                 'steps': 200, 'all_class_max_difference': error})
+         print(json.dumps({'completed_cases': len(report['cases']), 'all_class_max_difference': error}), flush=True)
+         if error > 1e-5:
+-            raise ValueError('Original and causal all-step probabilities differ')
++            raise ValueError('Modified sequence and streaming all-step probabilities differ')
+     report['status'] = 'all-step-float-parity-passed-static-export-pending'
+     (a.output/'report.json').write_text(json.dumps(report, indent=2)+'\n')
+     if a.short_context:
+@@ -120,7 +120,7 @@
+     report.update(static=compatibility,
+         model_bytes=path.stat().st_size, sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+         inference_input_shape=list(model.input.shape), inference_output_shape=list(model.output.shape),
+-        status='all-step-float-parity-and-static-export-passed-not-trained-or-flashed',
++        status='priorfree-batch-stream-float-parity-and-static-export-passed-not-trained-or-flashed',
+         trained=False, device_modified=False)
+     (a.output/'report.json').write_text(json.dumps(report, indent=2)+'\n')
+ 
