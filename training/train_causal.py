@@ -30,11 +30,14 @@ def main():
     p.add_argument('--short-context', action='store_true', help='Learn an ordered acoustic branch; requires its prototype proof')
     p.add_argument('--mask-completion-uncertainty', action='store_true', help='Ignore ambiguous target endings; never infer positive labels from energy')
     p.add_argument('--raw-branch', action='store_true', help='Learn a separate96-filter raw projection; requires its prototype proof')
+    p.add_argument('--ordered-steps', type=int, choices=[20,72], default=20, help='Explicit ordered context, default unchanged;72 requires raw branch and matching proof')
     p.add_argument('--mil-target-completion', action='store_true', help='TRAIN positives using one eligible five-step event; inference is unchanged')
     p.add_argument('--mil-negative-events', action='store_true', help='Also reject the strongest valid negative five-step event; inference unchanged')
     a = p.parse_args()
     if a.raw_branch and not a.short_context:
         raise ValueError('Raw projection requires the explicit short-context architecture')
+    if a.ordered_steps != 20 and not a.raw_branch:
+        raise ValueError('Expanded ordered context requires the explicit raw branch')
     if a.mil_target_completion and not a.mask_completion_uncertainty:
         raise ValueError('Positive MIL requires the explicit completion-uncertainty region')
     if a.mil_negative_events and not a.mil_target_completion:
@@ -64,7 +67,7 @@ def main():
             or proof['static']['status'] != 'static-check-passed'):
         raise ValueError('Missing compatible all-step prototype proof')
     if a.short_context:
-        architecture = 'short-context-raw96-24x3-recent20-hidden32' if a.raw_branch else 'short-context-24x3-recent20-hidden32'
+        architecture = f'short-context-raw96-24x3-recent{a.ordered_steps}-hidden32' if a.raw_branch else f'short-context-24x3-recent{a.ordered_steps}-hidden32'
         if (proof['graph'].get('architecture') != architecture
                 or proof.get('causal_branch_sha256') != sha(Path(__file__).with_name('causal_branch.py'))):
             raise ValueError('Missing compatible short-context branch proof')
@@ -160,7 +163,7 @@ def main():
         {'filters': 128, 'first_filters': 64, 'kernels': [5, 9, 13, 21, 31, 43]})
     if a.short_context:
         from causal_branch import attach as attach_branch
-        fit, graph = attach_branch(source, 600, raw_filters=96 if a.raw_branch else 0)
+        fit, graph = attach_branch(source, 600, raw_filters=96 if a.raw_branch else 0, ordered_steps=a.ordered_steps)
     else:
         residual, _ = attach_frozen_residual(source, 64)
         fit, graph = sequence_view(residual, 600)

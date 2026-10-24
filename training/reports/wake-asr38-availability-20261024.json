@@ -1,0 +1,22 @@
+{
+  "status": "single-request-availability-probe-not-production-or-wake-acceptance",
+  "model": "gemini-3.8-flash",
+  "single_fictional_TRAIN_clip": {
+    "HTTP_status": 200,
+    "completed": true,
+    "seconds": 14.761064,
+    "content_agreement": false
+  },
+  "eight_file_probe": {
+    "identity_contract_passed": false,
+    "transport_returncode": 52,
+    "seconds": 65.637428,
+    "error": "empty reply, no validASRcacheproduced"
+  },
+  "production_audit_model": "gemini-3.1-flash-lite, explicit bounded503capacitybackoff",
+  "automatic_model_or_paid_fallback": false,
+  "original_observations_overwritten": false,
+  "household_or_real_child_or_DEVELOPMENT_used": false,
+  "official_audio_source": "https://ai.google.dev/gemini-api/docs/audio",
+  "official_structured_output_source": "https://ai.google.dev/gemini-api/docs/structured-output"
+}

@@ -7,12 +7,14 @@ a hand-coded phoneme veto. No household audio or identity input is used.
 import numpy as np
 
 
-def attach(source, frames=600, raw_filters=0):
+def attach(source, frames=600, raw_filters=0, ordered_steps=20):
     import tensorflow as tf
     from microwakeword.layers.stream import Stream
     from causal_model import sequence_view
     if raw_filters not in (0, 96):
         raise ValueError('Raw acoustic branch is either disabled or explicitly96 filters')
+    if type(ordered_steps) is not int or ordered_steps not in (20, 72):
+        raise ValueError('Ordered context must be the explicit20 or72 step control')
     for layer in source.layers:
         layer.trainable = False
     sequence, graph = sequence_view(source, frames)
@@ -41,9 +43,9 @@ def attach(source, frames=600, raw_filters=0):
                  name=f'short_context_mix_{i}')(net)
     # A learned ordered temporal kernel, rather than flattening the buffer,
     # also supplies its state with a quantizable integer consumer.
-    net = Stream(tf.keras.layers.Identity(), ring_buffer_size_in_time_dim=19,
+    net = Stream(tf.keras.layers.Identity(), ring_buffer_size_in_time_dim=ordered_steps-1,
                  use_one_step=False, pad_time_dim='causal', name='short_context_recent_buffer')(net)
-    net = tf.keras.layers.DepthwiseConv2D((20, 1), activation='relu6',
+    net = tf.keras.layers.DepthwiseConv2D((ordered_steps, 1), activation='relu6',
               name='short_context_ordered_ending')(net)
     net = tf.keras.layers.Concatenate(name='short_context_and_phrase')([head.input, net])
     net = tf.keras.layers.Conv2D(32, 1, activation='relu6', name='short_context_hidden')(net)
@@ -54,8 +56,8 @@ def attach(source, frames=600, raw_filters=0):
         tf.keras.layers.Add(name='short_context_corrected_logits')([logits, correction]))
     output = tf.keras.layers.Reshape((-1, 14), name='short_context_classes')(probabilities)
     model = tf.keras.Model(sequence.inputs[0], output)
-    graph.update(architecture='short-context-raw96-24x3-recent20-hidden32' if raw_filters else 'short-context-24x3-recent20-hidden32',
-        short_context={'kernels': [5, 9, 13], 'channels': 24, 'ordered_steps': 20,
+    graph.update(architecture=f'short-context-raw96-24x3-recent{ordered_steps}-hidden32' if raw_filters else f'short-context-24x3-recent{ordered_steps}-hidden32',
+        short_context={'kernels': [5, 9, 13], 'channels': 24, 'ordered_steps': ordered_steps,
                        'raw_first_filters': raw_filters,
                        'hidden_units': 32, 'activation': 'relu6',
                        'original_encoder_and_logits_frozen': True,

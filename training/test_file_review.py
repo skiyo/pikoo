@@ -29,13 +29,23 @@ class FileReviewTest(unittest.TestCase):
                 checked_file_transcripts(text, [key])
 
     def test_invalid_model_count_or_identity_never_reaches_an_api(self):
-        for model, clips in [('gemini-3.8-flash', [('a' * 64, 'data')]),
+        for model, clips in [('unknown-model', [('a' * 64, 'data')]),
                              ('gemini-3.1-flash-lite', []),
                              ('gemini-3.1-flash-lite', [('a' * 64, 'data')] * 2),
                              ('gemini-3.1-flash-lite', [('family-name', 'data')]),
                              ('gemini-3.1-flash-lite', [('a' * 64, '')])]:
             with self.subTest(model=model, clips=clips), self.assertRaises(ValueError):
                 file_review_request(model, clips)
+
+    def test38_uses_stateless_interactions_and_low_thinking_with_independent_audio(self):
+        clips = [('a' * 64, 'firstBase64'), ('b' * 64, 'secondBase64')]
+        url, request = file_review_request('gemini-3.8-flash', clips)
+        self.assertTrue(url.endswith('/interactions'))
+        self.assertFalse(request['store'])
+        self.assertEqual(request['generation_config']['thinking_level'], 'low')
+        self.assertEqual([part['data'] for part in request['input'] if part['type'] == 'audio'],
+                         ['firstBase64', 'secondBase64'])
+        self.assertEqual(request['response_format']['schema']['required'], [key for key, data in clips])
 
 
 if __name__ == '__main__':

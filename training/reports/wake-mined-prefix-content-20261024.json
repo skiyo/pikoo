@@ -1,0 +1,15 @@
+{
+  "status": "TRAINprefix-own-content-review-completed-not-fitted",
+  "TRAIN_synthetic_negative_prefixes": 32,
+  "parent_file_hash_and_PCM_prefix_verified": 32,
+  "local_ASR_completed": 32,
+  "content_agreements": 30,
+  "content_disagreements": 2,
+  "recognizer": "existingQwen3ASR0.6b4bit",
+  "model_downloads": 0,
+  "network_calls": 0,
+  "content_rule_relaxed": false,
+  "labels_changed": 0,
+  "family_or_real_child_or_DEVELOPMENT_used": false,
+  "model_accuracy_or_hardware_accepted": false
+}

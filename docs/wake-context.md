@@ -598,3 +598,38 @@ full review stopped on Google 503 at 51/931, with its cache intact and no
 automatic retry. A controlled continuation will reduce independent files
 per request from eight to four, retaining a 30-second pause and stopping
 on another error. This is data preparation, not model or physical acceptance.
+
+## Prefix review, a longer trainable branch, and bounded capacity backoff
+
+All 32 missing synthetic TRAIN-prefix reviews are now complete. Each file hash,
+recorded cut endpoint and actual PCM prefix matched its declared parent first.
+The existing offline recognizer agreed with the complete annotated text for
+30 clips; two remain quarantined. `--allow-mined-synthetic` is an explicit
+TRAIN-negative-only option, with the same strict content rule. No partial phrase
+is silently accepted as a complete phrase. See the [prefix record](../training/reports/wake-mined-prefix-content-20261024.json).
+
+The trainable raw branch covers about 1.34 seconds, while 194/723 TRAIN-positive
+energy spans exceed that duration (74 adult, 120 childlike). Energy span is not
+phonetic alignment; the frozen original encoder still supplies its longer
+context. An optional `--ordered-steps 72` extends only the trainable branch to
+about 2.90 seconds, with no lookahead. The default remains 20 steps. The expanded
+untrained prototype is 242,960 bytes versus 240,464 for the refreshed default,
+adds 1,248 trainable parameters and passes all-class equivalence across 1,600
+TRAIN steps plus integer static checks. Three branch regressions passed.
+This is a hypothesis, not a trained/accepted candidate. Micro arena, timing and
+accuracy remain pending. See the [span/prototype record](../training/reports/wake-context-span-20261024.json).
+
+Google's [troubleshooting guide](https://ai.google.dev/gemini-api/docs/troubleshooting)
+recommends bounded exponential backoff for temporary overload. Content-review
+retry defaults remain zero. Explicit `--capacity-retries 3` permits only three
+503 retries per batch, starting at 65 seconds with exponential backoff/jitter;
+numeric Retry-After is honored within a 600-second limit. Individual sleep
+chunks stay at most 60 seconds. Authentication, credits, quota and other HTTP
+errors still stop. Four new retry regressions plus 24 existing review/transport
+checks passed. TTS generation retains its separate no-retry policy.
+
+An explicit 3.8 Flash Interactions probe completed for one fictional TRAIN clip,
+but its eight-file probe ended with an empty reply. Those outcomes and the
+content disagreement are preserved, not treated as model progress. Production
+review continues to use explicitly selected 3.1 Flash Lite with bounded capacity
+backoff; there is no automatic model/payment fallback. See the [availability record](../training/reports/wake-asr38-availability-20261024.json).

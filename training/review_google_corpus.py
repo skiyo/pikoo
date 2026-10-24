@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import re
+import random
 import ssl
 import time
 from urllib.error import HTTPError,URLError
@@ -22,18 +23,40 @@ import numpy as np
 from corpus_ancestry import parents
 
 
-def post_json(opener,request,timeout=55,retries=0,retry_delay=65,sleep=time.sleep):
-    """Bounded retries for transport faults only; never retry API/quota errors."""
+def post_json(opener,request,timeout=55,retries=0,retry_delay=65,sleep=time.sleep,
+              capacity_retries=0,capacity_delay=65,jitter=random.random):
+    """Explicit bounded transport/503 retry budgets; quota/auth never retry."""
     if not 10<=timeout<=180 or not 0<=retries<=3 or (retries and not 65<=retry_delay<=600):
         raise ValueError('Invalid request timeout or low-rate network retry bounds')
-    for attempt in range(retries+1):
+    if not 0<=capacity_retries<=3 or (capacity_retries and not 65<=capacity_delay<=600):
+        raise ValueError('Invalid bounded capacity retry budget')
+    transport_attempt=capacity_attempt=0
+    while True:
         try:
             with opener.open(request,timeout=timeout) as response:return json.load(response)
-        except HTTPError:raise
+        except HTTPError as error:
+            if error.code!=503 or capacity_attempt>=capacity_retries:
+                raise
+            capacity_attempt+=1
+            wait=min(600.,capacity_delay*2**(capacity_attempt-1)*(1+.1*jitter()))
+            header=error.headers.get('Retry-After') if error.headers else None
+            if header is not None:
+                try:minimum=float(header)
+                except (ValueError,TypeError):raise error
+                if not 0<=minimum<=600:raise error
+                wait=max(wait,minimum)
+            if error.fp:error.close()
+            print(json.dumps({'phase':'temporary-capacity-retry','http_status':503,
+                'attempt':capacity_attempt,'maximum_retries':capacity_retries,'wait_seconds':wait}),flush=True)
+            # Keep waits individually bounded so callers can remain responsive.
+            remaining=wait
+            while remaining>0:
+                part=min(60.,remaining);sleep(part);remaining-=part
         except (TimeoutError,URLError,ConnectionError,ssl.SSLError) as error:
             reason=error.reason if isinstance(error,URLError) else error
-            if isinstance(reason,ssl.SSLCertVerificationError) or attempt==retries:raise
-            print(json.dumps({'phase':'transient-network-retry','attempt':attempt+1,
+            if isinstance(reason,ssl.SSLCertVerificationError) or transport_attempt>=retries:raise
+            transport_attempt+=1
+            print(json.dumps({'phase':'transient-network-retry','attempt':transport_attempt,
                 'wait_seconds':retry_delay,'error_type':type(reason).__name__}),flush=True)
             sleep(retry_delay)
 
@@ -164,8 +187,8 @@ def file_review_request(model, clips):
     silence boundary or counting repeated utterances. ASR remains a content
     screen, not a proof of tone, age or human wake performance.
     """
-    if model != 'gemini-3.1-flash-lite' or not 1 <= len(clips) <= 8:
-        raise ValueError('Separate-file review requires1..8 clips and the explicit3.1Lite model')
+    if model not in {'gemini-3.1-flash-lite', 'gemini-3.8-flash'} or not 1 <= len(clips) <= 8:
+        raise ValueError('Separate-file review requires1..8 clips and an explicit supported model')
     ids = [identifier for identifier, data in clips]
     if (len(set(ids)) != len(ids) or any(not re.fullmatch('[0-9a-f]{64}', key) for key in ids)
             or any(not isinstance(data, str) or not data for key, data in clips)):
@@ -181,6 +204,18 @@ def file_review_request(model, clips):
                       {'inlineData': {'mimeType': 'audio/wav', 'data': data}}])
     schema = {'type': 'object', 'properties': {key: {'type': 'string'} for key in ids},
               'required': ids, 'additionalProperties': False}
+    if model == 'gemini-3.8-flash':
+        content = []
+        for part in parts:
+            if 'text' in part:
+                content.append({'type': 'text', 'text': part['text']})
+            else:
+                content.append({'type': 'audio', 'mime_type': 'audio/wav',
+                                'data': part['inlineData']['data']})
+        return ('https://generativelanguage.googleapis.com/v1beta/interactions', {
+            'model': model, 'store': False, 'input': content,
+            'response_format': {'type': 'text', 'mime_type': 'application/json', 'schema': schema},
+            'generation_config': {'max_output_tokens': 2400, 'thinking_level': 'low'}})
     return ('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent',
             {'contents': [{'parts': parts}], 'generationConfig': {
                 'responseMimeType': 'application/json', 'responseJsonSchema': schema,
@@ -214,17 +249,19 @@ def main():
     p.add_argument('--model', default='gemini-3.8-flash', choices=['gemini-3.8-flash', 'gemini-2.5-flash','gemini-3.1-flash-lite'])
     p.add_argument('--interval', type=float, default=15, help='Seconds between ASR requests')
     p.add_argument('--batch-size', type=int, choices=range(1,9), default=8, help='1..8 utterances per request; use 1 to avoid multi-utterance alignment ambiguity')
-    p.add_argument('--separate-files', action='store_true', help='Explicit3.1Lite per-file media parts and exact hash-keyed responses, instead of concatenation')
+    p.add_argument('--separate-files', action='store_true', help='Per-file media parts and exact hash-keyed responses with explicitly selected3.1Lite or3.8Flash')
     p.add_argument('--request-timeout',type=float,default=55,help='Bounded API read timeout, 10..180 seconds')
     p.add_argument('--network-retries',type=int,default=0,help='0..3 retries for transport faults only; HTTP/quota/auth errors still stop')
     p.add_argument('--network-retry-delay',type=float,default=65,help='65..600 seconds when transport retries are explicitly enabled')
+    p.add_argument('--capacity-retries',type=int,default=0,help='Explicit0..3 retries for503capacity errors only; auth/quota errors always stop')
+    p.add_argument('--capacity-retry-delay',type=float,default=65,help='65..600 second initial503backoff, exponential with jitter and a600second ceiling')
     p.add_argument('--allow-local-synthetic',action='store_true',help='Explicitly permit hash-checked fictional local Qwen TTS; never reference audio')
     p.add_argument('--protected-hashes',type=Path,help='Required protected household hash ledger when local synthesis is enabled')
     a = p.parse_args()
     if a.interval < 0:
         raise ValueError('interval must be nonnegative')
-    if a.separate_files and a.model != 'gemini-3.1-flash-lite':
-        raise ValueError('Separate-file mode requires the explicit3.1Lite model')
+    if a.separate_files and a.model not in {'gemini-3.1-flash-lite', 'gemini-3.8-flash'}:
+        raise ValueError('Separate-file mode requires an explicit supported model')
     os.umask(0o077)
     rows = json.loads(a.manifest.read_text())
     if a.allow_local_synthetic and not a.protected_hashes:raise ValueError('Local synthetic review requires a household exclusion ledger')
@@ -270,7 +307,8 @@ def main():
         request = Request(url,
             data=json.dumps(payload).encode(), headers={'x-goog-api-key': key, 'Content-Type': 'application/json'})
         try:
-            data=post_json(opener,request,a.request_timeout,a.network_retries,a.network_retry_delay)
+            data=post_json(opener,request,a.request_timeout,a.network_retries,a.network_retry_delay,
+                           capacity_retries=a.capacity_retries,capacity_delay=a.capacity_retry_delay)
         except HTTPError as error:
             try:
                 decoded=json.loads(error.read()).get('error',{})

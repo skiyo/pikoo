@@ -20,9 +20,12 @@ def main():
         p.add_argument('--'+name, required=True, type=Path)
     p.add_argument('--short-context', action='store_true', help='Prove the experimental ordered acoustic branch')
     p.add_argument('--raw-branch', action='store_true', help='Use a separate trainable96-filter raw projection')
+    p.add_argument('--ordered-steps', type=int, choices=[20,72], default=20, help='Explicit ordered temporal context;72 requires the raw branch')
     a = p.parse_args()
     if a.raw_branch and not a.short_context:
         raise ValueError('Raw projection requires the explicit short-context architecture')
+    if a.ordered_steps != 20 and not a.raw_branch:
+        raise ValueError('Expanded ordered context requires the explicit raw branch')
     os.umask(0o077)
     os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '2')
     sys.path.insert(0, str(a.upstream.resolve()))
@@ -56,7 +59,7 @@ def main():
         {'filters': 128, 'first_filters': 64, 'kernels': [5, 9, 13, 21, 31, 43]})
     if a.short_context:
         from causal_branch import attach as attach_branch
-        sequence, graph = attach_branch(source, 600, raw_filters=96 if a.raw_branch else 0)
+        sequence, graph = attach_branch(source, 600, raw_filters=96 if a.raw_branch else 0, ordered_steps=a.ordered_steps)
     else:
         residual, _ = attach_frozen_residual(source, 64)
         sequence, graph = sequence_view(residual, 600)

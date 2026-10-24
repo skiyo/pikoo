@@ -1,0 +1,39 @@
+{
+  "status": "generated-synthetic-TRAIN-only-not-accepted-or-fitted",
+  "corpora": {
+    "literal-child38lite-20261024": {
+      "generated": 10,
+      "source_models": [
+        "gemini-3.8-flash-lite-tts"
+      ],
+      "declared_groups": {
+        "adult:1": 2,
+        "childlike:1": 6,
+        "childlike:0": 2
+      },
+      "content_admission": "pending both recognizer families; no fitting",
+      "local_reviewed": 10,
+      "local_content_agreements": 4
+    },
+    "phonetic-child38-20261024": {
+      "generated": 10,
+      "source_models": [
+        "gemini-3.8-flash-tts"
+      ],
+      "declared_groups": {
+        "childlike:1": 8,
+        "childlike:0": 2
+      },
+      "content_admission": "pending both recognizer families; no fitting"
+    }
+  },
+  "total_generated": 20,
+  "source_selection": "predeclaredTRAINvoices and jobs; no wake scores, family inputs or reference audio",
+  "free_tier_only_no_billing_enablement": true,
+  "generation_requests_per_model_max": 10,
+  "minimum_request_interval_seconds": 30,
+  "TTS_automatic_retries_or_fallback": false,
+  "downloaded_models": 0,
+  "real_child_or_adult_or_hardware_accepted": false,
+  "external_content_review": "queued in explicit3.1Lite capacity-bounded review job"
+}

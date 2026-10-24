@@ -1,0 +1,88 @@
+{
+  "scope": "TRAINonly energy span, not phonetic alignment or wake accuracy",
+  "household_or_development_used": false,
+  "records": 723,
+  "short_branch_feature_hop_receptive_frames": 132,
+  "short_branch_approx_audio_context_seconds": 1.34,
+  "hypothetical72step_feature_hop_frames": 288,
+  "hypothetical72step_approx_audio_context_seconds": 2.9,
+  "summary": {
+    "adult": {
+      "recordings": 301,
+      "energy_span_quantiles": {
+        "0": 0.52,
+        "0.25": 0.81,
+        "0.5": 1.01,
+        "0.75": 1.32,
+        "0.9": 1.71,
+        "1": 2.81
+      },
+      "above_1_34_seconds": 74,
+      "above_2_90_seconds": 0
+    },
+    "childlike": {
+      "recordings": 404,
+      "energy_span_quantiles": {
+        "0": 0.49,
+        "0.25": 0.86,
+        "0.5": 1.1,
+        "0.75": 1.4024999999999999,
+        "0.9": 1.767,
+        "1": 3.0
+      },
+      "above_1_34_seconds": 120,
+      "above_2_90_seconds": 1
+    },
+    "unknown": {
+      "recordings": 18,
+      "energy_span_quantiles": {
+        "0": 0.58,
+        "0.25": 0.715,
+        "0.5": 0.805,
+        "0.75": 0.86,
+        "0.9": 0.955,
+        "1": 1.05
+      },
+      "above_1_34_seconds": 0,
+      "above_2_90_seconds": 0
+    },
+    "all": {
+      "recordings": 723,
+      "energy_span_quantiles": {
+        "0": 0.49,
+        "0.25": 0.84,
+        "0.5": 1.05,
+        "0.75": 1.37,
+        "0.9": 1.7280000000000006,
+        "1": 3.0
+      },
+      "above_1_34_seconds": 194,
+      "above_2_90_seconds": 1
+    }
+  },
+  "status": "TRAIN-span-hypothesis-and-untrained-prototype-only",
+  "hypothesis": "The trainable local branch covers about1.34sec;194of723TRAINpositive energy spans are longer. The original frozen encoder still has its long context. Test a72step ordered branch with approx2.90sec local history; this is not proof of phonetic or recall improvement.",
+  "default_ordered_steps": 20,
+  "optional_ordered_steps": 72,
+  "prototype": {
+    "original_default20_model_bytes": 240464,
+    "expanded72_model_bytes": 242960,
+    "added_flash_file_bytes": 2496,
+    "trainable_parameters": 23166,
+    "initial_all_class_TRAIN_cases": 8,
+    "all_class_steps": 1600,
+    "worst_float_difference": 7.450580596923828e-07,
+    "integer_static_check_passed": true,
+    "inference_shape": [
+      1,
+      3,
+      40
+    ],
+    "no_future_lookahead": true,
+    "hardware_arena_timing_and_acceptance": "pending",
+    "trained": false,
+    "flashed": false
+  },
+  "default20_refreshed_proof_passed": true,
+  "branch_regressions_passed": 3
+}

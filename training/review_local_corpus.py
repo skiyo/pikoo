@@ -14,9 +14,18 @@ from review_google_corpus import normalize
 from corpus_ancestry import parents
 
 
-def validate(rows,root,protected):
+def validate(rows,root,protected,allow_mined_synthetic=False):
     for row in rows:
-        if row.get('source') not in {'Google-Gemini-TTS-synthetic','Qwen3-TTS-synthetic-local','Google-TTS-level-tone-synthetic','Google-TTS-incomplete-prefix','TTS-matched-incomplete-prefix'} or not row.get('synthetic') or row.get('evaluation_only') or row.get('frozen_holdout') or row.get('real_child') or row.get('reference_audio_used') or row.get('family_inputs_used'):
+        allowed={'Google-Gemini-TTS-synthetic','Qwen3-TTS-synthetic-local','Google-TTS-level-tone-synthetic','Google-TTS-incomplete-prefix','TTS-matched-incomplete-prefix'}
+        if allow_mined_synthetic:
+            if (row.get('split')!='train' or row.get('label')!=0
+                    or not row.get('mined_training_prefix')
+                    or not isinstance(row.get('causal_end_sample'),int) or row['causal_end_sample']<=0
+                    or not parents(row) or row['sha256'] in parents(row)):
+                raise ValueError('Mined review requires a non-self TRAIN negative prefix with recorded ancestors')
+            allowed.update({'pitch-tempo-augmented-Qwen3-TTS','pitch-tempo-augmented-Google-TTS',
+                            'pitch-tempo-augmented-Google-level-tone'})
+        if row.get('source') not in allowed or not row.get('synthetic') or row.get('evaluation_only') or row.get('frozen_holdout') or row.get('real_child') or row.get('reference_audio_used') or row.get('family_inputs_used'):
             raise ValueError('Only fictional synthesis without reference audio is eligible')
         if parents(row) & protected:
             raise ValueError('Protected source recording cannot enter local content review through a derivative')
@@ -36,9 +45,10 @@ def main():
     p.add_argument('--protected-hashes',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--prior-review',type=Path)
+    p.add_argument('--allow-mined-synthetic',action='store_true',help='Explicitly review recorded TRAIN-only synthetic negative prefixes, including pitch/tempo sources; content rules stay unchanged')
     a=p.parse_args();os.umask(0o077)
     rows=json.loads(a.manifest.read_text());protected=set(json.loads(a.protected_hashes.read_text())['audio_sha256'].values())
-    validate(rows,a.manifest.parent,protected)
+    validate(rows,a.manifest.parent,protected,a.allow_mined_synthetic)
     prior={r['sha256']:r for r in json.loads(a.prior_review.read_text())} if a.prior_review and a.prior_review.exists() else {}
     cached={r['sha256']:r for r in json.loads(a.output.read_text())} if a.output.exists() else {}
     os.environ['HF_HUB_OFFLINE']='1';os.environ['TRANSFORMERS_OFFLINE']='1'
