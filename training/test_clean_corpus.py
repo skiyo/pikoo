@@ -40,6 +40,19 @@ class CleanCorpusTest(unittest.TestCase):
         a,_=clean([row],[review(),review(transcript='你好皮',model='gemini-2.5-flash')])
         self.assertFalse(a)
 
+    def test_diagnostic_batch_cannot_approve_or_override_independent_content_evidence(self):
+        row={**sample(),'text':'你好Pikoo'}
+        local=review()
+        batch={**review(model='gemini-3.1-flash-lite'),'diagnostic_only':True,'admission_eligible':False}
+        approved,report=clean([row],[local,batch])
+        self.assertFalse(approved)
+        self.assertEqual(len(report['diagnostic_observations_retained_not_used_for_admission']),1)
+        single={**review(model='gemini-3.1-flash-lite'),'admission_eligible':True}
+        bad_batch={**batch,'transcript':'你好皮克','approved':False}
+        approved,report=clean([row],[local,single,bad_batch])
+        self.assertEqual(approved,[row])
+        self.assertFalse(report['diagnostic_observations_retained_not_used_for_admission'][0]['approved_in_original_observation'])
+
     def test_all_evidence_including_prior_rejection_is_preserved(self):
         row=sample()
         a,_=clean([row],[{**review(),'prior_approved':False}])

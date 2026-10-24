@@ -1,9 +1,20 @@
 import json
 import unittest
+from unittest.mock import patch
 from review_google_corpus import file_review_request, checked_file_transcripts
 
 
 class FileReviewTest(unittest.TestCase):
+    def test_admission_refuses_multiple_files_before_opening_any_input_or_network(self):
+        from review_google_corpus import main
+        args=['review_google_corpus.py','--manifest','missing-manifest.json',
+              '--key-file','missing-secret.env','--output','missing-cache.json',
+              '--batch-size','2']
+        with patch('sys.argv',args), patch('review_google_corpus.build_opener') as network:
+            with self.assertRaisesRegex(ValueError,'one file per request'):
+                main()
+            network.assert_not_called()
+
     def test_independent_media_parts_are_hash_identified_without_expected_words(self):
         clips = [('a' * 64, 'firstBase64'), ('b' * 64, 'secondBase64')]
         url, request = file_review_request('gemini-3.1-flash-lite', clips)

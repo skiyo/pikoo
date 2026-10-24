@@ -2,6 +2,25 @@
 
 [English](wake-context.md) | [简体中文](wake-context.zh-CN.md)
 
+## Content-review protocol correction, 2026-10-24
+
+Separate media parts and correct file identities do **not** make transcripts
+independent of other audio in the request. Two fixed TRAIN near-word negatives
+were transcribed as `Piku` / `Pico` in multi-file requests, but as the intended
+pi-ke phrase when each unchanged file was reviewed alone by the same model.
+The earlier eight-file identity/control result remains recorded; it was
+insufficient to establish semantic independence.
+
+All contextual multi-file observations, agreements and disagreements alike,
+are retained as diagnostic evidence and excluded from TRAIN admission. Existing
+single-file reviews are reused; remaining admission reviews use one file per
+request. The CLI defaults to one file and requires `--diagnostic-batches` for
+larger requests. Cleaning retains diagnostic observations without using them
+to approve a clip or override independent content evidence. Original wake
+labels, gates and failed model results remain unchanged. This is a review-method
+correction, not an accuracy gain or physical pass. See the
+[control and policy record](../training/reports/wake-single-review-protocol-20261024.json).
+
 ## Finding on 2026-10-24
 
 The BM17 engineering model remains unqualified. A controlled development probe
@@ -575,11 +594,12 @@ wrong types are rejected; recording identity does not rely on silence splitting.
 One eight-file TRAIN control matched all eight earlier single-file content
 decisions with complete identities and unchanged prior reviews. See the
 [interface control record](../training/reports/wake-multifile-content-probe-20261024.json).
-Remaining review can then use eight separate files per request, retaining at
+That initial result led to eight separate files per request, retaining at
 least a30-second pause, one worker and zero automatic retries. Cached recordings
 are neither resent nor overwritten; manifests/gates stay unchanged.23 file mapping,
-existing content and transport regressions passed. This reduces review requests
-and elapsed time; it is not wake-model improvement or physical acceptance.
+existing content and transport regressions passed. The subsequent near-word
+controls above supersede this admission method; its transcripts remain
+diagnostic-only.
 
 ## Ancestry of byte-identical TRAIN recordings
 

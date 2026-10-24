@@ -1,0 +1,49 @@
+{
+  "status": "contextual-review-admission-superseded",
+  "date": "2026-10-24",
+  "scope": "TRAIN synthetic content-screen protocol; not wake-model accuracy",
+  "model": "gemini-3.1-flash-lite",
+  "controls": [
+    {
+      "sha256": "2e1357e1ce8a88d2ab6f2bc6d66c0b504a85a074a3c4df3a9ebf108a922eb38c",
+      "returncode": 0,
+      "timings": [
+        "200",
+        "1.739700"
+      ],
+      "prior_batch_transcript": "你好Piku",
+      "prior_batch_approved": false,
+      "single_transcript": "你好, 皮克。",
+      "single_approved": true,
+      "content_decision_changed": true
+    },
+    {
+      "sha256": "a817c4c4076eb8c530bf3baa35c0a742db89f3bee0c02d3179f1153b9a1c89b1",
+      "returncode": 0,
+      "timings": [
+        "200",
+        "7.150527"
+      ],
+      "prior_batch_transcript": "你好Pico。",
+      "prior_batch_approved": false,
+      "single_transcript": "你好皮克",
+      "single_approved": true,
+      "content_decision_changed": true
+    }
+  ],
+  "selection": "fixed intended near-word negative text/voice, no wake-model score or household input",
+  "control_source_sha256": "99bfbe11c480a474015f8776be64aeb1e10db35e75c4156c0dabc329e8c049d4",
+  "policy": {
+    "single_audio_per_admission_request": true,
+    "all_multi_audio_observations_diagnostic_only": true,
+    "agreements_and_disagreements_preserved": true,
+    "reuse_existing_single_file_reviews": true,
+    "expected_text_in_request": false,
+    "old_wake_labels_gates_and_failures_unchanged": true
+  },
+  "earlier_eight_file_identity_control": "8/8 mapping and decisions matched; insufficient to establish semantic independence",
+  "regressions_passed": 40,
+  "trained": false,
+  "flashed": false,
+  "real_child_acceptance": false
+}

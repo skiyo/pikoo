@@ -248,7 +248,8 @@ def main():
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--model', default='gemini-3.8-flash', choices=['gemini-3.8-flash', 'gemini-2.5-flash','gemini-3.1-flash-lite'])
     p.add_argument('--interval', type=float, default=15, help='Seconds between ASR requests')
-    p.add_argument('--batch-size', type=int, choices=range(1,9), default=8, help='1..8 utterances per request; use 1 to avoid multi-utterance alignment ambiguity')
+    p.add_argument('--batch-size', type=int, choices=range(1,9), default=1, help='Single-file admission by default; multiple files require diagnostic-only opt-in')
+    p.add_argument('--diagnostic-batches',action='store_true',help='Allow contextual multi-audio experiments; their observations are ineligible for TRAIN admission')
     p.add_argument('--separate-files', action='store_true', help='Per-file media parts and exact hash-keyed responses with explicitly selected3.1Lite or3.8Flash')
     p.add_argument('--request-timeout',type=float,default=55,help='Bounded API read timeout, 10..180 seconds')
     p.add_argument('--network-retries',type=int,default=0,help='0..3 retries for transport faults only; HTTP/quota/auth errors still stop')
@@ -260,6 +261,8 @@ def main():
     a = p.parse_args()
     if a.interval < 0:
         raise ValueError('interval must be nonnegative')
+    if a.batch_size>1 and not a.diagnostic_batches:
+        raise ValueError('Multi-audio context can alter near-word transcripts; admission requires one file per request')
     if a.separate_files and a.model not in {'gemini-3.1-flash-lite', 'gemini-3.8-flash'}:
         raise ValueError('Separate-file mode requires an explicit supported model')
     os.umask(0o077)
@@ -273,6 +276,8 @@ def main():
     report = []
     prior = json.loads(a.output.read_text()) if a.output.exists() else []
     cached = validated_cache(rows, prior, a.model)
+    if not a.diagnostic_batches and any(r.get('diagnostic_only') or r.get('admission_eligible') is False for r in cached.values()):
+        raise ValueError('Use a new output for independent single-file reviews; diagnostic observations must be preserved')
     for start in range(0, len(rows), a.batch_size):
         group = rows[start:start + a.batch_size]
         if all(r['sha256'] in cached for r in group):
@@ -327,6 +332,7 @@ def main():
             approved = content_matches(row['text'], transcript)
             report.append({'sha256': row['sha256'], 'path': row['path'], 'label': row['label'],
                 'transcript': transcript, 'approved': approved, 'model': a.model,
+                'diagnostic_only':len(group)>1,'admission_eligible':len(group)==1,
                 'rule': 'exact-transcript-with-target-homophones-v3-no-extra-Latin',
                 'method': 'Google-ASR-separate-file-hash-identified-screen' if a.separate_files else 'Google-ASR-sanity-check-not-human-review'})
             cached[row['sha256']] = report[-1]

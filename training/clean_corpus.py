@@ -17,7 +17,7 @@ from review_local_corpus import content_approved
 from corpus_ancestry import parents
 
 
-RULE = 'content-quarantine-v1'
+RULE = 'content-quarantine-v2-admission-protocol'
 PUBLIC_CORPORA = {'ChildMandarin', 'PolyAI-MInDS14-zh-CN'}
 LEGACY = {'macOS-aligned-v2', 'macOS-local-synthetic',
           'known-self-test-v1-development', 'known-self-test-v1-validation'}
@@ -42,7 +42,9 @@ def clean(rows, reviews, protected=(), catalog=(), signal_findings=()):
     """Return unchanged approved rows and a reversible exclusion report.
 
     Optional catalog supplies absent parent metadata, not additional training
-    examples. All supplied evidence is considered, including disagreements.
+    examples. All admissible evidence is considered, including disagreements.
+    Explicit diagnostic-only observations are retained in the report; they
+    cannot approve a clip or substitute for an independent recognizer.
     Latin-spelled positive synthesis needs two different recognizer families;
     two local reruns of one recognizer do not constitute independent evidence.
     """
@@ -71,6 +73,7 @@ def clean(rows, reviews, protected=(), catalog=(), signal_findings=()):
             raise ValueError('Speaker group crosses splits')
         speakers[speaker] = row['split']
     evidence = defaultdict(list)
+    diagnostics = []
     for record in reviews:
         if record['sha256'] in protected:
             raise ValueError('Protected review cannot guide cleaning')
@@ -78,6 +81,12 @@ def clean(rows, reviews, protected=(), catalog=(), signal_findings=()):
             raise ValueError('Review lacks eligible source metadata')
         if not isinstance(record.get('transcript'), str) or not record.get('model'):
             raise ValueError('Review requires verbatim transcript and recognizer identity')
+        if record.get('label', metadata[record['sha256']]['label']) != metadata[record['sha256']]['label']:
+            raise ValueError('Review label differs from source')
+        if record.get('diagnostic_only') is True or record.get('admission_eligible') is False:
+            diagnostics.append({'sha256':record['sha256'],'model':record['model'],
+                                'approved_in_original_observation':record.get('approved')})
+            continue
         evidence[record['sha256']].append(record)
     reasons = defaultdict(set)
     for digest, row in metadata.items():
@@ -162,6 +171,7 @@ def clean(rows, reviews, protected=(), catalog=(), signal_findings=()):
         'retained_counts': dict(Counter(f"{r['split']}:{r.get('synthetic_style', 'other')}:label={r['label']}"
             for r in approved)), 'quarantine': rejected,
         'labels_changed': 0, 'source_files_deleted': 0,
+        'diagnostic_observations_retained_not_used_for_admission':diagnostics,
         'model_scores_used': False, 'independent_or_household_used': False,
         'limitations': 'ASR screening is not tone, child, human or hardware acceptance'}
 
