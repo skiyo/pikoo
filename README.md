@@ -99,7 +99,7 @@ See [Third-party software and attribution](THIRD_PARTY.md) for versions, sources
 
 Bug reports, documentation improvements, graphics and hardware bring-up contributions are welcome. Read [CONTRIBUTING](CONTRIBUTING.md), run `bash tools/check.sh`, and use the issue/PR templates. Report vulnerabilities privately using [SECURITY](SECURITY.md).
 
-Next milestones: sustained real-device voice; physical AEC and interruption testing; a redistributable wake model; household and endurance validation. See the [dated hardware record](docs/device-validation.md).
+Next milestones: sustained real-device voice; physical AEC and interruption testing; a redistributable wake model; household and endurance validation. See the [dated hardware record](docs/device-validation.md). A [private fallback hardware trial dated 2026-10-24](docs/wake-context.md) is installed with explicit owner acceptance of incomplete recognition targets; its weights and firmware are not distributed.
 
 ## License and privacy
 

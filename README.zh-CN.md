@@ -99,7 +99,7 @@ bash tools/start-dualeye.sh
 
 欢迎缺陷报告、文档改进、图形设计和硬件适配。先阅读[贡献指南](CONTRIBUTING.zh-CN.md)，执行 `bash tools/check.sh`，并使用 Issue/PR 模板。漏洞请按照[安全说明](SECURITY.zh-CN.md)私密报告。
 
-接下来完成：实机持续通话、AEC 与插话、可分发唤醒模型、家庭体验及长期运行验收。见[带日期的实机记录](docs/device-validation.md)。
+接下来完成：实机持续通话、AEC 与插话、可分发唤醒模型、家庭体验及长期运行验收。见[带日期的实机记录](docs/device-validation.md)。用户明确允许识别目标未完全达到时先试用后，已安装 [2026-10-24 私密备选试用版](docs/wake-context.zh-CN.md)；权重和固件不公开分发。
 
 ## 许可证与隐私
 

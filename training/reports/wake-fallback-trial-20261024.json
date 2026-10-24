@@ -1,0 +1,99 @@
+{
+  "date": "2026-10-24",
+  "status": "private-device-trial-flashed-not-original-acceptance",
+  "user_scope": "User permits deploying current best usable trial when original recognition target is not met",
+  "firmware": "0.2.0-cw24-trial2",
+  "board": "ESP32-S3-DualEye-LCD-1.28 non-touch",
+  "model_sha256": "3bfa066eba5444f2c8be8353132855c360a6a841bd9bb84eeb4eac811acd2fba",
+  "model_bytes": 243504,
+  "app_sha256": "ae9621b2118076e3294b48f4672101e675302912509c1b030e0b9a7375eed9ae",
+  "source_candidate": "weighted literal8 raw96 recent72, fixed12epochs, original training snapshots retained",
+  "software": {
+    "original_development": {
+      "hits": 179,
+      "targets": 195,
+      "false_wakes": 0,
+      "non_targets": 712
+    },
+    "supplementary_development": {
+      "hits": 61,
+      "targets": 72,
+      "false_wakes": 0,
+      "non_targets": 109,
+      "adult_hits": 32,
+      "adult_targets": 39,
+      "adult_literal_hits": 8,
+      "adult_literal_targets": 13,
+      "childlike_hits": 29,
+      "childlike_targets": 33,
+      "childlike_literal_hits": 7,
+      "childlike_literal_targets": 9
+    },
+    "original_acceptance_passed": false,
+    "quantization_max_absolute_error": 0.11023354530334473,
+    "trained_host_Micro_byte_exact": true,
+    "trained_host_Micro_arena_bytes": 65520
+  },
+  "device_benchmark": {
+    "status": "synthetic-device-timing",
+    "model_bytes": 243504,
+    "iterations": 600,
+    "frontend_plus_inference_mean_us": 19667,
+    "frontend_plus_inference_p99_us": 19992,
+    "frontend_plus_inference_max_us": 20040,
+    "inference_max_us": 19730,
+    "deadline_misses": 0,
+    "wake_errors": 0,
+    "internal_free_bytes": 316907,
+    "psram_free_bytes": 7992996,
+    "display_fps": 19.6,
+    "microphone_enabled": false,
+    "network_enabled": false,
+    "amplifier_enabled": false,
+    "live_audio_concurrency_validated": false
+  },
+  "normal_runtime": {
+    "observed_uptime_ms": 330047,
+    "inference_max_us": 29264,
+    "display_fps": 13.7,
+    "wake_errors": 0,
+    "wake_dropped": 0,
+    "resets_observed": 0,
+    "watchdog_warnings": false,
+    "rx_errors": 0,
+    "tx_errors": 0,
+    "playback_gaps": 0,
+    "greeting_chunks_received": 13,
+    "wifi_connected": true,
+    "context_reused": true,
+    "standby_mic_upload": false,
+    "volume_db": 0
+  },
+  "rejected_larger_candidate": {
+    "model_sha256": "b8ef94dd22b3ba0cdc3d7650b3bf19ea5f9d8337f169bf0e4c3b5aee23d4b7d9",
+    "model_bytes": 287368,
+    "supplementary_hits": 65,
+    "supplementary_targets": 72,
+    "device_inference_max_us": 38738,
+    "watchdog_warnings": true,
+    "display_fps": 0,
+    "rolled_back_immediately": true
+  },
+  "recovery": {
+    "verified_factory_backup_bytes": 16777216,
+    "previous_app_preserved": true,
+    "only_application_written": true,
+    "partition_layout_verified": true,
+    "NVS_not_overwritten": true
+  },
+  "limitations": [
+    "source content audit incomplete",
+    "full continuous-development acceptance pending",
+    "real adult and child wake acceptance pending",
+    "eight-hour false-wake and long endurance pending",
+    "human listening and physical display confirmation pending",
+    "initial runtime smoke is not long-term acceptance"
+  ],
+  "household_recordings_used_for_training_or_calibration": false,
+  "weights_audio_credentials_and_firmware_private": true
+}

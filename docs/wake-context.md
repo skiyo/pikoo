@@ -2,6 +2,34 @@
 
 [English](wake-context.md) | [简体中文](wake-context.zh-CN.md)
 
+## Private hardware trial, 2026-10-24
+
+The owner explicitly permitted a usable fallback before the original recognition
+targets are reached. Private firmware `0.2.0-cw24-trial2` is now flashed with the
+243,504-byte weighted literal8 candidate. This remains an unaccepted trial:
+original development is 179/195, supplementary development 61/72, with zero
+false wakes in 821 non-target clips. Adult literal-name recall is 8/13 and
+childlike literal-name recall 7/9; these are synthetic development results.
+
+The higher-recall 287,368-byte candidate failed actual hardware timing:
+38.7ms maximum inference, watchdog warnings and stalled graphics. It was
+immediately rolled back. Fitting in memory did not imply sufficient CPU time.
+The lighter candidate then passed 600 synthetic device iterations: frontend
+plus inference mean 19.7ms, maximum 20.1ms, no deadline misses or wake errors,
+and 19.6fps with microphone/network/amplifier disabled. That benchmark does
+not establish live-audio concurrency.
+
+Normal firmware subsequently started with Wi-Fi, microphone and display;
+initial observation found no watchdogs, resets or wake drops, with approximately
+12–15fps and a 29.3ms observed inference peak. A manual USB wake received a
+13-chunk greeting without reported audio gaps and reused the existing topic
+identifier. It does not count as speech-wake or human listening acceptance.
+The device was returned to unmuted standby without deleting context. NVS was
+not overwritten; the prior application and verified full factory backup remain
+private. Adult/child physical acceptance and long-duration tests remain pending.
+See the [trial record](../training/reports/wake-fallback-trial-20261024.json).
+Restricted weights and firmware are not published.
+
 ## Phonetic TRAIN source recovery, 2026-10-24
 
 Twelve historical fictional `Pee Koo` / `Pee Coo` TRAIN positives had local
