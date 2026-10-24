@@ -369,7 +369,7 @@ adult and 5/9 childlike. All three feature/label/mask cache files match J
 bytewise. The 224,120-byte trained export was not flashed; see the
 [L report](../training/reports/wake-context-l-20261024.json).
 
-## Completion uncertainty (M, in progress)
+## Completion uncertainty (M)
 
 A TRAIN-only energy diagnosis of all 723 distinct positive files finds 131
 with more than 200 ms of trailing quiet and 14 with more than 500 ms. This
@@ -386,3 +386,18 @@ with the same fixed class-weight rule and 12-epoch budget. Four data regressions
 cover unchanged features/classes and ignored-region semantics. Legacy defaults
 stay unchanged; M must prove identical feature/class caches and a changed mask,
 then pass all unchanged gates. It is a training hypothesis, not a release.
+
+M also failed: 183/195 cold targets, 3/712 false wakes and 62/72 supplementary
+targets; literal-English groups scored 8/13 adult and 7/9 childlike. Its eight
+TRAIN quantization checks passed. Features and numeric classes match J bytewise,
+and only masks differ, as required. The 224,120-byte model was not flashed;
+see the [M report](../training/reports/wake-context-m-20261024.json). This bounded
+control did not establish completion ambiguity as a sufficient fix.
+
+The next prototype tests whether the original fixed first projection loses
+useful acoustic distinctions. It keeps the complete original path and adds a
+separate trainable 96-filter raw projection for the short branch. Select it
+with both `--short-context --raw-branch`. Two branch regressions pass, including
+nonzero-correction all-step parity and frozen original weights; the full
+checkpoint/static prototype is still running. No new fitting or deployment
+is authorized by unit tests alone, and no inference cutoff is changed.

@@ -7,15 +7,25 @@ a hand-coded phoneme veto. No household audio or identity input is used.
 import numpy as np
 
 
-def attach(source, frames=600):
+def attach(source, frames=600, raw_filters=0):
     import tensorflow as tf
     from microwakeword.layers.stream import Stream
     from causal_model import sequence_view
+    if raw_filters not in (0, 96):
+        raise ValueError('Raw acoustic branch is either disabled or explicitly96 filters')
     for layer in source.layers:
         layer.trainable = False
     sequence, graph = sequence_view(source, frames)
     early = next(layer.output for layer in sequence.layers
                  if isinstance(layer, tf.keras.layers.Activation) and len(layer.output.shape) == 4)
+    if raw_filters:
+        # Keep the original first convolution intact. A separate trainable
+        # projection can retain acoustic information lost by its fixed64
+        # channels; no change is made to the original long-context function.
+        expanded = tf.keras.ops.expand_dims(sequence.inputs[0], axis=2)
+        early = Stream(tf.keras.layers.Conv2D(raw_filters, (3, 1), strides=(3, 1),
+                       use_bias=False, activation='relu6'), use_one_step=False,
+                       pad_time_dim='causal', name='short_context_raw_projection')(expanded)
     head = sequence.get_layer('near_phrase_probability')
     original = tf.keras.layers.Conv2D(14, 1, trainable=False, name='short_context_original_logits')
     logits = original(head.input)
@@ -44,8 +54,9 @@ def attach(source, frames=600):
         tf.keras.layers.Add(name='short_context_corrected_logits')([logits, correction]))
     output = tf.keras.layers.Reshape((-1, 14), name='short_context_classes')(probabilities)
     model = tf.keras.Model(sequence.inputs[0], output)
-    graph.update(architecture='short-context-24x3-recent20-hidden32',
+    graph.update(architecture='short-context-raw96-24x3-recent20-hidden32' if raw_filters else 'short-context-24x3-recent20-hidden32',
         short_context={'kernels': [5, 9, 13], 'channels': 24, 'ordered_steps': 20,
+                       'raw_first_filters': raw_filters,
                        'hidden_units': 32, 'activation': 'relu6',
                        'original_encoder_and_logits_frozen': True,
                        'trainable_parameters': int(sum(np.prod(v.shape) for v in model.trainable_weights))})

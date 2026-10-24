@@ -29,7 +29,10 @@ def main():
     p.add_argument('--batch-size', type=int, default=16)
     p.add_argument('--short-context', action='store_true', help='Learn an ordered acoustic branch; requires its prototype proof')
     p.add_argument('--mask-completion-uncertainty', action='store_true', help='Ignore ambiguous target endings; never infer positive labels from energy')
+    p.add_argument('--raw-branch', action='store_true', help='Learn a separate96-filter raw projection; requires its prototype proof')
     a = p.parse_args()
+    if a.raw_branch and not a.short_context:
+        raise ValueError('Raw projection requires the explicit short-context architecture')
     if not 1 <= a.epochs <= 32 or not 1 <= a.batch_size <= 64:
         raise ValueError('Invalid fixed training budget')
     os.umask(0o077)
@@ -55,7 +58,8 @@ def main():
             or proof['static']['status'] != 'static-check-passed'):
         raise ValueError('Missing compatible all-step prototype proof')
     if a.short_context:
-        if (proof['graph'].get('architecture') != 'short-context-24x3-recent20-hidden32'
+        architecture = 'short-context-raw96-24x3-recent20-hidden32' if a.raw_branch else 'short-context-24x3-recent20-hidden32'
+        if (proof['graph'].get('architecture') != architecture
                 or proof.get('causal_branch_sha256') != sha(Path(__file__).with_name('causal_branch.py'))):
             raise ValueError('Missing compatible short-context branch proof')
     elif proof['graph'].get('architecture'):
@@ -121,7 +125,7 @@ def main():
         {'filters': 128, 'first_filters': 64, 'kernels': [5, 9, 13, 21, 31, 43]})
     if a.short_context:
         from causal_branch import attach as attach_branch
-        fit, graph = attach_branch(source, 600)
+        fit, graph = attach_branch(source, 600, raw_filters=96 if a.raw_branch else 0)
     else:
         residual, _ = attach_frozen_residual(source, 64)
         fit, graph = sequence_view(residual, 600)

@@ -1,0 +1,113 @@
+{
+  "status": "failed-prerequisite-development-not-flashed",
+  "candidate_sha256": "8e1c5dcb588f043b2b1504106f201f4e1e6b1c860cadd841fa99f3f4e7f7c0fa",
+  "model_bytes": 224120,
+  "epochs_trained": 12,
+  "training_examples": 22860,
+  "threshold": 0.9,
+  "rolling_inferences": 5,
+  "original_development": {
+    "status": "failed-level-tone-development",
+    "passed": false,
+    "contract": "pikoo-level-tone-only-v1",
+    "failures": [
+      "false-wakes"
+    ],
+    "streaming_development": {
+      "targets": 195,
+      "hits": 183,
+      "non_targets": 712,
+      "false_wakes": 3
+    },
+    "raw_style_groups": {
+      "adult": {
+        "targets": 36,
+        "hits": 34,
+        "non_targets": 78,
+        "false_wakes": 0
+      },
+      "childlike": {
+        "targets": 32,
+        "hits": 31,
+        "non_targets": 113,
+        "false_wakes": 0
+      }
+    },
+    "pitch_tempo": {
+      "targets": 127,
+      "hits": 118,
+      "non_targets": 131,
+      "false_wakes": 3
+    },
+    "model_bytes": 224120,
+    "old_mandarin_pronunciation": "unspecified, not a negative",
+    "household_or_independent_test_used": false,
+    "hardware_or_real_child_accepted": false
+  },
+  "additional_development": {
+    "status": "failed-additional-development",
+    "passed": false,
+    "original_gate_required": true,
+    "failures": [
+      "original-development-gate",
+      "adult:recall",
+      "adult:English-recall",
+      "childlike:English-recall"
+    ],
+    "groups": {
+      "adult": {
+        "targets": 39,
+        "hits": 32,
+        "non_targets": 51,
+        "false_wakes": 0
+      },
+      "adult:literal-English": {
+        "targets": 13,
+        "hits": 8,
+        "non_targets": 0,
+        "false_wakes": 0
+      },
+      "childlike": {
+        "targets": 33,
+        "hits": 30,
+        "non_targets": 58,
+        "false_wakes": 0
+      },
+      "childlike:literal-English": {
+        "targets": 9,
+        "hits": 7,
+        "non_targets": 0,
+        "false_wakes": 0
+      }
+    },
+    "streaming_development": {
+      "targets": 72,
+      "hits": 62,
+      "non_targets": 109,
+      "false_wakes": 0
+    },
+    "independent_test": false,
+    "household_or_real_child_accepted": false
+  },
+  "continuous_development": "not run: already rejected by prerequisite gates",
+  "development_qualified": false,
+  "float_int8_small_TRAIN_check": {
+    "passed": true,
+    "cases": 8,
+    "failed_cases": 0,
+    "worst_max_absolute_error": 0.11032545566558838
+  },
+  "objective": "same L/J features and numeric labels; mask differs",
+  "original_encoder_and_logits_frozen": true,
+  "inference_horizon_changed": false,
+  "household_or_independent_test_used": false,
+  "device_modified": false,
+  "source_candidate": "same L architecture; ambiguous positive-ending loss masked",
+  "trainable_parameters": 9470,
+  "branch": "24-channel5/9/13, ordered20steps, hidden32",
+  "cache_invariance_to_J": {
+    "causal-features.npy": true,
+    "causal-labels.npy": true,
+    "causal-mask.npy": false
+  }
+}
