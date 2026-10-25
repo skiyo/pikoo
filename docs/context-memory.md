@@ -35,13 +35,15 @@ No speaker identity is inferred. Anonymous “I” statements are not assigned t
 
 Explicit memory edits invalidate queued and in-flight older learning. On restart, jobs with changed memory revisions are discarded. Corrections/deletions conservatively clear that owner's previous topic index, including late summaries; this can remove unrelated old topic summaries too. Subsequent summaries use new post-edit observations. Original conversation journals are separate and are not erased by a memory edit. Historical failed observations are not blindly reprocessed.
 
-## Bilingual output
+## Chinese-only output
 
-Realtime replies use Mandarin Chinese and English only, with neither language taking priority. Follow the current conversation language and explicit English-practice requests; bilingual explanations are allowed for learning. Unclear speech, background noise and uncertain transcription do not trigger a switch to a third language; ask briefly for clarification in the current language.
+As requested on 2026-10-25, realtime spoken and written replies use Mandarin Chinese only, including English input, English-practice requests, tool summaries and resumed conversations. Necessary proper names such as Pikoo retain their established spelling. Background speech and silence still follow quiet companion mode; clarification, when appropriate, is in Chinese. Earlier bilingual history does not override the current policy.
 
-Every new or restored Live connection receives the same system instruction, aligned with the persona template. This follows [Google's native-audio language guidance](https://ai.google.dev/gemini-api/docs/live-api/capabilities#supported-languages), without unsupported language codes or an invented two-language array. It is a model instruction, not a deterministic audio-language filter; human listening acceptance remains separate.
+Every new or restored Live connection receives the same system instruction, aligned with the persona template. This follows [Google's native-audio language guidance](https://ai.google.dev/gemini-api/docs/live-api/capabilities#supported-languages), without unsupported language codes or an invented language array. It is a model instruction, not a deterministic audio-language filter; human listening acceptance remains separate.
 
-2026-10-20: all 20 server software checks passed. Five real Google Live checks passed on one connection using the deployed provider and service UID: Mandarin, English, an English-practice request in Mandarin, bilingual teaching, and a request for a third language. This direct-provider check used text input and inspected generated audio and its transcript; audio was discarded and no household gateway history or memory was created. It is not microphone or hardware listening acceptance. Ambient companion mode was not enabled.
+Historical bilingual-policy validation (superseded by the 2026-10-25 Chinese-only policy): on 2026-10-20, all 20 server software checks passed. Five real Google Live checks passed on one connection using the deployed provider and service UID: Mandarin, English, an English-practice request in Mandarin, bilingual teaching, and a request for a third language. This direct-provider check used text input and inspected generated audio and its transcript; audio was discarded and no household gateway history or memory was created. It is not microphone or hardware listening acceptance. Ambient companion mode was not enabled.
+
+2026-10-25: the Chinese-only policy was deployed after 43/43 server checks and four isolated real Google Live cases: Chinese input, English input, an explicit English-practice request, and a new connection seeded with earlier English conversation. Each generated audio with a Chinese transcript. Audio was discarded; household history/memory and firmware were not modified. See the [validation record](../server/reports/chinese-only-20261025.json).
 
 ## Time and operations
 

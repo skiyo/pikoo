@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-25",
+  "status": "deployed",
+  "policy": "Mandarin Chinese replies only, including English input and explicit English-practice requests; necessary established proper names retained",
+  "software": {
+    "server_tests_passed": 43,
+    "server_tests_failed": 0,
+    "node": "production Node.js 24, pinned qwen-audio-agent 2.0.1"
+  },
+  "native_google": {
+    "scope": "Isolated real Google Live; text input, generated audio discarded; no household history or memory",
+    "passed": true,
+    "cases": [
+      {
+        "name": "chineseInput",
+        "passed": true,
+        "audio_chunks": 23,
+        "output_transcript": "小猫打呼噜通常表示它们感到放松和满足，有时也是为了表达安全感或互相交流。",
+        "new_live_connection": true,
+        "synthetic_old_english_context": false
+      },
+      {
+        "name": "englishInput",
+        "passed": true,
+        "audio_chunks": 21,
+        "output_transcript": "猫咪发出呼噜声通常表示它们感到满足和舒适，不过有时候它们在害怕或感到疼痛时也会这样。",
+        "new_live_connection": true,
+        "synthetic_old_english_context": false
+      },
+      {
+        "name": "explicitEnglishRequest",
+        "passed": true,
+        "audio_chunks": 19,
+        "output_transcript": "嗨，我是 Pikoo！虽然我很乐意陪你聊天，但我只能用中文和你交流哦。",
+        "new_live_connection": true,
+        "synthetic_old_english_context": false
+      },
+      {
+        "name": "reconnectWithOldEnglishContext",
+        "passed": true,
+        "audio_chunks": 14,
+        "output_transcript": "我只能用中文和你交流，不过有什么需要我帮忙的吗？",
+        "new_live_connection": true,
+        "synthetic_old_english_context": true
+      }
+    ]
+  },
+  "boundaries": {
+    "household_recordings_used": false,
+    "household_memory_edited": false,
+    "firmware_flashed": false,
+    "training_resumed": false,
+    "physical_listening_tested": false,
+    "deterministic_audio_language_filter": false
+  },
+  "deployment": {
+    "changed": "Google provider system instructions and one private persona language line",
+    "rollback": "Private backup of previous provider and persona; no household memory restore required",
+    "health_confirmed": true
+  }
+}

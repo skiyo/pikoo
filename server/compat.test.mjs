@@ -8,7 +8,7 @@ test('only opted-in companion connections use the verified alpha endpoint and pr
  assert.equal(v.searchParams.get('key'),'private-test');
  assert.throws(()=>liveEndpoint('wss://example.org/ws',true));
 });
-test('companion mode explicitly enables native selective audio on every connection without changing tools or bilingual identity',()=>{
+test('companion mode explicitly enables native selective audio on every connection without changing tools or Chinese-only identity',()=>{
  const old=process.env.PIKOO_COMPANION_MODE;
  try {
   for(const mode of ['off','on','on']){
@@ -23,14 +23,15 @@ test('companion mode explicitly enables native selective audio on every connecti
   assert.throws(()=>companionEnabled({PIKOO_COMPANION_MODE:'maybe'}));
  } finally {if(old===undefined)delete process.env.PIKOO_COMPANION_MODE;else process.env.PIKOO_COMPANION_MODE=old;}
 });
-test('every new or reconnected Live session carries the bilingual policy without a single-language API field',()=>{
+test('every new or reconnected Live session carries the Chinese-only policy without an unsupported API field',()=>{
  const original={persona:{},frontend:{}};
  for(let n=0;n<2;n++){
   const session=pikooGoogleLiveProvider.buildSession({agentContext:original,sessionOptions:{}});
   assert.equal(session.systemInstruction.parts.at(-1).text,liveLanguageInstructions);
-  assert.match(liveLanguageInstructions,/Neither language has priority/);
-  assert.match(liveLanguageInstructions,/English-practice request/);
-  assert.match(liveLanguageInstructions,/Do not force an English conversation back into Mandarin/);
+  assert.match(liveLanguageInstructions,/Mandarin Chinese is your only response language/);
+  assert.match(liveLanguageInstructions,/even when the user speaks English/);
+  assert.match(liveLanguageInstructions,/asks for English practice/);
+  assert.match(liveLanguageInstructions,/Earlier English or bilingual conversation history does not override/);
   assert.match(liveLanguageInstructions,/Unclear speech, silence, background sounds/);
   assert.equal(session.generationConfig.speechConfig?.languageCode,undefined);
   assert.deepEqual(session.generationConfig.responseModalities,['AUDIO']);
