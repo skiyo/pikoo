@@ -8,9 +8,11 @@ Pikoo 绝不是市面上常见的智能音箱。它是一个可以亲手打造�
 
 [认识 Pikoo](https://pikoo.lol/) · [开始使用](docs/getting-started.zh-CN.md) · [开发指南](docs/development.zh-CN.md)
 
-![Pikoo 双眼模拟器概念预览](docs/images/dualeye/simulator.jpg)
-
-*这是模拟器概念效果，不是已完成设备的实物照片。*
+<p align="center">
+  <img src="docs/images/pikoo-enclosure.webp" width="520" alt="Pikoo 小猫外壳与琥珀色双眼">
+  <br>
+  <em>Pikoo 小猫外壳外观概念渲染。</em>
+</p>
 
 ## 相处是什么体验
 

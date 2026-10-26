@@ -8,9 +8,11 @@ Pikoo is not a typical smart speaker. It is an open-source DIY project you can b
 
 [Explore Pikoo](https://pikoo.lol/) · [Get started](docs/getting-started.md) · [Development guide](docs/development.md)
 
-![Pikoo dual-eye simulator concept](docs/images/dualeye/simulator.jpg)
-
-*Simulator concept preview, not a photograph of a finished device.*
+<p align="center">
+  <img src="docs/images/pikoo-enclosure.webp" width="520" alt="Pikoo cat enclosure with amber dual eyes">
+  <br>
+  <em>Pikoo cat-enclosure appearance concept render.</em>
+</p>
 
 ## What it is like to spend time with Pikoo
 
