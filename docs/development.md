@@ -2,6 +2,8 @@
 
 **English** | [简体中文](development.zh-CN.md) · [Home](../README.md)
 
+This guide covers code changes and checks. Use the [documentation index](README.md) to find setup, Agent behavior or historical validation without repeating the project introduction.
+
 ## Environment and boundaries
 
 Use Node.js 24+, a C++17 compiler, Bash and Python 3.11 for host development. Install Node dependencies with `(cd server && npm ci --ignore-scripts)`. Optional wake/training packages are pinned in `training/requirements.txt`; ESP-IDF 5.5.5 and components are pinned in `firmware/dependencies.lock`. Do not silently refresh lockfiles or upgrade upstream packages.
@@ -22,7 +24,7 @@ For targeted work use `bash tools/test-eyes.sh`, `bash tools/test-core.sh`, `nod
 
 ## Native and device builds
 
-Build desktop graphics using `bash tools/build-eyes.sh`. Tests produce ignored artifacts under `firmware/build-host/`. For the historical firmware, use ESP-IDF 5.5.5 and explicitly provide `-DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite`; see [firmware notes](firmware.md). Missing weights remain an error. The historical 1.83-inch build retains its 64 KiB limit; the DualEye experimental build now accepts an explicit 64–512 KiB flash budget. Training/static checks still default to 64 KiB unless `--max-model-bytes 524288` is supplied. Allocation, a 30 ms inference interval and concurrent-device tests remain separate gates. No public firmware binary is currently supplied.
+Build desktop graphics using `bash tools/build-eyes.sh`. Tests produce ignored artifacts under `firmware/build-host/`. For the default DualEye firmware, use ESP-IDF 5.5.5 and explicitly provide `-DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite`; see [firmware notes](firmware.md). Missing weights remain an error. The historical 1.83-inch build retains its 64 KiB limit; the DualEye experimental build now accepts an explicit 64–512 KiB flash budget. Training/static checks still default to 64 KiB unless `--max-model-bytes 524288` is supplied. Allocation, a 30 ms inference interval and concurrent-device tests remain separate gates. No public firmware binary is currently supplied.
 
 `tools/Pikoo-USB.command` and `tools/device.py` provide partition-checked DualEye installation, upgrades, diagnostics and recovery. See [firmware](firmware.md). Do not use the old board mapping on DualEye. Configuration contains secrets; store it outside Git, revoke replaced tokens, and follow the board's official download-mode instructions.
 

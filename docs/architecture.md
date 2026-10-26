@@ -2,7 +2,7 @@
 
 **English** | [简体中文](architecture.zh-CN.md) · [Home](../README.md)
 
-Pikoo separates the local device, realtime server and offline training environment. The desktop simulator exercises the device-facing protocol while reusing the same eye renderer planned for the board.
+Pikoo’s family realtime voice AI Agent separates the device, Agent runtime and external realtime model. Offline training is a development workflow, not part of an online conversation. The desktop simulator exercises the device protocol and shares the board’s eye renderer.
 
 ## Module boundaries
 
@@ -40,4 +40,6 @@ Reusing the conversation ID lets the server inject saved recent text into a new 
 
 `context-runtime.mjs` composes automatic memory and topic summarisation through a private durable outbox. Both text calls use a 45-second deadline, serial execution, bounded retries and explicit-edit invalidation. Ordinary shared-family facts can be remembered without a “remember” command. Inferred individual profiles remain disabled on the shared device. Connection clocks use Beijing time; current-time questions use the official `get_current_time` tool. See [context, memory and time](context-memory.md) for retention, limits and verification.
 
-Training is not required to serve a conversation. A future public model must meet the 64 KiB weight budget and documented source rights. Current public sources provide the pipeline but no weights.
+The committed server template keeps `AGENT_PROTOCOL=none`. The product term AI Agent describes the combined conversation, memory and tool behavior; it does not require an additional backend Agent process. Configured native tools are described in [Family tools](family-tools.md). MCP integrations require explicit configuration and compatibility/security review; weather and smart-home examples are extension directions, not default services.
+
+Training is not required to serve a conversation. Training/static checks default to 64 KiB, while the current DualEye firmware permits a separate explicit experimental budget up to 512 KiB; see [Training](../training/README.md) and [Firmware](firmware.md). Memory use, timing, accuracy and source rights remain separate release gates. Current public sources provide the pipeline but no weights.

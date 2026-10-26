@@ -2,7 +2,7 @@
 
 **English** | [简体中文](CONTRIBUTING.zh-CN.md)
 
-Pikoo is a development preview. Contributions to documentation, original expressions, simulator behavior, board bring-up and tests are welcome. Open an issue before a major redesign or dependency upgrade so the approach can be discussed.
+Pikoo is an open-source realtime voice AI Agent for families, currently in development preview. Contributions to documentation, original expressions, simulator behavior, board bring-up and tests are welcome. Open an issue before a major redesign or dependency upgrade so the approach can be discussed.
 
 ## A useful contribution
 

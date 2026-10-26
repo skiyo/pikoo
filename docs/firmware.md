@@ -13,7 +13,7 @@ Use ESP-IDF **5.5.5**. Dependencies are pinned: ESP-SR 2.5.3, ESP-TFLite-Micro 1
 ./tools/build-device.sh /absolute/private/authorized-model.tflite
 ```
 
-The script uses an isolated configuration in `firmware/build-dualeye/`, 240 MHz CPU and 8 MB octal PSRAM. Wake files are limited to 64 KiB; inference arena, AFE and frame buffers consume additional runtime RAM. Builds containing restricted weights remain local and ignored by Git.
+The script uses an isolated configuration in `firmware/build-dualeye/`, 240 MHz CPU and 8 MB octal PSRAM. The DualEye build defaults to an experimental 512 KiB wake-file budget; the static checker still defaults to 64 KiB unless explicitly configured. Inference arena, AFE and frame buffers consume additional runtime RAM. Builds containing restricted weights remain local and ignored by Git.
 
 ## USB deployment
 

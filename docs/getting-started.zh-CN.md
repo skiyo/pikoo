@@ -2,6 +2,8 @@
 
 [English](getting-started.md) | **简体中文** · [首页](../README.zh-CN.md)
 
+本指南从电脑离线演示开始，再按需连接自己的实时语音服务，最后制作双眼设备。产品介绍见[项目 README](../README.zh-CN.md)，实现分工见[架构说明](architecture.zh-CN.md)。
+
 ## 离线双眼演示
 
 需要 Node.js 24 或更新版本、npm、Bash 和 C++17 编译器。macOS 安装 Xcode Command Line Tools；Debian/Ubuntu 可使用 `build-essential`。其他具备相应工具的平台可能可用，但尚未验证。浏览器需要 Canvas 和 WebAudio。
@@ -26,7 +28,7 @@ PIKOO_SIM_PORT=8793 node firmware/simulator/server.mjs
 
 ## 可选：连接自己的实时服务器
 
-按[服务器运维说明](../server/README.md)部署自己的服务器，并单独签发设备 token。将 JSON 配置保存到仓库外，例如 `/absolute/private/simulator.json`：
+按[服务端指南](../server/README.zh-CN.md)部署自己的服务器，并单独签发设备 token。将 JSON 配置保存到仓库外，例如 `/absolute/private/simulator.json`：
 
 ```json
 {
@@ -44,7 +46,7 @@ token 留在本机 Node 进程；页面在主动唤醒后连接，需要说话�
 
 ## 可选：自己的授权唤醒模型
 
-当前源码不含权重。可以使用本机已保留的模型，或用来源授权明确的音频训练。Git 历史中的实验权重未获本仓库 Apache-2.0 模型授权，见[训练说明](../training/README.md)和[模型卡](../training/models/MODEL_CARD.md)。
+当前源码不含权重。可以使用本机已保留的模型，或用来源授权明确的音频训练。Git 历史中的实验权重未获本仓库 Apache-2.0 模型授权，见[训练说明](../training/README.zh-CN.md)和[模型卡](../training/models/MODEL_CARD.md)。
 
 训练环境以 Python 3.11 为基线。可选依赖包含 TensorFlow，下载量明显大于单纯图形演示：
 
@@ -61,10 +63,11 @@ bash tools/start-dualeye.sh
 
 ## 固件构建
 
-**当前完整板级集成针对历史 1.83-EN，不要烧录到双眼板。** 独立图形核心和主机检查可以单独使用。按[固件说明](firmware.md)准备 ESP-IDF 5.5.5 后，显式指定授权模型：
+默认板级集成是非触摸版 **ESP32-S3-DualEye-LCD-1.28**。旧款 1.83 英寸工程独立放在 `firmware/boards/legacy183/`，不能烧录到双眼板。按[固件指南](firmware.zh-CN.md)准备 ESP-IDF 5.5.5，并显式指定授权私密模型：
 
 ```sh
-idf.py -C firmware -DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite build
+. /path/to/esp-idf/export.sh
+./tools/build-device.sh /absolute/private/authorized-model.tflite
 ```
 
 双眼构建缺少模型或超过显式实验预算时会拒绝构建，当前默认上限为 512 KiB。2026-10-18 按用户要求提高预算以试验更大网络；编译通过不能代替内存、推理耗时与识别验收。历史 1.83 板构建仍保留 64 KiB 上限。检查和 USB 工具见[开发说明](development.zh-CN.md)。包含受限模型的固件不能公开发布。

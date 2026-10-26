@@ -2,6 +2,8 @@
 
 **English** | [简体中文](getting-started.zh-CN.md) · [Home](../README.md)
 
+This guide takes you from the offline desktop demonstration to your own live voice service and, optionally, the physical DualEye device. For product positioning, use the [project README](../README.md); for implementation details, use [Architecture](architecture.md).
+
 ## Offline dual-eye demo
 
 Requirements: Node.js 24 or newer, npm, Bash and a C++17 compiler. macOS needs Xcode Command Line Tools; Debian/Ubuntu can use `build-essential`. Other platforms with equivalent tools may work but have not been validated. A browser with Canvas and WebAudio is required.
@@ -61,10 +63,11 @@ You can combine wake settings with `PIKOO_SIM_CONFIG`. Standby microphone audio 
 
 ## Firmware build
 
-**The current full-board integration is for the historical 1.83-EN board. Do not flash it onto DualEye.** The shared renderer and host checks can be used independently. After setting up ESP-IDF 5.5.5 as described in [firmware notes](firmware.md), explicitly supply an authorized model:
+The default board integration is the non-touch **ESP32-S3-DualEye-LCD-1.28**. The old 1.83-inch project is isolated under `firmware/boards/legacy183/`; do not flash that project onto DualEye. Use ESP-IDF 5.5.5 and an authorized private model, following the [firmware guide](firmware.md):
 
 ```sh
-idf.py -C firmware -DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite build
+. /path/to/esp-idf/export.sh
+./tools/build-device.sh /absolute/private/authorized-model.tflite
 ```
 
 The DualEye build rejects missing weights and files larger than its explicit experimental budget (512 KiB by default). This budget was raised on 2026-10-18 to investigate larger networks; successful compilation does not establish acceptable RAM use, inference latency or wake accuracy. The historical 1.83-inch build retains its 64 KiB limit. Use [Development](development.md) for checks and the existing USB tooling. Binary releases embedding restricted weights must not be published.

@@ -2,66 +2,45 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-A DIY voice pet with expressive dual eyes, local Mandarin wake-word detection, realtime conversation, and shared memory. Built for ESP32-S3, with a desktop simulator you can try before connecting hardware.
+**A realtime voice AI Agent for your family.**
+
+Pikoo is not a typical smart speaker. It is an open-source DIY project you can build yourself: a small companion for children’s discoveries and everyday family life.
+
+[Explore Pikoo](https://pikoo.lol/) · [Get started](docs/getting-started.md) · [Development guide](docs/development.md)
 
 ![Pikoo dual-eye simulator concept](docs/images/dualeye/simulator.jpg)
 
-*Simulator concept preview, not a photograph of a finished device. The two eye displays are rendered at 240 × 240 pixels each.*
+*Simulator concept preview, not a photograph of a finished device.*
 
-## Features
+## What it is like to spend time with Pikoo
 
-- Original cartoon eyes: closed-eye standby, coordinated gaze, blinking, listening and speaking expressions.
-- [Quiet companion mode](docs/companion.md): opt-in selective responses while an explicitly awakened physical device stays connected.
-- Local wake-word pipeline targeting “你好 Pikoo” (Mandarin greeting + pī kū, both name syllables first tone); updated pronunciation acceptance is pending. Standby audio stays on the device or local computer.
-- Continuous Mandarin conversation, playback cancellation, interruption handling, and reconnection.
-- Server-managed persona, shared Markdown memory, and session-summary integration.
-- A portable C++ RGB565 eye renderer shared by the simulator and firmware.
-- USB provisioning and independently revocable device credentials; no provider key in firmware.
+- **Let the conversation flow.** Realtime voice follows the context, with local controls for stopping playback and handling interruptions.
+- **Pick up where you left off.** Conversation context, shared family memory and past-topic recall help carry meaningful details into the next conversation.
+- **Work things out together.** The Agent can use the tools you configure. The server includes adapters for search, public-page reading and family lists; see [tool setup](docs/family-tools.md).
 
-## Project status
+Its two animated eyes give responses a visible expression. The optional [quiet companion mode](docs/companion.md) lets an explicitly awakened device stay connected and decide when to respond.
 
-**Development preview. Hardware acceptance is pending.**
+## How it works
 
-| Area | Current status |
+| Part | Role |
 |---|---|
-| Desktop simulator | Dual-eye graphics, offline demo, optional live-server and local-wake integration implemented |
-| Server | Deployment templates, Gemini compatibility adapters, device authentication and recent-text context recovery implemented |
-| Dual-eye renderer | Native checks and ESP32-S3 cross-compilation passed |
-| Firmware | DualEye display, audio, BOOT controls and USB deployment implemented; real voice acceptance in progress |
-| Wake word | Training and evaluation tools available; model weights are not included in the current tree |
-| Automatic memory | Integration exists; long-session extraction/summary timeout remains an unresolved acceptance item |
-| Physical device | USB, displays and short speaker test checked; sustained voice, AEC, wake accuracy and endurance remain under validation |
-
-The local V5 research candidate is 45,128 bytes. Its synthesized-speech results and host checks are **not** evidence of child-voice or hardware acceptance. See [actual validation records](docs/validation-summary.md).
-
-## Architecture
+| [Waveshare ESP32-S3 DualEye board](https://www.waveshare.net/shop/ESP32-S3-DualEye-LCD-1.28.htm) | Capture audio, play responses and display two expressive eyes |
+| [Qwen Audio Agent](https://github.com/QwenAudio/qwen-audio-agent) + Pikoo server adapters | Coordinate sessions, device authentication, memory and tools |
+| Realtime voice model | Understand speech and generate live responses; the current adapters target Gemini Live |
 
 ```mermaid
 flowchart LR
-    Mic[Microphone] --> Local[Local audio processing and wake word]
-    Local --> Device[ESP32 firmware or desktop simulator]
-    Device -->|GCP 7 / WSS: 16 kHz PCM16| Server[Pikoo server]
-    Server -->|GCP 7 / WSS: 24 kHz PCM| Device
-    Server <-->|Live audio and events| Gemini[Gemini Live external service]
-    Server <-->|Persona, memory and recent text| Store[(Private persistent state)]
-    Device --> Eyes[Portable C++ eye renderer]
-    Eyes --> Screens[Two 240 x 240 displays]
-    Train[Offline training and evaluation] -.->|Local model file| Local
+    Device[Dual-eye device or desktop simulator] <-->|Voice and session events| Agent[Pikoo Agent server]
+    Agent <-->|Live audio| Model[Realtime model]
+    Agent <--> Memory[Private family memory]
+    Agent <--> Tools[Configured tools]
 ```
 
-The device listens, wakes, plays audio and displays expressions. The server manages conversations and memory. Provider keys and household information remain in private server storage. Training runs separately from the online voice path. Read [how the modules cooperate](docs/architecture.md), [context, memory and Beijing time](docs/context-memory.md), and [search, web reading and family lists](docs/family-tools.md).
+Qwen Audio Agent is the runtime framework, separate from the model it connects to. The runtime can be extended through tool interfaces such as MCP; weather and smart-home services are possible integrations, not services enabled by default in this repository. Current server configuration and compatibility limits are documented in [Architecture](docs/architecture.md) and [server setup](server/README.md).
 
-Reconnection restores recent saved text with the same conversation identifier. It does not resume the original audio stream or guarantee unlimited history. Explicitly ending a conversation starts a new topic on the next connection.
+## Start on your computer
 
-## Device
-
-The target is **Waveshare ESP32-S3-DualEye-LCD-1.28**: two 1.28-inch round displays, 16 MB Flash and 8 MB PSRAM. The first prototype uses USB power and a suitable speaker. See the [hardware guide](docs/hardware.md) for official documentation, audio hardware and bring-up requirements.
-
-Use the [DualEye firmware guide](docs/firmware.md). The historical 1.83-EN target is separate and must never be flashed onto DualEye.
-
-## Quick start: offline simulator
-
-Install [Node.js 24 LTS](https://nodejs.org/en/download) or newer and a C++17 compiler. On macOS, install Xcode Command Line Tools; on Linux, install a C++ toolchain such as `build-essential`.
+The offline simulator is the shortest path to the eyes and interaction controls. It needs Node.js 24+, npm, Bash and a C++17 compiler. On macOS, install Xcode Command Line Tools; on Linux, use an equivalent compiler toolchain.
 
 ```sh
 git clone https://github.com/skiyo/pikoo.git
@@ -70,41 +49,34 @@ cd pikoo
 bash tools/start-dualeye.sh
 ```
 
-Open **http://127.0.0.1:8793/dualeye**. The launcher compiles the eye renderer. Use the expression controls and wake/session button; the offline response is a test tone, not an AI conversation. Opening the page does not enable the microphone or connect to a remote server. The current simulator UI uses Chinese labels.
+Open **http://127.0.0.1:8793/dualeye**. Offline responses are test tones, not AI conversation. The demo needs no model weights, provider key, Python or ESP-IDF; opening it does not start the microphone. Stop with Ctrl+C or `bash tools/stop-dualeye.sh`.
 
-Stop with Ctrl+C or `bash tools/stop-dualeye.sh`. On macOS, the start/stop `.command` files in `tools/` provide double-click entry points.
+For live voice, connect your own Agent server and a separately issued device token. For the physical build, use the non-touch **ESP32-S3-DualEye-LCD-1.28**, USB power and a suitable speaker. Follow [Getting started](docs/getting-started.md), then the [hardware](docs/hardware.md) and [DualEye firmware](docs/firmware.md) guides. The older 1.83-inch target is a separate project.
 
-The demo needs no model, key, private configuration, Python or ESP-IDF. To add a real server or your own authorized wake model, follow [Getting started](docs/getting-started.md). The original simulator home at `/` and wake test page at `/wake-test` remain available; wake testing requires a configured model.
+## Choose what to develop
 
-## Modules and documentation
-
-| Path | Purpose |
+| Source | Starting point |
 |---|---|
-| [`server/`](server/README.md) | Relay composition, provider adapters, deployment and private persistence |
-| [`firmware/`](docs/development.md) | ESP-IDF firmware baseline, audio/session core and USB configuration |
-| [`firmware/components/pikoo_eyes/`](docs/dualeye.md) | Platform-independent eye renderer |
-| [`firmware/simulator/`](docs/getting-started.md) | Local browser UI, drawing process, wake worker and WSS client |
-| [`training/`](training/README.md) | Training, quantization, dataset import and streaming evaluation |
-| [`tools/`](docs/development.md) | Launch, checks, flashing and provisioning tools |
+| [`firmware/main/`](firmware/main/) | Board peripherals, capture, playback and dual-display integration |
+| [`firmware/components/pikoo_core/`](firmware/components/pikoo_core/) | Audio/session state, cancellation and resampling |
+| [`firmware/components/pikoo_eyes/`](firmware/components/pikoo_eyes/) | Portable C++ eye rendering, gaze, blinking and expressions |
+| [`firmware/simulator/`](firmware/simulator/) | Desktop interaction, local graphics, optional wake worker and server connection |
+| [`server/`](server/README.md) | Agent composition, provider adapters, memory and tool configuration |
+| [`training/`](training/README.md) | Authorized wake-word data, training, export and evaluation |
+| [`tools/`](tools/) | Launch, build, USB provisioning and diagnosis |
+| [`docs/`](docs/README.md) | Setup, architecture, development and dated validation records |
 
-Start with [Architecture](docs/architecture.md), [Hardware](docs/hardware.md), [Getting started](docs/getting-started.md), and [Development](docs/development.md). Historical technical and test records retain their original Chinese text; the [English validation summary](docs/validation-summary.md) explains their dates and limits.
+The [development guide](docs/development.md) explains environments and checks. Low-level protocol and deployment details live in their own guides rather than in this introduction.
 
-## Open-source software and references
+## Before you build
 
-Pikoo builds on qwen-audio-agent, ESP-IDF, ESP-SR, TensorFlow Lite Micro, microWakeWord, microfrontend/KissFFT, LVGL and Waveshare board components. Muse Gadget SDK inspired simulator organization and animation pacing; Pikoo's character and drawing code are original, with no Jollybot assets or copied Muse implementation.
+- **Development preview:** software checks and short device runs do not establish sustained voice, hardware AEC, child wake-word accuracy or long-term reliability. See the [validation summary](docs/validation-summary.md).
+- **Wake models:** the target phrase is “你好 Pikoo” (pī kū). No model weights are distributed in the current tree. Use an authorized private model or the [training workflow](training/README.md); historical weights are not granted an Apache-2.0 model license.
+- **Language and services:** documentation is bilingual; the current conversation policy uses Mandarin Chinese replies. Live models and online tools require network access and separately configured services. Costs depend on those services.
+- **Family data:** provider keys, persona, memory and conversation state are managed on the private server. The device holds its own revocable credential and does not infer which family member is speaking. Read [memory and data flow](docs/context-memory.md) and [Security](SECURITY.md).
 
-See [Third-party software and attribution](THIRD_PARTY.md) for versions, sources, licenses and the distinction between vendored code, dependencies and design references. Gemini is an external service, not an open-source component; users provide their own credentials and must check applicable availability, pricing and service terms.
+## Contribute and reuse
 
-## Contributing
+Documentation, original expressions, device integration and reproducible bug reports are welcome. Read [Contributing](CONTRIBUTING.md); documentation-only changes need link and example checks, while behavior changes need the relevant software tests.
 
-Bug reports, documentation improvements, graphics and hardware bring-up contributions are welcome. Read [CONTRIBUTING](CONTRIBUTING.md), run `bash tools/check.sh`, and use the issue/PR templates. Report vulnerabilities privately using [SECURITY](SECURITY.md).
-
-Next milestones: sustained real-device voice; physical AEC and interruption testing; a redistributable wake model; household and endurance validation. See the [dated hardware record](docs/device-validation.md). A [private fallback hardware trial dated 2026-10-24](docs/wake-context.md) is installed with explicit owner acceptance of incomplete recognition targets; its weights and firmware are not distributed.
-
-## License and privacy
-
-Pikoo-authored code, graphics and documentation are licensed under [Apache-2.0](LICENSE). Third-party components retain their own licenses and notices; see [NOTICE](NOTICE) and [THIRD_PARTY](THIRD_PARTY.md).
-
-**No wake-model weights are distributed in the current tree.** Existing research weights use sources whose redistribution rights have not been established. Historical Git commits retain an early experimental model; it is not granted an Apache-2.0 model license by this repository. See the [model card](training/models/MODEL_CARD.md).
-
-Never commit keys, device tokens, proxy subscriptions, household profiles, raw conversations, recordings or restricted datasets/models. Future model releases require documented training and distribution rights.
+Pikoo-authored code, graphics and documentation use [Apache-2.0](LICENSE). Dependencies and vendored components retain their own licenses; see [NOTICE](NOTICE) and [Third-party attribution](THIRD_PARTY.md). Credentials, household recordings, restricted datasets and unlicensed model weights must stay outside public commits.

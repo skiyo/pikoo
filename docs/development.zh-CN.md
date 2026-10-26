@@ -2,6 +2,8 @@
 
 [English](development.md) | **简体中文** · [首页](../README.zh-CN.md)
 
+本文负责代码修改与检查。上手、Agent 行为和历史验证分别见[文档导航](README.zh-CN.md)，不在这里重复项目介绍。
+
 ## 环境与边界
 
 主机开发使用 Node.js 24+、C++17 编译器、Bash 和 Python 3.11。执行 `(cd server && npm ci --ignore-scripts)` 安装依赖。可选唤醒/训练依赖固定于 `training/requirements.txt`，ESP-IDF 5.5.5 和组件固定于 `firmware/dependencies.lock`；不要未经审核刷新锁文件或升级上游包。
@@ -22,7 +24,7 @@ bash tools/check.sh
 
 ## 主机与设备构建
 
-使用 `bash tools/build-eyes.sh` 编译主机绘制程序。测试产物在忽略目录 `firmware/build-host/`。历史固件使用 ESP-IDF 5.5.5，并显式传入 `-DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite`，见[固件说明](firmware.md)。缺模型仍会报错。历史 1.83 板构建保留 64 KiB 上限；双眼实验构建现允许显式设置 64–512 KiB Flash 预算。训练／静态检查默认仍为 64 KiB，扩大时需传 `--max-model-bytes 524288`。内存分配、30ms 推理间隔及设备并发检查仍需分别通过。暂不提供公开固件二进制。
+使用 `bash tools/build-eyes.sh` 编译主机绘制程序。测试产物在忽略目录 `firmware/build-host/`。默认双眼固件使用 ESP-IDF 5.5.5，并显式传入 `-DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite`，见[固件说明](firmware.md)。缺模型仍会报错。历史 1.83 板构建保留 64 KiB 上限；双眼实验构建现允许显式设置 64–512 KiB Flash 预算。训练／静态检查默认仍为 64 KiB，扩大时需传 `--max-model-bytes 524288`。内存分配、30ms 推理间隔及设备并发检查仍需分别通过。暂不提供公开固件二进制。
 
 `tools/Pikoo-USB.command` 和 `tools/device.py` 提供核对分区的双眼安装、升级、诊断和恢复，见[固件说明](firmware.zh-CN.md)。不要把旧板映射用于双眼板。配置含凭证，应保存在 Git 外，替换时撤销旧 token，按板商资料进入下载模式。
 

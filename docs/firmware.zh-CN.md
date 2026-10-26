@@ -6,7 +6,7 @@
 
 ## 编译
 
-固定 ESP-IDF 5.5.5。激活环境后运行 `tools/build-device.sh /私密绝对路径/模型.tflite`。独立构建目录启用 240MHz CPU、8MB Octal PSRAM；固定依赖及 CLI 命令见[英文说明](firmware.md)。模型上限 64KiB，运行时还需分配推理 arena、AFE 和帧缓冲。受限模型和含模型的固件仅保留本机。
+固定 ESP-IDF 5.5.5。激活环境后运行 `tools/build-device.sh /私密绝对路径/模型.tflite`。独立构建目录启用 240MHz CPU、8MB Octal PSRAM；固定依赖及 CLI 命令见[英文说明](firmware.md)。双眼构建默认使用 512 KiB 实验模型文件预算；静态检查未显式配置时仍默认 64 KiB。运行时还需分配推理 arena、AFE 和帧缓冲。受限模型和含模型的固件仅保留本机。
 
 ## 安装、升级和恢复
 
