@@ -6,6 +6,10 @@ The server connects Pikoo’s device to a realtime voice model and manages sessi
 
 This guide is for server developers and operators. Start with the [offline simulator](../docs/getting-started.md) if you only want to see the eyes. Detailed host installation, certificate, pairing, backup and recovery procedures are retained in the [Chinese operations guide](operations.zh-CN.md).
 
+## Enclosure printing resources
+
+The three original cat-enclosure STLs, print order, illustrated assembly guide and checklist are in the [enclosure directory](../hardware/enclosure/README.md). The project family reports successful printing, assembly and home use (2026-10-27); that hardware feedback is separate from this module’s software/research checks.
+
 ## Components
 
 | File or directory | Responsibility |

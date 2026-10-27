@@ -2,7 +2,7 @@
 
 **English** | [简体中文](hardware.zh-CN.md) · [Home](../README.md)
 
-The prototype target is **Waveshare ESP32-S3-DualEye-LCD-1.28**, selected for two expressive round eyes in a DIY pet enclosure. The enclosure shown in the README is a simulator concept; printable mechanical files are not supplied yet.
+The prototype target is **Waveshare ESP32-S3-DualEye-LCD-1.28**, selected for two expressive round eyes in a DIY enclosure. The three original cat-enclosure STLs and illustrated instructions are available in the [enclosure directory](../hardware/enclosure/README.md). On 2026-10-27 the project family reported successful printing, assembly verification and use at home.
 
 | Part | Target specification |
 |---|---|
@@ -16,7 +16,7 @@ Specifications and board revision details: [Waveshare official documentation](ht
 
 ## Accessories
 
-Prepare one matching speaker and cable, a USB-C **data** cable, stable 5 V USB supply and a temporary protective stand. Confirm speaker impedance, connector and included accessories with the supplier. The first prototype does not require a battery, camera, motors or microSD card. Final enclosure geometry follows acoustic and cable-clearance tests.
+Prepare one matching speaker and cable, a USB-C **data** cable and stable 5 V USB supply. Confirm speaker impedance, connector and included accessories with the supplier. The first prototype does not require a battery, camera, motors or microSD card. The enclosure retains the original backplate and screws; use its three-part assembly guide for wiring, support removal and mechanical retention.
 
 ## Audio and AEC
 

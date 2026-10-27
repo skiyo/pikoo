@@ -6,6 +6,10 @@ This module develops Pikoo’s local “你好 Pikoo” wake pipeline (pī kū /
 
 Training is optional for exploring the [offline simulator](../docs/getting-started.md) or starting a voice session with a button. **The current public tree includes no wake-model weights.** Model history and redistribution limits are described in the [model card](models/MODEL_CARD.md).
 
+## Enclosure printing resources
+
+The three original cat-enclosure STLs, print order, illustrated assembly guide and checklist are in the [enclosure directory](../hardware/enclosure/README.md). The project family reports successful printing, assembly and home use (2026-10-27); that hardware feedback is separate from this module’s software/research checks.
+
 ## Choose a starting point
 
 | Task | Tools / guide |

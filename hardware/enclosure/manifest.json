@@ -1,0 +1,61 @@
+{
+  "design": "Pikoo three-part cat enclosure",
+  "published_on": "2026-10-27",
+  "units": "mm",
+  "scale_percent": 100,
+  "print_order": [
+    "03",
+    "01",
+    "02"
+  ],
+  "printer": "X-MAKER JOY AI+",
+  "quality": "fine",
+  "supports": "all",
+  "keep_original_orientation": true,
+  "parts": [
+    {
+      "file": "STL_只有三个/01_一体猫脸底座内架.stl",
+      "bytes": 6253284,
+      "sha256": "c6712df3acb5f0bebaa9e50dc1181fa909b011638676c56d720f6cc2c09459f6",
+      "dimensions_mm": [
+        109.99636840820312,
+        102.59963989257812,
+        52.97230386734009
+      ],
+      "orientation": "front_down"
+    },
+    {
+      "file": "STL_只有三个/02_厚壁后盖.stl",
+      "bytes": 2232684,
+      "sha256": "432432b3c5014d6a0541ee1b558b11409780de0f01c6f16146e00580fdc6baab",
+      "dimensions_mm": [
+        109.84542846679688,
+        60.29999923706055,
+        33.60000133514404
+      ],
+      "orientation": "rear_down"
+    },
+    {
+      "file": "STL_只有三个/03_大旋转锁.stl",
+      "bytes": 63884,
+      "sha256": "2b1aaefe29198ac1c9c68ec59ab2d0d777253b7bc8f212b1ba04d675e1a41b8d",
+      "dimensions_mm": [
+        26.0,
+        26.0,
+        31.800001144409176
+      ],
+      "orientation": "rear_down"
+    }
+  ],
+  "validation": {
+    "original_delivery_digital_checks_complete": true,
+    "user_reported_print_and_assembly_passed": true,
+    "user_reported_home_use_passed": true,
+    "reported_on": "2026-10-27",
+    "evidence": "Project owner confirmed in this conversation that this exact design was printed, verified and usable at home.",
+    "independent_physical_verification": false,
+    "dedicated_drop_test": "not separately reported",
+    "slicer_time_and_material": "not separately recorded"
+  },
+  "source_integrity": "STL bytes match the original delivered files. No geometry, scale or orientation changes in this publication."
+}

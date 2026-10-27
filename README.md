@@ -14,6 +14,10 @@ Pikoo is not a typical smart speaker. It is an open-source DIY project you can b
   <em>Pikoo cat-enclosure appearance concept render.</em>
 </p>
 
+## Cat enclosure STLs and assembly
+
+[Enclosure files and complete instructions](hardware/enclosure/README.md) provide three original STLs, orientation/support settings, an illustrated guide and an acceptance checklist directly, without a ZIP. The project family reports successful printing, assembly and home use (2026-10-27); a dedicated drop test was not separately reported. Print **03 lock → 01 integrated face/base/carrier → 02 cover**; all three parts provide mechanical retention together.
+
 ## What it is like to spend time with Pikoo
 
 - **Let the conversation flow.** Realtime voice follows the context, with local controls for stopping playback and handling interruptions.

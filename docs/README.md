@@ -4,6 +4,10 @@
 
 Choose a guide for the task at hand. The project README introduces Pikoo as a family realtime voice AI Agent; these guides explain how to run, change and verify it.
 
+## Enclosure printing resources
+
+The three original cat-enclosure STLs, print order, illustrated assembly guide and checklist are in the [enclosure directory](../hardware/enclosure/README.md). The project family reports successful printing, assembly and home use (2026-10-27); that hardware feedback is separate from this module’s software/research checks.
+
 ## Start and build
 
 | Goal | Read |
