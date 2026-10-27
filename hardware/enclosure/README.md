@@ -18,9 +18,13 @@ Open a file for the GitHub preview, then use **Download raw file**. Cloning the 
 
 ## Instructions and records
 
-- [Illustrated printing, support removal, assembly and acceptance guide](guide.html): download the raw HTML and open it in a browser. The guide is in Chinese with embedded illustrations, requiring no external images or network.
+- [Illustrated printing, support removal, assembly and acceptance guide](guide.html): download the raw HTML and open it in a browser. English and Chinese text, diagram callouts and illustrations are embedded in this single offline file.
 - [Acceptance checklist CSV](acceptance-checklist.csv): a blank Chinese worksheet for each new build. Its initial “未验证” entries are unfilled checks, not a withdrawal of the family’s report above.
 - [Dimensions, SHA-256 and evidence scope](manifest.json), plus [file checksums](checksums.sha256).
+
+Use the **English / 中文** button at the top to switch in place. A saved choice takes priority over browser language; HTTP(S) uses the `pikoo_language` cookie and a local-storage fallback also supports offline files. If storage is blocked, switching still works for the current page. Switching preserves checklist entries and notes. Printing uses the current language; JSON keeps stable checklist IDs and your original notes, and records the selected language. Its filename is `pikoo-acceptance.json` in both languages. No translation service or network request is needed.
+
+For changes to this guide, run `node --test hardware/enclosure/tests/guide.test.cjs` from the repository root. The checks cover language selection, blocked storage, legacy record recovery, diagram translation coverage and JSON export; they do not perform hardware acceptance.
 
 ## Print settings and order
 

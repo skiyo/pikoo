@@ -57,5 +57,18 @@
     "dedicated_drop_test": "not separately reported",
     "slicer_time_and_material": "not separately recorded"
   },
-  "source_integrity": "STL bytes match the original delivered files. No geometry, scale or orientation changes in this publication."
+  "source_integrity": "STL bytes match the original delivered files. No geometry, scale or orientation changes in this publication.",
+  "guide": {
+    "languages": [
+      "zh-CN",
+      "en"
+    ],
+    "switching": "in-place",
+    "initial_language": "saved cookie, then offline local preference, then first supported browser language, then Chinese",
+    "embedded_CAD_images": 10,
+    "embedded_translations": true,
+    "translation_network_requests": false,
+    "preserves_checklist_IDs_and_notes": true,
+    "translation_entries": 166
+  }
 }
