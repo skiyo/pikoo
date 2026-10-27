@@ -10,9 +10,9 @@ Three printed parts house the Waveshare ESP32-S3-DualEye-LCD-1.28 with its origi
 
 | File | Function | Print envelope, millimetres X × Y × Z |
 |---|---|---|
-| [01_一体猫脸底座内架.stl](STL_只有三个/01_一体猫脸底座内架.stl) | Integrated cat face, base and carrier | 110.00 × 102.60 × 52.97 |
-| [02_厚壁后盖.stl](STL_只有三个/02_厚壁后盖.stl) | Removable thick rear cover | 109.85 × 60.30 × 33.60 |
-| [03_大旋转锁.stl](STL_只有三个/03_大旋转锁.stl) | Quarter-turn mechanical cover lock | 26.00 × 26.00 × 31.80 |
+| [01_main_body.stl](stl/01_main_body.stl) | Integrated cat face, base and carrier | 110.00 × 102.60 × 52.97 |
+| [02_rear_cover.stl](stl/02_rear_cover.stl) | Removable thick rear cover | 109.85 × 60.30 × 33.60 |
+| [03_rotary_lock.stl](stl/03_rotary_lock.stl) | Quarter-turn mechanical cover lock | 26.00 × 26.00 × 31.80 |
 
 Open a file for the GitHub preview, then use **Download raw file**. Cloning the repository also retrieves the files directly; no ZIP is required.
 

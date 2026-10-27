@@ -14,7 +14,7 @@
   "keep_original_orientation": true,
   "parts": [
     {
-      "file": "STL_只有三个/01_一体猫脸底座内架.stl",
+      "file": "stl/01_main_body.stl",
       "bytes": 6253284,
       "sha256": "c6712df3acb5f0bebaa9e50dc1181fa909b011638676c56d720f6cc2c09459f6",
       "dimensions_mm": [
@@ -25,7 +25,7 @@
       "orientation": "front_down"
     },
     {
-      "file": "STL_只有三个/02_厚壁后盖.stl",
+      "file": "stl/02_rear_cover.stl",
       "bytes": 2232684,
       "sha256": "432432b3c5014d6a0541ee1b558b11409780de0f01c6f16146e00580fdc6baab",
       "dimensions_mm": [
@@ -36,7 +36,7 @@
       "orientation": "rear_down"
     },
     {
-      "file": "STL_只有三个/03_大旋转锁.stl",
+      "file": "stl/03_rotary_lock.stl",
       "bytes": 63884,
       "sha256": "2b1aaefe29198ac1c9c68ec59ab2d0d777253b7bc8f212b1ba04d675e1a41b8d",
       "dimensions_mm": [
