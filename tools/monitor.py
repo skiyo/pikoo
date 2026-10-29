@@ -26,6 +26,7 @@ p.add_argument('--send')
 a=p.parse_args()
 os.umask(0o077)
 commands={'status','wake test on','wake test off','wake capture','wake trace','tx hold','wake','stop','end','mute','unmute','takeover','tone','volume low','volume normal','volume higher','volume louder','volume full','rotate 90','rotate 270','companion on','companion off'}
+commands.update({'eyes freeze','eyes resume'})
 commands.update(f'volume {db}' for db in range(-50,1))
 if a.send:
     if a.send not in commands|{'close-monitor'} or not a.control_socket:p.error('Choose a supported command and --control-socket')

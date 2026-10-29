@@ -43,12 +43,17 @@
 #include <set>
 #include <string>
 #include <vector>
+#include "pikoo_continuous.hpp"
 
 namespace {
 using State = pikoo::Session::State;
 pikoo::Playback playback;
 pikoo::Session session;
 pikoo::Interaction interaction;
+pikoo::ContinuousStream live_stream;
+std::atomic<bool> continuous_audio{false};
+bool server_sleep_requested=false;
+uint64_t last_playback_report=0;
 std::atomic<bool> voice_connected{false};
 std::atomic<bool> companion_mode{false};
 std::mutex play_mutex, in_mutex, out_mutex, tx_mutex, tx_io_mutex;
@@ -75,6 +80,7 @@ std::atomic<uint32_t> resample_max_us{0},receive_max_us{0};
 std::atomic<uint32_t> playback_gaps{0},playback_gap_max_us{0};
 void fail_queue(int reason){overflow_reason=reason;overflow=true;}
 std::atomic<uint64_t> speech_at{0};
+std::atomic<uint64_t> display_pause_until{0};
 std::atomic<uint32_t> stream_epoch{0};
 // 40 ms of PCM plus Base64/JSON fits inside one 4096-byte TLS record.
 // A lost TCP segment can take 1.5 s to retransmit with this IDF's defaults.
@@ -212,6 +218,8 @@ void end_socket() {
   gate_off();
   active = false;
   awake = false;
+  continuous_audio=false;
+  live_stream.clear(live_stream.epoch+1);
   clear_audio(false);
   if (ws) {
     // close(timeout) sends its CLOSE frame with portMAX_DELAY in the pinned
@@ -381,7 +389,7 @@ void hello() {
   cJSON_AddStringToObject(client, "instance_id", device_id.c_str());
   auto caps = cJSON_AddArrayToObject(o, "capabilities");
   for (auto c : {"input.audio", "input.text", "playback.receipts", "session.heartbeat",
-                 "session.takeover"})
+                 "session.takeover", "pikoo.audio.continuous.v1"})
     cJSON_AddItemToArray(caps, cJSON_CreateString(c));
   cJSON_AddStringToObject(o, "locale", "zh-CN");
   cJSON_AddStringToObject(o, "time_zone", "Asia/Shanghai");
@@ -406,6 +414,13 @@ void receive(const std::string &raw) {
                             field(o, "event_id").c_str());
     send(response);
   } else if (type == "voice.ready" && active && !muted) {
+    const bool continuous=cJSON_IsTrue(cJSON_GetObjectItem(o,"continuousAudio"));
+    if(continuous) {
+      auto generation=cJSON_GetObjectItem(o,"generation");
+      if(!cJSON_IsNumber(generation)||field(o,"streamId").empty()){cJSON_Delete(o);fail_queue(4);return;}
+      live_stream.ready(field(o,"streamId"),uint32_t(generation->valuedouble));
+    }
+    continuous_audio=continuous;
     auto rate = cJSON_GetObjectItem(o, "inputSampleRate");
     if (!cJSON_IsNumber(rate) || rate->valueint != 16000) {
       fail_queue(4);
@@ -413,7 +428,8 @@ void receive(const std::string &raw) {
       session.voice_ready(now());
       voice_connected=true;
       const bool greeting=interaction.greeting_pending();
-      if(greeting) {
+      if(continuous) {interaction.greeting_sent();uploading=true;session.state=State::Listening;}
+      else if(greeting) {
         auto greeting=event("conversation.item.create");
         auto parts=cJSON_AddArrayToObject(greeting,"parts");
         auto part=cJSON_CreateObject();
@@ -429,12 +445,16 @@ void receive(const std::string &raw) {
       // Manual text input produces playback.clear. Do not let that cancel a
       // ready tone and strand the microphone gate closed. The spoken greeting
       // itself signals readiness; reserve the tone for provider reconnection.
-      tone_request = !greeting;
-      if(greeting)uploading=!interaction.closing();
+      tone_request = !continuous&&!greeting;
+      if(greeting&&!continuous)uploading=!interaction.closing();
       // On reconnection, playback opens upload after the tone has drained.
       // Reset retry backoff only after a stable connection, not mere readiness.
     }
   } else if (type == "audio.delta" && session.ready && !muted) {
+    if(continuous_audio) {
+      auto generation=cJSON_GetObjectItem(o,"generation"),sequence=cJSON_GetObjectItem(o,"sequence");
+      if(!cJSON_IsNumber(generation)||!cJSON_IsNumber(sequence)||!live_stream.accept(field(o,"streamId"),uint32_t(generation->valuedouble),uint32_t(sequence->valuedouble))){cJSON_Delete(o);return;}
+    }
     ++received_audio_count;
     auto rate = cJSON_GetObjectItem(o, "sampleRate");
     auto b64 = field(o, "audio");
@@ -458,7 +478,7 @@ void receive(const std::string &raw) {
         }
         if(logged_chunks++<6)ESP_LOGI("pikoo","audio rx chunk=%u samples=%u queued=%u",logged_chunks,unsigned(size/2),unsigned(playback.queued()));
         session.last_activity = now();
-        session.state = State::Speaking;
+        if(!continuous_audio)session.state = State::Speaking;
       }
     }
   } else if (type == "session.ready") {
@@ -477,7 +497,8 @@ void receive(const std::string &raw) {
       playback.reject(id);
   } else if (type == "voice.state" && session.ready) {
     const auto state=field(o,"state");
-    if(state=="processing")session.state=State::Thinking;
+    if(continuous_audio&&(state=="speaking"||state=="listening"))session.state=state=="speaking"?State::Speaking:State::Listening;
+    else if(state=="processing")session.state=State::Thinking;
     else if(state=="idle"||state=="listening") {
       std::lock_guard<std::mutex> lock(play_mutex);
       if(!playback.busy())session.state=State::Listening;
@@ -490,11 +511,20 @@ void receive(const std::string &raw) {
   } else if (type == "playback.clear") {
     ESP_LOGI("pikoo","audio playback clear");
     clear_audio(true);
+    auto generation=cJSON_GetObjectItem(o,"generation");
+    if(cJSON_IsNumber(generation)) {
+      live_stream.clear(uint32_t(generation->valuedouble));
+      session.ready=false;voice_connected=false;gate_off();session.state=State::Connecting;connecting_at=now();
+    }
     if (session.ready)
       session.state = State::Listening;
+  } else if (type == "voice.sleep" && field(o,"state")=="sleeping") {
+    server_sleep_requested=true;
+  } else if (type == "voice.connection" && field(o,"state")=="unavailable") {
+    close_code=4003;net_down=true;
   } else if (type == "transcript.delta" || type == "transcript.final") {
     session.last_activity = now();
-    if(active&&session.ready&&interaction.transcript(field(o,"role"),type=="transcript.final",
+    if(!continuous_audio&&active&&session.ready&&interaction.transcript(field(o,"role"),type=="transcript.final",
         field(o,"content"),field(o,"turnId"),now())) {
       gate_off();
       ESP_LOGI("pikoo","farewell recognized; waiting for playback drain");
@@ -543,7 +573,7 @@ void playback_task(void *) {
       std::lock_guard<std::mutex> lock(play_mutex);
       prefetched=playback.queued();
       have = playback.take(chunk,pikoo::Playback::InitialSamples,now(),
-                           pikoo::Playback::MaxInitialWaitMs);
+                           pikoo::Playback::MaxInitialWaitMs,continuous_audio);
       if (have)
         started = playback.started(chunk);
     }
@@ -710,6 +740,9 @@ void graphics_task(void *) {
   pikoo::eyes::Animator animator;
   while(true) {
     auto started=now(); auto state=visual_state.load();
+    // USB-only A/B diagnosis; automatically recover animation after two minutes.
+    // Does not change audio, model, volume or persistent configuration.
+    if(started<display_pause_until.load()) {vTaskDelay(pdMS_TO_TICKS(50));continue;}
     pikoo::eyes::Input input{};input.state=pikoo::eye_state(state);
     if(!voice_connected&&(state==State::Listening||state==State::Thinking||state==State::Speaking))
       input.state=pikoo::eyes::State::Offline;
@@ -778,6 +811,8 @@ void controls_task(void *) {
         command[used]=0;
         int requested_db=0;
         if(!strcmp(command,"status")) diagnostics();
+        else if(!strcmp(command,"eyes freeze")){display_pause_until=now()+120000;ESP_LOGI("diag","eyes_frozen=1 duration_ms=120000");}
+        else if(!strcmp(command,"eyes resume")){display_pause_until=0;ESP_LOGI("diag","eyes_frozen=0");}
         // Enter only after the session task has published a fully muted state,
         // so a concurrent wake cannot race the test's network-isolation gate.
         else if(!strcmp(command,"wake test on")&&muted&&!awake&&!uploading&&visual_state==State::Muted)wake_test_until_ms=now()+300000;
@@ -955,15 +990,32 @@ void session_task(void *) {
       }
     }
     session.last_activity = std::max(session.last_activity, speech_at.load());
+    if(server_sleep_requested) {
+      server_sleep_requested=false;end_socket();interaction.reset();next_retry=0;session.stop();
+      ESP_LOGI("pikoo","server sleep confirmed; context retained");
+    }
+    if(continuous_audio&&session.ready&&now()-last_playback_report>=200) {
+      last_playback_report=now();size_t queued=0,inflight=0;
+      {std::lock_guard<std::mutex> lock(play_mutex);queued=playback.queued();inflight=playback.in_flight();}
+      const bool audible=board::output_level()>.003f&&inflight>0;
+      auto report=event("pikoo.playback.status");
+      cJSON_AddStringToObject(report,"streamId",live_stream.id.c_str());
+      cJSON_AddNumberToObject(report,"generation",live_stream.epoch);
+      cJSON_AddNumberToObject(report,"queuedMs",queued/24);
+      cJSON_AddNumberToObject(report,"dmaMs",std::min<size_t>(1000,(inflight-std::min(inflight,queued))/24));
+      cJSON_AddBoolToObject(report,"audible",audible);
+      cJSON_AddBoolToObject(report,"humanSpeaking",now()-speech_at.load()<250);
+      send(report);session.state=audible?State::Speaking:State::Listening;
+    }
     bool playing;
     {
       std::lock_guard<std::mutex> l(play_mutex);
       playing = playback.busy();
     }
-    if (session.ready && !playing && session.state == State::Speaking) {
+    if (!continuous_audio && session.ready && !playing && session.state == State::Speaking) {
       session.state = State::Listening;
     }
-    if (interaction.finish_due(now(),playing)||session.idle_due(now(), playing,companion_mode)) {
+    if (!continuous_audio&&(interaction.finish_due(now(),playing)||session.idle_due(now(), playing,companion_mode))) {
       bool farewell=interaction.closing();
       end_socket();
       // Silence closes the transport for privacy/power, not the topic. Keep

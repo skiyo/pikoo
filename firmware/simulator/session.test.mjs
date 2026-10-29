@@ -35,3 +35,16 @@ test('goodbye timeout and connection loss return to standby without retry intent
  if(drop)s.disconnect(1006);else{time(19999);s.tick();assert.equal(ended,0);time(20000);s.tick();}
  assert.equal(ended,1);assert.equal(s.state,'idle');assert.equal(s.conversationId,null);}
 });
+test('Live stream does not require audio.done, ignores old epochs and uses server sleep without losing topic',async()=>{
+ const {s,out,drains,time}=setup();let reason; s.ended=r=>reason=r;
+ const hello=s.wake();assert(hello.capabilities.includes('pikoo.audio.continuous.v1'));
+ s.receive({type:'voice.ready',continuousAudio:true,streamId:'live-a',generation:7});
+ assert.equal(out.filter(e=>e.type==='conversation.item.create').length,0);
+ const p=s.receive({type:'audio.delta',responseId:'live-a',streamId:'live-a',generation:7,sequence:0,sampleRate:24000,audio:'AAA='});
+ drains[0]();await p;s.playbackStatus({audible:false});assert.equal(out.at(-1).type,'pikoo.playback.status');
+ time(100000);assert.equal(s.idleDue(),false);
+ s.receive({type:'transcript.final',role:'user',content:'哥哥再见'});assert.equal(s.farewell,null);
+ s.receive({type:'playback.clear',generation:8});s.receive({type:'voice.ready',continuousAudio:true,streamId:'live-b',generation:9});
+ await s.receive({type:'audio.delta',responseId:'live-a',streamId:'live-a',generation:7,sequence:1,sampleRate:24000,audio:'AAA='});assert.equal(drains.length,1);
+ const topic=s.conversationId;s.receive({type:'voice.sleep',state:'sleeping'});assert.equal(s.conversationId,topic);assert.equal(reason,'sleep');assert.equal(s.ready,false);
+});

@@ -48,6 +48,7 @@ Software binaries, firmware images or containers must include the license texts/
 | [Muse Gadget SDK simulator](https://github.com/facebookincubator/muse-gadget-sdk/blob/main/esp32/simulator/README.md) | Simulator organization and animation pacing reference | No Muse code or Jollybot assets copied; original Pikoo renderer/page/assets |
 | [Waveshare DualEye documentation](https://docs.waveshare.net/ESP32-S3-DualEye-LCD-1.28/) | Board specifications, schematic and driver-reference entry | Documentation/hardware reference; no blanket relicensing of supplier materials |
 | [Google Gemini API](https://ai.google.dev/gemini-api/docs) | External realtime, text and optional TTS corpus generation service | Service terms, regional availability, quotas and pricing apply separately; not an open-source dependency |
+| [OpenAI Live / Responses](https://developers.openai.com/api/docs/guides/live) | External native Live voice, Terra delegation/classification and text memory service | Original Pikoo adapters; model/service terms, access and pricing apply separately from Apache-2.0 |
 | [DeepSeek Search API](https://api-docs.deepseek.com/zh-cn/guides/search/) | External raw web-search service; Pikoo supplies an original adapter | Account, service and billing terms apply separately; no DeepSeek LLM or vendor source code is bundled |
 | [Let's Encrypt](https://letsencrypt.org/) | External certificate service | Operator must maintain renewal and follow service requirements |
 

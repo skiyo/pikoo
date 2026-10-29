@@ -72,9 +72,11 @@ public:
       reject(id);
     }
   }
-  bool take(Chunk &out,size_t initial_samples=0,uint64_t now_ms=0,uint64_t max_buffer_ms=200) {
-    if (queue_.empty())
+  bool take(Chunk &out,size_t initial_samples=0,uint64_t now_ms=0,uint64_t max_buffer_ms=200,bool continuous=false) {
+    if (queue_.empty()) {
+      if(continuous)for(auto &p:responses_)if(!p.second.remaining){p.second.started=false;p.second.buffering=false;}
       return false;
+    }
     auto &response=responses_.at(queue_.front().id);
     if(initial_samples&&!response.started&&!response.done&&response.remaining<initial_samples) {
       // Some responses begin with a one-sample silent marker hundreds of ms
@@ -139,6 +141,7 @@ public:
   bool rejected(const std::string &id) const { return rejected_.count(id); }
   bool exhausted() const { return rejected_.size() >= 1024; }
   size_t queued() const { return queued_; }
+  size_t in_flight() const { size_t n=0;for(const auto &p:responses_)n+=p.second.remaining;return n; }
   AppendError append_error() const { return append_error_; }
 
 private:

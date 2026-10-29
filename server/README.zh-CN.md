@@ -10,10 +10,14 @@
 
 三件小猫外壳的原始 STL、打印顺序、装配图解与验收表见[外壳目录](../hardware/enclosure/README.zh-CN.md)。项目家庭已打印、装配验证并在家使用通过（2026-10-27，用户反馈）；这份硬件反馈与本模块的软件/研究检查分别记录。
 
+新增原生 OpenAI Live + Terra 开发预览：[English](../docs/openai-live.md) | [简体中文](../docs/openai-live.zh-CN.md)。按新指南加载环境文件、部署连续音频客户端；原有 Gemini 说明供明确选择的部署使用，不自动切换供应商。
+
 ## 模块分工
 
 | 文件或目录 | 职责 |
 |---|---|
+| `openai-live.mjs`、`live-runtime.mjs`、`openai-terra.mjs` | 原生 Live、连续播放、Terra 委派和文字模型调用 |
+| `live-idle.mjs`、`live-usage.mjs` | 语义空闲、私密用量记录与本机诊断 |
 | `host.mjs` | 组装运行框架和 Pikoo 适配 |
 | `google-live-compat.mjs` | Gemini Live 事件和工具兼容、活动检测选项与连接时间信息 |
 | `context-runtime.mjs`、`context-learning.mjs`、`memory-timeout.mjs` | 近期上下文、持久后台整理、摘要及文本调用期限 |

@@ -26,13 +26,15 @@ Pikoo is not a typical smart speaker. It is an open-source DIY project you can b
 
 Its two animated eyes give responses a visible expression. The optional [quiet companion mode](docs/companion.md) lets an explicitly awakened device stay connected and decide when to respond.
 
+Native **GPT-Live 1 + GPT-6.1 Terra** is also available as a development preview. The latest physical short test reported suitable volume and smooth replies; extended hardware acceptance is pending. See the [integration guide](docs/openai-live.md) and [actual results](docs/openai-live-validation.md).
+
 ## How it works
 
 | Part | Role |
 |---|---|
 | [Waveshare ESP32-S3 DualEye board](https://www.waveshare.net/shop/ESP32-S3-DualEye-LCD-1.28.htm) | Capture audio, play responses and display two expressive eyes |
 | [Qwen Audio Agent](https://github.com/QwenAudio/qwen-audio-agent) + Pikoo server adapters | Coordinate sessions, device authentication, memory and tools |
-| Realtime voice model | Understand speech and generate live responses; the current adapters target Gemini Live |
+| Realtime voice model | Understand speech and generate live responses; adapters support Gemini Live and the native OpenAI Live development preview |
 
 ```mermaid
 flowchart LR

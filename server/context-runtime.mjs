@@ -6,15 +6,15 @@ import { ContextLearningQueue, familyLearningPolicy } from './context-learning.m
 import { memoryDeadline } from './memory-timeout.mjs';
 
 // Fixed-version composition adapter; no installed package files are changed.
-export function installContextLearning() {
+export function installContextLearning({textModelCall=null,summaryTextCall=null}={}) {
   const index = optionalModuleFactories.indexOf(createMemoryModule);
   if (index < 0) throw new Error('Pinned memory composition changed; review context adapter');
   let queue, textCall;
   optionalModuleFactories[index] = args => {
-    textCall = args.config.memoryAutoEnabled ? createOpenAiCompatibleTextCall({
+    textCall = args.config.memoryAutoEnabled ? (textModelCall || createOpenAiCompatibleTextCall({
       baseUrl: args.config.memoryBaseUrl, apiKey: args.config.memoryApiKey,
       model: args.config.memoryModel, timeoutMs: memoryDeadline(),
-    }) : null;
+    })) : null;
     const module = createMemoryModule({ ...args,
       // Shared-family speech does not establish an individual speaker profile.
       config: { ...args.config, preferenceLearningEnabled: false },
@@ -55,7 +55,7 @@ export function installContextLearning() {
   return {
     bind(app) {
       if (!queue) return;
-      if (app.services.sessionSummariser) app.services.sessionSummariser.llmCall = textCall;
+      if (app.services.sessionSummariser) app.services.sessionSummariser.llmCall = summaryTextCall || textCall;
       queue.bindSummariser(app.services.sessionSummariser); queue.start();
     },
   };

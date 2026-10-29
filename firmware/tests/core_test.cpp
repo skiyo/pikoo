@@ -3,11 +3,17 @@
 #include "pikoo_audio_slots.hpp"
 #include "pikoo_interaction.hpp"
 #include "pikoo_volume.hpp"
+#include "pikoo_continuous.hpp"
 #include "eye_state.hpp"
 #include <cassert>
 #include <iostream>
 int main() {
   using namespace pikoo;
+  ContinuousStream stream;
+  stream.ready("s1",3);assert(stream.accept("s1",3,0));assert(!stream.accept("s1",3,0));
+  assert(!stream.accept("s1",3,2));assert(stream.accept("s1",3,1));
+  stream.clear(4);assert(!stream.accept("s1",3,2));stream.ready("s2",5);
+  assert(!stream.accept("s1",5,0));assert(stream.accept("s2",5,0));
   int db=123;
   for(int level=-50;level<=0;++level){
     assert(volume_command(("volume "+std::to_string(level)).c_str(),db));
@@ -90,6 +96,21 @@ int main() {
     assert(part.pcm.size()==3360);assert(jitter.take(part,12000,600,600));
     assert(part.pcm.size()==7680);jitter.cancel();
     assert(!jitter.take(part,12000,601,600));
+  }
+  // A continuously replenished microphone stream cannot starve incoming audio
+  {
+    Playback live;Playback::Chunk chunk;int16_t pcm[480]{};
+    assert(live.append("stream",pcm,480));
+    assert(!live.take(chunk,960,0,1500,true));
+    assert(live.append("stream",pcm,480));
+    assert(live.take(chunk,960,10,1500,true));assert(live.started(chunk));
+    live.drained(chunk);assert(live.take(chunk,960,20,1500,true));live.drained(chunk);
+    assert(live.in_flight()==0);assert(!live.take(chunk,960,30,1500,true));
+    // The same continuous stream buffers again after starvation; no fake done.
+    assert(live.completed().empty());assert(live.append("stream",pcm,480));
+    assert(!live.take(chunk,960,40,1500,true));
+    assert(live.append("stream",pcm,480));assert(live.take(chunk,960,50,1500,true));
+    live.cancel();assert(!live.take(chunk,960,60,1500,true));
   }
   // A continuously replenished microphone stream cannot starve incoming audio
   // or cancellation handling, even when the producer is faster than the link.

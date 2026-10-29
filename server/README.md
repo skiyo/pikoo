@@ -10,10 +10,14 @@ This guide is for server developers and operators. Start with the [offline simul
 
 The three original cat-enclosure STLs, print order, illustrated assembly guide and checklist are in the [enclosure directory](../hardware/enclosure/README.md). The project family reports successful printing, assembly and home use (2026-10-27); that hardware feedback is separate from this module’s software/research checks.
 
+Native OpenAI Live + Terra preview: [English](../docs/openai-live.md) | [简体中文](../docs/openai-live.zh-CN.md). Follow that guide for the new environment file and continuous-audio clients; existing Gemini instructions remain for an explicitly selected deployment. There is no automatic provider fallback.
+
 ## Components
 
 | File or directory | Responsibility |
 |---|---|
+| `openai-live.mjs`, `live-runtime.mjs`, `openai-terra.mjs` | Native Live transport, continuous playback, Terra delegation and text model calls |
+| `live-idle.mjs`, `live-usage.mjs` | Semantic idle, private usage accounting and local diagnostics |
 | `host.mjs` | Compose the runtime and Pikoo adapters |
 | `google-live-compat.mjs` | Gemini Live event/tool compatibility, activity-detection options and connection time context |
 | `context-runtime.mjs`, `context-learning.mjs`, `memory-timeout.mjs` | Recent context, durable background learning, summaries and bounded text-call deadlines |

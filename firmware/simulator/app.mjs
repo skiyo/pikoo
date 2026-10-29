@@ -12,7 +12,7 @@ window.addEventListener('pikoo:test-volume',e=>{if(gain)gain.gain.value=e.detail
 const labels={idle:'休息中',connecting:'连接中',listening:'我在听',speaking:'正在回答',thinking:'想一想',muted:'麦克风已关闭',offline:'网络断开',occupied:'其他设备正在使用',auth_error:'请重新配对'};
 function log(s){$('log').textContent=`${new Date().toLocaleTimeString()} ${s}\n`+$('log').textContent.slice(0,6000);}
 let tabStorage;try{tabStorage=globalThis.sessionStorage;}catch{}
-const session=new DeviceSession({conversationId:loadConversation(tabStorage),conversationChanged:id=>saveConversation(tabStorage,id),ended:()=>{close();$('hint').textContent='已告别，回到待机';},send:e=>{if(ws?.readyState===1)ws.send(JSON.stringify(e));},stopAudio:()=>{for(const s of sources){s.stop();}sources.clear();next=0;},playAudio:(b64,onStart)=>new Promise((resolve,reject)=>{
+const session=new DeviceSession({conversationId:loadConversation(tabStorage),conversationChanged:id=>saveConversation(tabStorage,id),ended:reason=>{close();$('hint').textContent=reason==='unavailable'?'语音服务暂时不可用，请检查诊断':'已回到待机，唤醒后可以接着聊';},send:e=>{if(ws?.readyState===1)ws.send(JSON.stringify(e));},stopAudio:()=>{for(const s of sources){s.stop();}sources.clear();next=0;},playAudio:(b64,onStart)=>new Promise((resolve,reject)=>{
  const raw=Uint8Array.from(atob(b64),x=>x.charCodeAt(0));if(raw.length%2){reject();return;}
  if(!context){reject();return;}const pcm=new DataView(raw.buffer),buf=context.createBuffer(1,raw.length/2,24000),data=buf.getChannelData(0);
  for(let i=0;i<data.length;i++)data[i]=pcm.getInt16(i*2,true)/32768;
@@ -95,7 +95,7 @@ $('mic').onchange=async()=>{
   await stopMic();$('notice').textContent='未能开启麦克风，请检查浏览器权限与输入设备。';log('未能开启麦克风');
  }
 };
-setInterval(()=>{session.tick();if(session.sleepIfIdle())close();},250);
+setInterval(()=>{session.tick();session.playbackStatus({queuedMs:Math.min(60000,Math.max(0,((next||0)-(context?.currentTime||0))*1000)),audible:outputLevel>.036,humanSpeaking:inputLevel>.12});if(session.sleepIfIdle())close();},250);
 fetch('/mode').then(r=>r.json()).then(x=>{wakeAvailable=x.wake;$('notice').textContent=x.wake?'已加载实验唤醒功能，开启麦克风后说“你好皮酷”。待机录音不出本机。':'默认不采集麦克风。模拟模式只播放测试音。';$('mode').textContent=x.mode==='live'?'真实服务器 · 等待唤醒':'本地故障模拟';});
 session.stateTo('idle');
 $('text').disabled=true;$('form').querySelector('button').disabled=true;$('cancel').disabled=true;

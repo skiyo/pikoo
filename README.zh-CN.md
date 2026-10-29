@@ -26,13 +26,15 @@ Pikoo 绝不是市面上常见的智能音箱。它是一个可以亲手打造�
 
 两块会动的眼睛让回应有了表情。可选的[安静陪伴模式](docs/companion.zh-CN.md)支持明确唤醒后持续连接，由模型判断何时回应。
 
+原生 **GPT-Live 1 + GPT-6.1 Terra** 接入已进入开发预览。最新实机短测反馈音量合适、连续回答顺畅，长期验收尚未完成。详见[接入说明](docs/openai-live.zh-CN.md)及[实际记录](docs/openai-live-validation.md)。
+
 ## 它如何工作
 
 | 部分 | 职责 |
 |---|---|
 | [微雪 ESP32-S3 双目开发板](https://www.waveshare.net/shop/ESP32-S3-DualEye-LCD-1.28.htm) | 采集声音、播放回答，在两块圆屏上显示表情 |
 | [Qwen Audio Agent](https://github.com/QwenAudio/qwen-audio-agent) 与 Pikoo 服务端适配 | 组织会话、设备鉴权、记忆与工具协作 |
-| 实时语音大模型 | 理解语音并实时生成回答；当前适配面向 Gemini Live |
+| 实时语音大模型 | 理解语音并实时生成回答；当前适配面向 Gemini Live，以及原生 OpenAI Live 开发预览 |
 
 ```mermaid
 flowchart LR
