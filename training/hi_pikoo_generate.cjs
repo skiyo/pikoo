@@ -9,11 +9,11 @@ let out,key,model=MODEL,proxyPort=7897;
 function cost(u){
  if(!u||!Number.isFinite(u.input_tokens)||!Number.isFinite(u.output_tokens))throw Error('Missing usage');
  const i=u.input_token_details,o=u.output_token_details;
- if(!i||!o||![i.text_tokens,i.audio_tokens,o.text_tokens,o.audio_tokens].every(Number.isFinite)||i.audio_tokens!==0)throw Error('Unexpected usage modalities');
- if([u.input_tokens,u.output_tokens,i.text_tokens,o.text_tokens,o.audio_tokens].some(x=>!Number.isInteger(x)||x<0))throw Error('Invalid usage counts');
- if(o.text_tokens+o.audio_tokens!==u.output_tokens||i.text_tokens!==u.input_tokens)throw Error('Unaccounted token types');
+ if(!i||!o||![i.text_tokens,i.audio_tokens,o.text_tokens,o.audio_tokens].every(Number.isFinite))throw Error('Unexpected usage modalities');
+ if([u.input_tokens,u.output_tokens,i.text_tokens,i.audio_tokens,o.text_tokens,o.audio_tokens].some(x=>!Number.isInteger(x)||x<0))throw Error('Invalid usage counts');
+ if(o.text_tokens+o.audio_tokens!==u.output_tokens||i.text_tokens+i.audio_tokens!==u.input_tokens)throw Error('Unaccounted token types');
  // Reasoning is already included in output text tokens. Ignore cache discount conservatively.
- return (i.text_tokens*.6+o.text_tokens*2.4+o.audio_tokens*20)/1e6;
+ return (i.text_tokens*.6+i.audio_tokens*10+o.text_tokens*2.4+o.audio_tokens*20)/1e6;
 }
 function write(file,value){const tmp=file+'.partial';fs.writeFileSync(tmp,JSON.stringify(value,null,2),{mode:0o600});fs.renameSync(tmp,file);}
 function reserve(ledger,entry,holdback=.5){
@@ -56,8 +56,9 @@ function expansionPlan(contract){
    style:'Read the user text aloud exactly once without commentary or repetition. '+(accent==='Chinese-accent'?'A natural Mandarin Chinese accent when reading English. ':'Natural English. ')+['Casual connected everyday speech.','Slightly fast natural speech.','Soft everyday speech, without whispering.','A brief natural pause after Hi; no syllable-by-syllable reading.'][Math.floor(i/10)%4]};
  });
 }
-function validateFrozen(contract,frozen,binary){
- if(!contract||frozen.target!==contract.target||!frozen.candidate_frozen_at||frozen.development_passed!==true)throw Error('Qualified candidate and matching explicit target required before TEST');
+function validateFrozen(contract,frozen,binary,allowTrial=false){
+ const trial=allowTrial&&frozen.development_passed===false&&frozen.trial_authorized===true&&frozen.status==='best-available-unqualified-trial'&&frozen.formal_goal_passed===false&&frozen.release_eligible===false;
+ if(!contract||frozen.target!==contract.target||!frozen.candidate_frozen_at||(frozen.development_passed!==true&&!trial))throw Error('Qualified candidate and matching explicit target required before TEST');
  if(contract.target==='hi-piku-piko-v2'&&JSON.stringify(frozen.accepted_names)!==JSON.stringify(contract.accepted_names))throw Error('Frozen target names differ');
  if(!Buffer.isBuffer(binary)||crypto.createHash('sha256').update(binary).digest('hex')!==frozen.model_sha256)throw Error('Frozen model hash mismatch');
 }
@@ -100,7 +101,7 @@ async function main(){
   if(!a['frozen-candidate'])throw Error('Frozen candidate required before TEST synthesis');
   const frozen=JSON.parse(fs.readFileSync(a['frozen-candidate'],'utf8'));
   if(!a['candidate-model'])throw Error('Candidate model required before TEST');
-  validateFrozen(contract,frozen,fs.readFileSync(a['candidate-model']));
+  validateFrozen(contract,frozen,fs.readFileSync(a['candidate-model']),a['allow-trial-test']==='yes');
   frozenForTest=frozen;
  }
  out=path.resolve(a.output);proxyPort=Number(a['proxy-port']||7897);if(!Number.isInteger(proxyPort)||proxyPort<1||proxyPort>65535)throw Error('Invalid proxy port');
@@ -157,5 +158,5 @@ async function main(){
  write(path.join(out,'status.json'),{phase:phase+'-generated-awaiting-independent-review',completed:selected.filter(x=>done.some(y=>y.id===x.id)).length,total:selected.length,total_retained_files:done.length,updated_at:new Date().toISOString(),next:'independent content and pronunciation review; no training admission yet'});
  }finally{fs.closeSync(fd);fs.unlinkSync(lock);}
 }
-module.exports={cost,reserve,plan,targetPlan,expansionPlan,validateFrozen,RESERVATION};
+module.exports={cost,reserve,plan,targetPlan,expansionPlan,validateFrozen,RESERVATION,tunnel};
 if(require.main===module)main().catch(err=>{console.error(JSON.stringify({status:'stopped',error:String(err.message).replace(/sk-[A-Za-z0-9_-]+/g,'[REDACTED]')}));process.exitCode=1;});

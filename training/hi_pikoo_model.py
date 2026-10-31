@@ -29,8 +29,8 @@ def sequence_loss(labels, probabilities):
 def build(upstream, ordered_steps=72, seed=42, channels=24, batch_normalization=False):
     if ordered_steps not in (20, 72):
         raise ValueError('Only predeclared 20/72 step variants are eligible')
-    if channels not in (24, 48):
-        raise ValueError('Only bounded 24/48-channel comparisons are eligible')
+    if channels not in (24, 48, 96):
+        raise ValueError('Only bounded 24/48/96-channel comparisons are eligible')
     sys.path.insert(0, str(Path(upstream).resolve()))
     import tensorflow as tf
     from microwakeword.layers.stream import Stream
@@ -113,33 +113,36 @@ def event_scores(probabilities, rolling):
     return np.asarray([decision.feed(p) for p in probabilities], np.float32)
 
 
+def policy_metrics(cases, rolling, threshold):
+    """One fixed policy; safe for a sealed TEST without a threshold search."""
+    groups, false_wakes, early, delays = {}, 0, 0, []
+    for c in cases:
+        scores = event_scores(c['probabilities'], rolling)
+        times = np.asarray(c['times_ms'])
+        fired = np.flatnonzero(scores >= threshold)
+        if not c['label']:
+            false_wakes += bool(len(fired))
+            continue
+        group = c['cohort']
+        g = groups.setdefault(group, {'targets': 0, 'hits': 0})
+        g['targets'] += 1
+        early += bool(np.any(times[fired] < c['completion_ms']-120))
+        valid = fired[(times[fired] >= c['completion_ms']-120) &
+                      (times[fired] <= c['completion_ms']+800)]
+        if len(valid):
+            g['hits'] += 1
+            delays.append(max(0., float(times[valid[0]]-c['completion_ms'])))
+    worst = min((g['hits']/g['targets'] for g in groups.values()), default=0.)
+    p95 = float(np.percentile(delays, 95)) if delays else None
+    passed = bool(groups) and not false_wakes and not early and worst >= .9 and p95 <= 800
+    return {'rolling': rolling, 'threshold': threshold, 'groups': groups,
+        'false_wakes': false_wakes, 'early_wakes': early, 'worst_recall': worst,
+        'latency_p95_ms': p95, 'passed': passed}
+
+
 def select_policy(cases):
     """Reject ANY dev false/early wake before ranking worst cohort recall."""
-    results = []
-    for rolling, threshold in GRID:
-        groups, false_wakes, early, delays = {}, 0, 0, []
-        for c in cases:
-            scores = event_scores(c['probabilities'], rolling)
-            times = np.asarray(c['times_ms'])
-            fired = np.flatnonzero(scores >= threshold)
-            if not c['label']:
-                false_wakes += bool(len(fired))
-                continue
-            group = c['cohort']
-            g = groups.setdefault(group, {'targets': 0, 'hits': 0})
-            g['targets'] += 1
-            early += bool(np.any(times[fired] < c['completion_ms']-120))
-            valid = fired[(times[fired] >= c['completion_ms']-120) &
-                          (times[fired] <= c['completion_ms']+800)]
-            if len(valid):
-                g['hits'] += 1
-                delays.append(max(0., float(times[valid[0]]-c['completion_ms'])))
-        worst = min((g['hits']/g['targets'] for g in groups.values()), default=0.)
-        p95 = float(np.percentile(delays, 95)) if delays else None
-        passed = bool(groups) and not false_wakes and not early and worst >= .9 and p95 <= 800
-        results.append({'rolling': rolling, 'threshold': threshold, 'groups': groups,
-            'false_wakes': false_wakes, 'early_wakes': early, 'worst_recall': worst,
-            'latency_p95_ms': p95, 'passed': passed})
+    results = [policy_metrics(cases, n, t) for n, t in GRID]
     eligible = [x for x in results if x['passed']]
     eligible.sort(key=lambda x: (-x['worst_recall'], x['latency_p95_ms'], -x['threshold'], -x['rolling']))
     return {'status': 'dev-policy-qualified' if eligible else 'dev-rejected',
@@ -153,6 +156,38 @@ def development_quality(result):
         return 2.+result['selected']['worst_recall']
     return max((r['worst_recall']-.1*r['false_wakes']-.05*r['early_wakes']
                 for r in result['grid']), default=-1.)
+
+
+def selection_proxy(cases, result=None):
+    """Smooth, group-balanced DEV proxy; a silent classifier must not win.
+
+    Hard qualification still requires the original policy gates. Before that,
+    continuous event confidence provides a learning signal even while one
+    small group remains below a discrete threshold. No TEST/family inputs.
+    """
+    positives, negatives, early = {}, {}, []
+    for case in cases:
+        scores = event_scores(case['probabilities'], 5)
+        times = np.asarray(case['times_ms'])
+        if case['label']:
+            end = case['completion_ms']
+            window = (times >= end-120) & (times <= end+800)
+            peak = float(scores[window].max()) if np.any(window) else 0.
+            positives.setdefault(case['cohort'], []).append((1-peak)**2)
+            prefix = scores[times < end-120]
+            early.append(float(prefix.max())**2 if len(prefix) else 0.)
+        else:
+            peak = float(scores.max()) if len(scores) else 0.
+            negatives.setdefault(case.get('contrast_class', 0), []).append(peak*peak)
+    if not positives or not negatives:
+        raise ValueError('Both DEV classes required for a selection proxy')
+    positive_loss = float(np.mean([np.mean(x) for x in positives.values()]))
+    negative_loss = float(np.mean([np.mean(x) for x in negatives.values()]))
+    early_loss = float(np.mean(early))
+    qualified = result is not None and result['selected'] is not None
+    return {'score': (2. if qualified else 0.)-positive_loss-negative_loss-.25*early_loss,
+        'positive_group_brier': positive_loss, 'negative_family_brier': negative_loss,
+        'prefix_brier': early_loss, 'hard_gates_unchanged': True}
 
 
 def prototype(upstream, output):

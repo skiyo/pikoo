@@ -17,13 +17,13 @@ policy={'rolling':5,'threshold':.9,'target':'legacy-nihao-pikoo'}
 if policy_path.exists():
     sys.path.insert(0,str(Path(__file__).parents[1]/'tools'))
     from check_wake_policy import validate
-    policy=validate(model,json.loads(policy_path.read_text()))
+    policy=validate(model,json.loads(policy_path.read_text()),os.environ.get('PIKOO_ALLOW_TRIAL_WAKE')=='1')
 elif os.environ.get('PIKOO_WAKE_POLICY') or model.name=='hi_pikoo.tflite':
     raise SystemExit('Hi Pikoo requires a matching frozen wake policy.')
 i=create_interpreter(model);i.allocate_tensors()
 input_info=i.get_input_details()[0];output_info=i.get_output_details()[0]
 f=MicroFrontend();frames=[];decision=RollingDecision(policy['rolling']);last_detection=0;last_score_time=0;steps=0
-print(json.dumps({'type':'ready','modelSha256':hashlib.sha256(model.read_bytes()).hexdigest(),'target':policy['target'],'acceptedNames':policy.get('accepted_names',['piku']),'threshold':policy['threshold'],'rolling':policy['rolling']}),flush=True)
+print(json.dumps({'type':'ready','modelSha256':hashlib.sha256(model.read_bytes()).hexdigest(),'target':policy['target'],'acceptedNames':policy.get('accepted_names',['piku']),'threshold':policy['threshold'],'rolling':policy['rolling'],'trial':policy.get('trial_authorized',False)}),flush=True)
 while True:
     block=sys.stdin.buffer.read(320)  # 10ms PCM16 at 16kHz
     if len(block)!=320:break

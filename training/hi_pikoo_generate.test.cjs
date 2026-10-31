@@ -8,6 +8,9 @@ test('reasoning is not charged twice and unaccounted usage fails closed',()=>{
  assert.throws(()=>cost({...u,output_tokens:101}),/Unaccounted/);
  assert.throws(()=>cost(null),/Missing/);
  assert.throws(()=>cost({...u,input_tokens:-1,input_token_details:{text_tokens:-1,audio_tokens:0}}),/Invalid/);
+ const heard={...u,input_tokens:110,input_token_details:{text_tokens:98,audio_tokens:12}};
+ assert.ok(Math.abs(cost(heard)-.0009644)<1e-10);
+ assert.throws(()=>cost({...heard,input_tokens:111}),/Unaccounted/);
 });
 test('budget reserves unknown charges and rejects duplicate or excessive spending',()=>{
  const l={entries:[{id:'uncertain',reserved_usd:1.49}]};
@@ -61,4 +64,8 @@ test('TEST remains closed without a DEV-qualified matching frozen model and targ
  assert.throws(()=>validateFrozen(c,{...f,development_passed:false},binary),/Qualified/);
  assert.throws(()=>validateFrozen(c,{...f,accepted_names:['piku']},binary),/names/);
  assert.throws(()=>validateFrozen(c,f,Buffer.from('changed')),/hash/);
+ const trial={...f,development_passed:false,trial_authorized:true,status:'best-available-unqualified-trial',formal_goal_passed:false,release_eligible:false};
+ assert.throws(()=>validateFrozen(c,trial,binary),/Qualified/);
+ validateFrozen(c,trial,binary,true);
+ assert.throws(()=>validateFrozen(c,{...trial,formal_goal_passed:true},binary,true),/Qualified/);
 });

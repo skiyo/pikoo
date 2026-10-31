@@ -11,9 +11,12 @@ Conversation language, server, volume and installed wake model are unchanged.
 ## Current results
 
 The [machine-readable record](reports/hi-pikoo-2026-10-31.json) preserves all
-28 completed fits across seven bounded studies and their failures. Reclocking
-the same weights is not counted as new training. **No candidate currently meets the deployment gate.**
-The installed device has not been changed and sealed TEST remains closed.
+52 completed fits across thirteen bounded studies and their failures. Reclocking
+the same weights is not counted as new training. **No candidate meets the formal
+development gate.** The user separately authorized a best-available private
+trial. This does not turn failed DEV into a pass or authorize a public model release.
+The installed device has not been changed; no USB board was enumerated during
+packaging. See the machine-readable record for the final sealed-test/build state.
 
 - Corpus: 883 retained new synthetic originals, 551 admitted and 332 quarantined;
   343 OpenAI originals and 540 local Qwen3 originals. TRAIN has 407 originals,
@@ -28,14 +31,40 @@ The installed device has not been changed and sealed TEST remains closed.
   produced 55,552/60,544-byte INT8 models with host arenas 17,680/24,272 bytes.
   Larger capacity did not jointly solve cross-voice recall and confusable rejection.
   **Host allocation is not ESP32 timing or memory acceptance.**
-- At least one configuration reached 84.6% worst-cohort recall while still firing
-  on excluded examples. Other configurations rejected all DEV negatives while
-  missing too many targets. These are failed synthetic DEV results, not child
-  performance or independent TEST results. Some cohorts contain only three clips.
-- Estimated paid generation cost is **$0.2831082**, including prior auditions,
-  failures and one conservative uncertain-request charge. The entire run cap is
-  **$2**. This is a generation usage ledger, not a reconciled provider bill or
-  the cost of the separately running conversation service.
+- All 52 fits were compared on the same reused 144-case DEV, never described as
+  independent testing. The best zero-false/zero-early policy is v7, context 20,
+  seed 43: **86/92 target clips**, **0/52 negative clips**, weakest group **10/13**,
+  with 126.25ms p95 delay on detected targets. The model is 40,424 bytes; the
+  frozen rule is three-score averaging at 0.90. Synthetic childlike piku is
+  11/11, childlike piko 10/13; this is not real-child acceptance. Some adult
+  pronunciation cohorts contain only three clips.
+- Additional phrase-family supervision and 48/96-channel phonetic initialization
+  did not beat that policy. Phonetic pretraining used 21,985 full public original
+  TRAIN utterances, split into 19,673 training and 2,312 speaker-held-out
+  development utterances. Its phoneme error rates remain 63.4%/56.3%; these weak
+  encoders are neither mature ASR nor evidence of successful wake recognition.
+  Their CTC heads are never deployed. Source permission boundaries still apply.
+- Three difficult synthetic childlike DEV targets remain failures. A separate
+  six-clip audio-language-model diagnostic heard complete names and did not
+  justify deleting them. Diagnostic transcripts are fallible evidence, not gold
+  phonemes or revised labels.
+- The entire paid generation/audit/retry cap remains **$2**, including earlier
+  auditions, failures and uncertain-request reservations. The report contains
+  the final estimate. This is not a reconciled provider bill or the cost of the
+  separately running conversation service.
+
+Frozen-candidate TEST generated 150 new synthetic adult recordings using held-out
+voice IDs. Only **76/150** passed blind ASR/generator content agreement: targets
+**35/41 detected**, negatives **0/35 false wakes**, no early wakes. The other 74
+are unresolved transcription conflicts, not proven bad audio. These conditional
+subset rates cannot represent whole-test accuracy. The TEST failed, remains
+consumed, and did not change model selection or parameters. It provides no
+real-child result. Final estimated generation/audit spend is **$0.3984836**.
+
+Both the private voice firmware (2,597,312 bytes) and silent benchmark image
+(512,544 bytes) compile under ESP-IDF 5.5.5. Image/partition dry-runs and the
+offline preview/worker startup passed. No board was available, flashed or
+measured; neither image is a public release or a passed hardware acceptance.
 
 ## Natural timing and exterior silence
 
@@ -66,8 +95,9 @@ measurement corrections with unchanged weights/audio and never calls them new TE
 2. `training/hi_pikoo_generate.cjs`: existing-key Realtime synthesis with a private
    exclusive lock, reservation-before-request and no automatic retries. Separate
    pilot, approved TRAIN expansion, adult DEV and frozen-candidate TEST phases.
-   TEST uses a separate manifest and requires a matching frozen model hash and
-   passed DEV. No child-voice policy bypass or paid fallback is attempted.
+   TEST uses a separate manifest and matching frozen model hash. Failed-DEV
+   private trials require explicit `--allow-trial-test yes`; they remain failed.
+   No child-voice policy bypass or paid fallback is attempted.
 3. `training/hi_pikoo_local_audition.py` and `generate_local_tts.py --jobs-file`:
    reuse an already-downloaded local model, no reference recordings or downloads.
    Fresh synthetic jobs inherit their predeclared source-family partition.
@@ -76,18 +106,27 @@ measurement corrections with unchanged weights/audio and never calls them new TE
    and protected hashes. Uncertain/extra/incomplete utterances stay quarantined;
    no trimming of failed speech into successful positive clips.
 5. `training/hi_pikoo_train.py`: new weights, no historical classifier. Two
-   contexts × two seeds, at most 30 epochs, DEV early stopping. Optional `--channels 48
-  --batch-normalization` is a separately recorded capacity study; the default is
-  24 channels. The current checkpoint proxy ranks
-  qualified float DEV first, otherwise worst-group recall minus 0.1 per false
-  wake and 0.05 per early wake. Final qualification still uses INT8/Micro,
-  never the float proxy. Synthetic TRAIN gets 12 positive/6 negative variants;
+   contexts × two seeds, at most 30 epochs, DEV early stopping. Separately
+   recorded studies allow 24/48/96 channels, BatchNorm, phrase-family loss, or an
+   independently trained public-phone encoder. The latest checkpoint proxy uses
+   group-balanced event-confidence error, prefix and negative-family penalties;
+   an earlier discrete proxy prematurely favored silent classifiers. This fix
+   changes checkpoint selection, never final gates. Synthetic TRAIN gets
+   12 positive/6 negative variants;
   DEV originals and their padding stay fixed per waveform hash. Only TRAIN gets
    speed/room/noise augmentation and quantization calibration. Public speech is
    bounded by speaker; near/incomplete synthetic negatives remain explicit.
-6. `training/hi_pikoo_verify.py`: all-step trained float sequence/export checks,
-   INT8 reference vs native Micro byte parity across resets, then qualified
-   candidate freeze. No sealed TEST, family input or device writes in this step.
+6. `training/hi_pikoo_phone_pretrain.py`: full-original public TRAIN only,
+   speaker-separated phone DEV, CTC, bounded memory-mapped features; no household
+   or official TEST input. Optional initialization verifies encoder/report hashes.
+7. `training/hi_pikoo_common_dev.py` and `hi_pikoo_verify.py`: common reused DEV,
+   trained float sequence/export checks, reference/native Micro byte parity
+   across resets and complete DEV replay before freezing. A trial requires an
+   explicit authorization file and retains `development_passed:false`.
+8. `training/hi_pikoo_sealed_review.py` and `hi_pikoo_sealed_score.py`: fresh
+   candidate-bound synthetic adult TEST, blind content review, fixed-policy
+   native Micro scoring. A consumption marker is written before inference;
+   failed/consumed tests are never silently replaced or used for selection.
 
 Example collection arguments (private output and an existing authorized key):
 
@@ -117,22 +156,35 @@ Tiny cohort counts and synthetic-source limitations must accompany those rates.
 `wake-policy.json` binds the model SHA-256, explicit names, frontend fingerprint,
 frozen date, DEV result, smoothing and threshold. `PIKOO_WAKE_POLICY` supplies it
 to firmware/worker; new Hi Pikoo candidates require a matching policy. Legacy
-builds retain five-score/0.90 behavior. The current source builds with the private
-legacy model; it does not install a new model.
+builds retain five-score/0.90 behavior. Unqualified trial policies are rejected
+by default. A privately authorized build must explicitly set
+`PIKOO_WAKE_ALLOW_TRIAL=ON`; the worker requires `PIKOO_ALLOW_TRIAL_WAKE=1`.
+Both show an unqualified-trial warning. None of these flags marks DEV passed.
 
 Untrained prototypes passed all-step float/static checks and native TFLM
 300-invocation/three-reset checks, with host arenas 14,240/17,056 bytes. All four first-round trained exports also passed native Micro/reference byte
 parity on eight balanced TRAIN fixtures over three resets, with the same host
 arenas; recognition still failed. **Host allocation is not ESP32 allocation
-or inference latency.** Device gates remain arena ≤256KiB, frontend+inference
+or inference latency.** The selected trial also passed all 144 DEV originals
+on native Micro with three identical resets. Device gates remain arena ≤256KiB, frontend+inference
 p99 ≤20ms/max ≤30ms and audio/display concurrency without watchdog/overflows.
 
 After freezing: newly generated independent TEST, safe recoverable board resource
 checks, then four family members at one metre, two sessions ×20 attempts each
 (target ≥18/20 per person/session), plus eight-hour background testing (≤1 false
-wake). Family audio stays evaluation-only: no training, cleaning, augmentation,
+wake). A synthetic-only diagnostic image leaves microphone, network and amplifier
+off, emits a deterministic backend probe and reports real board timing/arena
+when actually run. Compilation or a host dry-run does not satisfy these gates.
+Family audio stays evaluation-only: no training, cleaning, augmentation,
 calibration or model selection. Consumed tests never become fresh tests.
 
 No recordings, restricted weights, credentials or model-bearing firmware are
 published. Original code is Apache-2.0; external model/data/service terms remain
 separate. See [third-party boundaries](../THIRD_PARTY.md).
+
+Research context: [limited/synthetic KWS data](https://arxiv.org/abs/2002.01322)
+and [phonetic/KWS multi-task learning](https://arxiv.org/abs/2107.07634)
+motivated the bounded encoder experiment; their reported performance does not
+transfer to this implementation. The independent CTC training uses the
+[TensorFlow CTC API](https://www.tensorflow.org/api_docs/python/tf/nn/ctc_loss).
+No pretrained encoder or implementation from those papers was copied.

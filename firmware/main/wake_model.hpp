@@ -12,6 +12,7 @@ float wake_peak_score();
 float wake_raw_peak_score();
 uint32_t wake_detection_count();
 uint32_t wake_error_count();
+size_t wake_arena_used_bytes();
 void wake_trace_start();
 void wake_capture_start();
 void wake_cancel_diagnostics();

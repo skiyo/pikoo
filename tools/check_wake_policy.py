@@ -14,7 +14,7 @@ def frontend_fingerprint():
     return hashlib.sha256(re.sub(r'\s+', '', config).encode()).hexdigest()
 
 
-def validate(model, policy):
+def validate(model, policy, allow_trial=False):
     targets = {'hi-piku-v1': ['piku'], 'hi-piku-piko-v2': ['piku', 'piko']}
     if policy.get('target') not in targets or policy.get('schema_version') != 1:
         raise ValueError('Unknown wake target/policy version')
@@ -27,7 +27,10 @@ def validate(model, policy):
     if policy.get('frontend') != {'sample_rate': 16000, 'feature_bins': 40,
         'window_ms': 30, 'feature_step_ms': 10, 'inference_step_ms': 30}:
         raise ValueError('Frontend configuration mismatch')
-    if policy.get('development_passed') is not True or not policy.get('candidate_frozen_at'):
+    trial = (allow_trial and policy.get('development_passed') is False and
+        policy.get('trial_authorized') is True and policy.get('status') == 'best-available-unqualified-trial' and
+        policy.get('release_eligible') is False and policy.get('formal_goal_passed') is False)
+    if (policy.get('development_passed') is not True and not trial) or not policy.get('candidate_frozen_at'):
         raise ValueError('A frozen, DEV-qualified candidate is required')
     fingerprint = policy.get('frontend_fingerprint', '')
     if fingerprint != frontend_fingerprint():
@@ -40,11 +43,13 @@ def main():
     p.add_argument('--model', type=Path, required=True)
     p.add_argument('--policy', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)
+    p.add_argument('--allow-trial', action='store_true', help='Explicit private best-available trial; does not mark DEV passed')
     a = p.parse_args()
-    result = validate(a.model, json.loads(a.policy.read_text()))
+    result = validate(a.model, json.loads(a.policy.read_text()), a.allow_trial)
     a.output.write_text('#pragma once\n'
         f'#define PIKOO_WAKE_ROLLING {result["rolling"]}\n'
-        f'#define PIKOO_WAKE_THRESHOLD {result["threshold"]:.2f}f\n')
+        f'#define PIKOO_WAKE_THRESHOLD {result["threshold"]:.2f}f\n'
+        f'#define PIKOO_WAKE_TRIAL {int(result.get("development_passed") is not True)}\n')
 
 
 if __name__ == '__main__':

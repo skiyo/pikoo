@@ -20,7 +20,8 @@ import numpy as np
 from hi_pikoo_contract import validate_contract
 from hi_pikoo_review import normalized
 from hi_pikoo_timing import timing, view
-from hi_pikoo_model import FRAMES, SEEDS, build, stream, select_policy, sequence_loss, development_quality
+from hi_pikoo_contrast import family
+from hi_pikoo_model import FRAMES, SEEDS, build, stream, select_policy, sequence_loss, selection_proxy
 
 
 def digest(p):
@@ -191,7 +192,8 @@ def example(pcm, row, rng, augment=False, background_pcm=None):
         'perceived_gender': row.get('perceived_gender', 'unverified'),
         'completion_ms': completion, 'times_ms': times.tolist(),
         'endpoint_method': 'synthetic-RMS20ms-peakMinus26dB-plus40ms-guard',
-        'valid_steps': n, 'sha256': row['sha256'], 'source_timing': source_timing}
+        'valid_steps': n, 'sha256': row['sha256'], 'source_timing': source_timing,
+        'contrast_class': family(row)}
 
 
 def prepare(selected, background):
@@ -233,12 +235,31 @@ def main():
     for flag in ('manifest', 'background-manifest', 'protected-hashes', 'upstream', 'output'):
         p.add_argument('--'+flag, type=Path, required=True)
     p.add_argument('--target-contract', type=Path, required=True)
-    p.add_argument('--channels', type=int, choices=(24, 48), default=24)
+    p.add_argument('--channels', type=int, choices=(24, 48, 96), default=24)
     p.add_argument('--batch-normalization', action='store_true')
+    p.add_argument('--objective', choices=('binary', 'phrase-contrast'), default='binary')
+    p.add_argument('--encoder-init', type=Path)
+    p.add_argument('--encoder-report', type=Path)
+    p.add_argument('--finetune-encoder', action='store_true')
+    p.add_argument('--learning-rate', type=float, default=.0005)
     p.add_argument('--resume-export', action='store_true',
         help='Reuse saved weights after an export failure; verifies exact prepared arrays and input hashes')
     a = p.parse_args()
     os.umask(0o077)
+    if bool(a.encoder_init) != bool(a.encoder_report) or not .0001 <= a.learning_rate <= .001:
+        raise ValueError('Bounded learning rate and paired acoustic encoder provenance required')
+    encoder_proof = None
+    if a.encoder_init:
+        encoder_proof = json.loads(a.encoder_report.read_text())
+        if (a.channels != encoder_proof.get('channels') or not a.batch_normalization or
+            encoder_proof.get('encoder_sha256') != digest(a.encoder_init) or
+            encoder_proof.get('household_used') is not False or
+            encoder_proof.get('official_validation_or_test_used') is not False or
+            encoder_proof.get('source_weights') is not None or
+            encoder_proof.get('wake_background_sha256') != digest(a.background_manifest) or
+            encoder_proof.get('encoder_hook') != 'ordered_context.input' or
+            not 0 <= encoder_proof.get('phone_error_rate', 100) <= .8):
+            raise ValueError('Fresh public-speech encoder provenance/phone quality gate failed')
     upstream_commit = subprocess.check_output(['git', '-C', str(a.upstream), 'rev-parse', 'HEAD'], text=True).strip()
     if upstream_commit != '4665173cd35f1cff9a61e06fc427f124766c488e' or subprocess.check_output(
             ['git', '-C', str(a.upstream), 'status', '--porcelain'], text=True).strip():
@@ -263,6 +284,10 @@ def main():
             raise ValueError('Resume requires the original model definition; restore its saved source snapshot')
         if previous.get('channels', 24) != a.channels or previous.get('batch_normalization', False) != a.batch_normalization:
             raise ValueError('Resume architecture differs from saved weights')
+        if previous.get('objective', 'binary') != a.objective:
+            raise ValueError('Resume objective differs from saved weights')
+        if a.objective == 'phrase-contrast' and previous.get('contrast_source_sha256') != digest(Path(__file__).with_name('hi_pikoo_contrast.py')):
+            raise ValueError('Restore the original phrase-contrast source before resuming')
         for field, file in [('manifest_sha256', a.manifest),
                             ('background_manifest_sha256', a.background_manifest),
                             ('protected_sha256', a.protected_hashes),
@@ -275,13 +300,22 @@ def main():
         snapshot = a.output/'source-snapshot'
         snapshot.mkdir()
         for name in ('hi_pikoo_train.py', 'hi_pikoo_model.py', 'hi_pikoo_contract.py',
-                     'hi_pikoo_review.py', 'hi_pikoo_timing.py', 'streaming_runtime.py', 'acoustic_augment.py',
+                     'hi_pikoo_review.py', 'hi_pikoo_timing.py', 'hi_pikoo_contrast.py', 'streaming_runtime.py', 'acoustic_augment.py',
                      'generate_google.py', 'sequence_export_check.py', 'check_esp32_model.py', 'requirements.txt'):
             shutil.copyfile(Path(__file__).with_name(name), snapshot/name)
     sets = prepare(selected, background)
     x, y, w, info = sets['train']
     vx, vy, vw, vi = sets['validation']
-    arrays = dict(train_x=x, train_y=y, train_w=w, dev_x=vx, dev_y=vy, dev_w=vw)
+    event_balance = None
+    if a.objective == 'phrase-contrast':
+        from hi_pikoo_contrast import targets, balance
+        y, w = targets(info)
+        w, event_balance = balance(y, w)
+        vy, vw = targets(vi)
+        for c, factor in enumerate(event_balance['event_factors'], 1):
+            vw[vy == c] *= 12*factor
+    arrays = dict(train_x=x, train_y=y, train_w=w, dev_x=vx, dev_y=vy, dev_w=vw,
+                  train_binary_labels=np.asarray([m['label'] for m in info], np.int8))
     if a.resume_export:
         with np.load(a.output/'features.npz') as saved:
             if any(not np.array_equal(value, saved[key]) for key, value in arrays.items()):
@@ -297,9 +331,15 @@ def main():
             else digest(__file__), 'target': contract['target'],
         'placement_rng': 'sha256-per-original-split-repeat-v1',
         'upstream_commit': upstream_commit, 'runtime': runtime,
-        'checkpoint_metric': 'float-DEV-qualified-first-then-worst-recall-minus-0.1FP-minus-0.05early',
+        'checkpoint_metric': 'float-DEV-qualified-first-then-balanced-event-Brier-v1',
+        'early_stopping': {'start_from_epoch': 10, 'patience': 8, 'max_epochs': 30},
         'train_synthetic_repeats': {'positive': 12, 'negative': 6},
         'channels': a.channels, 'batch_normalization': a.batch_normalization,
+        'objective': a.objective, 'contrast_event_balance': event_balance,
+        'encoder_initialization_sha256': digest(a.encoder_init) if a.encoder_init else None,
+        'encoder_report_sha256': digest(a.encoder_report) if a.encoder_report else None,
+        'encoder_finetuned': a.finetune_encoder, 'learning_rate': a.learning_rate,
+        'contrast_source_sha256': digest(a.output/'source-snapshot/hi_pikoo_contrast.py') if not a.resume_export else digest(Path(__file__).with_name('hi_pikoo_contrast.py')),
         'target_contract_sha256': digest(a.target_contract),
         'source_weights': None, 'household_used': False, 'sealed_test_opened': False,
         'public_background_selected': len(background)}
@@ -316,12 +356,17 @@ def main():
 
         def on_epoch_end(self, epoch, logs=None):
             probabilities = np.asarray(self.model(vx, training=False))
-            result = select_policy([{**meta, 'probabilities': prob[:meta['valid_steps']].tolist()}
-                for prob, meta in zip(probabilities, vi)])
-            quality = development_quality(result)
+            if a.objective == 'phrase-contrast':
+                probabilities = probabilities[:, :, 1]
+            cases = [{**meta, 'probabilities': prob[:meta['valid_steps']].tolist()}
+                for prob, meta in zip(probabilities, vi)]
+            result = select_policy(cases)
+            proxy = selection_proxy(cases, result)
+            quality = proxy['score']
             if logs is not None:
                 logs['val_detection_quality'] = quality
             self.epochs.append({'epoch': epoch+1, 'float_dev_quality': quality,
+                'selection_proxy': proxy,
                 'scope': 'DEV checkpoint selection only; not INT8 or sealed TEST', 'development': result})
             (self.folder/'dev-epochs.json').write_text(json.dumps(self.epochs, indent=2)+'\n')
 
@@ -335,11 +380,25 @@ def main():
                     raise ValueError('Completed candidate changed')
                 reports.append(report)
                 continue
-            model = build(a.upstream, steps, seed, a.channels, a.batch_normalization)
+            if a.objective == 'phrase-contrast':
+                from hi_pikoo_contrast import build as contrast_build
+                model = contrast_build(a.upstream, steps, seed, a.channels, a.batch_normalization)
+                loss = tf.keras.losses.SparseCategoricalCrossentropy(reduction='none')
+            else:
+                model = build(a.upstream, steps, seed, a.channels, a.batch_normalization)
+                loss = sequence_loss
+            if a.encoder_init:
+                acoustic = tf.keras.Model(model.input, model.get_layer('ordered_context').input)
+                acoustic.load_weights(a.encoder_init)
+                for layer in acoustic.layers:
+                    layer.trainable = bool(a.finetune_encoder and not isinstance(layer, tf.keras.layers.BatchNormalization))
             # Return per-step loss so temporal sample weights are actually applied.
-            model.compile(optimizer=tf.keras.optimizers.Adam(.0005), loss=sequence_loss)
+            model.compile(optimizer=tf.keras.optimizers.Adam(a.learning_rate), loss=loss)
             callbacks = [DevelopmentQuality(folder),
-                tf.keras.callbacks.EarlyStopping(monitor='val_detection_quality', mode='max', patience=5, restore_best_weights=True),
+                tf.keras.callbacks.ModelCheckpoint(str(folder/'checkpoint.weights.h5'),
+                    monitor='val_detection_quality', mode='max', save_best_only=True, save_weights_only=True),
+                tf.keras.callbacks.EarlyStopping(monitor='val_detection_quality', mode='max',
+                    patience=8, start_from_epoch=10, restore_best_weights=False),
                 tf.keras.callbacks.CSVLogger(str(folder/'epochs.csv'))]
             if a.resume_export and (folder/'checkpoint.weights.h5').exists():
                 model.load_weights(folder/'checkpoint.weights.h5')
@@ -349,15 +408,20 @@ def main():
                 history = model.fit(x, y, sample_weight=w, validation_data=(vx, vy, vw),
                     epochs=30, batch_size=16, callbacks=callbacks, verbose=2)
                 epochs = len(history.history['loss'])
-                model.save_weights(folder/'checkpoint.weights.h5')
-            deploy = stream(model)
+                model.load_weights(folder/'checkpoint.weights.h5')
+            if a.objective == 'phrase-contrast':
+                from hi_pikoo_contrast import wake_view
+                scalar = wake_view(model)
+            else:
+                scalar = model
+            deploy = stream(scalar)
             archive = tf.keras.export.ExportArchive()
             archive.track(deploy)
             archive.add_endpoint(name='serve', fn=deploy.call,
                 input_signature=[tf.TensorSpec(deploy.input.shape, tf.float32)])
             archive.write_out(str(folder/'saved'), verbose=False)
             from sequence_export_check import check
-            parity = check(model, folder/'saved', x, [i['label'] for i in info])
+            parity = check(scalar, folder/'saved', x, [i['label'] for i in info])
             if parity['status'] != 'passed-trained-sequence-export-parity':
                 raise ValueError('Trained sequence/stream differs')
             converter = tf.lite.TFLiteConverter.from_saved_model(str(folder/'saved'))
@@ -381,6 +445,8 @@ def main():
             policy = select_policy(cases)
             report = {'context_steps': steps, 'seed': seed, 'epochs': epochs,
                 'channels': a.channels, 'batch_normalization': a.batch_normalization,
+                'objective': a.objective,
+                'encoder_initialization_sha256': digest(a.encoder_init) if a.encoder_init else None,
                 'parameters': model.count_params(), 'static': static, 'sequence_parity': parity,
                 'development': policy, 'sealed_test_scored': False,
                 'device_or_household_accepted': False, 'release_eligible': False}

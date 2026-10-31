@@ -6,6 +6,9 @@
 #define PIKOO_WAKE_ROLLING 5
 #define PIKOO_WAKE_THRESHOLD .90f
 #endif
+#ifndef PIKOO_WAKE_TRIAL
+#define PIKOO_WAKE_TRIAL 0
+#endif
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -106,7 +109,12 @@ bool wake_init() {
     return false;
   ESP_LOGI("wake", "experimental model ready; arena=%u",
            unsigned(interpreter->arena_used_bytes()));
+  if (PIKOO_WAKE_TRIAL)
+    ESP_LOGW("wake", "private best-available trial; formal wake acceptance is pending");
   return true;
+}
+size_t wake_arena_used_bytes() {
+  return interpreter ? interpreter->arena_used_bytes() : 0;
 }
 void wake_reset() {
   trace_remaining=0;capture_remaining=0;

@@ -70,6 +70,7 @@ if(NOT PIKOO_WAKE_MODEL OR NOT EXISTS "${PIKOO_WAKE_MODEL}")
 endif()
 file(SIZE "${PIKOO_WAKE_MODEL}" PIKOO_WAKE_MODEL_BYTES)
 set(PIKOO_WAKE_POLICY "" CACHE FILEPATH "Frozen model-specific Hi Pikoo policy; legacy defaults when absent")
+option(PIKOO_WAKE_ALLOW_TRIAL "Explicitly build a private user-authorized unqualified wake trial" OFF)
 if(PIKOO_WAKE_POLICY)
   if(PIKOO_WAKE_VETO)
     message(FATAL_ERROR "Hi Pikoo uses its own model-bound policy; do not combine it with the historical Chinese verifier")
@@ -78,9 +79,13 @@ if(PIKOO_WAKE_POLICY)
     "${PIKOO_WAKE_POLICY}" "${PIKOO_WAKE_MODEL}"
     "${CMAKE_CURRENT_LIST_DIR}/../../tools/check_wake_policy.py")
   idf_build_get_property(PIKOO_POLICY_PYTHON PYTHON)
+  set(PIKOO_POLICY_TRIAL_ARGS)
+  if(PIKOO_WAKE_ALLOW_TRIAL)
+    list(APPEND PIKOO_POLICY_TRIAL_ARGS --allow-trial)
+  endif()
   execute_process(COMMAND "${PIKOO_POLICY_PYTHON}" "${CMAKE_CURRENT_LIST_DIR}/../../tools/check_wake_policy.py"
     --model "${PIKOO_WAKE_MODEL}" --policy "${PIKOO_WAKE_POLICY}"
-    --output "${CMAKE_CURRENT_BINARY_DIR}/wake_policy_generated.hpp"
+    --output "${CMAKE_CURRENT_BINARY_DIR}/wake_policy_generated.hpp" ${PIKOO_POLICY_TRIAL_ARGS}
     RESULT_VARIABLE PIKOO_POLICY_RESULT ERROR_VARIABLE PIKOO_POLICY_ERROR)
   if(NOT PIKOO_POLICY_RESULT EQUAL 0)
     message(FATAL_ERROR "Wake model/policy mismatch: ${PIKOO_POLICY_ERROR}")

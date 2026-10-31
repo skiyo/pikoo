@@ -27,3 +27,13 @@ class WakePolicyTest(unittest.TestCase):
                                ('development_passed', False), ('frontend_fingerprint', '0'*64)]:
                 with self.assertRaises(ValueError):
                     validate(model, {**policy, key: value})
+            trial = {**dual, 'development_passed': False, 'trial_authorized': True,
+                     'status': 'best-available-unqualified-trial',
+                     'formal_goal_passed': False, 'release_eligible': False}
+            with self.assertRaises(ValueError):
+                validate(model, trial)
+            self.assertFalse(validate(model, trial, allow_trial=True)['development_passed'])
+            for key in ('trial_authorized', 'formal_goal_passed', 'release_eligible'):
+                bad = {**trial, key: not trial[key]}
+                with self.assertRaises(ValueError):
+                    validate(model, bad, allow_trial=True)

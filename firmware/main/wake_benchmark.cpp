@@ -38,6 +38,18 @@ void benchmark(void *) {
   uint32_t durations[count]{};
   int16_t pcm[480]{};
   uint32_t random=20261018;
+  // Separate bounded backend probe before warmup/timing. Only deterministic
+  // synthetic PCM enters this image; no microphone is initialized.
+  wake_trace_start();
+  for (unsigned n=0;n<17;++n) {
+    for (auto &sample:pcm) {
+      random^=random<<13;random^=random>>17;random^=random<<5;
+      sample=int16_t(int(random&4095)-2048);
+    }
+    wake_feed(pcm,480,false);
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
+  wake_cancel_diagnostics();
   TickType_t deadline=xTaskGetTickCount();
   unsigned overruns=0;
   uint64_t sum=0;
@@ -71,12 +83,15 @@ void benchmark(void *) {
       "\"iterations\":%u,\"frontend_plus_inference_mean_us\":%" PRIu64 ","
       "\"frontend_plus_inference_p99_us\":%lu,\"frontend_plus_inference_max_us\":%lu,"
       "\"inference_max_us\":%lu,\"deadline_misses\":%u,\"wake_errors\":%lu,"
+      "\"arena_used_bytes\":%u,"
+      "\"backend_probe_seed\":20261018,\"backend_probe_samples\":8160,"
       "\"internal_free_bytes\":%u,\"psram_free_bytes\":%u,\"display_fps\":%.1f,"
       "\"microphone_enabled\":false,\"network_enabled\":false,"
       "\"amplifier_enabled\":false,\"live_audio_concurrency_validated\":false}",
       unsigned(PIKOO_BENCH_MODEL_BYTES),count,sum/count,
       (unsigned long)durations[(count*99+99)/100-1],(unsigned long)durations[count-1],
       (unsigned long)wake_max_inference_us(),overruns,(unsigned long)wake_error_count(),
+      unsigned(wake_arena_used_bytes()),
       unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),
       unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),board::display_fps());
     vTaskDelay(pdMS_TO_TICKS(5000));

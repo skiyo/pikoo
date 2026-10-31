@@ -53,7 +53,10 @@ $('mic').onclick=async()=>{
    if(event.type==='ready'){
     clearTimeout(timeout);
     if(event.modelSha256!==info.sha256){closeMic('模型版本不一致，请刷新页面。');return;}
-    info={...info,target:event.target,acceptedNames:event.acceptedNames,threshold:event.threshold,rolling:event.rolling};starting=false;ready=true;render();stage('准备好了。','选择上面的测试者，再开始 20 次唤醒测试或普通聊天测试。');
+    info={...info,target:event.target,acceptedNames:event.acceptedNames,threshold:event.threshold,rolling:event.rolling,trial:!!event.trial};starting=false;ready=true;
+    const rule=`完整说“${phrase()}”${event.acceptedNames?.length===2?'，名字接受 piku / piko':''}；阈值 ${event.threshold}，最近 ${event.rolling} 次概率平均。`;
+    $('policy').textContent=(event.trial?'试用版，尚未通过正式验收。':'')+rule+'分数不是准确率；电脑麦克风效果不等于板载效果。';
+    render();stage(event.trial?'试用版，尚未通过正式验收。':'准备好了。','选择上面的测试者，再开始 20 次唤醒测试或普通聊天测试。');
    }
    if(event.type==='score'){$('score').textContent=event.score.toFixed(2);$('meter').value=event.score;if(windowOpen)peak=Math.max(peak,event.score);}
    if(event.type==='wake'){

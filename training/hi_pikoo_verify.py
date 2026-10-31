@@ -20,12 +20,32 @@ def sha(p):
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
+def choose(policy, allow_trial=False):
+    if policy['selected'] is not None:
+        return policy['selected'], True
+    if not allow_trial:
+        return None, False
+    options = [q for q in policy['grid'] if not q['false_wakes'] and not q['early_wakes']
+               and q['worst_recall'] >= .6 and q['latency_p95_ms'] is not None]
+    def overall(q):
+        return sum(g['hits'] for g in q['groups'].values())/sum(g['targets'] for g in q['groups'].values())
+    options.sort(key=lambda q: (-q['worst_recall'], -overall(q), q['latency_p95_ms'], -q['threshold'], -q['rolling']))
+    return (options[0], False) if options else (None, False)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--comparison', type=Path, required=True)
     p.add_argument('--micro-check', type=Path, required=True)
     p.add_argument('--freeze-output', type=Path, required=True)
+    p.add_argument('--trial-authorization', type=Path, help='User-requested best-available fallback; never marks DEV passed')
     a = p.parse_args()
+    allow_trial = False
+    if a.trial_authorization:
+        authorization = json.loads(a.trial_authorization.read_text())
+        if authorization.get('trial_delivery_authorized') is not True or authorization.get('formal_quality_gates_unchanged') is not True:
+            raise ValueError('Explicit best-available trial authorization required')
+        allow_trial = True
     from streaming_runtime import interpreter, quantize
     reports = json.loads((a.comparison/'comparison.json').read_text())
     if len(reports) != 4 or {(r['context_steps'], r['seed']) for r in reports} != {
@@ -35,7 +55,7 @@ def main():
     contract = validate_contract(json.loads((a.comparison/'target-contract.json').read_text()))
     data = np.load(a.comparison/'features.npz')
     x, y, weights = data['train_x'], data['train_y'], data['train_w']
-    labels = y.max(axis=1) > 0
+    labels = data['train_binary_labels'].astype(bool) if 'train_binary_labels' in data.files else y.max(axis=1) > 0
     chosen = []
     for label in (False, True):
         indexes = np.flatnonzero(labels == label)
@@ -80,7 +100,7 @@ def main():
             'scope': 'TRAIN-only builtin reference vs pinned native Micro; HOST allocation',
             'esp32_verified': False, 'household_or_test_used': False}
         (folder/'micro-parity.json').write_text(json.dumps(proof, indent=2)+'\n')
-        selected = report['development']['selected']
+        selected, formal = choose(report['development'], allow_trial)
         if proof['passed'] and selected is not None:
             # A qualifying model gets complete DEV replay on native Micro,
             # beyond the balanced TRAIN-only backend fixtures above.
@@ -108,18 +128,20 @@ def main():
                     raise ValueError('Native complete DEV differs from reference: '+str(index))
                 native_cases.append({**case, 'probabilities': ((raw[0].astype(float)-ozero)*oscale).tolist()})
             native_policy = select_policy(native_cases)
-            if native_policy['selected'] != selected:
+            native_selected, native_formal = choose(native_policy, allow_trial)
+            if native_selected != selected or native_formal != formal:
                 raise ValueError('Native complete DEV changes the selected policy')
             (folder/'micro-dev.json').write_text(json.dumps({'cases': len(native_cases),
                 'reset_rounds': 3, 'byte_exact': True, 'development': native_policy,
                 'real_child_or_device_acceptance': False}, indent=2)+'\n')
-            eligible.append((report, folder, selected))
-    eligible.sort(key=lambda item: (-item[2]['worst_recall'], item[2]['latency_p95_ms'],
+            eligible.append((report, folder, selected, formal))
+    eligible.sort(key=lambda item: (-int(item[3]), -item[2]['worst_recall'],
+        -sum(g['hits'] for g in item[2]['groups'].values())/sum(g['targets'] for g in item[2]['groups'].values()), item[2]['latency_p95_ms'],
                                    item[0]['static']['bytes'], item[0]['seed']))
     decision = {'eligible_candidates': len(eligible), 'test_opened': False,
         'hardware_accepted': False, 'status': 'rejected-no-qualified-candidate'}
     if eligible:
-        report, folder, policy = eligible[0]
+        report, folder, policy, formal = eligible[0]
         sys.path.insert(0, str(Path(__file__).parents[1]/'tools'))
         from check_wake_policy import frontend_fingerprint, validate
         a.freeze_output.mkdir(parents=True, exist_ok=False)
@@ -129,17 +151,25 @@ def main():
             'model_sha256': sha(target), 'rolling': policy['rolling'],
             'threshold': policy['threshold'],
             'candidate_frozen_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            'development_passed': True, 'frontend_fingerprint': frontend_fingerprint(),
+            'development_passed': formal, 'frontend_fingerprint': frontend_fingerprint(),
+            'formal_goal_passed': False,
+            'development_qualified': formal,
+            'trial_authorized': not formal,
+            'status': 'DEV-qualified-awaiting-TEST' if formal else 'best-available-unqualified-trial',
+            'trial_authorization_sha256': sha(a.trial_authorization) if not formal else None,
+            'development_selection': policy,
             'frontend': {'sample_rate': 16000, 'feature_bins': 40,
                 'window_ms': 30, 'feature_step_ms': 10, 'inference_step_ms': 30},
             'source_report_sha256': sha(folder/'report.json'),
             'micro_proof_sha256': sha(folder/'micro-parity.json'),
             'source': folder.name, 'real_child_accepted': False,
+            'source_experiment': a.comparison.name,
             'sealed_test_passed': False, 'esp32_resource_accepted': False,
             'release_eligible': False}
-        validate(target, bundle)
+        validate(target, bundle, allow_trial=not formal)
         (a.freeze_output/'wake-policy.json').write_text(json.dumps(bundle, indent=2)+'\n')
-        decision.update(status='candidate-frozen-awaiting-fresh-test-and-device', source=folder.name)
+        decision.update(status='candidate-frozen-awaiting-fresh-test-and-device' if formal else
+            'best-available-trial-frozen-goal-not-passed', source=folder.name, development_passed=formal)
     (a.comparison/'candidate-decision.json').write_text(json.dumps(decision, indent=2)+'\n')
     print(json.dumps(decision))
 
