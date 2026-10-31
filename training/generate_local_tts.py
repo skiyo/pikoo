@@ -73,6 +73,7 @@ def main():
     p.add_argument('--model',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--limit',type=int,default=96)
+    p.add_argument('--jobs-file',type=Path,help='Explicit new Hi Pikoo fictional TRAIN/DEV jobs; never references or sealed TEST')
     p.add_argument('--contrasts',action='store_true',help='Additional train-only incomplete and near-phrase negatives, with synthetic target controls')
     p.add_argument('--child-focus',action='store_true',help='Train-only fictional childlike prompt families; implies contrasts; never real child speech')
     p.add_argument('--phonetic-spelling',action='store_true',help='Constrain mixed-name syllables with Chinese first-tone homophones and explicit Chinese synthesis')
@@ -95,7 +96,7 @@ def main():
     if a.code_switch_split!='train' and not a.code_switch_contrasts:raise ValueError('Code-switch split requires explicit curriculum')
     if a.code_switch_contrasts and (a.heldout or a.broad or a.hard_contrasts or a.child_focus or a.contrasts):raise ValueError('Choose one explicit curriculum')
     if a.heldout_version!='v11' and not a.heldout:raise ValueError('Test revision requires --heldout')
-    if not 1<=a.limit<=(160 if a.clean_development else 256 if a.generalization_contrasts else 320 if a.child_level_contrasts else 288 if a.broad else 256 if a.heldout and a.heldout_version in {'v16','v17'} else 128 if a.heldout and a.heldout_version in {'v14','v15'} else 96):raise ValueError('Synthesis exceeds the selected bounded curriculum')
+    if not 1<=a.limit<=(1000 if a.jobs_file else 160 if a.clean_development else 256 if a.generalization_contrasts else 320 if a.child_level_contrasts else 288 if a.broad else 256 if a.heldout and a.heldout_version in {'v16','v17'} else 128 if a.heldout and a.heldout_version in {'v14','v15'} else 96):raise ValueError('Synthesis exceeds the selected bounded curriculum')
     if a.broad and (a.child_focus or a.contrasts):raise ValueError('Choose broad or focused curriculum')
     if a.heldout and (a.broad or a.child_focus or a.contrasts):raise ValueError('Held-out curriculum cannot be mixed with development jobs')
     if a.hard_contrasts and (a.heldout or a.broad or a.child_focus or a.contrasts):raise ValueError('Choose one explicit curriculum')
@@ -112,7 +113,22 @@ def main():
     rows=[]
     rejected_path=a.output/'rejected-items.json'
     rejected=json.loads(rejected_path.read_text()) if rejected_path.exists() else {}
-    if a.clean_development:
+    if a.jobs_file:
+        if any([a.clean_development,a.generalization_contrasts,a.heldout,a.broad,a.hard_contrasts,a.child_focus,a.contrasts,a.level_contrasts,a.child_level_contrasts,a.code_switch_contrasts,a.phonetic_spelling]):
+            raise ValueError('Explicit Hi Pikoo jobs cannot mix with historical curricula')
+        selected=json.loads(a.jobs_file.read_text())
+        groups={}
+        for row in selected:
+            if (row.get('source')!='Qwen3-TTS-hi-piku-synthetic-local' or
+                row.get('split') not in {'train','validation'} or not row.get('synthetic') or
+                row.get('real_child') or row.get('reference_audio_used') or row.get('family_inputs_used') or
+                row.get('evaluation_only') or row.get('frozen_holdout') or row.get('label') not in (0,1)):
+                raise ValueError('Only unsealed text-only fictional Hi Pikoo jobs allowed')
+            group=row['group']
+            if groups.setdefault(group,row['split'])!=row['split']:
+                raise ValueError('Prompt-family leakage across explicit splits')
+        selected=selected[:a.limit]
+    elif a.clean_development:
         from clean_development_curriculum import jobs as clean_development_jobs
         selected=clean_development_jobs()[:a.limit]
     elif a.generalization_contrasts:
@@ -138,7 +154,7 @@ def main():
         selected=broad_jobs()[:a.limit]
     else:selected=jobs(a.contrasts,a.child_focus,a.phonetic_spelling)[:a.limit]
     for attempted,job in enumerate(selected,1):
-        identity={**job,'generator':'local-voicedesign-content-clean-development-v2' if a.clean_development else 'local-voicedesign-generalization-development-v1' if a.generalization_contrasts else 'local-voicedesign-child-level-TRAIN-v1' if a.child_level_contrasts else 'local-voicedesign-level-only-TRAIN-v1' if a.level_contrasts else 'local-voicedesign-v11-code-switch' if a.code_switch_contrasts else 'local-voicedesign-v11-hard-contrasts' if a.hard_contrasts else f'local-voicedesign-{a.heldout_version}-heldout' if a.heldout else 'local-voicedesign-v10-broad' if a.broad else 'local-voicedesign-v10-child-phonetic' if a.child_focus else 'local-voicedesign-v10-contrast' if a.contrasts else 'local-voicedesign-v9-1','weights':a.model.name}
+        identity={**job,'generator':'local-hi-piku-v1' if a.jobs_file else 'local-voicedesign-content-clean-development-v2' if a.clean_development else 'local-voicedesign-generalization-development-v1' if a.generalization_contrasts else 'local-voicedesign-child-level-TRAIN-v1' if a.child_level_contrasts else 'local-voicedesign-level-only-TRAIN-v1' if a.level_contrasts else 'local-voicedesign-v11-code-switch' if a.code_switch_contrasts else 'local-voicedesign-v11-hard-contrasts' if a.hard_contrasts else f'local-voicedesign-{a.heldout_version}-heldout' if a.heldout else 'local-voicedesign-v10-broad' if a.broad else 'local-voicedesign-v10-child-phonetic' if a.child_focus else 'local-voicedesign-v10-contrast' if a.contrasts else 'local-voicedesign-v9-1','weights':a.model.name}
         language='Chinese' if a.phonetic_spelling or a.broad or a.heldout or a.hard_contrasts else 'auto'
         language=job.get('synthesis_language',language)
         if a.phonetic_spelling or a.broad or a.heldout or a.hard_contrasts:identity['synthesis_language']=language

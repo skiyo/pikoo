@@ -8,6 +8,7 @@ function render(){
  $('person').disabled=!!active; $('positive').disabled=$('negative').disabled=!ready||!!active;
  $('stop').disabled=!active;$('mic').disabled=starting||ready||!info;$('endmic').disabled=!stream&&!starting;
 }
+function phrase(){return ['hi-piku-v1','hi-piku-piko-v2'].includes(info?.target)?'Hi, Pikoo':'你好皮酷';}
 function stage(text,detail='',detected=false){$('stage').textContent=text;$('stage').dataset.hit=String(detected);$('hint').textContent=detail;}
 function stopTest(message='这次测试已结束。'){
  clearTimeout(timer);generation++;windowOpen=false;
@@ -23,7 +24,7 @@ async function closeMic(message='麦克风已关闭。'){
 function nextRound(token){
  if(token!==generation||!active)return;
  round++;hit=false;peak=0;windowOpen=true;
- stage(`第 ${round} / 20 轮：请说“你好皮酷”`,'请说一次，然后保持安静，等下一轮提示。');
+ stage(`第 ${round} / 20 轮：请说“${phrase()}”`,'请说一次，然后保持安静，等下一轮提示。');
  timer=setTimeout(()=>{
   if(token!==generation||!active)return;
   windowOpen=false;results[active.person].trials.push({detected:hit,peakScore:peak,at:new Date().toISOString()});render();
@@ -52,13 +53,13 @@ $('mic').onclick=async()=>{
    if(event.type==='ready'){
     clearTimeout(timeout);
     if(event.modelSha256!==info.sha256){closeMic('模型版本不一致，请刷新页面。');return;}
-    starting=false;ready=true;render();stage('准备好了。','选择上面的测试者，再开始 20 次唤醒测试或普通聊天测试。');
+    info={...info,target:event.target,acceptedNames:event.acceptedNames,threshold:event.threshold,rolling:event.rolling};starting=false;ready=true;render();stage('准备好了。','选择上面的测试者，再开始 20 次唤醒测试或普通聊天测试。');
    }
    if(event.type==='score'){$('score').textContent=event.score.toFixed(2);$('meter').value=event.score;if(windowOpen)peak=Math.max(peak,event.score);}
    if(event.type==='wake'){
     if(active?.kind==='positive'&&windowOpen){hit=true;stage(`第 ${round} / 20 轮：已听到！`,'这一轮不需要再说，等待下一轮。',true);}
     else if(active?.kind==='negative'){results[active.person].falseWakes++;render();stage('记录了一次误唤醒。','继续普通聊天，不要说目标唤醒词。',true);}
-    else if(!active)stage('检测到“你好皮酷”。','这次不计分。点击测试按钮后才开始统计。',true);
+    else if(!active)stage(`检测到“${phrase()}”。`,'这次不计分。点击测试按钮后才开始统计。',true);
    }
   };
   current.onclose=()=>{clearTimeout(timeout);if(current===socket)closeMic('本地模型连接已关闭，请重新开启麦克风。');};
@@ -66,12 +67,12 @@ $('mic').onclick=async()=>{
  }catch(error){await closeMic(error.name==='NotAllowedError'?'未获得麦克风权限，请在浏览器中允许后重试。':error.message||'无法开启麦克风。');}
 };
 $('positive').onclick=()=>{active={person:$('person').value,kind:'positive'};round=0;render();nextRound(++generation);};
-$('negative').onclick=()=>{active={person:$('person').value,kind:'negative',started:performance.now()};render();stage('普通聊天测试进行中。','正常聊天，不说“你好皮酷”。结束时点击“结束这次测试”。');};
+$('negative').onclick=()=>{active={person:$('person').value,kind:'negative',started:performance.now()};render();stage('普通聊天测试进行中。',`正常聊天，不说“${phrase()}”。结束时点击“结束这次测试”。`);};
 $('stop').onclick=()=>stopTest();$('endmic').onclick=()=>closeMic();
 $('export').onclick=()=>{
  const snapshot=JSON.parse(JSON.stringify(results));
  if(active?.kind==='negative')snapshot[active.person].backgroundSeconds+=(performance.now()-active.started)/1000;
- const report={model:info,threshold:.9,environment:'desktop microphone; not ESP32 validation',createdAt:new Date().toISOString(),results:snapshot};
+ const report={model:info,threshold:info?.threshold??.9,rolling:info?.rolling??5,environment:'desktop microphone; not ESP32 validation',createdAt:new Date().toISOString(),results:snapshot};
  const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
  const a=document.createElement('a');a.href=url;a.download='pikoo-family-wake-test.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };

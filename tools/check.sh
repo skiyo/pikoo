@@ -15,6 +15,7 @@ bash tools/test-eyes.sh
 echo 'Checking simulator and server'
 "$node_bin" --test firmware/simulator/*.test.mjs
 (cd server && "$node_bin" --test *.test.mjs)
+"$node_bin" --test training/hi_pikoo_generate.test.cjs
 echo 'Checking Python tooling and training units (optional runtime tests may skip)'
 "$python_bin" -m unittest discover -s tools -p 'test_*.py'
 "$python_bin" -m unittest discover -s training -p 'test_*.py'

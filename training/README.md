@@ -4,6 +4,8 @@
 
 This module develops Pikoo’s local “你好 Pikoo” wake pipeline (pī kū / PEE-koo). It prepares authorized audio, trains and exports candidates, and evaluates whether a candidate is suitable for the device. It does not run the realtime Agent or identify family members.
 
+New research target (2026-10-31): [Hi + piku / piko, three syllables](../docs/wake-hi-piku.md). Prototypes and source auditions are separate from training and device acceptance; the installed model has not been replaced.
+
 Training is optional for exploring the [offline simulator](../docs/getting-started.md) or starting a voice session with a button. **The current public tree includes no wake-model weights.** Model history and redistribution limits are described in the [model card](models/MODEL_CARD.md).
 
 ## Enclosure printing resources

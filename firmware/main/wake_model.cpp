@@ -1,4 +1,11 @@
 #include "wake_model.hpp"
+#include "pikoo/wake_decision.hpp"
+#ifdef PIKOO_HAS_WAKE_POLICY
+#include "wake_policy_generated.hpp"
+#else
+#define PIKOO_WAKE_ROLLING 5
+#define PIKOO_WAKE_THRESHOLD .90f
+#endif
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -43,8 +50,8 @@ extern const unsigned char
 static FrontendState frontend{};
 static tflite::MicroInterpreter *interpreter;
 static tflite::MicroMutableOpResolver<19> resolver;
-static int slices = 0, prob_count = 0;
-static float probabilities[5]{};
+static int slices = 0;
+static pikoo::WakeDecision<PIKOO_WAKE_ROLLING> decision;
 bool wake_init() {
   FrontendConfig cfg{};
   FrontendFillConfigWithDefaults(&cfg);
@@ -103,8 +110,8 @@ bool wake_init() {
 }
 void wake_reset() {
   trace_remaining=0;capture_remaining=0;
-  slices = prob_count = 0;
-  std::fill_n(probabilities, 5, 0);
+  slices = 0;
+  decision.reset();
   FrontendReset(&frontend);
   latest_score=0;
   if (interpreter)
@@ -182,16 +189,11 @@ bool wake_feed(const int16_t *pcm, size_t count,bool count_detection) {
       ESP_LOGI("wake_trace","seq=%u features=%s p=%.6f",trace_sequence++,trace_hex,double(p));
       --trace_remaining;
     }
-    probabilities[prob_count++ % 5] = p;
+    const bool hit = decision.feed(p, PIKOO_WAKE_THRESHOLD);
     peak(raw_interval_peak,p);
-    if (prob_count >= 5) {
-      float sum = 0;
-      for (float v : probabilities)
-        sum += v;
-      latest_score=sum/5;
-      peak(interval_peak,sum/5);
-      detected |= (sum / 5 >= .90f);
-    }
+    latest_score=decision.score();
+    peak(interval_peak,decision.score());
+    detected |= hit;
   }
   // An explicit private diagnostic must never open a cloud voice session.
   // Discard its recurrent history before normal detection resumes as well.

@@ -10,3 +10,5 @@ firmware/build-host/playback-jitter-test
 firmware/build-host/wake-replay-test
 "${CXX:-c++}" -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -g -Ifirmware/components/pikoo_core/include firmware/tests/websocket_frame_test.cpp -o firmware/build-host/websocket-frame-test
 firmware/build-host/websocket-frame-test
+"${CXX:-c++}" -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -g -Ifirmware/components/pikoo_core/include firmware/tests/wake_decision_test.cpp -o firmware/build-host/wake-decision-test
+firmware/build-host/wake-decision-test

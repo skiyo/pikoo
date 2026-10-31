@@ -69,6 +69,25 @@ if(NOT PIKOO_WAKE_MODEL OR NOT EXISTS "${PIKOO_WAKE_MODEL}")
   message(FATAL_ERROR "No wake weights are distributed. Build with -DPIKOO_WAKE_MODEL=/absolute/path/to/authorized-model.tflite; see docs/getting-started.md")
 endif()
 file(SIZE "${PIKOO_WAKE_MODEL}" PIKOO_WAKE_MODEL_BYTES)
+set(PIKOO_WAKE_POLICY "" CACHE FILEPATH "Frozen model-specific Hi Pikoo policy; legacy defaults when absent")
+if(PIKOO_WAKE_POLICY)
+  if(PIKOO_WAKE_VETO)
+    message(FATAL_ERROR "Hi Pikoo uses its own model-bound policy; do not combine it with the historical Chinese verifier")
+  endif()
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${PIKOO_WAKE_POLICY}" "${PIKOO_WAKE_MODEL}"
+    "${CMAKE_CURRENT_LIST_DIR}/../../tools/check_wake_policy.py")
+  idf_build_get_property(PIKOO_POLICY_PYTHON PYTHON)
+  execute_process(COMMAND "${PIKOO_POLICY_PYTHON}" "${CMAKE_CURRENT_LIST_DIR}/../../tools/check_wake_policy.py"
+    --model "${PIKOO_WAKE_MODEL}" --policy "${PIKOO_WAKE_POLICY}"
+    --output "${CMAKE_CURRENT_BINARY_DIR}/wake_policy_generated.hpp"
+    RESULT_VARIABLE PIKOO_POLICY_RESULT ERROR_VARIABLE PIKOO_POLICY_ERROR)
+  if(NOT PIKOO_POLICY_RESULT EQUAL 0)
+    message(FATAL_ERROR "Wake model/policy mismatch: ${PIKOO_POLICY_ERROR}")
+  endif()
+  target_include_directories(${COMPONENT_LIB} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+  target_compile_definitions(${COMPONENT_LIB} PRIVATE PIKOO_HAS_WAKE_POLICY=1)
+endif()
 set(PIKOO_WAKE_MAX_BYTES "524288" CACHE STRING "DualEye experimental wake flash budget; arena and timing require hardware validation")
 if(NOT PIKOO_WAKE_MAX_BYTES MATCHES "^[0-9]+$" OR PIKOO_WAKE_MAX_BYTES LESS 65536 OR PIKOO_WAKE_MAX_BYTES GREATER 524288)
   message(FATAL_ERROR "DualEye wake model budget must be 65536..524288 bytes")
