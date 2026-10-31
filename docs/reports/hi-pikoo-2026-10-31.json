@@ -1,0 +1,1485 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-31",
+  "target": "hi-piku-piko-v2",
+  "accepted_names": [
+    "piku",
+    "piko"
+  ],
+  "greeting_required": "Hi",
+  "excluded": [
+    "Tikoo",
+    "name alone",
+    "nihao Pikoo"
+  ],
+  "status": "not-qualified-not-deployed",
+  "goal_completed": false,
+  "retained_new_originals": 883,
+  "admitted": 551,
+  "quarantined": 332,
+  "source_counts": {
+    "OpenAI_Realtime_synthetic": 343,
+    "local_Qwen3_synthetic": 540
+  },
+  "roles": {
+    "train": 407,
+    "validation": 144
+  },
+  "synthetic_age_is_not_real_child_evidence": true,
+  "vowel_groups": "Five manual vowel audits; remaining variants ASR-inferred, not gold phoneme labels",
+  "public_train_background_clips": 1468,
+  "family_recordings_used": false,
+  "sealed_test_generated_or_scored": false,
+  "board_flashes": 0,
+  "paid_generation_attempts_including_auditions_and_failures": 353,
+  "estimated_wake_generation_usd": 0.2831082,
+  "uncertain_requests_conservatively_reserved": 1,
+  "budget_cap_usd": 2,
+  "cost_scope": "Wake corpus generation and auditions only; deployed conversation service is outside this ledger",
+  "provider_bill_reconciled": false,
+  "experiments": [
+    {
+      "experiment": "v2",
+      "context_steps": 72,
+      "seed": 42,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 18641,
+      "model_bytes": 42576,
+      "model_sha256": "11e1482796905db977d3fd52e4a52cf6605b1d44ca6d4e4068bbefcdb331bdb5",
+      "epochs": 14,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 2
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 27
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 9
+          }
+        },
+        "false_wakes": 6,
+        "early_wakes": 4,
+        "worst_recall": 0.6666666666666666,
+        "latency_p95_ms": 220.68749999999994,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17056,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v2",
+      "context_steps": 72,
+      "seed": 43,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 18641,
+      "model_bytes": 42576,
+      "model_sha256": "bba783c007eedada81204c935279120adf363f2546e5e32b08b4783bffff1e64",
+      "epochs": 16,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 2
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 25
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 10
+          }
+        },
+        "false_wakes": 6,
+        "early_wakes": 5,
+        "worst_recall": 0.6666666666666666,
+        "latency_p95_ms": 236.31250000000003,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17056,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v2",
+      "context_steps": 20,
+      "seed": 42,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 17393,
+      "model_bytes": 40080,
+      "model_sha256": "d37ce491ad5c7af701247ee0cf91bb9d08d45d11edfa7a3759fd3b3e87475d6e",
+      "epochs": 9,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 2
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 26
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 10
+          }
+        },
+        "false_wakes": 7,
+        "early_wakes": 7,
+        "worst_recall": 0.6666666666666666,
+        "latency_p95_ms": 231.640625,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 14240,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v2",
+      "context_steps": 20,
+      "seed": 43,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 17393,
+      "model_bytes": 40080,
+      "model_sha256": "704dfacb0e86acefa537a6450b564ce3ec443e7769e2a61f7383a19cc75ee1f4",
+      "epochs": 11,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 2
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 27
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 8
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 11
+          }
+        },
+        "false_wakes": 6,
+        "early_wakes": 10,
+        "worst_recall": 0.6666666666666666,
+        "latency_p95_ms": 156.15000000000006,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 14240,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v3",
+      "context_steps": 72,
+      "seed": 42,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 18641,
+      "model_bytes": 42576,
+      "model_sha256": "66f62c33a11e616cec07c5a58cee1c5d112cdd850b4792ab6c70aa770cd9c7f2",
+      "epochs": 14,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 2
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 22
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 7
+          }
+        },
+        "false_wakes": 3,
+        "early_wakes": 1,
+        "worst_recall": 0.5384615384615384,
+        "latency_p95_ms": 179.640625,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17056,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v3",
+      "context_steps": 72,
+      "seed": 43,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 18641,
+      "model_bytes": 42576,
+      "model_sha256": "f39936aba577d20f3d4be57d5cc6e93505f5921afe351baa44939a92c1c8be6c",
+      "epochs": 9,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 24
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 2
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 24
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 8
+          }
+        },
+        "false_wakes": 7,
+        "early_wakes": 1,
+        "worst_recall": 0.6153846153846154,
+        "latency_p95_ms": 201.32499999999993,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17056,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v3",
+      "context_steps": 20,
+      "seed": 42,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 17393,
+      "model_bytes": 40080,
+      "model_sha256": "149b5a572073b3bcdf044a0db9e99eb7d5fbf9bccae58a79c46547764fd343ad",
+      "epochs": 9,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 20
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 1
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 20
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 4
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 9
+          }
+        },
+        "false_wakes": 5,
+        "early_wakes": 0,
+        "worst_recall": 0.3333333333333333,
+        "latency_p95_ms": 231.56875,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 14240,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v3",
+      "context_steps": 20,
+      "seed": 43,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 17393,
+      "model_bytes": 40080,
+      "model_sha256": "3f8efc84b1f3e30a8ef6af27deceb21aed80ac9ddfce70a5d8e50cd1d96329aa",
+      "epochs": 9,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 2
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 24
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 8
+          }
+        },
+        "false_wakes": 8,
+        "early_wakes": 0,
+        "worst_recall": 0.6153846153846154,
+        "latency_p95_ms": 195.6375,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 14240,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v4",
+      "context_steps": 72,
+      "seed": 42,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 18641,
+      "model_bytes": 42920,
+      "model_sha256": "e1c311aa6478949bbe96d112e78970d9248651c6cddfee22a6d01b9527f720d0",
+      "epochs": 8,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 1
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 24
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 6
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 8
+          }
+        },
+        "false_wakes": 7,
+        "early_wakes": 0,
+        "worst_recall": 0.3333333333333333,
+        "latency_p95_ms": 223.871875,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17232,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v4",
+      "context_steps": 72,
+      "seed": 43,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 18641,
+      "model_bytes": 42920,
+      "model_sha256": "c22482c109d8ad4c39eb037719b16e658473edc0a178ad60aef3c2431d476f7e",
+      "epochs": 12,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 26
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 1
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 24
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 5
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 5
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 6
+          }
+        },
+        "false_wakes": 3,
+        "early_wakes": 1,
+        "worst_recall": 0.3333333333333333,
+        "latency_p95_ms": 180.80625,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17232,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v4",
+      "context_steps": 20,
+      "seed": 42,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 17393,
+      "model_bytes": 40424,
+      "model_sha256": "02036b8b5e1b51fb17b16910690526bef70527a9b0993ed18f84d27d225acb09",
+      "epochs": 7,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 19
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 1
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 16
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 4
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 6
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 8
+          }
+        },
+        "false_wakes": 5,
+        "early_wakes": 0,
+        "worst_recall": 0.3333333333333333,
+        "latency_p95_ms": 278.5187499999999,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 14416,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v4",
+      "context_steps": 20,
+      "seed": 43,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 17393,
+      "model_bytes": 40424,
+      "model_sha256": "1e17bdcd81fecfe2c28ff4392e40e377323c54e3b3f09ce1478e3ccd9103548f",
+      "epochs": 9,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 27
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 1
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 24
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 7
+          }
+        },
+        "false_wakes": 4,
+        "early_wakes": 1,
+        "worst_recall": 0.3333333333333333,
+        "latency_p95_ms": 188.1624999999999,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 14416,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v5",
+      "context_steps": 72,
+      "seed": 42,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 18641,
+      "model_bytes": 42920,
+      "model_sha256": "4326c87ac8e137ceae61ca28c91cef1977ede1dcdf8bd1bf62fb7ee8cd42a9db",
+      "epochs": 7,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 1
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 25
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 8
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 8
+          }
+        },
+        "false_wakes": 5,
+        "early_wakes": 0,
+        "worst_recall": 0.3333333333333333,
+        "latency_p95_ms": 178.9375,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17232,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v5",
+      "context_steps": 72,
+      "seed": 43,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 18641,
+      "model_bytes": 42920,
+      "model_sha256": "bd67a16791aa16213c694f5b3ea56b6618a2868313a80736c69365570274595e",
+      "epochs": 12,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 25
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 11
+          }
+        },
+        "false_wakes": 2,
+        "early_wakes": 2,
+        "worst_recall": 0.8461538461538461,
+        "latency_p95_ms": 172.025,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17232,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v5",
+      "context_steps": 20,
+      "seed": 42,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 17393,
+      "model_bytes": 40424,
+      "model_sha256": "0d2e26903eb85465b850a02383429a157479df853a512db4c7d3e6207b516413",
+      "epochs": 11,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 26
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 8
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 10
+          }
+        },
+        "false_wakes": 3,
+        "early_wakes": 2,
+        "worst_recall": 0.7272727272727273,
+        "latency_p95_ms": 165.49374999999995,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 14416,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v5",
+      "context_steps": 20,
+      "seed": 43,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 17393,
+      "model_bytes": 40424,
+      "model_sha256": "9d75ecc4c19aa342a70b2d796e3d881aa78b3242fd84eda46e7702ea362a20c7",
+      "epochs": 10,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 27
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 24
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 10
+          }
+        },
+        "false_wakes": 1,
+        "early_wakes": 1,
+        "worst_recall": 0.7692307692307693,
+        "latency_p95_ms": 160.86249999999998,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 14416,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v6",
+      "context_steps": 72,
+      "seed": 42,
+      "channels": 48,
+      "batch_normalization": true,
+      "parameters": 30273,
+      "model_bytes": 60544,
+      "model_sha256": "9f6380a980dc8d81433af1a0fad24a98eed05b4c10b3819beec6c9e61142714d",
+      "epochs": 9,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 26
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 2
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 26
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 8
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 9
+          }
+        },
+        "false_wakes": 7,
+        "early_wakes": 4,
+        "worst_recall": 0.6666666666666666,
+        "latency_p95_ms": 130.509375,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 24272,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v6",
+      "context_steps": 72,
+      "seed": 43,
+      "channels": 48,
+      "batch_normalization": true,
+      "parameters": 30273,
+      "model_bytes": 60544,
+      "model_sha256": "9987c18b262ea5458ac3b37e0a654957393903a93433dd4751198e444903b779",
+      "epochs": 22,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 25
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 1
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 25
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 9
+          }
+        },
+        "false_wakes": 0,
+        "early_wakes": 1,
+        "worst_recall": 0.3333333333333333,
+        "latency_p95_ms": 171.15625,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 24272,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v6",
+      "context_steps": 20,
+      "seed": 42,
+      "channels": 48,
+      "batch_normalization": true,
+      "parameters": 27777,
+      "model_bytes": 55552,
+      "model_sha256": "0b4b0f8b03c29dfb4ea48c347cb66de1e2d7819d9fd5bf2fe450a12002c5fc38",
+      "epochs": 20,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 26
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 26
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 9
+          }
+        },
+        "false_wakes": 1,
+        "early_wakes": 0,
+        "worst_recall": 0.6923076923076923,
+        "latency_p95_ms": 163.8999999999998,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17680,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v6",
+      "context_steps": 20,
+      "seed": 43,
+      "channels": 48,
+      "batch_normalization": true,
+      "parameters": 27777,
+      "model_bytes": 55552,
+      "model_sha256": "ae24313ac50a32d7f1ea6f168b285739763ae0f8fe28a8bf61211bebfe71d7fd",
+      "epochs": 12,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 25
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 22
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 8
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 10
+          }
+        },
+        "false_wakes": 0,
+        "early_wakes": 1,
+        "worst_recall": 0.7692307692307693,
+        "latency_p95_ms": 214.42500000000004,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17680,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v7",
+      "context_steps": 72,
+      "seed": 42,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 18641,
+      "model_bytes": 42920,
+      "model_sha256": "f4ea0bccaf36b20978355fb3429d0bcec4d9ff5fb2b9994239aa4db28b1454d9",
+      "epochs": 8,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 0
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 25
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 8
+          }
+        },
+        "false_wakes": 4,
+        "early_wakes": 0,
+        "worst_recall": 0.0,
+        "latency_p95_ms": 168.88125,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17232,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v7",
+      "context_steps": 72,
+      "seed": 43,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 18641,
+      "model_bytes": 42920,
+      "model_sha256": "39fe504e77e8a57aa09457acf0c72b59a85e3d2e93a7b24a018b35eb9b431c7b",
+      "epochs": 18,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 26
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 25
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 8
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 10
+          }
+        },
+        "false_wakes": 2,
+        "early_wakes": 0,
+        "worst_recall": 0.7692307692307693,
+        "latency_p95_ms": 175.2687499999999,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17232,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v7",
+      "context_steps": 20,
+      "seed": 42,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 17393,
+      "model_bytes": 40424,
+      "model_sha256": "f31a12ddb2d49bf698180ac466d6dae24ec7bd590318ce5da30f530d9042781d",
+      "epochs": 10,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 27
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 8
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 9
+          }
+        },
+        "false_wakes": 5,
+        "early_wakes": 0,
+        "worst_recall": 0.6923076923076923,
+        "latency_p95_ms": 155.27499999999995,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 14416,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v7",
+      "context_steps": 20,
+      "seed": 43,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 17393,
+      "model_bytes": 40424,
+      "model_sha256": "b0ef4100e6728859894d2b2f162d2d6de1e1cce9703007608908c78b8812d478",
+      "epochs": 17,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 26
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 26
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 9
+          }
+        },
+        "false_wakes": 1,
+        "early_wakes": 0,
+        "worst_recall": 0.6923076923076923,
+        "latency_p95_ms": 178.09999999999997,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 14416,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v8",
+      "context_steps": 72,
+      "seed": 42,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 18641,
+      "model_bytes": 42920,
+      "model_sha256": "a2ed48e2298c296d7075ee34a4b4024390473fac07b3a8095b28e79bef787ae0",
+      "epochs": 7,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 27
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 1
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 24
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 8
+          }
+        },
+        "false_wakes": 4,
+        "early_wakes": 0,
+        "worst_recall": 0.3333333333333333,
+        "latency_p95_ms": 173.49687499999996,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17232,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v8",
+      "context_steps": 72,
+      "seed": 43,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 18641,
+      "model_bytes": 42920,
+      "model_sha256": "0c4d7b7bbfa737b1615c71022008d9d14156018ecfe9569d6145c831210eab45",
+      "epochs": 9,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 24
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 2
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 24
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 7
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 8
+          }
+        },
+        "false_wakes": 3,
+        "early_wakes": 0,
+        "worst_recall": 0.6153846153846154,
+        "latency_p95_ms": 162.021875,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 17232,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v8",
+      "context_steps": 20,
+      "seed": 42,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 17393,
+      "model_bytes": 40424,
+      "model_sha256": "7d71dc4800e5a6520553593d90b245176cc311cb02bf410ec56bdbcccaeb1007",
+      "epochs": 12,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 27
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 10
+          }
+        },
+        "false_wakes": 6,
+        "early_wakes": 0,
+        "worst_recall": 0.7692307692307693,
+        "latency_p95_ms": 135.63125,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 14416,
+      "esp32_measured": false
+    },
+    {
+      "experiment": "v8",
+      "context_steps": 20,
+      "seed": 43,
+      "channels": 24,
+      "batch_normalization": false,
+      "parameters": 17393,
+      "model_bytes": 40424,
+      "model_sha256": "8c6ea491c0b1e5e741a742cd43a10eafe0eb3f3627322cd03c766d2c5ed16b92",
+      "epochs": 10,
+      "development_status": "dev-rejected",
+      "fixed_reference_policy": {
+        "rolling": 5,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 25
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 24
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 9
+          }
+        },
+        "false_wakes": 1,
+        "early_wakes": 0,
+        "worst_recall": 0.6923076923076923,
+        "latency_p95_ms": 222.225,
+        "passed": false
+      },
+      "native_micro_byte_exact_on_train_fixtures": true,
+      "host_arena_bytes": 14416,
+      "esp32_measured": false
+    }
+  ],
+  "endpoint_correction": {
+    "scope": "same reused DEV, not new TEST",
+    "original_rms_relative_floor": 0.01,
+    "corrected_relative_floor": 0.05,
+    "guard_ms": 40,
+    "waveforms_or_models_changed": false,
+    "v6_reclocked_statuses": [
+      "dev-rejected",
+      "dev-rejected",
+      "dev-rejected",
+      "dev-rejected"
+    ]
+  },
+  "remaining_acceptance": [
+    "independent synthetic TEST after qualified freeze",
+    "ESP32 resource/audio concurrency",
+    "adult and real-child household acceptance",
+    "8h false-wake exposure"
+  ],
+  "data_gap": "Cross-source target recall and confusable rejection do not jointly satisfy the gate. Exterior quiet explains only a subset of timing issues. More same-source synthesis and the 48-channel study did not resolve generalization. A revised phonetic/generalization experiment is needed; family data stays evaluation-only.",
+  "completed_fits": 28,
+  "timing_cleanup": {
+    "preferred_natural_speech_ms": [
+      1000,
+      2000
+    ],
+    "originals_immutable": true,
+    "exterior_view_guard_ms": {
+      "before": 200,
+      "after": 300
+    },
+    "internal_pauses_preserved": true,
+    "missing_repeated_extra_words_still_quarantined": true,
+    "all_generated_median_active_ms": 1060,
+    "admitted_median_active_ms": 1040,
+    "admitted_tail_over_500ms": 12,
+    "admitted_exterior_padding_over_300ms": 9,
+    "long_source_audition_raw_ms": 6700,
+    "long_source_audition_active_ms": 1320,
+    "short_preview_ms": 1640,
+    "preview_evaluation_only": true,
+    "new_test": false
+  }
+}

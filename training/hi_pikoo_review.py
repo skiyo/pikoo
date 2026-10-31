@@ -53,6 +53,7 @@ def validate(row, root, protected):
         not row.get('synthetic') or row.get('real_child') or
         row.get('family_inputs_used') or row.get('reference_audio_used') or
         row.get('evaluation_only') or row.get('frozen_holdout') or
+        row.get('sha256') in protected or
         row['split'] not in {'train', 'validation'}):
         raise ValueError('Only new unsealed fictional TRAIN/DEV synthesis is eligible')
     p = (root/row['path']).resolve()

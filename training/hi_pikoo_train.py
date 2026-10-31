@@ -13,11 +13,13 @@ import json
 import os
 import sys
 import subprocess
+import shutil
 import wave
 from pathlib import Path
 import numpy as np
 from hi_pikoo_contract import validate_contract
 from hi_pikoo_review import normalized
+from hi_pikoo_timing import timing, view
 from hi_pikoo_model import FRAMES, SEEDS, build, stream, select_policy, sequence_loss, development_quality
 
 
@@ -119,21 +121,20 @@ def speech_endpoint(pcm):
     """Conservative synthetic-audio endpoint, independent of labels/model scores.
 
     Retain the entire waveform. Exclude only measured quiet tail from the
-    event clock: 20ms RMS, 40dB below peak or five PCM units, plus 40ms guard.
+    event clock: 20ms RMS, about 26dB below peak or five PCM units, plus 40ms guard.
     This is not a phoneme aligner and is not used to repair truncated speech.
     """
-    x = np.asarray(pcm, np.float64)
-    chunks = np.pad(x, (0, (-len(x)) % 320)).reshape(-1, 320)
-    rms = np.sqrt(np.mean(chunks*chunks, axis=1))
-    active = np.flatnonzero(rms >= max(5., float(rms.max())*.01))
-    if not len(active):
-        raise ValueError('Synthetic waveform has no measurable speech')
-    return min(len(x), (int(active[-1])+1)*320+640)
+    return timing(pcm)['endpoint_sample']
 
 
 def example(pcm, row, rng, augment=False, background_pcm=None):
     x = pcm.copy()
-    endpoint = speech_endpoint(x) if row['label'] else len(x)
+    source_timing = None
+    if row.get('synthetic'):
+        x, source_timing = view(x)
+        endpoint = source_timing['endpoint_sample']-source_timing['view_start_sample']
+    else:
+        endpoint = speech_endpoint(x) if row['label'] else len(x)
     if row['label'] and len(x) > 56000:
         raise ValueError('Positive waveform too long; review instead of trimming')
     if len(x) > 64000:
@@ -189,8 +190,8 @@ def example(pcm, row, rng, augment=False, background_pcm=None):
         'cohort': row.get('synthetic_style', 'ordinary')+':'+row.get('accent', 'public')+':'+row.get('pronunciation_variant', 'ordinary'),
         'perceived_gender': row.get('perceived_gender', 'unverified'),
         'completion_ms': completion, 'times_ms': times.tolist(),
-        'endpoint_method': 'synthetic-RMS20ms-peakMinus40dB-plus40ms-guard',
-        'valid_steps': n, 'sha256': row['sha256']}
+        'endpoint_method': 'synthetic-RMS20ms-peakMinus26dB-plus40ms-guard',
+        'valid_steps': n, 'sha256': row['sha256'], 'source_timing': source_timing}
 
 
 def prepare(selected, background):
@@ -232,6 +233,8 @@ def main():
     for flag in ('manifest', 'background-manifest', 'protected-hashes', 'upstream', 'output'):
         p.add_argument('--'+flag, type=Path, required=True)
     p.add_argument('--target-contract', type=Path, required=True)
+    p.add_argument('--channels', type=int, choices=(24, 48), default=24)
+    p.add_argument('--batch-normalization', action='store_true')
     p.add_argument('--resume-export', action='store_true',
         help='Reuse saved weights after an export failure; verifies exact prepared arrays and input hashes')
     a = p.parse_args()
@@ -256,6 +259,10 @@ def main():
     tf.config.threading.set_inter_op_parallelism_threads(2)
     if a.resume_export:
         previous = json.loads((a.output/'provenance.json').read_text())
+        if previous['model_source_sha256'] != digest(Path(__file__).with_name('hi_pikoo_model.py')):
+            raise ValueError('Resume requires the original model definition; restore its saved source snapshot')
+        if previous.get('channels', 24) != a.channels or previous.get('batch_normalization', False) != a.batch_normalization:
+            raise ValueError('Resume architecture differs from saved weights')
         for field, file in [('manifest_sha256', a.manifest),
                             ('background_manifest_sha256', a.background_manifest),
                             ('protected_sha256', a.protected_hashes),
@@ -265,6 +272,12 @@ def main():
     else:
         a.output.mkdir(parents=True, exist_ok=False)
         (a.output/'target-contract.json').write_bytes(a.target_contract.read_bytes())
+        snapshot = a.output/'source-snapshot'
+        snapshot.mkdir()
+        for name in ('hi_pikoo_train.py', 'hi_pikoo_model.py', 'hi_pikoo_contract.py',
+                     'hi_pikoo_review.py', 'hi_pikoo_timing.py', 'streaming_runtime.py', 'acoustic_augment.py',
+                     'generate_google.py', 'sequence_export_check.py', 'check_esp32_model.py', 'requirements.txt'):
+            shutil.copyfile(Path(__file__).with_name(name), snapshot/name)
     sets = prepare(selected, background)
     x, y, w, info = sets['train']
     vx, vy, vw, vi = sets['validation']
@@ -278,12 +291,15 @@ def main():
     provenance = {'manifest_sha256': digest(a.manifest),
         'background_manifest_sha256': digest(a.background_manifest),
         'protected_sha256': digest(a.protected_hashes),
-        'model_source_sha256': digest(Path(__file__).with_name('hi_pikoo_model.py')),
-        'data_source_sha256': digest(__file__), 'target': contract['target'],
+        'model_source_sha256': digest(a.output/'source-snapshot/hi_pikoo_model.py') if not a.resume_export
+            else digest(Path(__file__).with_name('hi_pikoo_model.py')),
+        'data_source_sha256': digest(a.output/'source-snapshot/hi_pikoo_train.py') if not a.resume_export
+            else digest(__file__), 'target': contract['target'],
         'placement_rng': 'sha256-per-original-split-repeat-v1',
         'upstream_commit': upstream_commit, 'runtime': runtime,
         'checkpoint_metric': 'float-DEV-qualified-first-then-worst-recall-minus-0.1FP-minus-0.05early',
         'train_synthetic_repeats': {'positive': 12, 'negative': 6},
+        'channels': a.channels, 'batch_normalization': a.batch_normalization,
         'target_contract_sha256': digest(a.target_contract),
         'source_weights': None, 'household_used': False, 'sealed_test_opened': False,
         'public_background_selected': len(background)}
@@ -319,7 +335,7 @@ def main():
                     raise ValueError('Completed candidate changed')
                 reports.append(report)
                 continue
-            model = build(a.upstream, steps, seed)
+            model = build(a.upstream, steps, seed, a.channels, a.batch_normalization)
             # Return per-step loss so temporal sample weights are actually applied.
             model.compile(optimizer=tf.keras.optimizers.Adam(.0005), loss=sequence_loss)
             callbacks = [DevelopmentQuality(folder),
@@ -364,6 +380,7 @@ def main():
                 cases.append({**meta, 'probabilities': probability})
             policy = select_policy(cases)
             report = {'context_steps': steps, 'seed': seed, 'epochs': epochs,
+                'channels': a.channels, 'batch_normalization': a.batch_normalization,
                 'parameters': model.count_params(), 'static': static, 'sequence_parity': parity,
                 'development': policy, 'sealed_test_scored': False,
                 'device_or_household_accepted': False, 'release_eligible': False}

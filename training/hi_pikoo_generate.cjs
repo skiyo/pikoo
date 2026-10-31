@@ -89,7 +89,7 @@ function args(argv){const a={};for(let i=0;i<argv.length;i+=2){if(!argv[i].start
 async function main(){
  const a=args(process.argv.slice(2));if(!a.output||!a['key-file']||!a['audition-root'])throw Error('Required: --output, --key-file, --audition-root');
  const phase=a.phase||'pilot';if(!['pilot','training','development','sealed'].includes(phase))throw Error('Unknown collection phase');
- let contract=null;
+ let contract=null,frozenForTest=null;
  if(a['target-contract']){contract=JSON.parse(fs.readFileSync(a['target-contract'],'utf8'));targetPlan([],contract);}
  if(phase!=='pilot'){
   if(!a['source-review'])throw Error('Source audition evidence is required before expansion');
@@ -101,12 +101,20 @@ async function main(){
   const frozen=JSON.parse(fs.readFileSync(a['frozen-candidate'],'utf8'));
   if(!a['candidate-model'])throw Error('Candidate model required before TEST');
   validateFrozen(contract,frozen,fs.readFileSync(a['candidate-model']));
+  frozenForTest=frozen;
  }
  out=path.resolve(a.output);proxyPort=Number(a['proxy-port']||7897);if(!Number.isInteger(proxyPort)||proxyPort<1||proxyPort>65535)throw Error('Invalid proxy port');
  const env=fs.readFileSync(a['key-file'],'utf8');const line=env.split(/\r?\n/).find(l=>/^\s*(?:export\s+)?OPENAI_API_KEY\s*=/.test(l));if(!line)throw Error('Missing existing API key');key=line.slice(line.indexOf('=')+1).trim().replace(/^['"]|['"]$/g,'');
  process.umask(0o077);fs.mkdirSync(out,{recursive:true,mode:0o700});
  const lock=path.join(out,'generation.lock');const fd=fs.openSync(lock,'wx',0o600);fs.writeSync(fd,String(process.pid));
  try{
+ if(frozenForTest){
+  const seal=path.join(out,'sealed-candidate.json');
+  if(fs.existsSync(seal)){
+   const prior=JSON.parse(fs.readFileSync(seal));
+   if(prior.model_sha256!==frozenForTest.model_sha256||prior.candidate_frozen_at!==frozenForTest.candidate_frozen_at)throw Error('This TEST revision is bound to a different frozen candidate; never reuse consumed TEST');
+  }else write(seal,frozenForTest);
+ }
  const ledgerFile=path.join(out,'budget.json');let ledger;
  if(fs.existsSync(ledgerFile))ledger=JSON.parse(fs.readFileSync(ledgerFile));else{
   ledger={cap_usd:CAP,reservation_per_request_usd:RESERVATION,price_snapshot:'2026-10-31: text in .60/M, text out 2.40/M incl reasoning, audio out20/M',entries:[]};
@@ -135,7 +143,8 @@ async function main(){
   try{
    const saved=await generate([row.id,row.voice,row.style,row.text]);
    const entry=ledger.entries.find(x=>x.id===row.id);entry.actual_usd=cost(saved.usage);entry.status='completed';write(ledgerFile,ledger);
-   const merged={...saved,...row,path:saved.file,model:MODEL,content_review:'pending',pronunciation_review:'pending',admitted_to_training:false};
+   const merged={...saved,...row,path:saved.file,model:MODEL,content_review:'pending',pronunciation_review:'pending',admitted_to_training:false,
+    ...(frozenForTest?{evaluation_only:true,frozen_holdout:true,frozen_candidate_sha256:frozenForTest.model_sha256}:{})};
    done.push(merged);write(manifestFile,done);
    write(path.join(out,'status.json'),{phase:phase+'-generation',completed:selected.filter(x=>done.some(y=>y.id===x.id)).length,total:selected.length,total_retained_files:done.length,estimated_spend_usd:ledger.entries.reduce((s,x)=>s+(x.actual_usd??x.reserved_usd),0),updated_at:new Date().toISOString(),next:'independent content review; no automatic expansion or training'});
    if(entry.actual_usd>RESERVATION)throw Error('Reservation exceeded; stop and audit pricing');

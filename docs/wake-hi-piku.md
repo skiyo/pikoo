@@ -8,39 +8,57 @@ The user approved the dual pronunciation before the first real-corpus fit;
 required. Tikoo, a name alone and the historical Chinese greeting are excluded.
 Conversation language, server, volume and installed wake model are unchanged.
 
-## Evidence and current limits
+## Current results
 
-- The independent causal networks have 17,393/18,641 parameters for 20/72 ordered
-  steps. The first trained INT8 exports are 40,080/42,576 bytes. These are small
-  weights, not a hardware timing or accuracy claim.
-- Four first-round fits (two contexts × seeds 42/43) completed. **None qualified
-  on complete admitted DEV.** At five-score/0.90, worst-group recall was 66.7%,
-  with 6–7 negative clips firing and 4–10 early detections under the initial
-  file-end clock. These results stay failed; they are not sealed TEST results.
-  Most false wakes were the excluded “Hi Tikoo” confusable.
-- User listening accepted GPT pronunciation/naturalness, but its requested
-  childlike delivery sounded adult. It is counted as adult. Reused local Qwen3
-  text-only VoiceDesign auditions E/F were perceived girl-like, G boy-like;
-  C/D/H were rejected as younger-child sources. **All are fictional synthesis**,
-  not real children or verified per-clip ages/speaker identities.
-- Before targeted expansion: 493 retained originals yielded 267 admitted clips,
-  226 quarantined. TRAIN/DEV source families are separated. The screen combines
-  source auditions and blind local ASR; it is not gold phoneme/age annotation.
-  Five separately auditioned piko clips were heard as ko and are recorded as
-  such. Raw manifests and old labels are retained; revised labels are derived.
-- Long phonetic prompts produced extra/repeated speech and were disabled.
-  Source audition audio stays outside numerical training. Ordinary ChildMandarin
-  TRAIN recordings supply bounded negatives, never target-positive evidence.
-- OpenAI spending before targeted expansion was approximately **$0.217**, including
-  prior auditions and a conservative uncertain-request charge. **The full run
-  cap is $2**, not $20. Expansion is a finite 100-request adult TRAIN batch using
-  the same ledger, with budget checks before every request. Actual final usage
-  and uncertain reservations remain separate from a reconciled provider bill.
-- Later finite comparisons with the corrected admission and event clock also
-remained unqualified. A further TRAIN-only local expansion is in progress.
-No candidate is frozen, released or flashed. Household recordings have not
-  been used. Household recall, ESP32 timing and eight-hour false wakes remain
-  untested for this target.
+The [machine-readable record](reports/hi-pikoo-2026-10-31.json) preserves all
+28 completed fits across seven bounded studies and their failures. Reclocking
+the same weights is not counted as new training. **No candidate currently meets the deployment gate.**
+The installed device has not been changed and sealed TEST remains closed.
+
+- Corpus: 883 retained new synthetic originals, 551 admitted and 332 quarantined;
+  343 OpenAI originals and 540 local Qwen3 originals. TRAIN has 407 originals,
+  DEV 144. Ordinary public TRAIN contributes 1,468 speaker-stratified negatives.
+  Source auditions are outside numerical training; household audio is excluded.
+- GPT requested-childlike auditions sounded adult and are counted as adult.
+  Qwen3 E/F auditions were perceived girl-like, G boy-like. These are synthetic
+  source/prompt families, not verified real children or guaranteed distinct voices.
+  Five piko recordings have manual vowel reviews; other vowel groups are
+  ASR-inferred rather than gold phoneme labels.
+- Reference 24-channel models are about 40–43kB. The 48-channel/BatchNorm study
+  produced 55,552/60,544-byte INT8 models with host arenas 17,680/24,272 bytes.
+  Larger capacity did not jointly solve cross-voice recall and confusable rejection.
+  **Host allocation is not ESP32 timing or memory acceptance.**
+- At least one configuration reached 84.6% worst-cohort recall while still firing
+  on excluded examples. Other configurations rejected all DEV negatives while
+  missing too many targets. These are failed synthetic DEV results, not child
+  performance or independent TEST results. Some cohorts contain only three clips.
+- Estimated paid generation cost is **$0.2831082**, including prior auditions,
+  failures and one conservative uncertain-request charge. The entire run cap is
+  **$2**. This is a generation usage ledger, not a reconciled provider bill or
+  the cost of the separately running conversation service.
+
+## Natural timing and exterior silence
+
+Natural “Hi Pikoo” generally needs about **1–2 seconds of speech**; it need not
+be lengthened or read syllable by syllable. The admitted corpus median active
+span is 1.04s. Twelve admitted clips have more than 500ms of trailing quiet;
+nine have more than 300ms of removable exterior padding. This affects a subset
+of the corpus and does not explain all recognition failures.
+
+A prior audition was 6.7s long with about 1.32s of active speech and a 5.36s quiet
+tail. That source audition was outside numerical training. Its short preview is
+an evaluation-only derivative; neither audition enters training.
+
+`hi_pikoo_timing.py` audits only new fictional TRAIN/DEV files. Originals stay
+immutable. The canonical feature view keeps 200ms before and 300ms after measured
+activity, preserves every internal pause, and never cuts words out of an utterance.
+Both positive and negative synthesis use the same rule. Repetition, missing words
+and extra words still fail content admission. Timing cannot repair pronunciation.
+
+The energy clock uses 20ms RMS, a 5-PCM-unit floor or 5% of peak (about −26dB),
+plus a 40ms endpoint guard. An earlier 1%-of-peak clock included weak TTS tail
+noise. Original reports are preserved; `hi_pikoo_reclock.py` writes separate DEV
+measurement corrections with unchanged weights/audio and never calls them new TEST.
 
 ## Pipeline
 
@@ -58,7 +76,9 @@ No candidate is frozen, released or flashed. Household recordings have not
    and protected hashes. Uncertain/extra/incomplete utterances stay quarantined;
    no trimming of failed speech into successful positive clips.
 5. `training/hi_pikoo_train.py`: new weights, no historical classifier. Two
-   contexts × two seeds, at most 30 epochs, DEV early stopping. The current checkpoint proxy ranks
+   contexts × two seeds, at most 30 epochs, DEV early stopping. Optional `--channels 48
+  --batch-normalization` is a separately recorded capacity study; the default is
+  24 channels. The current checkpoint proxy ranks
   qualified float DEV first, otherwise worst-group recall minus 0.1 per false
   wake and 0.05 per early wake. Final qualification still uses INT8/Micro,
   never the float proxy. Synthetic TRAIN gets 12 positive/6 negative variants;
@@ -81,15 +101,9 @@ Training additionally requires explicit `--target-contract`, admitted
 `--manifest`, `--background-manifest`, `--protected-hashes`, pinned `--upstream`
 and a new private `--output`. Raw generation manifests intentionally fail
 admission. `--resume-export` can reuse saved weights after an export failure only
-when input hashes and every prepared feature/label/mask array are identical.
+when the model definition, input hashes and every prepared feature/label/mask
+array are identical. Restore a run’s source snapshot for an older model definition.
 Failures and resumed provenance remain recorded.
-
-The follow-up experiment corrects an event-clock limitation: a conservative
-20ms RMS endpoint (40dB below peak, five-PCM-unit floor, plus 40ms guard) excludes
-quiet tail from the timestamp without deleting waveform samples. It is
-independent of model scores and cannot establish that a phoneme was pronounced.
-The earlier file-end experiment is preserved separately. No household sample
-informs this change.
 
 ## Device contract and gates
 

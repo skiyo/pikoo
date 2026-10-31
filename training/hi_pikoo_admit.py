@@ -7,11 +7,10 @@ rule, not gold phoneme alignment or real-child evidence. Confusable piko
 negatives remain quarantined without an explicit per-record vowel review.
 """
 import argparse
-import hashlib
 import json
 from pathlib import Path
 import wave
-from hi_pikoo_review import content_match, normalized
+from hi_pikoo_review import content_match, normalized, validate
 from hi_pikoo_contract import relabel_for_contract, validate_contract
 
 
@@ -86,12 +85,11 @@ def main():
             # TEST is never opened by this tool.
             if row['split'] == 'test':
                 raise ValueError('Sealed TEST cannot enter admission or training')
-            audio = (manifest.parent/row['path']).resolve()
+            # Reject protected metadata/hashes before reading even WAV bytes.
+            audio = validate(row, manifest.parent, protected)
             if not audio.is_relative_to(root):
                 raise ValueError('Source path outside new synthetic root')
-            actual = hashlib.sha256(audio.read_bytes()).hexdigest()
-            if actual != row['sha256'] or actual in protected:
-                raise ValueError('Changed/protected source audio')
+            actual = row['sha256']  # validate() already bound original bytes.
             if actual in hashes and hashes[actual] != (row['split'], row['label']):
                 raise ValueError('Duplicate waveform has conflicting split/label')
             if actual in hashes:
@@ -101,8 +99,14 @@ def main():
             accepted, reason = decide(revised, reviews.get(actual), feedback)
             with wave.open(str(audio)) as wav:
                 seconds = wav.getnframes()/wav.getframerate()
+            if accepted:
+                from hi_pikoo_train import read_audio
+                from hi_pikoo_timing import timing
+                details = timing(read_audio(audio))
+                accepted['source_timing'] = details
+                seconds = details['view_ms']/1000
             if revised['label'] and not .3 <= seconds <= 3.5:
-                accepted, reason = None, 'positive-too-long-or-short-no-trimming'
+                accepted, reason = None, 'positive-active-view-too-long-or-short-no-word-repair'
             if accepted:
                 admitted.append({**accepted, 'path': str(audio.relative_to(root))})
             else:

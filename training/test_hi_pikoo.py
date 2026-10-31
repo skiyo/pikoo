@@ -10,16 +10,35 @@ try:
     from hi_pikoo_train import admit, speech_endpoint, example
     from hi_pikoo_contract import relabel_for_contract, validate_contract
     from hi_pikoo_admit import decide
+    from hi_pikoo_timing import timing, view
 except ImportError:
     np = None
 
 
 @unittest.skipIf(np is None, 'optional NumPy training environment required')
 class HiPikooContracts(unittest.TestCase):
+    def test_only_quiet_exterior_padding_is_removed_and_internal_pause_stays(self):
+        voice = np.sin(np.arange(8000)*.1)*1000
+        pcm = np.concatenate([np.zeros(16000), voice, np.zeros(1600), voice, np.zeros(48000)])
+        original = pcm.copy()
+        trimmed, meta = view(pcm)
+        np.testing.assert_array_equal(pcm, original)
+        self.assertEqual(meta['view_start_sample'], 12800)
+        self.assertEqual(meta['view_end_sample'], 38400)
+        self.assertGreater(meta['removed_exterior_ms'], 3000)
+        np.testing.assert_array_equal(trimmed[11200:12800], np.zeros(1600))
+        self.assertTrue(timing(pcm)['preferred_1_to_2_seconds'])
+        _, labels, _, meta = example(pcm, {'label': 1, 'sha256': 'timing-fixture',
+            'synthetic': True}, np.random.default_rng(1))
+        self.assertLess(meta['completion_ms'], 3000)
+        self.assertGreater(labels.max(), .9)
+        self.assertEqual(meta['source_timing']['raw_ms'], 5100)
     def test_endpoint_uses_signal_not_file_padding_and_preserves_the_audio(self):
         voice = np.sin(np.arange(16000)*.1)*1000
         pcm = np.pad(voice, (3200, 8000))
         self.assertEqual(speech_endpoint(pcm), 19840)
+        noisy = pcm+np.random.default_rng(7).normal(0, 20, len(pcm))
+        self.assertEqual(speech_endpoint(noisy), 19840)
         features, labels, weights, meta = example(pcm, {'label': 1, 'sha256': 'fixture'},
                                                 np.random.default_rng(1))
         self.assertEqual(features.shape, (600, 40))
@@ -102,6 +121,8 @@ class HiPikooContracts(unittest.TestCase):
                 admit([{**base, 'split': 'test'}], Path(d), set())
             with self.assertRaisesRegex(ValueError, 'admission'):
                 admit([base], Path(d), set())
+            with self.assertRaises(ValueError):
+                validate(base, Path(d), {'protected'})
 
     def test_requested_child_voice_cannot_be_counted_as_perceived_child(self):
         row = {'split': 'train', 'source': 'OpenAI-Realtime-synthetic',

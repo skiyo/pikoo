@@ -26,9 +26,11 @@ def sequence_loss(labels, probabilities):
     return tf.keras.losses.binary_crossentropy(labels[..., None], probabilities[..., None])
 
 
-def build(upstream, ordered_steps=72, seed=42):
+def build(upstream, ordered_steps=72, seed=42, channels=24, batch_normalization=False):
     if ordered_steps not in (20, 72):
         raise ValueError('Only predeclared 20/72 step variants are eligible')
+    if channels not in (24, 48):
+        raise ValueError('Only bounded 24/48-channel comparisons are eligible')
     sys.path.insert(0, str(Path(upstream).resolve()))
     import tensorflow as tf
     from microwakeword.layers.stream import Stream
@@ -40,8 +42,11 @@ def build(upstream, ordered_steps=72, seed=42):
     # fine spectral differences between p/t on these ~0..26-valued features.
     x = tf.keras.layers.Rescaling(1/26., name='frontend_scale')(x)
     x = Stream(tf.keras.layers.Conv2D(96, (3, 1), strides=(3, 1),
-        activation='relu6', use_bias=False, kernel_initializer='he_normal'), use_one_step=False,
+        activation=None if batch_normalization else 'relu6', use_bias=False, kernel_initializer='he_normal'), use_one_step=False,
         pad_time_dim='causal', name='input_projection')(x)
+    if batch_normalization:
+        x = tf.keras.layers.BatchNormalization(name='projection_norm')(x)
+        x = tf.keras.layers.ReLU(max_value=6)(x)
     for i, width in enumerate((5, 9, 13)):
         x = Stream(tf.keras.layers.Identity(), ring_buffer_size_in_time_dim=width-1,
             use_one_step=False, pad_time_dim='causal', name=f'context_{i}')(x)
@@ -49,13 +54,19 @@ def build(upstream, ordered_steps=72, seed=42):
         # channels. Use its actual fan-in rather than a dense-kernel fan-in.
         x = tf.keras.layers.DepthwiseConv2D((width, 1), use_bias=False,
             depthwise_initializer=tf.keras.initializers.RandomNormal(stddev=np.sqrt(2/width)))(x)
-        x = tf.keras.layers.Conv2D(24, 1, activation='relu6',
+        x = tf.keras.layers.Conv2D(channels, 1, activation=None if batch_normalization else 'relu6',
             kernel_initializer='he_normal', name=f'mix_{i}')(x)
+        if batch_normalization:
+            x = tf.keras.layers.BatchNormalization(name=f'mix_norm_{i}')(x)
+            x = tf.keras.layers.ReLU(max_value=6)(x)
     x = Stream(tf.keras.layers.Identity(), ring_buffer_size_in_time_dim=ordered_steps-1,
         use_one_step=False, pad_time_dim='causal', name='ordered_context')(x)
-    x = tf.keras.layers.DepthwiseConv2D((ordered_steps, 1), activation='relu6',
+    x = tf.keras.layers.DepthwiseConv2D((ordered_steps, 1), activation=None if batch_normalization else 'relu6',
         depthwise_initializer=tf.keras.initializers.RandomNormal(stddev=np.sqrt(2/ordered_steps)))(x)
-    x = tf.keras.layers.Conv2D(32, 1, activation='relu6', kernel_initializer='he_normal')(x)
+    if batch_normalization:
+        x = tf.keras.layers.BatchNormalization(name='ordered_norm')(x)
+        x = tf.keras.layers.ReLU(max_value=6)(x)
+    x = tf.keras.layers.Conv2D(32 if channels==24 else 64, 1, activation='relu6', kernel_initializer='he_normal')(x)
     x = tf.keras.layers.Conv2D(1, 1, activation='sigmoid',
         bias_initializer=tf.keras.initializers.Constant(-3), name='wake_probability')(x)
     return tf.keras.Model(inputs, tf.keras.layers.Reshape((-1,))(x))
