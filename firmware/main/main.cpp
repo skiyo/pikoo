@@ -389,7 +389,7 @@ void hello() {
   cJSON_AddStringToObject(client, "instance_id", device_id.c_str());
   auto caps = cJSON_AddArrayToObject(o, "capabilities");
   for (auto c : {"input.audio", "input.text", "playback.receipts", "session.heartbeat",
-                 "session.takeover", "pikoo.audio.continuous.v1"})
+                 "session.takeover", "pikoo.audio.continuous.v1", "pikoo.audio.pcm16.v1"})
     cJSON_AddItemToArray(caps, cJSON_CreateString(c));
   cJSON_AddStringToObject(o, "locale", "zh-CN");
   cJSON_AddStringToObject(o, "time_zone", "Asia/Shanghai");
@@ -415,6 +415,13 @@ void receive(const std::string &raw) {
     send(response);
   } else if (type == "voice.ready" && active && !muted) {
     const bool continuous=cJSON_IsTrue(cJSON_GetObjectItem(o,"continuousAudio"));
+    auto output_rate=cJSON_GetObjectItem(o,"outputSampleRate");
+    const unsigned playback_rate=cJSON_IsNumber(output_rate)?output_rate->valueint:24000;
+    {
+      std::lock_guard<std::mutex> lock(play_mutex);
+      if(!playback.set_sample_rate(playback_rate)){cJSON_Delete(o);fail_queue(4);return;}
+    }
+    ESP_LOGI("audio","downlink_rate=%u direct=%d",playback_rate,int(playback_rate==16000));
     if(continuous) {
       auto generation=cJSON_GetObjectItem(o,"generation");
       if(!cJSON_IsNumber(generation)||field(o,"streamId").empty()){cJSON_Delete(o);fail_queue(4);return;}
@@ -458,7 +465,7 @@ void receive(const std::string &raw) {
     ++received_audio_count;
     auto rate = cJSON_GetObjectItem(o, "sampleRate");
     auto b64 = field(o, "audio");
-    if (cJSON_IsNumber(rate) && rate->valueint == 24000 && !id.empty() &&
+    if (cJSON_IsNumber(rate) && (rate->valueint == 16000 || rate->valueint == 24000) && !id.empty() &&
         b64.size() <= 192 * 1024) {
       std::vector<int16_t> pcm((b64.size() * 3 / 4 + 4) / 2);
       size_t size = 0;
@@ -471,9 +478,10 @@ void receive(const std::string &raw) {
         static unsigned logged_chunks=0;
         if(logged_id!=id){logged_id=id;logged_chunks=0;}
         std::lock_guard<std::mutex> lock(play_mutex);
+        if(unsigned(rate->valueint)!=playback.sample_rate()){cJSON_Delete(o);fail_queue(4);return;}
         if (!playback.rejected(id) &&
             !playback.append(id, pcm.data(), size / 2)) {
-          ESP_LOGW("pikoo","audio append refused cause=%d samples=%u queued_ms=%u",int(playback.append_error()),unsigned(size/2),unsigned(playback.queued()/24));
+          ESP_LOGW("pikoo","audio append refused cause=%d samples=%u queued_ms=%u",int(playback.append_error()),unsigned(size/2),unsigned(playback.milliseconds(playback.queued())));
           fail_queue(5);
         }
         if(logged_chunks++<6)ESP_LOGI("pikoo","audio rx chunk=%u samples=%u queued=%u",logged_chunks,unsigned(size/2),unsigned(playback.queued()));
@@ -572,7 +580,7 @@ void playback_task(void *) {
     {
       std::lock_guard<std::mutex> lock(play_mutex);
       prefetched=playback.queued();
-      have = playback.take(chunk,pikoo::Playback::InitialSamples,now(),
+      have = playback.take(chunk,playback.initial_samples(),now(),
                            pikoo::Playback::MaxInitialWaitMs,continuous_audio);
       if (have)
         started = playback.started(chunk);
@@ -593,18 +601,26 @@ void playback_task(void *) {
       // Convert only 10 ms at a time. Converting a whole server chunk before
       // feeding I2S creates a silence gap whenever it exceeds the DMA depth.
       bool played=true;
-      for(size_t pos=0;pos<chunk.pcm.size();pos+=240) {
+      const size_t block_samples=chunk.sample_rate/100;
+      for(size_t pos=0;pos<chunk.pcm.size();pos+=block_samples) {
         auto entered=esp_timer_get_time();
         if(last_block&&entered-last_block>45000){
           auto gap=uint32_t(entered-last_block);++playback_gaps;playback_gap_max_us=std::max(playback_gap_max_us.load(),gap);
           if(logged_gaps++<5)ESP_LOGW("pikoo","audio supply gap us=%lu",(unsigned long)gap);
         }
         auto conversion_started=esp_timer_get_time();
-        auto output=converter.process(chunk.pcm.data()+pos,std::min<size_t>(240,chunk.pcm.size()-pos));
-        resample_max_us=std::max(resample_max_us.load(),uint32_t(esp_timer_get_time()-conversion_started));
-        if(!board::play(output.data(),output.size(),generation)){played=false;break;}
+        const size_t count=std::min(block_samples,chunk.pcm.size()-pos);
+        bool written;
+        if(chunk.sample_rate==16000) {
+          written=board::play(chunk.pcm.data()+pos,count,generation);
+        } else {
+          auto output=converter.process(chunk.pcm.data()+pos,count);
+          resample_max_us=std::max(resample_max_us.load(),uint32_t(esp_timer_get_time()-conversion_started));
+          written=board::play(output.data(),output.size(),generation);
+        }
+        if(!written){played=false;break;}
         last_block=esp_timer_get_time();
-        if(started){ESP_LOGI("pikoo","audio first block queued samples=%u prefill_ms=%u",unsigned(chunk.pcm.size()),unsigned(prefetched/24));receipt("playback.started",chunk.id);started=false;}
+        if(started){ESP_LOGI("pikoo","audio first block queued samples=%u rate=%u prefill_ms=%u",unsigned(chunk.pcm.size()),chunk.sample_rate,unsigned(prefetched*1000/chunk.sample_rate));receipt("playback.started",chunk.id);started=false;}
       }
       if (played) {
         pending.push_back(
@@ -995,14 +1011,14 @@ void session_task(void *) {
       ESP_LOGI("pikoo","server sleep confirmed; context retained");
     }
     if(continuous_audio&&session.ready&&now()-last_playback_report>=200) {
-      last_playback_report=now();size_t queued=0,inflight=0;
-      {std::lock_guard<std::mutex> lock(play_mutex);queued=playback.queued();inflight=playback.in_flight();}
+      last_playback_report=now();size_t queued=0,inflight=0;unsigned rate=24000;
+      {std::lock_guard<std::mutex> lock(play_mutex);queued=playback.queued();inflight=playback.in_flight();rate=playback.sample_rate();}
       const bool audible=board::output_level()>.003f&&inflight>0;
       auto report=event("pikoo.playback.status");
       cJSON_AddStringToObject(report,"streamId",live_stream.id.c_str());
       cJSON_AddNumberToObject(report,"generation",live_stream.epoch);
-      cJSON_AddNumberToObject(report,"queuedMs",queued/24);
-      cJSON_AddNumberToObject(report,"dmaMs",std::min<size_t>(1000,(inflight-std::min(inflight,queued))/24));
+      cJSON_AddNumberToObject(report,"queuedMs",queued*1000/rate);
+      cJSON_AddNumberToObject(report,"dmaMs",std::min<size_t>(1000,(inflight-std::min(inflight,queued))*1000/rate));
       cJSON_AddBoolToObject(report,"audible",audible);
       cJSON_AddBoolToObject(report,"humanSpeaking",now()-speech_at.load()<250);
       send(report);session.state=audible?State::Speaking:State::Listening;

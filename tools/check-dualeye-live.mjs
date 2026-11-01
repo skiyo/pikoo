@@ -8,10 +8,10 @@ if((await(await fetch(`${origin}/mode`)).json()).mode!=='live')throw Error('Requ
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 let ws,eyes,frames=0,chunks=0,bytes=0,completed=0,clears=0,voiceReady=0,playTimers=new Map(),next=0,level=0;
 const counts={},errors=[],results=[];
-const s=new DeviceSession({send:e=>{if(ws?.readyState===1)ws.send(JSON.stringify(e));},stateChanged:()=>{},stopAudio:()=>{for(const [timer,resolve] of playTimers){clearTimeout(timer);resolve();}playTimers.clear();next=0;},playAudio:(b64,start)=>new Promise(resolve=>{
+const s=new DeviceSession({send:e=>{if(ws?.readyState===1)ws.send(JSON.stringify(e));},stateChanged:()=>{},stopAudio:()=>{for(const [timer,resolve] of playTimers){clearTimeout(timer);resolve();}playTimers.clear();next=0;},playAudio:(b64,start,sampleRate=24000)=>new Promise(resolve=>{
  const b=Buffer.from(b64,'base64');if(b.length%2)errors.push('odd PCM');chunks++;bytes+=b.length;
  let energy=0;for(let i=0;i<b.length;i+=2)energy+=(b.readInt16LE(i)/32768)**2;level=Math.min(1,Math.sqrt(energy/(b.length/2))*12);
- const at=Math.max(Date.now(),next);next=at+b.length/48;
+ const at=Math.max(Date.now(),next);next=at+b.length/2/sampleRate*1000;
  const begin=setTimeout(start,Math.max(0,at-Date.now()));const timer=setTimeout(()=>{clearTimeout(begin);playTimers.delete(timer);resolve();},Math.max(0,next-Date.now()));playTimers.set(timer,()=>{clearTimeout(begin);resolve();});
 })});
 const originalFinish=s.finish.bind(s);s.finish=id=>{const r=s.responses.get(id),done=r?.done&&!r.pending;originalFinish(id);if(done)completed++;};

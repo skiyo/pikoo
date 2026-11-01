@@ -13,7 +13,7 @@ const ws=new WebSocket(origin.replace('http','ws')+'/api/realtime?sessionId=live
 const send=event=>{if(ws.readyState===1)ws.send(JSON.stringify({event_id:randomUUID(),...event}));};
 const finish=()=>{if(completed)return;completed=true;clearInterval(audioTimer);clearInterval(telemetryTimer);clearTimeout(queryTimer);clearTimeout(finishTimer);ws.close();
  if(process.env.PIKOO_TEST_REPORT)fs.writeFileSync(process.env.PIKOO_TEST_REPORT,JSON.stringify(report,null,2),{mode:0o600});console.log(JSON.stringify(report,null,2));};
-ws.on('open',()=>send({type:'session.hello',protocol:{min:'7.0.0',max:'7.0.0'},client:{type:'test',instance_id:randomUUID()},capabilities:['input.audio','input.text','playback.receipts','session.heartbeat','pikoo.audio.continuous.v1'],locale:'zh-CN',time_zone:'Asia/Shanghai',connection:{input_enabled:true,output_enabled:true}}));
+ws.on('open',()=>send({type:'session.hello',protocol:{min:'7.0.0',max:'7.0.0'},client:{type:'test',instance_id:randomUUID()},capabilities:['input.audio','input.text','playback.receipts','session.heartbeat','pikoo.audio.continuous.v1','pikoo.audio.pcm16.v1'],locale:'zh-CN',time_zone:'Asia/Shanghai',connection:{input_enabled:true,output_enabled:true}}));
 ws.on('error',e=>{report.errors.push({code:e.code||e.message});finish();});
 ws.on('unexpected-response',(_,res)=>{report.errors.push({http:res.statusCode});res.resume();finish();});
 ws.on('message',raw=>{
@@ -21,7 +21,7 @@ ws.on('message',raw=>{
  if(e.type==='session.ping')send({type:'session.pong',request_event_id:e.event_id});
  if(e.type==='voice.ready') {
   clearInterval(audioTimer);clearInterval(telemetryTimer);clearTimeout(queryTimer);
-  state=e;report.provider=e.provider;report.continuous=e.continuousAudio;
+  state=e;report.provider=e.provider;report.continuous=e.continuousAudio;report.outputSampleRate=e.outputSampleRate;
   audioTimer=setInterval(()=>send({type:'input_audio_buffer.append',audio:Buffer.alloc(640).toString('base64')}),20);
   telemetryTimer=setInterval(()=>send({type:'pikoo.playback.status',streamId:state.streamId,generation:state.generation,queuedMs:0,dmaMs:0,audible:Date.now()-lastAudible<200,humanSpeaking:false}),200);
   if(process.env.PIKOO_TEST_SILENCE!=='1'&&!report.querySubmitted)queryTimer=setTimeout(()=>{report.querySubmitted=true;send({type:'conversation.item.create',parts:[{type:'text',text:process.env.PIKOO_TEST_TEXT||'请调用搜索工具查一下北京今天的天气，并读出查到的结果。如果无法查到就说明失败，不要猜。'}]});},5000);

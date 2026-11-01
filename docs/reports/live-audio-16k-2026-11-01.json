@@ -1,0 +1,116 @@
+{
+  "date": "2026-11-01",
+  "change": "Native 16 kHz PCM16 Live transport with negotiated device playback",
+  "models_unchanged": [
+    "gpt-live-1",
+    "gpt-6.1-terra"
+  ],
+  "voice": "marin",
+  "upstream_format": {
+    "type": "audio/pcm",
+    "rate": 16000,
+    "channels": 1,
+    "bits": 16
+  },
+  "device_capability": "pikoo.audio.pcm16.v1",
+  "legacy_continuous_clients": "Receive statefully converted 24 kHz PCM until USB upgrade",
+  "payload_reduction_vs_24k_percent": 33.3333333333,
+  "payload_estimates_per_direction": {
+    "raw_24k_bytes_per_second": 48000,
+    "raw_16k_bytes_per_second": 32000,
+    "base64_24k_bytes_per_second_approx": 64000,
+    "base64_16k_bytes_per_second_approx": 42667,
+    "transport_and_json_overhead_excluded": true
+  },
+  "buffering": {
+    "initial_ms": 900,
+    "fallback_wait_ms": 1500,
+    "queue_limit_seconds": 30
+  },
+  "server_deployed": true,
+  "tests": {
+    "server_passed": 60,
+    "simulator_passed": 25,
+    "cpp_core_sanitizers_passed": true,
+    "esp_idf_build_passed": true,
+    "partition_and_image_dry_run_passed": true
+  },
+  "real_api_probes": [
+    {
+      "run": 1,
+      "requestedRate": 16000,
+      "inputBytes": 330564,
+      "outputBytes": 334080,
+      "outputChunks": 105,
+      "inputTranscriptDeltas": 7,
+      "errors": [],
+      "connectMs": 3080,
+      "confirmedFormat": {
+        "type": "audio/pcm",
+        "rate": 16000
+      },
+      "finalUsageSeconds": 13,
+      "maxOutputGapMs": 385,
+      "firstOutputMs": 4115,
+      "outputAudioSeconds": 10.44
+    },
+    {
+      "run": 2,
+      "requestedRate": 16000,
+      "inputBytes": 330564,
+      "outputBytes": 338560,
+      "outputChunks": 106,
+      "inputTranscriptDeltas": 7,
+      "errors": [],
+      "connectMs": 3913,
+      "confirmedFormat": {
+        "type": "audio/pcm",
+        "rate": 16000
+      },
+      "finalUsageSeconds": 13,
+      "maxOutputGapMs": 1096,
+      "firstOutputMs": 5529,
+      "outputAudioSeconds": 10.58
+    }
+  ],
+  "real_api_probe_scope": "Synthetic locally generated speech only, actual pikoo service user and UID-scoped proxy; no household audio",
+  "firmware": {
+    "version": "0.2.1-live16",
+    "app_bytes": 2597696,
+    "app_sha256": "27779f2df1cc00242087554633b4944dd2fd788439f58d8fad7dee840c06da46",
+    "wake_model_changed": false,
+    "volume_changed": false,
+    "flashed": true,
+    "flash_digest_verified": true,
+    "application_partition_only": true,
+    "preserved_configuration": true
+  },
+  "limitations": [
+    "One native 16 kHz probe retained a 1096 ms output interarrival gap; sample-rate reduction does not prove proxy jitter fixed.",
+    "Real family hearing, sustained device audio and microphone recognition require separate acceptance.",
+    "No household recording, wake training or threshold changes.",
+    "The later short device snapshot counted 3 supply gaps (resample_max_us=0); user reported smooth sound and faster replies, so no zero-gap or fully resolved stability claim is made."
+  ],
+  "accepted_as_complete_audio_fix": false,
+  "device_short_followup": {
+    "actual_upstream_rate": 16000,
+    "actual_device_output_rate": 16000,
+    "first_block_log": "rate=16000 prefill_ms=900",
+    "device_counters": {
+      "version": "0.2.1-live16",
+      "wifi": 1,
+      "volume_db": 0,
+      "reconnects": 1,
+      "received_audio": 545,
+      "playback_gaps": 3,
+      "resample_max_us": 0,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "wake_errors": 0,
+      "upload_pending": 0
+    },
+    "human_feedback": "声音顺畅，速度改善",
+    "sustained_audio_acceptance": false,
+    "household_recording_saved": false
+  }
+}

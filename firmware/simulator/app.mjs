@@ -12,9 +12,9 @@ window.addEventListener('pikoo:test-volume',e=>{if(gain)gain.gain.value=e.detail
 const labels={idle:'休息中',connecting:'连接中',listening:'我在听',speaking:'正在回答',thinking:'想一想',muted:'麦克风已关闭',offline:'网络断开',occupied:'其他设备正在使用',auth_error:'请重新配对'};
 function log(s){$('log').textContent=`${new Date().toLocaleTimeString()} ${s}\n`+$('log').textContent.slice(0,6000);}
 let tabStorage;try{tabStorage=globalThis.sessionStorage;}catch{}
-const session=new DeviceSession({conversationId:loadConversation(tabStorage),conversationChanged:id=>saveConversation(tabStorage,id),ended:reason=>{close();$('hint').textContent=reason==='unavailable'?'语音服务暂时不可用，请检查诊断':'已回到待机，唤醒后可以接着聊';},send:e=>{if(ws?.readyState===1)ws.send(JSON.stringify(e));},stopAudio:()=>{for(const s of sources){s.stop();}sources.clear();next=0;},playAudio:(b64,onStart)=>new Promise((resolve,reject)=>{
+const session=new DeviceSession({conversationId:loadConversation(tabStorage),conversationChanged:id=>saveConversation(tabStorage,id),ended:reason=>{close();$('hint').textContent=reason==='unavailable'?'语音服务暂时不可用，请检查诊断':'已回到待机，唤醒后可以接着聊';},send:e=>{if(ws?.readyState===1)ws.send(JSON.stringify(e));},stopAudio:()=>{for(const s of sources){s.stop();}sources.clear();next=0;},playAudio:(b64,onStart,sampleRate=24000)=>new Promise((resolve,reject)=>{
  const raw=Uint8Array.from(atob(b64),x=>x.charCodeAt(0));if(raw.length%2){reject();return;}
- if(!context){reject();return;}const pcm=new DataView(raw.buffer),buf=context.createBuffer(1,raw.length/2,24000),data=buf.getChannelData(0);
+ if(!context){reject();return;}const pcm=new DataView(raw.buffer),buf=context.createBuffer(1,raw.length/2,sampleRate),data=buf.getChannelData(0);
  for(let i=0;i<data.length;i++)data[i]=pcm.getInt16(i*2,true)/32768;
  if(next-context.currentTime>8){reject();return;}const source=context.createBufferSource();source.buffer=buf;source.connect(analyser);sources.add(source);
  const at=Math.max(context.currentTime,next);next=at+buf.duration;const timer=setTimeout(onStart,Math.max(0,(at-context.currentTime)*1000));

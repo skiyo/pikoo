@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash,randomUUID } from 'node:crypto';
-import { OpenAiLive,liveConfig,LIVE_CAPABILITY } from './openai-live.mjs';
-import { pcmRms } from './live-audio.mjs';
+import { OpenAiLive,liveConfig,LIVE_CAPABILITY,PCM16_CAPABILITY,LIVE_SAMPLE_RATE } from './openai-live.mjs';
+import { pcmRms,Pcm16To24 } from './live-audio.mjs';
 import { SemanticIdle,CLASSIFIER_INSTRUCTIONS,INTERACTION_SCHEMA } from './live-idle.mjs';
 import { GatewayClientProtocolSession } from './node_modules/qwen-audio-agent/server/src/transport/gateway-client-protocol-session.mjs';
 import { ToolCallHandler } from './node_modules/qwen-audio-agent/server/src/frontend/tools/tool-call-handler.mjs';
@@ -29,7 +29,7 @@ export function installContinuousProtocol() {
   GatewayClientProtocolSession.prototype.receive=function(value) {
     if(this.mode==='pending'&&value?.type==='session.hello') {
       const supported=this.supportedCapabilities;
-      this.supportedCapabilities=hello=>[...new Set([...(typeof supported==='function'?supported(hello):supported),LIVE_CAPABILITY])];
+      this.supportedCapabilities=hello=>[...new Set([...(typeof supported==='function'?supported(hello):supported),LIVE_CAPABILITY,PCM16_CAPABILITY])];
     }
     if(value?.type==='pikoo.playback.status') {
       if(!this.capabilities.includes(LIVE_CAPABILITY))return {event:null};
@@ -63,6 +63,8 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
   let closed=false,enabled=false,suspended=initialInputSuspension?.suspended===true,ready=false,sleeping=false;
   let transport=null,generation=0,sequence=0,streamId='',retry=0,retryTimer=null,persona='',greet=true;
   let fatalError='';
+  let outputSampleRate=24000;
+  const legacyOutput=new Pcm16To24();
   let lastTelemetry=0,lastAudible=0,farewellAt=0,hasGoodbyeSpeech=false,lastOutputAt=0,taskCount=0;
   let lastAudioAt=0,latestPlayback=null;
   let memoryReplyAuthorized=true;
@@ -133,7 +135,7 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
   async function connect() {
     if(closed||!enabled||suspended)return;
     ready=false;sequence=0;generation++;streamId=randomUUID();
-    lastAudioAt=0;latestPlayback=null;
+    lastAudioAt=0;latestPlayback=null;legacyOutput.reset();
     emit({type:'playback.clear',generation,reason:'connecting'});
     emit({type:'voice.connection',state:'connecting',provider:'openai-live'});
     const agent=context();
@@ -144,13 +146,20 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
         if(closed||transport!==current)return;
         if(e.type==='session.started') {
           ready=true;lastTelemetry=Date.now();retry=0;if(greet)idle.authorize();
-          emit({type:'voice.ready',provider:'openai-live',inputSampleRate:16000,continuousAudio:true,streamId,generation});
+          emit({type:'voice.ready',provider:'openai-live',inputSampleRate:16000,outputSampleRate,continuousAudio:true,streamId,generation});
           if(greet){greet=false;current.send({type:'session.commentary.append',delegation_id:null,content:'用户刚刚唤醒了你，现在用中文简短问候，然后等待。'});}
         } else if(e.type==='session.output_audio.delta'&&ready&&!sleeping) {
           const arrival=Date.now();
           if(lastAudioAt)audioDiagnostics.maxArrivalGapMs=Math.max(audioDiagnostics.maxArrivalGapMs,arrival-lastAudioAt);
           lastAudioAt=arrival;audioDiagnostics.chunks++;
-          emit({type:'audio.delta',responseId:streamId,streamId,generation,sequence:sequence++,continuous:true,sampleRate:24000,audio:e.delta});
+          // Keep old 24 kHz-only devices usable until their USB upgrade.
+          let audio=e.delta;
+          if(outputSampleRate!==LIVE_SAMPLE_RATE) {
+            const converted=legacyOutput.append(Buffer.from(audio,'base64'));
+            if(!converted.length)return;
+            audio=converted.toString('base64');
+          }
+          emit({type:'audio.delta',responseId:streamId,streamId,generation,sequence:sequence++,continuous:true,sampleRate:outputSampleRate,audio});
         } else if(e.type==='session.input_transcript.delta')transcript('user',e);
         else if(e.type==='session.output_transcript.delta'){lastOutputAt=Date.now();if(farewellAt)hasGoodbyeSpeech=true;transcript('assistant',e);}
       },onError:error=>{
@@ -180,6 +189,7 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
       if(event.type==='connect') {
         if(!capabilities.includes(LIVE_CAPABILITY)){emit({type:'voice.connection',state:'unavailable',message:'需要支持 Pikoo 连续音频的固件或模拟器。'});return;}
         if(!voiceAccess.claim().granted){voiceAccess.changed();return;}
+        outputSampleRate=capabilities.includes(PCM16_CAPABILITY)?LIVE_SAMPLE_RATE:24000;
         enabled=true;sleeping=false;fatalError='';voiceAccess.changed();void connect();
       } else if(event.type==='audio.append') {if(enabled&&ready&&!suspended&&voiceAccess.isActive()){
         const pcm=Buffer.isBuffer(event.audio)?event.audio:Buffer.from(event.audio,'base64');
@@ -207,7 +217,7 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
         if(text){memoryReplyAuthorized=true;idle.authorize();record('user',text);transport.text(text);}
       }
     },
-    status:()=>({provider:'openai-live',state:closed?'disconnected':sleeping?'sleeping':fatalError?'unavailable':ready?'connected':enabled?'connecting':'disconnected',error:fatalError||undefined,ready,connected:ready,connecting:enabled&&!ready,sleeping,generation,audio:{...audioDiagnostics},playback:latestPlayback,idle:{lastInteractionDecision,sinceEffectiveMs:Date.now()-idle.lastEffective,pendingSegments:idle.pending.length,classifying:idle.inflight}}),
+    status:()=>({provider:'openai-live',state:closed?'disconnected':sleeping?'sleeping':fatalError?'unavailable':ready?'connected':enabled?'connecting':'disconnected',error:fatalError||undefined,ready,connected:ready,connecting:enabled&&!ready,sleeping,generation,audio:{...audioDiagnostics,upstreamSampleRate:LIVE_SAMPLE_RATE,deviceOutputSampleRate:outputSampleRate},playback:latestPlayback,idle:{lastInteractionDecision,sinceEffectiveMs:Date.now()-idle.lastEffective,pendingSegments:idle.pending.length,classifying:idle.inflight}}),
     setAssistantProfile(value){persona=String(value||'');},
     updateOutputVoice(){throw new Error('Live voice is fixed to marin');},
     handleClientDelivery(){},receiveActionResult(){return false;},updateClientPresence(state){if(state==='sleeping')void stop('client');},

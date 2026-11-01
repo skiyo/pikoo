@@ -26,10 +26,12 @@ quiet synthetic-replay window; never collect household conversation implicitly.
 The normal build tool explicitly disables this diagnostic. Compilation is not
 hardware validation, and any resulting recordings remain private evaluation-only.
 
+2026-11-01 16 kHz follow-up: server deployed and firmware `0.2.1-live16` flashed with app-only digest verification. The board negotiated 16 kHz and bypassed playback resampling; the user reported smooth sound and improved response speed. Server (60), simulator (25), C++ sanitizer checks and ESP-IDF build passed. This short check is not long-run stability acceptance; an isolated API probe still had a 1096 ms arrival gap. See the [actual results](reports/live-audio-16k-2026-11-01.json).
+
 ```mermaid
 flowchart LR
     Device[ESP32 / simulator] <-->|GCP 7 continuous audio extension| Gateway[Pikoo Gateway]
-    Gateway <-->|24 kHz PCM / native Live WebSocket| Live[gpt-live-1]
+    Gateway <-->|16 kHz PCM / native Live WebSocket| Live[gpt-live-1]
     Live <-->|Responses delegation| Terra[gpt-6.1-terra]
     Terra <-->|Function calls / results| Gateway
     Gateway <--> Tools[Search / public pages / notes / memory]
@@ -47,7 +49,7 @@ This requires a firmware/simulator client advertising `pikoo.audio.continuous.v1
 
 ## Audio and lifecycle
 
-The gateway continuously resamples device PCM16 from 16 to 24 kHz. Live returns continuous 24 kHz audio, including silence. `audio.delta` includes `streamId`, `generation`, `sequence` and `continuous:true`. It has no synthetic `audio.done`. Clients reject older generations and clear audio on cancellation/reconnection.
+As of 2026-11-01, Live uses mono PCM16 at 16 kHz for both directions (`audio.format`). Device input is forwarded without resampling. Clients advertising `pikoo.audio.pcm16.v1` receive native 16 kHz output and updated ESP32 firmware plays it directly at its hardware rate. Older continuous-audio clients receive a statefully converted 24 kHz compatibility stream until upgraded; this keeps existing devices usable. Each `audio.delta.sampleRate` and `voice.ready.outputSampleRate` describes the actual client format. Playback prefill remains 900 ms, the fallback wait 1500 ms, and the queue is bounded to 30 seconds at either rate. Compared with 24 kHz, upstream audio payload is reduced by one third per direction; device downlink sees the same reduction only after upgrading. JSON/Base64 and transport overhead are additional. This does not resolve TLS failures, recognition, or proxy jitter by itself. The supported formats are documented in [OpenAI WebSockets](https://developers.openai.com/api/docs/guides/voice-websockets). Live audio remains continuous, including silence. `audio.delta` includes `streamId`, `generation`, `sequence` and `continuous:true`. It has no synthetic `audio.done`. Clients reject older generations and clear audio on cancellation/reconnection.
 
 `pikoo.playback.status` reports stream/generation, queued milliseconds, DMA estimate, audible output and local speech activity. Firmware uses a bounded 900 ms startup buffer, with a 1500 ms wait limit, and re-buffers after starvation. The DMA field currently uses the existing bounded drain estimate; it is not a hardware readback of every played sample. A network gap is not treated as an answer boundary.
 

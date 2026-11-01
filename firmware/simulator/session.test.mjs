@@ -48,3 +48,17 @@ test('Live stream does not require audio.done, ignores old epochs and uses serve
  await s.receive({type:'audio.delta',responseId:'live-a',streamId:'live-a',generation:7,sequence:1,sampleRate:24000,audio:'AAA='});assert.equal(drains.length,1);
  const topic=s.conversationId;s.receive({type:'voice.sleep',state:'sleeping'});assert.equal(s.conversationId,topic);assert.equal(reason,'sleep');assert.equal(s.ready,false);
 });
+
+
+test('16 kHz and legacy 24 kHz reach the audio player with their actual rate',async()=>{
+ const rates=[];
+ const s=new DeviceSession({send(){},stopAudio(){},stateChanged(){},playAudio:async(_audio,start,rate)=>{rates.push(rate);start();}});
+ assert(s.wake().capabilities.includes('pikoo.audio.pcm16.v1'));
+ s.receive({type:'voice.ready',continuousAudio:true,streamId:'s',generation:1,outputSampleRate:16000});
+ await s.receive({type:'audio.delta',responseId:'s',streamId:'s',generation:1,sequence:0,sampleRate:16000,audio:'AAA='});
+ assert.deepEqual(rates,[16000]);
+ s.disconnect(1006);s.wake(false,{resume:true});s.receive({type:'voice.ready'});
+ await s.receive({type:'audio.delta',responseId:'old',sampleRate:24000,audio:'AAA='});
+ await s.receive({type:'audio.delta',responseId:'bad',sampleRate:8000,audio:'AAA='});
+ assert.deepEqual(rates,[16000,24000]);
+});

@@ -10,9 +10,9 @@ let frames=0,pcmChunks=0,pcmSamples=0,cycles=0,cancels=0,rendererPid,device,eyes
 const child=spawn(process.execPath,[new URL('../firmware/simulator/server.mjs',import.meta.url).pathname],{env:{...process.env,PIKOO_SIM_PORT:String(port),PIKOO_SIM_CONFIG:'',PIKOO_WAKE_PYTHON:''},stdio:['ignore','pipe','pipe']});
 child.stderr.on('data',d=>errors.push(d.toString().slice(0,200)));
 await Promise.race([once(child.stdout,'data'),new Promise((_,reject)=>setTimeout(()=>reject(Error('startup timeout')),5000).unref())]);
-const session=new DeviceSession({send:e=>{if(device?.readyState===1)device.send(JSON.stringify(e));},stateChanged:s=>lastState=s,stopAudio:()=>{for(const [t,resolve] of pending){clearTimeout(t);resolve();}pending.clear();nextAudio=0;},playAudio:(b64,start)=>new Promise(resolve=>{
+const session=new DeviceSession({send:e=>{if(device?.readyState===1)device.send(JSON.stringify(e));},stateChanged:s=>lastState=s,stopAudio:()=>{for(const [t,resolve] of pending){clearTimeout(t);resolve();}pending.clear();nextAudio=0;},playAudio:(b64,start,sampleRate=24000)=>new Promise(resolve=>{
   const b=Buffer.from(b64,'base64');if(b.length%2)errors.push('odd PCM length');pcmChunks++;pcmSamples+=b.length/2;
-  const at=Math.max(Date.now(),nextAudio);nextAudio=at+b.length/2/24000*1000;
+  const at=Math.max(Date.now(),nextAudio);nextAudio=at+b.length/2/sampleRate*1000;
   const begin=setTimeout(start,Math.max(0,at-Date.now()));const timer=setTimeout(()=>{clearTimeout(begin);pending.delete(timer);resolve();},Math.max(0,nextAudio-Date.now()));pending.set(timer,()=>{clearTimeout(begin);resolve();});
 })});
 function connect(){device=new WebSocket(`${origin.replace('http:','ws:')}/device`,{origin});device.on('open',()=>device.send(JSON.stringify(session.wake())));device.on('message',d=>{try{session.receive(JSON.parse(d));}catch{errors.push('device parse');}});device.on('error',()=>errors.push('device socket error'));}

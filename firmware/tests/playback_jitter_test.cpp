@@ -78,6 +78,28 @@ int main() {
   while(roomy.queued()+240<=pikoo::Playback::MaxQueuedSamples)assert(roomy.append("burst",pcm,240));
   assert(!roomy.append("burst",pcm,240));assert(roomy.append_error()==pikoo::Playback::AppendError::Capacity);
   roomy.cancel();assert(roomy.queued()==0);assert(!roomy.take(c));
+  // Preserve wall-clock prefill, queue telemetry and the 30s duration bound
+  // at either negotiated rate; reject mid-stream format changes.
+  for(unsigned rate:{16000u,24000u}) {
+    pikoo::Playback audio;assert(audio.set_sample_rate(rate));
+    std::vector<int16_t> first(rate*899/1000,123),tail(rate/1000,123);
+    assert(audio.append("native",first.data(),first.size()));
+    assert(audio.milliseconds(audio.queued())==899);
+    assert(!audio.take(c,audio.initial_samples(),0,1500,true));
+    assert(audio.set_sample_rate(rate)); // Duplicate readiness is harmless.
+    assert(!audio.set_sample_rate(rate==16000?24000:16000));
+    assert(audio.append("native",tail.data(),tail.size()));
+    assert(audio.take(c,audio.initial_samples(),1,1500,true));
+    assert(c.sample_rate==rate&&audio.started(c));audio.drained(c);
+    audio.cancel();assert(audio.queued()==0);
+    assert(!audio.take(c));assert(!audio.set_sample_rate(8000));
+    assert(audio.set_sample_rate(rate));
+    std::vector<int16_t> full(rate*30);
+    assert(audio.append("bound",full.data(),full.size()));
+    assert(audio.milliseconds(audio.queued())==30000);
+    assert(!audio.append("bound",tail.data(),1));
+    audio.reset();assert(audio.set_sample_rate(24000));
+  }
   std::cout<<"PASS: measured reconnect trace, startup deadline, short reply and stale audio; old starvation="
            <<previous.starved_ms<<" ms, fixed="<<fixed.starved_ms<<" ms\n";
 }

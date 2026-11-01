@@ -10,7 +10,7 @@ import { Pcm16To24 } from './live-audio.mjs';
 import { SemanticIdle } from './live-idle.mjs';
 import { UsageLedger } from './live-usage.mjs';
 import { TerraClient } from './openai-terra.mjs';
-import { OpenAiLive,liveConfig,LIVE_CAPABILITY } from './openai-live.mjs';
+import { OpenAiLive,liveConfig,LIVE_CAPABILITY,PCM16_CAPABILITY } from './openai-live.mjs';
 import { ToolReceipts,installContinuousProtocol,createLiveRuntime,installLiveDiagnostics } from './live-runtime.mjs';
 import { ConversationSync } from './node_modules/qwen-audio-agent/server/src/conversation/conversation-sync.mjs';
 import { GatewayClientProtocolSession } from './node_modules/qwen-audio-agent/server/src/transport/gateway-client-protocol-session.mjs';
@@ -68,7 +68,7 @@ test('Terra uses Responses Standard low, no storage, no tools, no retries or alt
 test('native Live tool continuation waits for all outputs, deduplicates calls and accounts nested backend usage',async()=>{
  const socket=new Socket(),ledger=new UsageLedger();let count=0,finishTool;
  const client=new OpenAiLive({apiKey:'test',config:liveConfig(),ledger,socketFactory:()=>socket,executeTool:async()=>{count++;return new Promise(r=>finishTool=r);}}).connect();
- socket.emit('open');assert.equal(socket.sent[0].type,'session.start');assert.equal(socket.sent[0].session.audio.format.rate,24000);
+ socket.emit('open');assert.equal(socket.sent[0].type,'session.start');assert.equal(socket.sent[0].session.audio.format.rate,16000);
  client.event({type:'session.started'});
  const event=e=>client.event({type:'response.event',delegation_id:'d',event:e});
  event({type:'response.created'});const item={type:'function_call',call_id:'c1',name:'notes',arguments:'{}'};
@@ -165,4 +165,63 @@ test('Live diagnostics mount before the API catch-all and refuse remote identiti
   const response=await fetch(url,{headers:{'x-test-access':'local'}});
   assert.equal(response.status,200);assert.equal((await response.json()).provider,'openai-live');
  }finally{await new Promise(resolve=>server.close(resolve));}
+});
+
+
+test('16 kHz wire input preserves every PCM sample and startup silence duration',async()=>{
+ const socket=new Socket();let error;
+ const live=new OpenAiLive({apiKey:'test',config:liveConfig(),socketFactory:()=>socket,onError:e=>error=e}).connect();
+ try {
+  socket.emit('open');live.event({type:'session.started',session:{audio:{format:{type:'audio/pcm',rate:16000}}}});
+  await new Promise(resolve=>setTimeout(resolve,45));
+  const silent=socket.sent.filter(e=>e.type==='session.input_audio.append');assert(silent.length>0);
+  assert(silent.every(e=>Buffer.from(e.audio,'base64').length===640)); // Exactly 20ms, not 30ms.
+  const input=Buffer.alloc(1280);for(let i=0;i<640;i++)input.writeInt16LE(Math.round(20000*Math.sin(i*.17)),i*2);
+  const before=socket.sent.length;live.append16(input);
+  assert.deepEqual(Buffer.from(socket.sent.at(-1).audio,'base64'),input);
+  await new Promise(resolve=>setTimeout(resolve,35));assert.equal(socket.sent.length,before+1);
+  live.append16(Buffer.alloc(1));assert.equal(error.code,'invalid_input_pcm');
+ } finally {live.finish();}
+});
+
+test('unexpected upstream sample rate fails instead of playing at a wrong speed',()=>{
+ const socket=new Socket();let error;
+ const live=new OpenAiLive({apiKey:'test',config:liveConfig(),socketFactory:()=>socket,onError:e=>error=e}).connect();
+ live.event({type:'session.started',session:{audio:{format:{type:'audio/pcm',rate:24000}}}});
+ assert.equal(error.code,'unsupported_live_audio_format');assert.equal(error.fatal,true);assert.equal(live.started,false);
+ live.finish();
+});
+
+test('negotiated clients receive native 16 kHz; legacy 24 kHz output stays continuous and resets after reconnect',async()=>{
+ installContinuousProtocol();const protocol=new GatewayClientProtocolSession();
+ assert(protocol.receive({type:'session.hello',event_id:'pcm16',protocol:{min:'7.0.0',max:'7.0.0'},client:{type:'esp32',instance_id:'new'},capabilities:[LIVE_CAPABILITY,PCM16_CAPABILITY]}).reply.capabilities.includes(PCM16_CAPABILITY));
+ for(const native of [false,true]) {
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'pikoo-pcm16-')),sent=[],transports=[];
+  const runtime=createLiveRuntime({ownerId:'test',sessionId:'test',send:e=>sent.push(e),voiceAccess:{claim:()=>({granted:true}),isActive:()=>true,release(){},changed(){}}},
+   {services:{conversationSync:new ConversationSync()},config:{},terra:{},ledger:new UsageLedger(),receipts:new ToolReceipts(dir),createTransport:options=>{
+    assert.equal(options.config.audio.format.rate,16000);
+    const transport={id:String(transports.length),connect(){options.onEvent({type:'session.started'});},send(){},async close(){options.onClose();},event:options.onEvent};transports.push(transport);return transport;
+   }});
+  const pcm=Buffer.alloc(1280);for(let i=0;i<640;i++)pcm.writeInt16LE(i*17-3000,i*2);
+  const capabilities=[LIVE_CAPABILITY,...native?[PCM16_CAPABILITY]:[]];
+  try {
+   runtime.handleClientEvent({type:'connect'},{capabilities});
+   assert.equal(sent.find(e=>e.type==='voice.ready').outputSampleRate,native?16000:24000);
+   transports[0].event({type:'session.output_audio.delta',delta:pcm.subarray(0,2).toString('base64')});
+   transports[0].event({type:'session.output_audio.delta',delta:pcm.subarray(2).toString('base64')});
+   const audio=sent.filter(e=>e.type==='audio.delta');
+   assert(audio.every((e,i)=>e.sequence===i&&e.sampleRate===(native?16000:24000)));
+   const actual=Buffer.concat(audio.map(e=>Buffer.from(e.audio,'base64')));
+   assert.deepEqual(actual,native?pcm:new Pcm16To24().append(pcm));
+   assert.equal(runtime.status().audio.deviceOutputSampleRate,native?16000:24000);
+   runtime.handleClientEvent({type:'interrupt'});await tick();
+   const before=sent.filter(e=>e.type==='audio.delta').length;
+   transports[0].event({type:'session.output_audio.delta',delta:pcm.toString('base64')});
+   assert.equal(sent.filter(e=>e.type==='audio.delta').length,before);
+   transports[1].event({type:'session.output_audio.delta',delta:pcm.toString('base64')});
+   const recovered=sent.filter(e=>e.type==='audio.delta').at(-1);
+   assert.equal(recovered.sequence,0);
+   assert.deepEqual(Buffer.from(recovered.audio,'base64'),native?pcm:new Pcm16To24().append(pcm));
+  } finally {await runtime.close();fs.rmSync(dir,{recursive:true,force:true});}
+ }
 });

@@ -16,7 +16,7 @@ export class DeviceSession {
     if(!resume){this.greetingPending=true;this.farewell=null;this.latestResponse=null;}
     if(!this.conversationId){this.conversationId=this.newConversationId();this.conversationChanged(this.conversationId);}
     this.clear(false);this.invalid.clear();this.ready=false;this.lastActivity=this.now();this.stateTo('connecting');
-    return this.event('session.hello',{protocol:{min:'7.0.0',max:'7.0.0'},client:{type:'esp32-simulator',version:'0.1.0',instance_id:'pikoo-desktop-simulator'},capabilities:['input.audio','input.text','playback.receipts','session.heartbeat','session.takeover','pikoo.audio.continuous.v1'],locale:'zh-CN',time_zone:'Asia/Shanghai',connection:{voice_enabled:true,input_enabled:true,output_enabled:true,text_only:false,takeover}});
+    return this.event('session.hello',{protocol:{min:'7.0.0',max:'7.0.0'},client:{type:'esp32-simulator',version:'0.1.0',instance_id:'pikoo-desktop-simulator'},capabilities:['input.audio','input.text','playback.receipts','session.heartbeat','session.takeover','pikoo.audio.continuous.v1','pikoo.audio.pcm16.v1'],locale:'zh-CN',time_zone:'Asia/Shanghai',connection:{voice_enabled:true,input_enabled:true,output_enabled:true,text_only:false,takeover}});
   }
   input(audio) { if(this.ready&&!this.muted&&!this.farewell)this.send(this.event('input_audio_buffer.append',{audio})); }
   text(text) { if(this.ready&&!this.muted&&!this.farewell) {this.lastActivity=this.now();this.send(this.event('conversation.item.create',{parts:[{type:'text',text}]}));} }
@@ -38,14 +38,14 @@ export class DeviceSession {
     if(e.type==='audio.done'){const r=this.responses.get(e.responseId);if(r){r.done=true;this.finish(e.responseId);}else{this.announced.delete(e.responseId);this.invalid.add(e.responseId);this.responseDrained(e.responseId);}return;}
     if(e.type==='error') {this.lastError=e.error?.code||e.code;return;}
     if(e.type!=='audio.delta'||!this.ready||this.muted||this.invalid.has(e.responseId))return;
-    if(typeof e.responseId!=='string'||e.sampleRate!==24000||typeof e.audio!=='string')return;
+    if(typeof e.responseId!=='string'||![16000,24000].includes(e.sampleRate)||typeof e.audio!=='string')return;
     if(this.continuous){const live=this.liveStream;if(!live||e.streamId!==live.id||e.generation!==live.generation||e.sequence!==live.next)return;live.next++;}
     const id=e.responseId,epoch=this.epoch;
     const r=this.responses.get(id)||{pending:0,done:false,started:false};
     if(r.done)return;
     this.responses.set(id,r);r.pending++;this.lastActivity=this.now();if(!this.continuous)this.stateTo('speaking');
     try {
-      await this.playAudio(e.audio,()=>{if(epoch===this.epoch&&!r.started){r.started=true;this.send(this.event('playback.started',{responseId:id}));}});
+      await this.playAudio(e.audio,()=>{if(epoch===this.epoch&&!r.started){r.started=true;this.send(this.event('playback.started',{responseId:id}));}},e.sampleRate);
       if(epoch!==this.epoch)return;
       r.pending--;this.lastActivity=this.now();if(!this.continuous)this.finish(id);
     } catch {if(epoch===this.epoch){this.cancel();}}

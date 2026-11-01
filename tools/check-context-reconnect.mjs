@@ -6,8 +6,8 @@ const port=Number(process.env.PIKOO_SIM_PORT||8793),origin=`http://127.0.0.1:${p
 if((await(await fetch(`${origin}/mode`)).json()).mode!=='live')throw Error('Requires live simulator');
 const delay=ms=>new Promise(r=>setTimeout(r,ms));const phrase=['卡通云朵','棉花星星','饼干小船','蜂蜜月亮'][Math.floor(Math.random()*4)]+['蓝莓','杏子','菠萝','布丁','奶糖'][Math.floor(Math.random()*5)];
 let ws,transcript='',ended=0,chunks=0,next=0,timers=new Map(),states=[],failure;
-const s=new DeviceSession({send:e=>{if(ws?.readyState===1)ws.send(JSON.stringify(e));},stopAudio:()=>{for(const [t,r] of timers){clearTimeout(t);r();}timers.clear();next=0;},stateChanged:state=>states.push(state),playAudio:(b64,start)=>new Promise(resolve=>{
- chunks++;const bytes=Buffer.from(b64,'base64').length,at=Math.max(Date.now(),next);next=at+bytes/48;
+const s=new DeviceSession({send:e=>{if(ws?.readyState===1)ws.send(JSON.stringify(e));},stopAudio:()=>{for(const [t,r] of timers){clearTimeout(t);r();}timers.clear();next=0;},stateChanged:state=>states.push(state),playAudio:(b64,start,sampleRate=24000)=>new Promise(resolve=>{
+ chunks++;const bytes=Buffer.from(b64,'base64').length,at=Math.max(Date.now(),next);next=at+bytes/2/sampleRate*1000;
  const begin=setTimeout(start,Math.max(0,at-Date.now())),end=setTimeout(()=>{clearTimeout(begin);timers.delete(end);resolve();},Math.max(0,next-Date.now()));timers.set(end,()=>{clearTimeout(begin);resolve();});
 })});
 const finish=s.finish.bind(s);s.finish=id=>{const done=s.responses.get(id)?.done&&!s.responses.get(id)?.pending;finish(id);if(done)ended++;};

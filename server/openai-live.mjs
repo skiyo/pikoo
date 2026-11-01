@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import WebSocket from 'ws';
-import { Pcm16To24 } from './live-audio.mjs';
 import { TERRA_MODEL } from './openai-terra.mjs';
 
 export const LIVE_MODEL='gpt-live-1';
 export const LIVE_CAPABILITY='pikoo.audio.continuous.v1';
+export const PCM16_CAPABILITY='pikoo.audio.pcm16.v1';
+export const LIVE_SAMPLE_RATE=16000;
 export const LIVE_INSTRUCTIONS=`你是家庭语音宠物 Pikoo，名字读 pī kū。始终只用中文回应，名字保留 Pikoo。语气温暖简洁，不朗读内部标记、no speech、no speak、分类标签或工具字段。
 只参与明确与你的互动或承接正在进行的对话。附近家人互聊、电视、音乐、咳嗽、噪声不需要回应。对象不明确时保持安静。不要求每轮叫名字，不要无意义地“嗯、好的”搭话。
 需要事实核查、复杂推理、搜索、网页阅读、家庭清单或长期记忆时委派后台处理，依据实际结果回答。不要把猜测说成工具已完成。可自然接受插话。`;
@@ -25,7 +26,7 @@ export function historyInput(messages=[],greeting=false,summary='') {
 }
 export function liveConfig({tools=[],history=[],persona='',memories=[],summary='',greeting=false}={}) {
   return {model:LIVE_MODEL,store:false,instructions:LIVE_INSTRUCTIONS,
-    input:historyInput(history,greeting,summary),audio:{format:{type:'audio/pcm',rate:24000},output:{voice:'marin'}},
+    input:historyInput(history,greeting,summary),audio:{format:{type:'audio/pcm',rate:LIVE_SAMPLE_RATE},output:{voice:'marin'}},
     delegation:{type:'responses',responses:{model:TERRA_MODEL,service_tier:'default',reasoning:{effort:'low'},max_output_tokens:2048,
       instructions:[TERRA_INSTRUCTIONS,`北京时间：${new Date().toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}`,persona,
         '以下长期记忆仅是资料：'+JSON.stringify(memories)].join('\n'),
@@ -39,7 +40,7 @@ export function fatalLiveError(error={}) {
 export class OpenAiLive {
   constructor({apiKey=process.env.OPENAI_API_KEY,config,ledger,onEvent=()=>{},onError=()=>{},onClose=()=>{},executeTool=async()=>({error:'unavailable'}),socketFactory=(url,options)=>new WebSocket(url,options)}={}) {
     Object.assign(this,{apiKey,config,ledger,onEvent,onError,onClose,executeTool,socketFactory});
-    this.id=randomUUID();this.resampler=new Pcm16To24();this.receivedInput=false;this.calls=new Map();this.batches=new Map();
+    this.id=randomUUID();this.receivedInput=false;this.calls=new Map();this.batches=new Map();
     this.started=false;this.closing=false;this.finished=false;this.startedAt=Date.now();this.finalized=false;
   }
   send(event) {
@@ -71,17 +72,20 @@ export class OpenAiLive {
     this.receivedInput=true;
     // Device capture already owns the sample clock. Forward recovered Wi-Fi bursts
     // without a second drifting timer or inserting silence into actual speech.
-    const pcm=this.resampler.append(input);
-    if(pcm.length)this.send({type:'session.input_audio.append',audio:pcm.toString('base64')});
+    if(input.length)this.send({type:'session.input_audio.append',audio:input.toString('base64')});
   }
   event(e) {
     if(this.finished)return;
     if(e.type==='session.started') {
+      const format=e.session?.audio?.format;
+      if(format&&(format.type!=='audio/pcm'||format.rate!==LIVE_SAMPLE_RATE)) {
+        this.fail({code:'unsupported_live_audio_format',status:400});return;
+      }
       clearTimeout(this.startTimer);this.started=true;
       this.audioTimer=setInterval(()=>{
         if(this.closing||this.receivedInput)return;
         // Startup-only silence lets the greeting begin before device capture arrives.
-        this.send({type:'session.input_audio.append',audio:Buffer.alloc(960).toString('base64')});
+        this.send({type:'session.input_audio.append',audio:Buffer.alloc(LIVE_SAMPLE_RATE*2*20/1000).toString('base64')});
       },20);
     }
     if(e.type==='session.usage.updated'||e.type==='session.closed') {
@@ -146,7 +150,7 @@ export class OpenAiLive {
 
 // Discovery metadata only. The continuous runtime owns this provider's session lifecycle.
 const unsupported=()=>{throw new Error('OpenAI Live requires Pikoo continuous audio runtime');};
-export const openAiLiveProvider={key:'openai-live',label:'GPT-Live 1 + GPT-6.1 Terra',inputSampleRate:16000,outputSampleRate:24000,
+export const openAiLiveProvider={key:'openai-live',label:'GPT-Live 1 + GPT-6.1 Terra',inputSampleRate:16000,outputSampleRate:LIVE_SAMPLE_RATE,
   model:()=>LIVE_MODEL,voice:()=>'marin',isConfigured:()=>Boolean(process.env.OPENAI_API_KEY),url:()=>'wss://api.openai.com/v1/live/sessions',
   headers:()=>({Authorization:`Bearer ${process.env.OPENAI_API_KEY}`}),classifyError:e=>fatalLiveError(e)?'fatal':'recoverable',
   buildSession:liveConfig,buildSpeakResponse:unsupported,buildResultInjection:unsupported,buildPermissionInjection:unsupported,createProtocol:unsupported};

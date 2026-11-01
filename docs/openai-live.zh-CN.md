@@ -10,10 +10,12 @@
 
 独立构建`PIKOO_AUDIO_CAPTURE_BENCHMARK=ON`支持USB明确触发的4秒原音／AFE对照。不初始化网络，功放关闭；触发前不读取声音。采样时只写PSRAM，结束后导出并清空缓冲，每次启动仅接受一次采样。须使用独立构建目录、明确确认的安静合成回放窗口，不默认采集家庭对话。普通构建工具明确关闭此模式。编译不等于实机验证，录音仅留本机评估，不进入训练。
 
+2026-11-01 的 16 kHz 优化已部署服务器，并烧入 `0.2.1-live16` 固件（仅应用分区，摘要校验通过）。板端实际协商 16 kHz、绕过播放重采样，用户反馈“声音顺畅，速度改善”。服务器 60 项、模拟器 25 项、C++ Sanitizer 检查和 ESP-IDF 编译通过。此次短测不代表长期稳定性通过；独立 API 测试仍观察到一次 1096 毫秒到达间隔。见[实际记录](reports/live-audio-16k-2026-11-01.json)。
+
 ```mermaid
 flowchart LR
     Device[ESP32 / 模拟器] <-->|GCP 7 连续音频扩展| Gateway[Pikoo Gateway]
-    Gateway <-->|24 kHz PCM / 原生 Live WebSocket| Live[gpt-live-1]
+    Gateway <-->|16 kHz PCM / 原生 Live WebSocket| Live[gpt-live-1]
     Live <-->|Responses 委派| Terra[gpt-6.1-terra]
     Terra <-->|工具调用和结果| Gateway
     Gateway <--> Tools[搜索 / 网页 / 清单 / 记忆]
@@ -31,7 +33,7 @@ flowchart LR
 
 ## 音频与会话
 
-网关连续将设备 16 kHz PCM16 转为 24 kHz。Live 下行是包含静音的连续音频，`audio.delta` 带 `streamId`、`generation`、`sequence`、`continuous:true`，不伪造 `audio.done`。取消、断线清空音频，丢弃旧代次。
+2026-11-01 起，Live 输入、输出统一使用 16 kHz 单声道 PCM16（`audio.format`），上行不再重采样。声明 `pikoo.audio.pcm16.v1` 的新版设备与模拟器接收原生 16 kHz；新版固件按硬件采样率直接播放。未升级的连续音频客户端仍收到网关有状态转换后的 24 kHz 兼容音频，不会突然无声或变调。`voice.ready.outputSampleRate` 与每包 `audio.delta.sampleRate` 标明实际格式。两种采样率均保持 900 毫秒起播预缓冲、1500 毫秒兜底等待和 30 秒队列上限。相较原 24 kHz，服务器到 OpenAI 的双向音频载荷各减少约三分之一；设备下行需升级后才享有同样缩减，JSON/Base64 和传输开销另计。此优化不能单独解决 TLS 断开、收音识别或代理抖动。格式依据见 [OpenAI 官方 WebSocket 文档](https://developers.openai.com/api/docs/guides/voice-websockets)。Live 下行仍是包含静音的连续音频，`audio.delta` 带 `streamId`、`generation`、`sequence`、`continuous:true`，不伪造 `audio.done`。取消、断线清空音频，丢弃旧代次。
 
 设备用 `pikoo.playback.status` 上报队列毫秒数、DMA 估算、实际输出音量状态和本地人声活动。固件起播预缓冲 900 毫秒，最多等待 1500 毫秒；断流后重新缓冲。DMA 仍沿用有界排空估算，并非逐样本硬件回读。网络包间隔不代表回答结束。
 

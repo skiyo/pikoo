@@ -35,8 +35,16 @@ public:
     std::string id;
     std::vector<int16_t> pcm;
     uint32_t epoch;
+    unsigned sample_rate = 24000;
   };
   explicit Playback(size_t max_samples = MaxQueuedSamples) : limit_(max_samples) {}
+  bool set_sample_rate(unsigned rate) {
+    if ((rate != 16000 && rate != 24000) || (rate != rate_ && busy())) return false;
+    rate_ = rate;return true;
+  }
+  unsigned sample_rate() const { return rate_; }
+  size_t initial_samples() const { return rate_ * 900 / 1000; }
+  size_t milliseconds(size_t samples) const { return samples * 1000 / rate_; }
   void announce(const std::string &id) {
     if (!id.empty() && id.size() <= 128 && known_.size() < 32 && !rejected(id))
       known_.insert(id);
@@ -53,13 +61,14 @@ public:
     if(rejected_.count(id)){append_error_=AppendError::Rejected;return false;}
     auto it = responses_.find(id);
     if(it!=responses_.end()&&it->second.done){append_error_=AppendError::Completed;return false;}
-    if(count>limit_-queued_){append_error_=AppendError::Capacity;return false;}
+    const size_t capacity=std::min(limit_,size_t(rate_)*30);
+    if(count>capacity-queued_){append_error_=AppendError::Capacity;return false;}
     // Bound metadata as well as PCM. The caller closes pathological sessions.
     if (it == responses_.end() && responses_.size() >= 32) {
       append_error_=AppendError::Metadata;return false;
     }
     responses_[id].remaining += count;
-    queue_.push_back({id, {data, data + count}, epoch_});
+    queue_.push_back({id, {data, data + count}, epoch_, rate_});
     queued_ += count;
     return true;
   }
@@ -82,7 +91,7 @@ public:
       // Some responses begin with a one-sample silent marker hundreds of ms
       // before speech. It cannot sustain playback: start the fallback timer
       // only once at least 10 ms of PCM is available. Keep the marker queued.
-      if(response.remaining<std::min<size_t>(initial_samples,240))return false;
+      if(response.remaining<std::min<size_t>(initial_samples,rate_/100))return false;
       if(!response.buffering){response.buffering=true;response.buffered_at=now_ms;}
       if(now_ms<response.buffered_at||now_ms-response.buffered_at<max_buffer_ms)return false;
     }
@@ -153,6 +162,7 @@ private:
     uint64_t buffered_at = 0;
   };
   size_t limit_, queued_ = 0;
+  unsigned rate_ = 24000;
   uint32_t epoch_ = 0;
   AppendError append_error_=AppendError::None;
   std::deque<Chunk> queue_;
