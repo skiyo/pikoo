@@ -2,7 +2,7 @@
   "date": "2026-11-01",
   "scope": "Server output voice, delivery and PCM loudness; native 16 kHz firmware retained",
   "selected_voice": "coral",
-  "gain_db": 6,
+  "gain_db": 12,
   "previous_trial": {
     "voice": "coral",
     "gain_db": 4,
@@ -27,12 +27,13 @@
   "wake_changes": false,
   "server_deployed": true,
   "tests": {
-    "server_passed": 63,
+    "server_passed": 65,
     "server_failed": 0,
     "gain_4db_low_amplitude_rms_verified": true,
-    "gain_6db_peak_range_monotonicity_verified": true,
     "packet_boundary_equivalence": true,
-    "native_and_legacy_output_gain_integration": true
+    "native_and_legacy_output_gain_integration": true,
+    "gain_12db_peak_range_monotonicity_verified": true,
+    "gains_4_6_12db_rms_verified": true
   },
   "real_coral_api_probe": {
     "run": 1,
@@ -55,10 +56,33 @@
   },
   "synthetic_only_probe": true,
   "household_recording_saved": false,
-  "human_acceptance_of_6db_and_energetic_delivery": "pending",
   "limitations": [
     "Voice suitability and physical speaker loudness are subjective and require listening.",
     "Soft-knee peak protection does not prove the physical speaker cannot distort.",
     "Existing proxy jitter and long-run audio stability are separate unresolved acceptance items."
-  ]
+  ],
+  "gain6_trial": {
+    "voice": "coral",
+    "gain_db": 6,
+    "human_feedback": "Enthusiasm improved; loudness still perceived unchanged",
+    "measured_server_gain_db": 6.000010954888548,
+    "max_source_rms": 0.04038278254117692,
+    "max_delivered_rms": 0.08057413281251655,
+    "no_audio_saved_for_measurement": true,
+    "loudness_accepted": false
+  },
+  "human_acceptance_of_12db": "pending",
+  "enthusiastic_delivery_human_feedback": "热情还好了",
+  "aggregate_diagnostics": "Cumulative measured PCM gain, maximum source RMS and maximum delivered RMS; no content or recordings",
+  "gain12_verification": {
+    "configured_db": 12,
+    "measured_pcm_gain_db": 12.000012052711641,
+    "max_source_rms": 0.04224327177097757,
+    "max_delivered_rms": 0.16817396629716966,
+    "samples_requiring_peak_compression": 0,
+    "upstream_rate": 16000,
+    "device_output_rate": 16000,
+    "voice": "coral",
+    "recordings_saved": false
+  }
 }

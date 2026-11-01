@@ -39,7 +39,7 @@ flowchart LR
     Gateway <--> State[(Private text history / memory / usage)]
 ```
 
-The later voice trial selects Coral at +6 dB after the initial +4 dB trial was reported too quiet and lacking energy. Software and API acceptance are recorded separately from pending human listening: [voice trial record](reports/live-voice-style-2026-11-01.json). To restore the previous output settings, set the protected service environment to `PIKOO_LIVE_OUTPUT_GAIN_DB=0` and `PIKOO_LIVE_VOICE=marin`, then restart into a new session; the 16 kHz fix remains in place.
+The later voice trial selects Coral at +12 dB after the initial +4 dB trial was reported too quiet and lacking energy, and the +6 dB trial improved enthusiasm but was still perceived as too quiet. Software and API acceptance are recorded separately from pending human listening: [voice trial record](reports/live-voice-style-2026-11-01.json). To restore the previous output settings, set the protected service environment to `PIKOO_LIVE_OUTPUT_GAIN_DB=0` and `PIKOO_LIVE_VOICE=marin`, then restart into a new session; the 16 kHz fix remains in place.
 
 ## Configuration and deployment
 

@@ -195,7 +195,7 @@ test('unexpected upstream sample rate fails instead of playing at a wrong speed'
 test('negotiated clients receive native 16 kHz; legacy 24 kHz output stays continuous and resets after reconnect',async()=>{
  installContinuousProtocol();const protocol=new GatewayClientProtocolSession();
  assert(protocol.receive({type:'session.hello',event_id:'pcm16',protocol:{min:'7.0.0',max:'7.0.0'},client:{type:'esp32',instance_id:'new'},capabilities:[LIVE_CAPABILITY,PCM16_CAPABILITY]}).reply.capabilities.includes(PCM16_CAPABILITY));
- for(const native of [false,true])for(const gainDb of [0,4]) {
+ for(const native of [false,true])for(const gainDb of [0,4,12]) {
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'pikoo-pcm16-')),sent=[],transports=[];
   const runtime=createLiveRuntime({ownerId:'test',sessionId:'test',send:e=>sent.push(e),voiceAccess:{claim:()=>({granted:true}),isActive:()=>true,release(){},changed(){}}},
    {services:{conversationSync:new ConversationSync()},config:{},outputGainDb:gainDb,terra:{},ledger:new UsageLedger(),receipts:new ToolReceipts(dir),createTransport:options=>{
