@@ -41,6 +41,8 @@ flowchart LR
 
 The later voice trial selects Coral at +12 dB after the initial +4 dB trial was reported too quiet and lacking energy, and the +6 dB trial improved enthusiasm but was still perceived as too quiet. Software and API acceptance are recorded separately from pending human listening: [voice trial record](reports/live-voice-style-2026-11-01.json). To restore the previous output settings, set the protected service environment to `PIKOO_LIVE_OUTPUT_GAIN_DB=0` and `PIKOO_LIVE_VOICE=marin`, then restart into a new session; the 16 kHz fix remains in place.
 
+Later on 2026-11-01, a second user-supplied proxy subscription was compared using real Live streams. Its Singapore dedicated node passed two short streams (connect 1457–1573 ms, maximum arrival gap 337–358 ms) and Terra; the production UID-TUN check also passed (1358 ms connect, 338 ms maximum gap). It is now selected, with new U.S. and old Taiwan nodes retained for manual rollback. The short real-device follow-up saw a 201 ms maximum upstream gap; household listening and sustained stability remain pending. Subscription credentials stay private. See the [route comparison](reports/proxy-comparison-2026-11-01.json).
+
 ## Configuration and deployment
 
 Install the pinned dependencies with `npm ci --ignore-scripts` in `server/`. Deploy all server modules, not only `host.mjs`; do not modify the installed upstream package. Use Node.js 24 or newer. Put secrets in an owner-readable private environment file (0600), loaded by Node `--env-file` or systemd `EnvironmentFile` before the process starts. The example `server/deploy/openai-live.env.example` contains no credentials.

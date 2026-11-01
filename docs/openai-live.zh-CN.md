@@ -25,6 +25,8 @@ flowchart LR
 
 后续音色试用选择 Coral、+12dB；此前 +4dB 被反馈为声音偏小、不够热情，+6dB 的热情已改善但音量仍不足。软件／API 验证与待完成真人听感分别记录，见[音色试用记录](reports/live-voice-style-2026-11-01.json)。如需恢复原输出设置，将服务环境改为 `PIKOO_LIVE_OUTPUT_GAIN_DB=0`、`PIKOO_LIVE_VOICE=marin`，再重启新建会话；保留已完成的 16kHz 优化。
 
+2026-11-01 后续用真实 Live 音频比较了用户提供的第二个机场。新加坡专线两轮均通过（连接 1457–1573 毫秒、最大音频到达间隔 337–358 毫秒），Terra 也通过；实际生产 UID-TUN 路径复验通过（连接 1358 毫秒、最大间隔 338 毫秒）。现已选用该节点，保留新美国和旧台湾节点供手动回退。切换后的实机短测观察到最大上游间隔 201 毫秒，真人听感及长期稳定性仍待验收。订阅凭证仅保留私密配置。见[线路比较](reports/proxy-comparison-2026-11-01.json)。
+
 ## 配置与部署
 
 在 `server/` 执行 `npm ci --ignore-scripts`，使用 Node.js 24 或以上。部署全部服务器模块，不仅是 `host.mjs`；不修改上游安装包。私密配置设为 0600，通过 Node `--env-file` 或 systemd `EnvironmentFile` 在启动前加载。脱敏模板见 `server/deploy/openai-live.env.example`。
