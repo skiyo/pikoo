@@ -35,7 +35,11 @@
   "wake_changes": false,
   "household_audio_recorded": false,
   "privacy": "Synthetic speech only in isolated runtime with its own owner and in-memory history; no household source data",
-  "manual_device_acceptance": "pending",
+  "manual_device_acceptance": {
+    "user_confirmed": true,
+    "result": "正常告别并闭眼",
+    "recordings_saved": false
+  },
   "voice_style": "One plain instruction for familiar, friendly everyday conversation; detailed vocal performance directives removed",
   "limitations": [
     "Synthetic and software behavior do not establish family microphone or listening acceptance.",
