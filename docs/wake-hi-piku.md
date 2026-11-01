@@ -10,6 +10,15 @@ Conversation language, server, volume and installed wake model are unchanged.
 
 ## Current results
 
+2026-11-01 [device follow-up](reports/hi-pikoo-device-2026-11-01.json): the
+authorized private trial is now installed after a verified complete flash backup.
+The silent board probe matched 16 host feature/output frames; 600 timed calls
+gave 6.303ms p99, 6.406ms maximum and a 25,116-byte arena, with 19.6fps eyes and
+no deadline/inference errors. Normal firmware joined Wi-Fi and showed standby
+with zero uploaded samples and the existing 0dB setting. This passes the bounded
+resource gate, not recognition, natural-interruption or long-run acceptance.
+The following corpus and packaging results describe the 2026-10-31 snapshot.
+
 The [machine-readable record](reports/hi-pikoo-2026-10-31.json) preserves all
 52 completed fits across thirteen bounded studies and their failures. Reclocking
 the same weights is not counted as new training. **No candidate meets the formal
