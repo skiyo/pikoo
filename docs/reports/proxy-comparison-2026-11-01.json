@@ -204,7 +204,7 @@
     "output_transcript_deltas": 45,
     "voice": "coral",
     "gain_db": 12,
-    "human_acceptance": "pending"
+    "human_acceptance": "Network smooth; voice tone still needs adjustment"
   },
   "config_changes": {
     "existing_config_and_selection_backed_up": true,
@@ -225,5 +225,6 @@
     "Missing final close usage is reported separately from successful starts and streaming.",
     "Earlier old-route production gaps reached 3022ms; the short paired trials are not a guarantee of future maximum gaps.",
     "Physical audio and natural-expression acceptance await the user."
-  ]
+  ],
+  "short_network_human_acceptance": true
 }

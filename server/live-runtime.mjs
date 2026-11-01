@@ -67,6 +67,7 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
   const legacyOutput=new Pcm16To24();
   const outputGain=new PcmOutputGain(outputGainDb);
   let lastTelemetry=0,lastAudible=0,farewellAt=0,hasGoodbyeSpeech=false,lastOutputAt=0,taskCount=0;
+  let farewellDrainUntil=0;
   let lastAudioAt=0,latestPlayback=null;
   let memoryReplyAuthorized=true;
   let lastInteractionDecision=null;
@@ -80,7 +81,15 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
       memoryReplyAuthorized=true;
       for(const item of items)record('user',item.text,item.id);
       for(const item of outputPending.splice(0))record('assistant',item.text,item.id);
-      if(result.farewell){farewellAt=Date.now();hasGoodbyeSpeech=false;}
+      if(result.farewell&&!farewellAt){
+        farewellAt=Date.now();
+        const userStart=Math.max(...items.map(item=>item.startedAt||item.at||farewellAt));
+        // Live can finish its goodbye before the independent classifier returns.
+        // Preserve that evidence rather than waiting for another spoken reply.
+        hasGoodbyeSpeech=lastOutputAt>=userStart&&lastOutputAt>0;
+        farewellDrainUntil=Math.max(farewellAt,lastOutputAt)+1000+Math.min(30000,(latestPlayback?.queuedMs||0)+(latestPlayback?.dmaMs||0));
+        logger?.info?.('pikoo.farewell_armed',{replyAlreadyObserved:hasGoodbyeSpeech});
+      }
     },onDecision:result=>{lastInteractionDecision=result.label;if(result.label!=='directed'){memoryReplyAuthorized=false;outputPending.length=0;}},
     onError:error=>logger?.warn('pikoo.classification_failed',{code:error.code||error.name})});
   const context=()=>({frontend:buildFrontendToolContext({backendAvailability:{snapshot:()=>({configured:false})},
@@ -119,7 +128,7 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
     audioDiagnostics[role==='user'?'inputTranscriptDeltas':'outputTranscriptDeltas']++;
     const previous=segments[role];
     if(previous&&Number(e.start_ms)>previous.end+800)flushTranscript(role);
-    const item=segments[role]||{id:randomUUID(),text:'',end:0,at:0};
+    const item=segments[role]||{id:randomUUID(),text:'',end:0,at:0,startedAt:Date.now()};
     item.text+=String(e.delta||'');item.text=item.text.slice(-8000);item.end=Number(e.end_ms)||item.end;item.at=Date.now();segments[role]=item;
     emit({type:'transcript.delta',role,content:e.delta||'',turnId:item.id});
   }
@@ -162,7 +171,14 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
           }
           emit({type:'audio.delta',responseId:streamId,streamId,generation,sequence:sequence++,continuous:true,sampleRate:outputSampleRate,audio});
         } else if(e.type==='session.input_transcript.delta')transcript('user',e);
-        else if(e.type==='session.output_transcript.delta'){lastOutputAt=Date.now();if(farewellAt)hasGoodbyeSpeech=true;transcript('assistant',e);}
+        else if(e.type==='session.output_transcript.delta'){
+          lastOutputAt=Date.now();
+          if(farewellAt){
+            hasGoodbyeSpeech=true;
+            farewellDrainUntil=lastOutputAt+1000+Math.min(30000,(latestPlayback?.queuedMs||0)+(latestPlayback?.dmaMs||0));
+          }
+          transcript('assistant',e);
+        }
       },onError:error=>{
         logger?.warn('pikoo.live_error',{code:error.code,fatal:error.fatal===true});
         if(error.fatal){fatalError=error.code;enabled=false;emit({type:'voice.connection',state:'unavailable',provider:'openai-live',message:`OpenAI: ${error.code}`});}
@@ -180,7 +196,12 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
     // A lost device report must not hold an otherwise silent billed session open.
     if(Date.now()-lastTelemetry>5000)idle.playback({});
     if(idle.replyAuthorized&&!idle.playing&&!taskCount&&Date.now()-Math.max(lastOutputAt,idle.lastEffective)>5000)idle.replyAuthorized=false;
-    if(farewellAt&&((hasGoodbyeSpeech&&!idle.playing&&Date.now()-lastOutputAt>2000)||Date.now()-farewellAt>20000))void stop('farewell');
+    // Continuous Live sends silent PCM too: its queue need not become empty.
+    // Wait for observed speech and the bounded playback tail, not stream end.
+    const now=Date.now();
+    const farewellDrained=hasGoodbyeSpeech&&now>=farewellDrainUntil&&now-lastOutputAt>1000;
+    const farewellWithoutReply=!hasGoodbyeSpeech&&now-farewellAt>=5000;
+    if(farewellAt&&((!idle.playing&&(farewellDrained||farewellWithoutReply))||now-farewellAt>=20000))void stop('farewell');
     else if(idle.due())void stop('idle');
   },250);ticker.unref();
   return {
@@ -218,7 +239,7 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
         if(text){memoryReplyAuthorized=true;idle.authorize();record('user',text);transport.text(text);}
       }
     },
-    status:()=>({provider:'openai-live',state:closed?'disconnected':sleeping?'sleeping':fatalError?'unavailable':ready?'connected':enabled?'connecting':'disconnected',error:fatalError||undefined,ready,connected:ready,connecting:enabled&&!ready,sleeping,generation,audio:{...audioDiagnostics,upstreamSampleRate:LIVE_SAMPLE_RATE,deviceOutputSampleRate:outputSampleRate,outputGainDb:outputGain.db,limitedSamples:outputGain.limitedSamples,...outputGain.stats(),voice:liveVoice()},playback:latestPlayback,idle:{lastInteractionDecision,sinceEffectiveMs:Date.now()-idle.lastEffective,pendingSegments:idle.pending.length,classifying:idle.inflight}}),
+    status:()=>({provider:'openai-live',state:closed?'disconnected':sleeping?'sleeping':fatalError?'unavailable':ready?'connected':enabled?'connecting':'disconnected',error:fatalError||undefined,ready,connected:ready,connecting:enabled&&!ready,sleeping,generation,audio:{...audioDiagnostics,upstreamSampleRate:LIVE_SAMPLE_RATE,deviceOutputSampleRate:outputSampleRate,outputGainDb:outputGain.db,limitedSamples:outputGain.limitedSamples,...outputGain.stats(),voice:liveVoice()},playback:latestPlayback,idle:{lastInteractionDecision,sinceEffectiveMs:Date.now()-idle.lastEffective,pendingSegments:idle.pending.length,classifying:idle.inflight,farewellArmed:!!farewellAt,farewellReplyObserved:hasGoodbyeSpeech,farewellAgeMs:farewellAt?Date.now()-farewellAt:0}}),
     setAssistantProfile(value){persona=String(value||'');},
     updateOutputVoice(){throw new Error('Live voice is selected at startup; start a new session to change it');},
     handleClientDelivery(){},receiveActionResult(){return false;},updateClientPresence(state){if(state==='sleeping')void stop('client');},

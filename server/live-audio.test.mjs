@@ -28,6 +28,6 @@ test('output settings reject invalid gains and untested voices before making req
  assert.equal(LIVE_VOICES.length,31);for(const voice of LIVE_VOICES)assert.equal(liveConfig({voice}).audio.output.voice,voice);
  assert.throws(()=>liveConfig({voice:'invented-voice'}),/Unsupported/);
  const instructions=liveConfig().instructions;
- assert(instructions.includes('带笑意'));assert(instructions.includes('附近家人互聊'));
- assert(instructions.includes('Backchannel policy:'));assert(instructions.includes('Interruption policy:'));assert(instructions.includes('自然的日常语速'));assert(!instructions.includes('energetic and animated'));assert(instructions.includes('不要刻意兴奋'));
+ assert(instructions.includes('始终只用中文'));assert(instructions.includes('附近家人互聊'));
+ assert(instructions.includes('Backchannel policy:'));assert(instructions.includes('Interruption policy:'));
 });

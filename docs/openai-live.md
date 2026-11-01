@@ -43,6 +43,8 @@ The later voice trial selects Coral at +12 dB after the initial +4 dB trial was 
 
 Later on 2026-11-01, a second user-supplied proxy subscription was compared using real Live streams. Its Singapore dedicated node passed two short streams (connect 1457–1573 ms, maximum arrival gap 337–358 ms) and Terra; the production UID-TUN check also passed (1358 ms connect, 338 ms maximum gap). It is now selected, with new U.S. and old Taiwan nodes retained for manual rollback. The short real-device follow-up saw a 201 ms maximum upstream gap; household listening and sustained stability remain pending. Subscription credentials stay private. See the [route comparison](reports/proxy-comparison-2026-11-01.json).
 
+The later spoken-goodbye fix preserves assistant speech that preceded a delayed classifier result and waits for a bounded playback tail. Synthetic goodbye closed about 6.0 seconds after its utterance ended; discussing the word goodbye did not close the session. The old code fails the new timing regression; 68 server checks pass. Family microphone and eye-closing acceptance remain separate. Delivery instructions were reduced to a single everyday-conversation direction after exaggerated speech was reported. See the [actual farewell results](reports/live-farewell-2026-11-01.json).
+
 ## Configuration and deployment
 
 Install the pinned dependencies with `npm ci --ignore-scripts` in `server/`. Deploy all server modules, not only `host.mjs`; do not modify the installed upstream package. Use Node.js 24 or newer. Put secrets in an owner-readable private environment file (0600), loaded by Node `--env-file` or systemd `EnvironmentFile` before the process starts. The example `server/deploy/openai-live.env.example` contains no credentials.
