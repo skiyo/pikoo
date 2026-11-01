@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {PcmOutputGain,liveOutputGainDb,pcmRms} from './live-audio.mjs';
-import {liveConfig,liveVoice} from './openai-live.mjs';
+import {liveConfig,liveVoice,LIVE_VOICES} from './openai-live.mjs';
 
 for(const db of [4,6,12])test(`quiet PCM receives +${db}dB without duration, sample rate or packet-boundary changes`,()=>{
  const pcm=Buffer.alloc(32000);for(let i=0;i<16000;i++)pcm.writeInt16LE(Math.round(3000*Math.sin(i*.13)),i*2);
@@ -25,8 +25,9 @@ test('output settings reject invalid gains and untested voices before making req
  assert.equal(liveOutputGainDb({}),0);assert.equal(liveOutputGainDb({PIKOO_LIVE_OUTPUT_GAIN_DB:'4'}),4);
  assert.equal(liveVoice({}),'marin');assert.equal(liveVoice({PIKOO_LIVE_VOICE:'coral'}),'coral');
  assert.equal(liveConfig({voice:'coral'}).audio.output.voice,'coral');
+ assert.equal(LIVE_VOICES.length,31);for(const voice of LIVE_VOICES)assert.equal(liveConfig({voice}).audio.output.voice,voice);
  assert.throws(()=>liveConfig({voice:'invented-voice'}),/Unsupported/);
  const instructions=liveConfig().instructions;
  assert(instructions.includes('带笑意'));assert(instructions.includes('附近家人互聊'));
- assert(instructions.includes('Backchannel policy:'));assert(instructions.includes('Interruption policy:'));
+ assert(instructions.includes('Backchannel policy:'));assert(instructions.includes('Interruption policy:'));assert(instructions.includes('自然的日常语速'));assert(!instructions.includes('energetic and animated'));assert(instructions.includes('不要刻意兴奋'));
 });

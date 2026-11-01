@@ -29,7 +29,7 @@ flowchart LR
 
 在 `server/` 执行 `npm ci --ignore-scripts`，使用 Node.js 24 或以上。部署全部服务器模块，不仅是 `host.mjs`；不修改上游安装包。私密配置设为 0600，通过 Node `--env-file` 或 systemd `EnvironmentFile` 在启动前加载。脱敏模板见 `server/deploy/openai-live.env.example`。
 
-设置 `PIKOO_VOICE_PROVIDER=openai-live`、`OPENAI_API_KEY`，保留 `AGENT_PROTOCOL=none`。原有家庭 owner、设备鉴权、清单、安全网页抓取和 DeepSeek 搜索配置继续使用。两种模型固定不自动替换；Live 默认 marin，通过 `PIKOO_LIVE_VOICE` 可选 marin、coral、shimmer、cedar；当前家庭试用选择 coral 并要求热情、有精神、声音清晰饱满并有语调起伏，仍保留安静倾听规则，英文输入也用中文回答；Terra 使用 Standard、低推理强度、`store:false`。不自动切回其他供应商、不自动充值。
+设置 `PIKOO_VOICE_PROVIDER=openai-live`、`OPENAI_API_KEY`，保留 `AGENT_PROTOCOL=none`。原有家庭 owner、设备鉴权、清单、安全网页抓取和 DeepSeek 搜索配置继续使用。两种模型固定不自动替换；Live 默认 marin，通过 `PIKOO_LIVE_VOICE` 可选官方 Live API 的 31 款内置音色（`LIVE_VOICES`），并不代表 31 款都已验收中文听感；当前家庭试用选择 coral 并要求自然亲切、清晰饱满、使用日常交谈语调，仍保留安静倾听规则，英文输入也用中文回答；Terra 使用 Standard、低推理强度、`store:false`。不自动切回其他供应商、不自动充值。
 
 设备或模拟器必须协商 `pikoo.audio.continuous.v1`。旧客户端收到升级提示。固件只升级应用分区，保留私密配置和原厂备份；排查 Live 不改唤醒权重或音量。
 
@@ -37,7 +37,7 @@ flowchart LR
 
 `PIKOO_LIVE_OUTPUT_GAIN_DB=12` 在服务器对下行 PCM 增加 +12dB（允许 0–12，代码默认 0）。轻声按目标增益放大，超过 0.75 满幅的峰值经过柔和压缩，向 0.94 满幅上限靠近；不增加音频缓冲、不改变采音与唤醒链路，板端仍保留 0dB DAC 设置。峰值保护不代表实物喇叭绝不会失真。
 
-`PIKOO_LIVE_VOICE=coral` 在会话启动时选择内置音色，修改后需要新建 Live 会话，近期文字上下文仍由 Gateway 管理。提示词要求热情有活力、清晰饱满、有语调起伏，避免气声、耳语和拖虚的句尾，同时保留背景聊天时安静、插话时让出话轮的规则。音色适合与否要真人试听，API 接受不能代替听感。依据：[官方音色配置](https://developers.openai.com/api/docs/guides/live-conversations)、[语气提示](https://developers.openai.com/api/docs/guides/live-prompting)。
+`PIKOO_LIVE_VOICE=coral` 在会话启动时选择内置音色，修改后需要新建 Live 会话，近期文字上下文仍由 Gateway 管理。提示词要求自然亲切、清晰饱满、有适度语调变化，避免刻意兴奋、夸张惊喜、角色变声、气声和拖虚的句尾，同时保留背景聊天时安静、插话时让出话轮的规则。音色适合与否要真人试听，API 接受不能代替听感。依据：[官方音色配置](https://developers.openai.com/api/docs/guides/live-conversations)、[语气提示](https://developers.openai.com/api/docs/guides/live-prompting)。
 
 ## 音频与会话
 

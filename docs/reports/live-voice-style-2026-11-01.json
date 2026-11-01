@@ -84,5 +84,15 @@
     "device_output_rate": 16000,
     "voice": "coral",
     "recordings_saved": false
+  },
+  "followup": {
+    "human_feedback": "Expression became exaggerated and unnatural; stutter persisted",
+    "natural_delivery_deployed": true,
+    "coral_voice_and_12db_retained": true,
+    "natural_delivery_human_acceptance": "pending",
+    "network_report": "live-network-followup-2026-11-01.json",
+    "new_delivery": "Friendly natural everyday conversation, restrained expression, no exaggerated excitement or character voices",
+    "official_builtin_voice_count": 31,
+    "official_voice_list": "https://developers.openai.com/api/reference/resources/live/methods/create"
   }
 }
