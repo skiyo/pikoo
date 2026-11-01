@@ -1,0 +1,64 @@
+{
+  "date": "2026-11-01",
+  "scope": "Server output voice, delivery and PCM loudness; native 16 kHz firmware retained",
+  "selected_voice": "coral",
+  "gain_db": 6,
+  "previous_trial": {
+    "voice": "coral",
+    "gain_db": 4,
+    "human_feedback": "Still quiet; too breathy and not enthusiastic enough",
+    "accepted": false
+  },
+  "new_delivery": "Cheerful energetic patient pet companion; clear full-bodied speech, lively intonation and complete phrase endings; avoid breathiness, whispering, tired delivery and repetitive praise",
+  "quiet_background_and_interruption_rules_retained": true,
+  "limiter": {
+    "type": "sample-local symmetric soft knee",
+    "knee_fraction_full_scale": 0.75,
+    "ceiling_fraction_full_scale": 0.94,
+    "additional_audio_buffer_ms": 0,
+    "physical_speaker_distortion_excluded": false
+  },
+  "upstream_format": {
+    "rate": 16000,
+    "type": "audio/pcm"
+  },
+  "hardware_dac_db": 0,
+  "firmware_reflashed_for_voice_change": false,
+  "wake_changes": false,
+  "server_deployed": true,
+  "tests": {
+    "server_passed": 63,
+    "server_failed": 0,
+    "gain_4db_low_amplitude_rms_verified": true,
+    "gain_6db_peak_range_monotonicity_verified": true,
+    "packet_boundary_equivalence": true,
+    "native_and_legacy_output_gain_integration": true
+  },
+  "real_coral_api_probe": {
+    "run": 1,
+    "requestedRate": 16000,
+    "inputBytes": 330564,
+    "outputBytes": 311680,
+    "outputChunks": 98,
+    "inputTranscriptDeltas": 8,
+    "errors": [],
+    "connectMs": 2874,
+    "confirmedFormat": {
+      "type": "audio/pcm",
+      "rate": 16000
+    },
+    "confirmedVoice": "coral",
+    "finalUsageSeconds": 11,
+    "maxOutputGapMs": 565,
+    "firstOutputMs": 3937,
+    "outputAudioSeconds": 9.74
+  },
+  "synthetic_only_probe": true,
+  "household_recording_saved": false,
+  "human_acceptance_of_6db_and_energetic_delivery": "pending",
+  "limitations": [
+    "Voice suitability and physical speaker loudness are subjective and require listening.",
+    "Soft-knee peak protection does not prove the physical speaker cannot distort.",
+    "Existing proxy jitter and long-run audio stability are separate unresolved acceptance items."
+  ]
+}

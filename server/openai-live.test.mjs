@@ -6,7 +6,7 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import express from 'express';
 import { optionalModuleFactories } from './node_modules/qwen-audio-agent/server/src/app/optional-modules.mjs';
-import { Pcm16To24 } from './live-audio.mjs';
+import { Pcm16To24,PcmOutputGain } from './live-audio.mjs';
 import { SemanticIdle } from './live-idle.mjs';
 import { UsageLedger } from './live-usage.mjs';
 import { TerraClient } from './openai-terra.mjs';
@@ -195,15 +195,16 @@ test('unexpected upstream sample rate fails instead of playing at a wrong speed'
 test('negotiated clients receive native 16 kHz; legacy 24 kHz output stays continuous and resets after reconnect',async()=>{
  installContinuousProtocol();const protocol=new GatewayClientProtocolSession();
  assert(protocol.receive({type:'session.hello',event_id:'pcm16',protocol:{min:'7.0.0',max:'7.0.0'},client:{type:'esp32',instance_id:'new'},capabilities:[LIVE_CAPABILITY,PCM16_CAPABILITY]}).reply.capabilities.includes(PCM16_CAPABILITY));
- for(const native of [false,true]) {
+ for(const native of [false,true])for(const gainDb of [0,4]) {
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'pikoo-pcm16-')),sent=[],transports=[];
   const runtime=createLiveRuntime({ownerId:'test',sessionId:'test',send:e=>sent.push(e),voiceAccess:{claim:()=>({granted:true}),isActive:()=>true,release(){},changed(){}}},
-   {services:{conversationSync:new ConversationSync()},config:{},terra:{},ledger:new UsageLedger(),receipts:new ToolReceipts(dir),createTransport:options=>{
+   {services:{conversationSync:new ConversationSync()},config:{},outputGainDb:gainDb,terra:{},ledger:new UsageLedger(),receipts:new ToolReceipts(dir),createTransport:options=>{
     assert.equal(options.config.audio.format.rate,16000);
     const transport={id:String(transports.length),connect(){options.onEvent({type:'session.started'});},send(){},async close(){options.onClose();},event:options.onEvent};transports.push(transport);return transport;
    }});
   const pcm=Buffer.alloc(1280);for(let i=0;i<640;i++)pcm.writeInt16LE(i*17-3000,i*2);
-  const capabilities=[LIVE_CAPABILITY,...native?[PCM16_CAPABILITY]:[]];
+  const expected=new PcmOutputGain(gainDb).append(pcm);
+  const capabilities=[LIVE_CAPABILITY,...(native?[PCM16_CAPABILITY]:[])];
   try {
    runtime.handleClientEvent({type:'connect'},{capabilities});
    assert.equal(sent.find(e=>e.type==='voice.ready').outputSampleRate,native?16000:24000);
@@ -212,7 +213,7 @@ test('negotiated clients receive native 16 kHz; legacy 24 kHz output stays conti
    const audio=sent.filter(e=>e.type==='audio.delta');
    assert(audio.every((e,i)=>e.sequence===i&&e.sampleRate===(native?16000:24000)));
    const actual=Buffer.concat(audio.map(e=>Buffer.from(e.audio,'base64')));
-   assert.deepEqual(actual,native?pcm:new Pcm16To24().append(pcm));
+   assert.deepEqual(actual,native?expected:new Pcm16To24().append(expected));
    assert.equal(runtime.status().audio.deviceOutputSampleRate,native?16000:24000);
    runtime.handleClientEvent({type:'interrupt'});await tick();
    const before=sent.filter(e=>e.type==='audio.delta').length;
@@ -221,7 +222,7 @@ test('negotiated clients receive native 16 kHz; legacy 24 kHz output stays conti
    transports[1].event({type:'session.output_audio.delta',delta:pcm.toString('base64')});
    const recovered=sent.filter(e=>e.type==='audio.delta').at(-1);
    assert.equal(recovered.sequence,0);
-   assert.deepEqual(Buffer.from(recovered.audio,'base64'),native?pcm:new Pcm16To24().append(pcm));
+   assert.deepEqual(Buffer.from(recovered.audio,'base64'),native?expected:new Pcm16To24().append(expected));
   } finally {await runtime.close();fs.rmSync(dir,{recursive:true,force:true});}
  }
 });

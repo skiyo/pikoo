@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash,randomUUID } from 'node:crypto';
-import { OpenAiLive,liveConfig,LIVE_CAPABILITY,PCM16_CAPABILITY,LIVE_SAMPLE_RATE } from './openai-live.mjs';
-import { pcmRms,Pcm16To24 } from './live-audio.mjs';
+import { OpenAiLive,liveConfig,LIVE_CAPABILITY,PCM16_CAPABILITY,LIVE_SAMPLE_RATE,liveVoice } from './openai-live.mjs';
+import { pcmRms,Pcm16To24,PcmOutputGain,liveOutputGainDb } from './live-audio.mjs';
 import { SemanticIdle,CLASSIFIER_INSTRUCTIONS,INTERACTION_SCHEMA } from './live-idle.mjs';
 import { GatewayClientProtocolSession } from './node_modules/qwen-audio-agent/server/src/transport/gateway-client-protocol-session.mjs';
 import { ToolCallHandler } from './node_modules/qwen-audio-agent/server/src/frontend/tools/tool-call-handler.mjs';
@@ -59,12 +59,13 @@ export class ToolReceipts {
 }
 
 export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,initialInputSuspension},
-  {services,terra,ledger,receipts,config,createTransport=options=>new OpenAiLive(options)}) {
+  {services,terra,ledger,receipts,config,outputGainDb=liveOutputGainDb(),createTransport=options=>new OpenAiLive(options)}) {
   let closed=false,enabled=false,suspended=initialInputSuspension?.suspended===true,ready=false,sleeping=false;
   let transport=null,generation=0,sequence=0,streamId='',retry=0,retryTimer=null,persona='',greet=true;
   let fatalError='';
   let outputSampleRate=24000;
   const legacyOutput=new Pcm16To24();
+  const outputGain=new PcmOutputGain(outputGainDb);
   let lastTelemetry=0,lastAudible=0,farewellAt=0,hasGoodbyeSpeech=false,lastOutputAt=0,taskCount=0;
   let lastAudioAt=0,latestPlayback=null;
   let memoryReplyAuthorized=true;
@@ -153,7 +154,7 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
           if(lastAudioAt)audioDiagnostics.maxArrivalGapMs=Math.max(audioDiagnostics.maxArrivalGapMs,arrival-lastAudioAt);
           lastAudioAt=arrival;audioDiagnostics.chunks++;
           // Keep old 24 kHz-only devices usable until their USB upgrade.
-          let audio=e.delta;
+          let audio=outputGain.db?outputGain.append(Buffer.from(e.delta,'base64')).toString('base64'):e.delta;
           if(outputSampleRate!==LIVE_SAMPLE_RATE) {
             const converted=legacyOutput.append(Buffer.from(audio,'base64'));
             if(!converted.length)return;
@@ -217,9 +218,9 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
         if(text){memoryReplyAuthorized=true;idle.authorize();record('user',text);transport.text(text);}
       }
     },
-    status:()=>({provider:'openai-live',state:closed?'disconnected':sleeping?'sleeping':fatalError?'unavailable':ready?'connected':enabled?'connecting':'disconnected',error:fatalError||undefined,ready,connected:ready,connecting:enabled&&!ready,sleeping,generation,audio:{...audioDiagnostics,upstreamSampleRate:LIVE_SAMPLE_RATE,deviceOutputSampleRate:outputSampleRate},playback:latestPlayback,idle:{lastInteractionDecision,sinceEffectiveMs:Date.now()-idle.lastEffective,pendingSegments:idle.pending.length,classifying:idle.inflight}}),
+    status:()=>({provider:'openai-live',state:closed?'disconnected':sleeping?'sleeping':fatalError?'unavailable':ready?'connected':enabled?'connecting':'disconnected',error:fatalError||undefined,ready,connected:ready,connecting:enabled&&!ready,sleeping,generation,audio:{...audioDiagnostics,upstreamSampleRate:LIVE_SAMPLE_RATE,deviceOutputSampleRate:outputSampleRate,outputGainDb:outputGain.db,limitedSamples:outputGain.limitedSamples,voice:liveVoice()},playback:latestPlayback,idle:{lastInteractionDecision,sinceEffectiveMs:Date.now()-idle.lastEffective,pendingSegments:idle.pending.length,classifying:idle.inflight}}),
     setAssistantProfile(value){persona=String(value||'');},
-    updateOutputVoice(){throw new Error('Live voice is fixed to marin');},
+    updateOutputVoice(){throw new Error('Live voice is selected at startup; start a new session to change it');},
     handleClientDelivery(){},receiveActionResult(){return false;},updateClientPresence(state){if(state==='sleeping')void stop('client');},
     applyInputSuspension(state){suspended=state.suspended===true;if(suspended)void stop('input_suspended');},
     deactivate(){void stop('takeover');},

@@ -39,11 +39,13 @@ flowchart LR
     Gateway <--> State[(Private text history / memory / usage)]
 ```
 
+The later voice trial selects Coral at +6 dB after the initial +4 dB trial was reported too quiet and lacking energy. Software and API acceptance are recorded separately from pending human listening: [voice trial record](reports/live-voice-style-2026-11-01.json). To restore the previous output settings, set the protected service environment to `PIKOO_LIVE_OUTPUT_GAIN_DB=0` and `PIKOO_LIVE_VOICE=marin`, then restart into a new session; the 16 kHz fix remains in place.
+
 ## Configuration and deployment
 
 Install the pinned dependencies with `npm ci --ignore-scripts` in `server/`. Deploy all server modules, not only `host.mjs`; do not modify the installed upstream package. Use Node.js 24 or newer. Put secrets in an owner-readable private environment file (0600), loaded by Node `--env-file` or systemd `EnvironmentFile` before the process starts. The example `server/deploy/openai-live.env.example` contains no credentials.
 
-Set `PIKOO_VOICE_PROVIDER=openai-live`, `OPENAI_API_KEY`, and `AGENT_PROTOCOL=none`. Existing owner-scoped authentication, notes, safe URL retrieval and DeepSeek search settings remain in effect. Both model names are fixed. Live uses `marin`; replies are Chinese, including when input is English. Terra uses Standard service tier, low reasoning and `store:false`. No automatic provider fallback or account top-up is performed.
+Set `PIKOO_VOICE_PROVIDER=openai-live`, `OPENAI_API_KEY`, and `AGENT_PROTOCOL=none`. Existing owner-scoped authentication, notes, safe URL retrieval and DeepSeek search settings remain in effect. Both model names are fixed. Live defaults to `marin`; `PIKOO_LIVE_VOICE` supports the built-in options `marin`, `coral`, `shimmer`, or `cedar`. The household trial selects `coral` with a cheerful, energetic, clearly projected delivery while retaining quiet listening. Replies are Chinese, including when input is English. Terra uses Standard service tier, low reasoning and `store:false`. No automatic provider fallback or account top-up is performed.
 
 This requires a firmware/simulator client advertising `pikoo.audio.continuous.v1`. Older clients are rejected with an upgrade message. Keep the private configuration and factory backup when upgrading the application partition. Do not change wake weights or speaker gain to troubleshoot Live transport.
 

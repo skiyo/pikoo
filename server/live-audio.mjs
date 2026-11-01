@@ -18,3 +18,30 @@ export function pcmRms(bytes) {
   let sum=0;for(let i=0;i+1<bytes.length;i+=2){const x=bytes.readInt16LE(i)/32768;sum+=x*x;}
   return Math.sqrt(sum/Math.max(1,bytes.length/2));
 }
+
+export function liveOutputGainDb(env=process.env) {
+  const db=Number(env.PIKOO_LIVE_OUTPUT_GAIN_DB??0);
+  if(!Number.isFinite(db)||db<0||db>6)throw new Error('PIKOO_LIVE_OUTPUT_GAIN_DB must be between 0 and 6');
+  return db;
+}
+
+// Memoryless, sample-local soft knee: no lookahead, packet-boundary envelope
+// jumps, extra buffering or hard PCM clipping. Quiet samples get the full gain.
+export class PcmOutputGain {
+  constructor(db=0) {
+    this.db=liveOutputGainDb({PIKOO_LIVE_OUTPUT_GAIN_DB:db});
+    this.scale=10**(this.db/20);this.limitedSamples=0;
+  }
+  append(bytes) {
+    if(bytes.length%2)throw new Error('PCM16 byte count must be even');
+    if(!this.db)return bytes;
+    const out=Buffer.alloc(bytes.length),knee=.75,ceiling=.94;
+    for(let i=0;i<bytes.length;i+=2) {
+      const value=bytes.readInt16LE(i)/32768*this.scale,amplitude=Math.abs(value);
+      const limited=amplitude>knee?knee+(ceiling-knee)*Math.tanh((amplitude-knee)/(ceiling-knee)):amplitude;
+      if(amplitude>knee)this.limitedSamples++;
+      out.writeInt16LE(Math.round(Math.sign(value)*limited*32768),i);
+    }
+    return out;
+  }
+}
