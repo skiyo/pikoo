@@ -29,11 +29,13 @@ flowchart LR
 
 后续告别修复保留“已先说完、分类才返回”的回应证据，并等待有界播放尾部。合成告别语句结束后约 6.0 秒正常关闭，讨论“再见是什么意思”不会关闭；旧代码无法通过新增时序回归，服务器共 68 项检查通过。家庭麦克风与闭眼验收单独记录。用户反馈表演感仍重后，发声风格已精简为一句日常聊天要求。见[告别实际记录](reports/live-farewell-2026-11-01.json)。
 
+用户随后选择试听 B（`marin`）。当前服务已切换 Marin，并用简短提示要求中文适度轻快、词句连贯、减少不必要停顿。同文样例从 9.97 秒缩短为 8.75 秒，未改变 16kHz 采样率、增益或代理。这是模型表达节奏调整，并非精确的播放倍率；提速后的真人听感仍待确认。见[语速验证](reports/live-marin-pace-2026-11-01.json)。
+
 ## 配置与部署
 
 在 `server/` 执行 `npm ci --ignore-scripts`，使用 Node.js 24 或以上。部署全部服务器模块，不仅是 `host.mjs`；不修改上游安装包。私密配置设为 0600，通过 Node `--env-file` 或 systemd `EnvironmentFile` 在启动前加载。脱敏模板见 `server/deploy/openai-live.env.example`。
 
-设置 `PIKOO_VOICE_PROVIDER=openai-live`、`OPENAI_API_KEY`，保留 `AGENT_PROTOCOL=none`。原有家庭 owner、设备鉴权、清单、安全网页抓取和 DeepSeek 搜索配置继续使用。两种模型固定不自动替换；Live 默认 marin，通过 `PIKOO_LIVE_VOICE` 可选官方 Live API 的 31 款内置音色（`LIVE_VOICES`），并不代表 31 款都已验收中文听感；当前家庭试用选择 coral 并要求自然亲切、清晰饱满、使用日常交谈语调，仍保留安静倾听规则，英文输入也用中文回答；Terra 使用 Standard、低推理强度、`store:false`。不自动切回其他供应商、不自动充值。
+设置 `PIKOO_VOICE_PROVIDER=openai-live`、`OPENAI_API_KEY`，保留 `AGENT_PROTOCOL=none`。原有家庭 owner、设备鉴权、清单、安全网页抓取和 DeepSeek 搜索配置继续使用。两种模型固定不自动替换；Live 默认 marin，通过 `PIKOO_LIVE_VOICE` 可选官方 Live API 的 31 款内置音色（`LIVE_VOICES`），并不代表 31 款都已验收中文听感；当前家庭配置选择 marin 并要求自然亲切、清晰饱满、使用日常交谈语调，仍保留安静倾听规则，英文输入也用中文回答；Terra 使用 Standard、低推理强度、`store:false`。不自动切回其他供应商、不自动充值。
 
 设备或模拟器必须协商 `pikoo.audio.continuous.v1`。旧客户端收到升级提示。固件只升级应用分区，保留私密配置和原厂备份；排查 Live 不改唤醒权重或音量。
 
