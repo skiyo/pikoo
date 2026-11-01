@@ -4,6 +4,28 @@
 
 Development preview, updated 2026-10-29. Native API and isolated tool tests have run; sustained device audio acceptance is still in progress. This is not the Realtime API with a renamed model.
 
+2026-11-01 [network follow-up](reports/live-network-2026-11-01.json): repeated
+Gateway→OpenAI TLS resets were reproduced. The deployed mitigation uses the
+Taiwan exit, explicit IPv4 and `X25519:P-256` key-exchange groups; it does not pin
+service IPs, disable certificate checks or cap TLS versions. Three short native
+Live starts/closes and a Terra request succeeded, but household follow-up still
+reported slow replies and reconnect displays. This is **not fully resolved**.
+
+Local-only Live diagnostics now include accepted input counts, maximum input
+RMS, transcript-event counts and the latest interaction decision. Sleep logs
+include the reason and time since effective interaction, without speech text or
+PCM. A temporary +12dB conversation-input comparison did not demonstrate an
+improvement and was fully reverted; wake settings and output volume are unchanged.
+
+An isolated `PIKOO_AUDIO_CAPTURE_BENCHMARK=ON` build supports a USB-triggered
+four-second ADC/AFE comparison. It does not initialize networking, leaves the
+amplifier off, and reads no samples until explicitly triggered. Capture buffers
+stay in PSRAM during sampling, export afterward and are wiped; it accepts only
+one capture per boot. Use a separate build directory and an explicitly confirmed
+quiet synthetic-replay window; never collect household conversation implicitly.
+The normal build tool explicitly disables this diagnostic. Compilation is not
+hardware validation, and any resulting recordings remain private evaluation-only.
+
 ```mermaid
 flowchart LR
     Device[ESP32 / simulator] <-->|GCP 7 continuous audio extension| Gateway[Pikoo Gateway]

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash,randomUUID } from 'node:crypto';
 import { OpenAiLive,liveConfig,LIVE_CAPABILITY } from './openai-live.mjs';
+import { pcmRms } from './live-audio.mjs';
 import { SemanticIdle,CLASSIFIER_INSTRUCTIONS,INTERACTION_SCHEMA } from './live-idle.mjs';
 import { GatewayClientProtocolSession } from './node_modules/qwen-audio-agent/server/src/transport/gateway-client-protocol-session.mjs';
 import { ToolCallHandler } from './node_modules/qwen-audio-agent/server/src/frontend/tools/tool-call-handler.mjs';
@@ -65,7 +66,8 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
   let lastTelemetry=0,lastAudible=0,farewellAt=0,hasGoodbyeSpeech=false,lastOutputAt=0,taskCount=0;
   let lastAudioAt=0,latestPlayback=null;
   let memoryReplyAuthorized=true;
-  const audioDiagnostics={chunks:0,maxArrivalGapMs:0};
+  let lastInteractionDecision=null;
+  const audioDiagnostics={chunks:0,maxArrivalGapMs:0,inputChunks:0,inputSamples:0,maxInputRms:0,lastInputAt:0,inputTranscriptDeltas:0,outputTranscriptDeltas:0};
   const segments={user:null,assistant:null};const backgroundContext=[];const outputPending=[];
   const emit=e=>{if(!closed)send(e);};
   const conversation=()=>services.conversationSync.frontendContext({ownerId,sessionId});
@@ -76,7 +78,7 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
       for(const item of items)record('user',item.text,item.id);
       for(const item of outputPending.splice(0))record('assistant',item.text,item.id);
       if(result.farewell){farewellAt=Date.now();hasGoodbyeSpeech=false;}
-    },onDecision:result=>{if(result.label!=='directed'){memoryReplyAuthorized=false;outputPending.length=0;}},
+    },onDecision:result=>{lastInteractionDecision=result.label;if(result.label!=='directed'){memoryReplyAuthorized=false;outputPending.length=0;}},
     onError:error=>logger?.warn('pikoo.classification_failed',{code:error.code||error.name})});
   const context=()=>({frontend:buildFrontendToolContext({backendAvailability:{snapshot:()=>({configured:false})},
     disabledTools:['spawn_thinking','schedule_reminder'],frontendRetrieval:services.frontendRetrieval,memoryService:services.frontendMemory,sessionDigests:services.sessionDigests}),
@@ -111,6 +113,7 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
     else if(memoryReplyAuthorized&&idle.replyAuthorized)record(role,text,segment.id);
   }
   function transcript(role,e) {
+    audioDiagnostics[role==='user'?'inputTranscriptDeltas':'outputTranscriptDeltas']++;
     const previous=segments[role];
     if(previous&&Number(e.start_ms)>previous.end+800)flushTranscript(role);
     const item=segments[role]||{id:randomUUID(),text:'',end:0,at:0};
@@ -119,6 +122,7 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
   }
   async function stop(reason='idle') {
     if(sleeping||closed)return;sleeping=true;enabled=false;ready=false;clearTimeout(retryTimer);generation++;
+    logger?.info?.('pikoo.live_sleep',{reason,lastInteractionDecision,sinceEffectiveMs:Date.now()-idle.lastEffective,audio:{...audioDiagnostics}});
     emit({type:'playback.clear',generation,reason});
     flushTranscript('user');flushTranscript('assistant');
     await transport?.close();
@@ -177,7 +181,15 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
         if(!capabilities.includes(LIVE_CAPABILITY)){emit({type:'voice.connection',state:'unavailable',message:'需要支持 Pikoo 连续音频的固件或模拟器。'});return;}
         if(!voiceAccess.claim().granted){voiceAccess.changed();return;}
         enabled=true;sleeping=false;fatalError='';voiceAccess.changed();void connect();
-      } else if(event.type==='audio.append') {if(enabled&&ready&&!suspended&&voiceAccess.isActive())transport.append16(event.audio);}
+      } else if(event.type==='audio.append') {if(enabled&&ready&&!suspended&&voiceAccess.isActive()){
+        const pcm=Buffer.isBuffer(event.audio)?event.audio:Buffer.from(event.audio,'base64');
+        transport.append16(pcm);
+        if(pcm.length<=16000&&pcm.length%2===0){
+          audioDiagnostics.inputChunks++;audioDiagnostics.inputSamples+=pcm.length/2;
+          audioDiagnostics.maxInputRms=Math.max(audioDiagnostics.maxInputRms,pcmRms(pcm));
+          audioDiagnostics.lastInputAt=Date.now();
+        }
+      }}
       else if(event.type==='pikoo.playback.status') {
         if(!voiceAccess.isActive()||event.generation!==generation||event.streamId!==streamId)return;
         lastTelemetry=Date.now();if(event.audible)lastAudible=lastTelemetry;
@@ -195,7 +207,7 @@ export function createLiveRuntime({ownerId,sessionId,send,voiceAccess,logger,ini
         if(text){memoryReplyAuthorized=true;idle.authorize();record('user',text);transport.text(text);}
       }
     },
-    status:()=>({provider:'openai-live',state:closed?'disconnected':sleeping?'sleeping':fatalError?'unavailable':ready?'connected':enabled?'connecting':'disconnected',error:fatalError||undefined,ready,connected:ready,connecting:enabled&&!ready,sleeping,generation,audio:{...audioDiagnostics},playback:latestPlayback}),
+    status:()=>({provider:'openai-live',state:closed?'disconnected':sleeping?'sleeping':fatalError?'unavailable':ready?'connected':enabled?'connecting':'disconnected',error:fatalError||undefined,ready,connected:ready,connecting:enabled&&!ready,sleeping,generation,audio:{...audioDiagnostics},playback:latestPlayback,idle:{lastInteractionDecision,sinceEffectiveMs:Date.now()-idle.lastEffective,pendingSegments:idle.pending.length,classifying:idle.inflight}}),
     setAssistantProfile(value){persona=String(value||'');},
     updateOutputVoice(){throw new Error('Live voice is fixed to marin');},
     handleClientDelivery(){},receiveActionResult(){return false;},updateClientPresence(state){if(state==='sleeping')void stop('client');},

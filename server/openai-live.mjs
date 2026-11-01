@@ -50,7 +50,12 @@ export class OpenAiLive {
   connect() {
     if(this.ws)throw new Error('Live transport already used');
     if(!this.apiKey)throw new Error('OpenAI key not configured');
-    this.ws=this.socketFactory('wss://api.openai.com/v1/live/sessions',{headers:{Authorization:`Bearer ${this.apiKey}`},handshakeTimeout:15000});
+    // The deployed UID-scoped TUN is IPv4-only. Node's automatic family
+    // selection reproduced TLS resets here; keep DNS and certificate hostname
+    // validation, while using the verified single-family connection path.
+    // Explicit classical key-exchange groups also passed repeated Live starts
+    // on the available proxy path; TLS version and certificate checks stay on.
+    this.ws=this.socketFactory('wss://api.openai.com/v1/live/sessions',{headers:{Authorization:`Bearer ${this.apiKey}`},handshakeTimeout:15000,family:4,autoSelectFamily:false,ecdhCurve:'X25519:P-256'});
     this.startTimer=setTimeout(()=>this.fail({code:'start_timeout'}),20000);
     this.ws.on('open',()=>this.send({type:'session.start',session:this.config}));
     this.ws.on('message',raw=>{try{this.event(JSON.parse(raw));}catch{this.fail({code:'invalid_live_event'});}});

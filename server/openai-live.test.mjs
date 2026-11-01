@@ -17,6 +17,21 @@ import { GatewayClientProtocolSession } from './node_modules/qwen-audio-agent/se
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 class Socket extends EventEmitter {readyState=1;bufferedAmount=0;sent=[];send(s){this.sent.push(JSON.parse(s));}terminate(){this.readyState=3;}}
 
+test('Live keeps hostname authentication and a bounded IPv4-only TUN handshake',()=>{
+ const socket=new Socket();let observed;
+ const live=new OpenAiLive({apiKey:'test',config:liveConfig(),socketFactory:(url,options)=>{observed={url,options};return socket;}}).connect();
+ try {
+  assert.equal(observed.url,'wss://api.openai.com/v1/live/sessions');
+  assert.equal(observed.options.family,4);assert.equal(observed.options.autoSelectFamily,false);
+  assert.equal(observed.options.ecdhCurve,'X25519:P-256');
+  assert.equal(observed.options.maxVersion,undefined); // Do not downgrade TLS.
+  assert.equal(observed.options.handshakeTimeout,15000);
+  assert.equal(observed.options.headers.Authorization,'Bearer test');
+  assert.notEqual(observed.options.rejectUnauthorized,false);
+  assert.equal(observed.options.lookup,undefined); // No pinned service IP.
+ } finally {live.finish();}
+});
+
 test('streaming 16→24 conversion is packet independent, continuous and bounded',()=>{
  const input=Buffer.alloc(16000*2);for(let i=0;i<16000;i++)input.writeInt16LE(Math.round(18000*Math.sin(i*0.037)),i*2);
  const all=new Pcm16To24().append(input),r=new Pcm16To24(),parts=[];
@@ -104,10 +119,15 @@ test('Live runtime restores durable-source text after cancel and excludes classi
  const services={conversationSync:sync};
  const runtime=createLiveRuntime({ownerId:'o',sessionId:'s',send:e=>sent.push(e),voiceAccess:{claim:()=>({granted:true}),isActive:()=>true,release(){},changed(){}},logger:{warn(){}}},
   {services,config:{},ledger:new UsageLedger(),receipts:new ToolReceipts(dir),terra:{request:async()=>({text:'{"label":"background","farewell":false}'})},
-   createTransport:options=>{configs.push(options.config);const transport={id:String(transports.length),connect(){options.onEvent({type:'session.started'});},send(){return true;},text(){},async close(){options.onClose();},event:options.onEvent};transports.push(transport);return transport;}});
+   createTransport:options=>{configs.push(options.config);const transport={id:String(transports.length),connect(){options.onEvent({type:'session.started'});},send(){return true;},text(){},append16(pcm){this.lastInput=pcm;},async close(){options.onClose();},event:options.onEvent};transports.push(transport);return transport;}});
  try {
   runtime.handleClientEvent({type:'connect'},{capabilities:[LIVE_CAPABILITY]});
   assert.equal(runtime.status().state,'connected');
+  const pcm=Buffer.alloc(1280);for(let n=0;n<pcm.length;n+=2)pcm.writeInt16LE(16384,n);
+  runtime.handleClientEvent({type:'audio.append',audio:pcm.toString('base64')});
+  assert.deepEqual(transports[0].lastInput,pcm);
+  assert.equal(runtime.status().audio.inputChunks,1);assert.equal(runtime.status().audio.inputSamples,640);
+  assert.equal(runtime.status().audio.maxInputRms,.5);assert.equal(runtime.status().audio.inputTranscriptDeltas,0);
   runtime.handleClientEvent({type:'input.message',parts:[{type:'text',text:'我正在做一艘纸船。'}]});
   assert.equal(sync.frontendContext({ownerId:'o',sessionId:'s'})[0].content,'我正在做一艘纸船。');
   runtime.handleClientEvent({type:'interrupt'});await tick();

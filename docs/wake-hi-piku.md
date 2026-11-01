@@ -19,6 +19,15 @@ with zero uploaded samples and the existing 0dB setting. This passes the bounded
 resource gate, not recognition, natural-interruption or long-run acceptance.
 The following corpus and packaging results describe the 2026-10-31 snapshot.
 
+The first human wake succeeded, followed by a separate Gateway→OpenAI TLS reset
+issue. The [network follow-up](reports/live-network-2026-11-01.json) records
+failed attempts as well as the mitigation: Taiwan exit plus explicit IPv4 and
+classical key-exchange groups, with hostname/certificate checks and normal TLS
+version negotiation retained. Three real Live starts/normal closes, a Terra
+call and device greeting reception succeeded afterward. IPv4 alone had still
+failed. Human listening and long-run stability remain unaccepted; this does
+not change wake weights, thresholds or any failed recognition result.
+
 The [machine-readable record](reports/hi-pikoo-2026-10-31.json) preserves all
 52 completed fits across thirteen bounded studies and their failures. Reclocking
 the same weights is not counted as new training. **No candidate meets the formal

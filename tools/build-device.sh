@@ -28,4 +28,4 @@ if [ -n "${PIKOO_WAKE_VETO_PACK:-}" ]; then
   veto_args=(-DPIKOO_WAKE_VETO=ON "-DPIKOO_WAKE_VETO_MODELS=$veto_pack" "-DPIKOO_WAKE_VETO_CUTOFF=${PIKOO_WAKE_VETO_CUTOFF:-0.5}")
 fi
 cd "$root/firmware"
-idf.py -B build-dualeye -DSDKCONFIG="$PWD/build-dualeye/sdkconfig" -DPIKOO_WAKE_MODEL="$model" -DPIKOO_WAKE_MAX_BYTES="${PIKOO_WAKE_MAX_BYTES:-524288}" -DPIKOO_WAKE_BENCHMARK=OFF -DPIKOO_COMMAND_BENCHMARK=OFF "${veto_args[@]}" "${policy_args[@]}" "${trial_args[@]}" build
+idf.py -B build-dualeye -DSDKCONFIG="$PWD/build-dualeye/sdkconfig" -DPIKOO_WAKE_MODEL="$model" -DPIKOO_WAKE_MAX_BYTES="${PIKOO_WAKE_MAX_BYTES:-524288}" -DPIKOO_AUDIO_CAPTURE_BENCHMARK=OFF -DPIKOO_WAKE_BENCHMARK=OFF -DPIKOO_COMMAND_BENCHMARK=OFF "${veto_args[@]}" "${policy_args[@]}" "${trial_args[@]}" build
