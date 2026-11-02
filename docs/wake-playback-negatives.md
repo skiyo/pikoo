@@ -154,3 +154,24 @@ waveforms, TEST and household audio are not read by this recovery step.
 the original cache and current protected registry. The same complete native
 INT8 DEV gate remains mandatory. An implemented auxiliary head is not evidence
 of better recall or real-world false-wake performance.
+
+### Conservative TRAIN quarantine (2026-11-03)
+
+Independent blind ASR covered all 407 unique synthetic TRAIN recordings.
+The existing conservative content rule agreed on 323; 84 uncertain recordings
+are quarantined in a separate comparison, along with all augmented descendants
+(762 examples). An ASR disagreement is **not** a confirmed audio error: accent,
+unfamiliar-name spelling and ASR failures can exclude genuine targets. No
+recording or label is deleted, and the complete DEV remains unchanged.
+
+`--train-admission` requires a complete partition of the original synthetic
+TRAIN hashes and excludes uncertain examples from training, calibration and
+cohort weighting. Public ordinary negatives remain present. Auxiliary event
+metadata follows the same retained original indices. The resulting comparison
+has 10,150 TRAIN examples, two temporal profiles and two seeds per profile,
+at most 20 epochs each. It has not qualified for deployment.
+
+The preceding four cohort/phonetic profiles all completed without a qualified
+candidate. See [the dated running snapshot](reports/wake-clean-train-2026-11-03.json)
+for actual results, API cost estimates and software checks. There is still no
+new independent TEST, ESP32 timing/concurrency or household acceptance.

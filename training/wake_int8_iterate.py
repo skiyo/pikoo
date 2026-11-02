@@ -331,6 +331,8 @@ def main():
     parser.add_argument('--profiles', type=Path)
     parser.add_argument('--phrase-events', type=Path,
                         help='Exact original TRAIN array replay metadata for an auxiliary-only phrase head')
+    parser.add_argument('--train-admission', type=Path,
+                        help='Complete independent TRAIN content audit; quarantine uncertain originals and descendants')
     a = parser.parse_args()
     os.umask(0o077)
     a.output.mkdir(parents=True, exist_ok=True)
@@ -354,9 +356,21 @@ def main():
     tf.config.threading.set_inter_op_parallelism_threads(2)
     x, y, w, vx = [np.load(prepared/name, mmap_mode='r') for name in
                    ('train_x.npy', 'train_y.npy', 'train_w.npy', 'old_dev_x.npy')]
+    metadata = json.loads(a.cohort_meta.read_text()) if a.cohort_meta else None
+    original_metadata = metadata
+    keep, admission_summary = None, None
+    if a.train_admission:
+        if metadata is None:
+            raise ValueError('TRAIN admission needs verified original source metadata')
+        from wake_train_admission import retained_indices
+        admission = json.loads(a.train_admission.read_text())
+        if admission['original_manifest_sha256'] != json.loads((a.baseline/'provenance.json').read_text())['manifest_sha256']:
+            raise ValueError('TRAIN admission belongs to another original corpus')
+        keep, metadata, admission_summary = retained_indices(admission, metadata, len(x))
+        x, y, w = x[keep], y[keep], w[keep]
     balance, cohort_balance = None, None
     if a.cohort_meta:
-        w, cohort_balance = balance_positive_cohorts(y, w, json.loads(a.cohort_meta.read_text()))
+        w, cohort_balance = balance_positive_cohorts(y, w, metadata)
     if a.balanced:
         w, balance = balance_train_weights(y, w)
     profiles = load_profiles(a.profiles) if a.profiles else BALANCED_PROFILES if a.balanced else PROFILES
@@ -370,6 +384,9 @@ def main():
         if (events['proof']['original_features_sha256'] != sha(a.baseline/'features.npz') or
                 events['proof']['protected_sha256'] != sha(a.protected)):
             raise ValueError('Auxiliary metadata belongs to a different original TRAIN cache')
+        if keep is not None:
+            from wake_train_admission import subset_phrase_events
+            events = subset_phrase_events(events, original_metadata, keep)
         ay, aw, auxiliary_summary = training_targets(events, y, w)
         auxiliary = ay, aw
     old_info = json.loads((prepared/'old-dev-cases.json').read_text())
@@ -377,13 +394,15 @@ def main():
     with np.load(prepared/'negative-dev-features.npz') as data:
         negative_features = [data[f'case_{i}'] for i in range(len(data.files))]
     groups = json.loads((prepared/'train-groups.json').read_text())
+    if keep is not None:
+        groups = [groups[i] for i in keep]
     indices = defaultdict(list)
     for i, group in enumerate(groups):
         indices[group].append(i)
     selected = []
     if a.cohort_meta:
         positive_cohorts = defaultdict(list)
-        for index, row in enumerate(json.loads(a.cohort_meta.read_text())):
+        for index, row in enumerate(metadata):
             if row['label']:
                 positive_cohorts[row['cohort']].append(index)
         for part in positive_cohorts.values():
@@ -399,6 +418,9 @@ def main():
         'TRAIN_event_balance': balance,
         'TRAIN_positive_cohort_balance': cohort_balance,
         'TRAIN_auxiliary_phrase': auxiliary_summary,
+        'TRAIN_content_admission': admission_summary,
+        'TRAIN_admission_sha256': sha(a.train_admission) if a.train_admission else None,
+        'retained_original_TRAIN_indices': keep.tolist() if keep is not None else None,
         'TRAIN_phrase_events_sha256': sha(a.phrase_events) if a.phrase_events else None,
         'TRAIN_cohort_metadata_sha256': sha(a.cohort_meta) if a.cohort_meta else None,
         'optimizer_global_clipnorm': 1. if a.cohort_meta else None,
@@ -411,7 +433,7 @@ def main():
     names = ('wake_int8_iterate.py', 'hi_pikoo_model.py', 'hi_pikoo_train.py',
              'wake_negative_finetune.py', 'wake_playback_negatives.py', 'streaming_runtime.py',
              'wake_phrase_auxiliary.py', 'wake_train_events.py', 'hi_pikoo_contrast.py',
-             'hi_pikoo_timing.py', 'acoustic_augment.py')
+             'hi_pikoo_timing.py', 'acoustic_augment.py', 'wake_train_admission.py')
     if snapshot.exists() and any((snapshot/name).exists() and
             sha(snapshot/name) != sha(Path(__file__).with_name(name)) for name in names):
         snapshot = a.output/f'source-continuation-{sha(Path(__file__))[:16]}'

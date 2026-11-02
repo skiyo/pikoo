@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-03",
+  "snapshot_at": "2026-11-03T00:02:30.446636+08:00",
+  "status": "clean-TRAIN-auxiliary-comparison-running-not-qualified",
+  "goal_completed": false,
+  "device_changed": false,
+  "server_behavior_changed": false,
+  "preceding_cohort_and_phone_comparison": {
+    "terminal_status": "finite-INT8-comparison-completed-no-qualification",
+    "profiles": [
+      {
+        "profile": "cohort-phone96-long-seed-42",
+        "epochs_completed": 23,
+        "best_epoch": 17,
+        "new_negative_DEV_false_clips": 0,
+        "positive_shortfall": 4,
+        "original_false_clips": 2,
+        "original_early_wakes": 0,
+        "model_bytes": 98736,
+        "host_arena_bytes": 37808,
+        "qualified": false
+      },
+      {
+        "profile": "cohort-phone96-long-seed-43",
+        "epochs_completed": 27,
+        "best_epoch": 21,
+        "new_negative_DEV_false_clips": 0,
+        "positive_shortfall": 4,
+        "original_false_clips": 3,
+        "original_early_wakes": 2,
+        "model_bytes": 98736,
+        "host_arena_bytes": 37808,
+        "qualified": false
+      },
+      {
+        "profile": "cohort48-long-continuation-seed-42",
+        "epochs_completed": 20,
+        "best_epoch": 12,
+        "new_negative_DEV_false_clips": 0,
+        "positive_shortfall": 3,
+        "original_false_clips": 1,
+        "original_early_wakes": 1,
+        "model_bytes": 59920,
+        "host_arena_bytes": 24272,
+        "qualified": false
+      },
+      {
+        "profile": "cohort48-long-continuation-seed-43",
+        "epochs_completed": 20,
+        "best_epoch": 9,
+        "new_negative_DEV_false_clips": 0,
+        "positive_shortfall": 3,
+        "original_false_clips": 1,
+        "original_early_wakes": 1,
+        "model_bytes": 59920,
+        "host_arena_bytes": 24272,
+        "qualified": false
+      }
+    ]
+  },
+  "TRAIN_content_audit": {
+    "recordings": 407,
+    "accepted_by_conservative_existing_text_rule": 323,
+    "quarantined_uncertainties_not_confirmed_errors": 84,
+    "group_counts": {
+      "adult:standard:piku": {
+        "quarantined": 3,
+        "accepted": 6
+      },
+      "adult:standard:non-target": {
+        "accepted": 22,
+        "quarantined": 4
+      },
+      "adult:Chinese-accent:piku": {
+        "accepted": 17,
+        "quarantined": 2
+      },
+      "adult:Chinese-accent:piko": {
+        "accepted": 7,
+        "quarantined": 1
+      },
+      "adult:Chinese-accent:non-target": {
+        "quarantined": 5,
+        "accepted": 18
+      },
+      "childlike:Chinese-accent:piku": {
+        "quarantined": 24,
+        "accepted": 67
+      },
+      "childlike:Chinese-accent:non-target": {
+        "accepted": 81,
+        "quarantined": 32
+      },
+      "childlike:Chinese-accent:piko": {
+        "accepted": 97,
+        "quarantined": 13
+      },
+      "adult:standard:piko": {
+        "accepted": 8
+      }
+    },
+    "method": "complete-independent-blind-ASR-content-agreement",
+    "labels_changed": false,
+    "original_recordings_preserved": true,
+    "DEV_filtered": false,
+    "household_or_real_child_recordings_uploaded": false,
+    "billed_audio_seconds": 739,
+    "estimated_api_usage_usd": 0.055424999999999995,
+    "network_failures_unknown_reservations_retained_usd": 0.024
+  },
+  "budget": {
+    "whole_iteration_accounted_or_reserved_usd": 0.4976335999999915,
+    "cap_usd": 2,
+    "invoice_reconciled": false
+  },
+  "TRAIN_cache_replay": {
+    "examples": 5380,
+    "features_labels_weights_shapes_and_dtypes_byte_equal": true,
+    "original_preparation_version_restored": true,
+    "DEV_audio_read": false,
+    "TEST_opened": false
+  },
+  "current_experiment": {
+    "profile_count": 2,
+    "seeds_per_profile": 2,
+    "maximum_epochs_each": 20,
+    "architecture_channels": 48,
+    "context_steps": [
+      20,
+      72
+    ],
+    "auxiliary_loss_weight": 0.2,
+    "auxiliary_head_exported": false,
+    "deployment_output": "single binary sigmoid probability",
+    "fixed_policy": {
+      "rolling": 3,
+      "threshold": 0.9
+    },
+    "TRAIN_admission": {
+      "original_synthetic_recordings": 407,
+      "accepted_recordings": 323,
+      "quarantined_recordings": 84,
+      "excluded_original_and_augmented_examples": 762,
+      "retained_examples": 10150,
+      "all_descendants_follow_original": true,
+      "no_confirmed_error_claim_from_ASR_alone": true
+    },
+    "latest_status": {
+      "stage": "INT8-evaluated",
+      "profile": "clean-phrase-aux48-short",
+      "seed": 42,
+      "epoch": 3,
+      "negative_DEV_false_clips": 0,
+      "positive_shortfall": 3,
+      "qualified": false,
+      "goal_completed": false
+    },
+    "formal_gate_unchanged": true,
+    "old_DEV_cases": 144,
+    "new_negative_DEV_challenges": 261,
+    "independent_TEST_opened": false
+  },
+  "software_checks": {
+    "entrypoint": "tools/check.sh",
+    "completed": true,
+    "training_tests_run": 254,
+    "training_tests_skipped": 12,
+    "not_hardware_or_provider_acceptance": true
+  }
+}
