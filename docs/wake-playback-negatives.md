@@ -132,3 +132,25 @@ give an estimated $0.019725 at the documented rate, within the existing $2
 corpus budget; this is not an invoice reconciliation. ASR disagreement does
 not automatically delete or relabel a recording. Human content clarification
 is kept separate from actual household wake acceptance.
+
+### Training-only phrase supervision
+
+The next bounded comparison adds an auxiliary six-class head during training:
+ordinary speech, complete wake phrase, T-initial name, Hi alone, name alone,
+and missing final syllable. The exported model retains its original **binary
+sigmoid probability**; auxiliary layers are not exported. This differs from
+deploying a phrase-family softmax, and does not change the device trigger rule.
+
+`training/wake_train_events.py` restores the authenticated preparation source
+snapshot and replays every original TRAIN example. Features, labels, weights,
+shapes and dtypes must be byte-identical to the original cache before event
+metadata can be used. Synthetic competitor events use the measured speech end
+with the original augmentation speed and padding; a quiet file tail is not a
+phoneme event. Binary labels and original recordings remain unchanged. DEV
+waveforms, TEST and household audio are not read by this recovery step.
+
+`--phrase-events` supplies the verified archive; optional profile field
+`auxiliary_phrase_weight` is restricted to 0, 0.2 or 0.5. Metadata must match
+the original cache and current protected registry. The same complete native
+INT8 DEV gate remains mandatory. An implemented auxiliary head is not evidence
+of better recall or real-world false-wake performance.

@@ -222,6 +222,7 @@ def load_profiles(path):
         if (not re.fullmatch('[a-z0-9_-]+', profile['name']) or
             profile['channels'] not in (24, 48, 96) or profile['head'] not in (32, 64) or
             profile.get('context_steps', 20) not in (20, 72) or
+            profile.get('auxiliary_phrase_weight', 0) not in (0, .2, .5) or
             profile['initialization'] not in ('fresh', 'baseline', 'checkpoint', 'phone-encoder') or
             not .00001 <= profile['learning_rate'] <= .001 or
             not 1 <= profile['max_epochs'] <= 30 or sorted(profile['seeds']) != [42, 43]):
@@ -328,6 +329,8 @@ def main():
     parser.add_argument('--balanced', action='store_true')
     parser.add_argument('--cohort-meta', type=Path)
     parser.add_argument('--profiles', type=Path)
+    parser.add_argument('--phrase-events', type=Path,
+                        help='Exact original TRAIN array replay metadata for an auxiliary-only phrase head')
     a = parser.parse_args()
     os.umask(0o077)
     a.output.mkdir(parents=True, exist_ok=True)
@@ -357,6 +360,18 @@ def main():
     if a.balanced:
         w, balance = balance_train_weights(y, w)
     profiles = load_profiles(a.profiles) if a.profiles else BALANCED_PROFILES if a.balanced else PROFILES
+    auxiliary = None
+    auxiliary_summary = None
+    if any(p.get('auxiliary_phrase_weight', 0) for p in profiles):
+        if not a.phrase_events:
+            raise ValueError('Verified TRAIN phrase events required for auxiliary supervision')
+        from wake_phrase_auxiliary import training_targets
+        events = json.loads(a.phrase_events.read_text())
+        if (events['proof']['original_features_sha256'] != sha(a.baseline/'features.npz') or
+                events['proof']['protected_sha256'] != sha(a.protected)):
+            raise ValueError('Auxiliary metadata belongs to a different original TRAIN cache')
+        ay, aw, auxiliary_summary = training_targets(events, y, w)
+        auxiliary = ay, aw
     old_info = json.loads((prepared/'old-dev-cases.json').read_text())
     baseline = policy_metrics(old_info, 3, .9)
     with np.load(prepared/'negative-dev-features.npz') as data:
@@ -383,6 +398,8 @@ def main():
     write_json(a.output/'plan.json', {'profiles': profiles, 'runtime': runtime,
         'TRAIN_event_balance': balance,
         'TRAIN_positive_cohort_balance': cohort_balance,
+        'TRAIN_auxiliary_phrase': auxiliary_summary,
+        'TRAIN_phrase_events_sha256': sha(a.phrase_events) if a.phrase_events else None,
         'TRAIN_cohort_metadata_sha256': sha(a.cohort_meta) if a.cohort_meta else None,
         'optimizer_global_clipnorm': 1. if a.cohort_meta else None,
         'formal_negative_DEV_requirement': 0,
@@ -392,7 +409,9 @@ def main():
         'household_used': False, 'threshold': .9, 'rolling': 3})
     snapshot = a.output/'source'
     names = ('wake_int8_iterate.py', 'hi_pikoo_model.py', 'hi_pikoo_train.py',
-             'wake_negative_finetune.py', 'wake_playback_negatives.py', 'streaming_runtime.py')
+             'wake_negative_finetune.py', 'wake_playback_negatives.py', 'streaming_runtime.py',
+             'wake_phrase_auxiliary.py', 'wake_train_events.py', 'hi_pikoo_contrast.py',
+             'hi_pikoo_timing.py', 'acoustic_augment.py')
     if snapshot.exists() and any((snapshot/name).exists() and
             sha(snapshot/name) != sha(Path(__file__).with_name(name)) for name in names):
         snapshot = a.output/f'source-continuation-{sha(Path(__file__))[:16]}'
@@ -438,15 +457,27 @@ def main():
                 write_json(folder/'initialization.json', {'kind': 'public-TRAIN-only-phonetic-encoder',
                     'encoder_sha256': sha(initial), 'report_sha256': sha(report), 'source_phone_error_rate': proof['phone_error_rate']})
             optimizer_options = {'global_clipnorm': 1.} if a.cohort_meta else {}
-            model.compile(optimizer=tf.keras.optimizers.Adam(profile['learning_rate'], **optimizer_options), loss=sequence_loss)
+            optimizer = tf.keras.optimizers.Adam(profile['learning_rate'], **optimizer_options)
+            if profile.get('auxiliary_phrase_weight', 0):
+                from wake_phrase_auxiliary import attach
+                training_model = attach(model)
+                training_model.compile(optimizer=optimizer,
+                    loss={'wake': sequence_loss, 'phrase': tf.keras.losses.SparseCategoricalCrossentropy()},
+                    loss_weights={'wake': 1., 'phrase': profile['auxiliary_phrase_weight']})
+                fit_labels = {'wake': y, 'phrase': auxiliary[0]}
+                fit_weights = {'wake': w, 'phrase': auxiliary[1]}
+            else:
+                training_model = model
+                model.compile(optimizer=optimizer, loss=sequence_loss)
+                fit_labels, fit_weights = y, w
             history, best = [], [None]
 
             class NativeQuality(tf.keras.callbacks.Callback):
                 def on_epoch_end(self, epoch, logs=None):
                     checkpoint = folder/f'epoch-{epoch+1:02}'
                     checkpoint.mkdir()
-                    self.model.save_weights(checkpoint/'checkpoint.weights.h5')
-                    result = export_and_evaluate(self.model, checkpoint, representative,
+                    model.save_weights(checkpoint/'checkpoint.weights.h5')
+                    result = export_and_evaluate(model, checkpoint, representative,
                         evaluator, vx, old_info, negative_features, baseline)
                     result.update(epoch=epoch+1, profile=profile['name'], seed=seed)
                     history.append(result)
@@ -471,7 +502,8 @@ def main():
                             'goal_completed': False})
                         self.model.stop_training = True
 
-            model.fit(x, y, sample_weight=w, epochs=profile['max_epochs'], batch_size=16,
+            training_model.fit(x, fit_labels, sample_weight=fit_weights,
+                epochs=profile['max_epochs'], batch_size=16,
                 callbacks=[NativeQuality(), tf.keras.callbacks.EarlyStopping(
                     monitor='val_native_quality', mode='max', patience=6, start_from_epoch=12),
                     tf.keras.callbacks.CSVLogger(str(folder/'training.csv'))], verbose=2)

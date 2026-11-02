@@ -1,7 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 import unittest
+import json
+from pathlib import Path
+import tempfile
 try:
-    from wake_int8_iterate import qualification, balance_train_weights, balance_positive_cohorts
+    from wake_int8_iterate import qualification, balance_train_weights, balance_positive_cohorts, load_profiles
     import numpy as np
 except ImportError:
     qualification = None
@@ -9,6 +12,17 @@ except ImportError:
 
 @unittest.skipIf(qualification is None, 'Optional pinned training runtime required')
 class Int8Qualification(unittest.TestCase):
+    def test_auxiliary_weight_is_a_bounded_predeclared_training_choice(self):
+        profile = {'name': 'auxiliary', 'channels': 48, 'head': 64, 'context_steps': 20,
+                   'initialization': 'fresh', 'learning_rate': .0001, 'max_epochs': 20,
+                   'seeds': [42, 43], 'auxiliary_phrase_weight': .2}
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder)/'profiles.json'; path.write_text(json.dumps([profile]))
+            self.assertEqual(load_profiles(path)[0]['auxiliary_phrase_weight'], .2)
+            profile['auxiliary_phrase_weight'] = 5
+            path.write_text(json.dumps([profile]))
+            with self.assertRaises(ValueError): load_profiles(path)
+
     def test_cohort_weighting_changes_only_positive_train_events(self):
         labels = np.tile([[1., 0., 0.]], (6, 1))
         weights = np.asarray([[w, 2., 3.] for w in (2, 3, 4, 5, 6, 7)], np.float32)
