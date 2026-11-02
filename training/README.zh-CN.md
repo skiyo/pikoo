@@ -2,9 +2,9 @@
 
 [English](README.md) | **简体中文** · [项目首页](../README.zh-CN.md)
 
-本模块开发 Pikoo 的本地“你好 Pikoo”唤醒流水线（pī kū / PEE-koo）：准备授权语料、训练和导出候选，再评估是否适合设备。它不运行实时 Agent，也不识别家庭成员。
+本模块开发 Pikoo 的本地完整 **Hi, Pikoo** 唤醒流水线，接受 piku 和 piko：准备授权语料、训练和导出候选，再评估是否适合设备。它不运行实时 Agent，也不识别家庭成员。早期“你好 Pikoo”实验保留为历史研究。
 
-2026-10-31 新研究目标：[Hi Pikoo 三音节唤醒](../docs/wake-hi-piku.zh-CN.md)。数值原型、来源试听、模型训练和设备验收分别记录，尚未替换实机模型。
+目标设计：[Hi Pikoo 三音节唤醒](../docs/wake-hi-piku.zh-CN.md)。2026-11-01 已安装私密试用版；用户反馈唤醒可用，但普通播放会误触发，[负样本补训](../docs/wake-playback-negatives.zh-CN.md)处理此问题。该反馈不替代正式成人／儿童或 8 小时误唤醒验收，旧的独立测试失败结果继续保留。
 
 体验[离线模拟器](../docs/getting-started.zh-CN.md)或用按钮开始语音会话，不需要先训练。**当前公开文件树不提供唤醒模型权重。** 历史模型和分发边界见[模型卡](models/MODEL_CARD.md)。
 
@@ -23,6 +23,7 @@
 | 检查静态设备兼容性 | `check_esp32_model.py`、`micro_check/` |
 | 排查连续讲话或设备容量 | [上下文诊断](../docs/wake-context.zh-CN.md)、[容量说明](../docs/wake-capacity.zh-CN.md) |
 | 查看发音覆盖工作 | [发音说明](../docs/wake-pronunciations.zh-CN.md) |
+| 排查播放声音误唤醒 | [播放负样本](../docs/wake-playback-negatives.zh-CN.md)、`wake_playback_negatives.py`、`wake_negative_finetune.py` |
 | 查阅旧实验、数据源操作及失败候选 | [完整保留的研究记录](research-notes.zh-CN.md) |
 
 研究记录保留原 README 的命令、日期和数字，属于历史证据，不表示旧候选仍是当前推荐模型。

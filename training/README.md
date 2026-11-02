@@ -2,9 +2,9 @@
 
 **English** | [简体中文](README.zh-CN.md) · [Project](../README.md)
 
-This module develops Pikoo’s local “你好 Pikoo” wake pipeline (pī kū / PEE-koo). It prepares authorized audio, trains and exports candidates, and evaluates whether a candidate is suitable for the device. It does not run the realtime Agent or identify family members.
+This module develops Pikoo’s complete **Hi, Pikoo** wake pipeline, accepting piku and piko. It prepares authorized audio, trains and exports candidates, and evaluates whether a candidate is suitable for the device. It does not run the realtime Agent or identify family members. Earlier “你好 Pikoo” experiments remain historical research.
 
-New research target (2026-10-31): [Hi + piku / piko, three syllables](../docs/wake-hi-piku.md). Prototypes and source auditions are separate from training and device acceptance; the installed model has not been replaced.
+Target design: [Hi + piku / piko, three syllables](../docs/wake-hi-piku.md). A private trial was installed on 2026-11-01. The user reports usable wake recognition but false activation during ordinary playback; [the negative refresh](../docs/wake-playback-negatives.md) addresses that issue. This feedback does not replace formal adult/child or eight-hour false-wake acceptance, and the earlier failed independent test remains failed.
 
 Training is optional for exploring the [offline simulator](../docs/getting-started.md) or starting a voice session with a button. **The current public tree includes no wake-model weights.** Model history and redistribution limits are described in the [model card](models/MODEL_CARD.md).
 
@@ -23,6 +23,7 @@ The three original cat-enclosure STLs, print order, illustrated assembly guide a
 | Check static device compatibility | `check_esp32_model.py`, `micro_check/` |
 | Measure speech-context or device-capacity behavior | [Context diagnostics](../docs/wake-context.md), [capacity guide](../docs/wake-capacity.md) |
 | Review pronunciation work | [Pronunciation coverage](../docs/wake-pronunciations.md) |
+| Investigate false activation by playback | [Playback negatives](../docs/wake-playback-negatives.md), `wake_playback_negatives.py`, `wake_negative_finetune.py` |
 | Inspect earlier experiments, data-source procedures and failed candidates | [Preserved research notes](research-notes.zh-CN.md) |
 
 The research notes retain the previous README’s commands, dates and numeric results. They are historical evidence, not a claim that an old candidate is the current recommended model.

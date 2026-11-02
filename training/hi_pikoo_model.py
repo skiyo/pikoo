@@ -26,11 +26,13 @@ def sequence_loss(labels, probabilities):
     return tf.keras.losses.binary_crossentropy(labels[..., None], probabilities[..., None])
 
 
-def build(upstream, ordered_steps=72, seed=42, channels=24, batch_normalization=False):
+def build(upstream, ordered_steps=72, seed=42, channels=24, batch_normalization=False, head_units=None):
     if ordered_steps not in (20, 72):
         raise ValueError('Only predeclared 20/72 step variants are eligible')
     if channels not in (24, 48, 96):
         raise ValueError('Only bounded 24/48/96-channel comparisons are eligible')
+    if head_units not in (None, 32, 64):
+        raise ValueError('Only bounded 32/64-unit heads are supported')
     sys.path.insert(0, str(Path(upstream).resolve()))
     import tensorflow as tf
     from microwakeword.layers.stream import Stream
@@ -66,7 +68,7 @@ def build(upstream, ordered_steps=72, seed=42, channels=24, batch_normalization=
     if batch_normalization:
         x = tf.keras.layers.BatchNormalization(name='ordered_norm')(x)
         x = tf.keras.layers.ReLU(max_value=6)(x)
-    x = tf.keras.layers.Conv2D(32 if channels==24 else 64, 1, activation='relu6', kernel_initializer='he_normal')(x)
+    x = tf.keras.layers.Conv2D(head_units or (32 if channels==24 else 64), 1, activation='relu6', kernel_initializer='he_normal')(x)
     x = tf.keras.layers.Conv2D(1, 1, activation='sigmoid',
         bias_initializer=tf.keras.initializers.Constant(-3), name='wake_probability')(x)
     return tf.keras.Model(inputs, tf.keras.layers.Reshape((-1,))(x))
