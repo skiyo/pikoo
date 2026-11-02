@@ -199,3 +199,22 @@ ASR audits and synthesis share the same $2 ledger. The separate 1,000-request
 synthesis limit now excludes explicitly identified ASR audit entries, while
 still counting legacy auditions and unknown attempts conservatively. No new
 API requests are made by these preparation or validation tools.
+
+### Incomplete-phrase boundary loss
+
+The next bounded comparison uses `--phrase-boundaries`: multiply negative
+TRAIN loss weights by four during the final incomplete target prefix
+(`completion - 600ms` through `completion - 120ms`) and competitor speech
+ending (`completion - 120ms` through `completion + 450ms`). Complete positive
+events, ignored steps and padding are not amplified by this operation. Ordinary
+public negatives are unchanged. Subsequent cohort balancing and the 3:1 event
+mass balance still use TRAIN only.
+
+Timing comes from the byte-verified original TRAIN metadata and the same
+conservative recording admission. The comparison keeps the 48-channel,
+72-step binary deployment architecture and fixed 3-score/0.90 rule, and tests
+training with/without the auxiliary head. Both seeds have at most 20 epochs.
+Initialization is chosen from completed prior long-context checkpoints under
+a predeclared DEV rule; it is not a release decision. A prior freeze stops the
+queued comparison. This operation neither adds device inference work nor
+demonstrates successful natural wake detection by itself.

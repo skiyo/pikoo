@@ -333,6 +333,8 @@ def main():
                         help='Exact original TRAIN array replay metadata for an auxiliary-only phrase head')
     parser.add_argument('--train-admission', type=Path,
                         help='Complete independent TRAIN content audit; quarantine uncertain originals and descendants')
+    parser.add_argument('--phrase-boundaries', action='store_true',
+                        help='Fixed 4x TRAIN loss on incomplete target prefixes and competitor endings')
     a = parser.parse_args()
     os.umask(0o077)
     a.output.mkdir(parents=True, exist_ok=True)
@@ -368,18 +370,12 @@ def main():
             raise ValueError('TRAIN admission belongs to another original corpus')
         keep, metadata, admission_summary = retained_indices(admission, metadata, len(x))
         x, y, w = x[keep], y[keep], w[keep]
-    balance, cohort_balance = None, None
-    if a.cohort_meta:
-        w, cohort_balance = balance_positive_cohorts(y, w, metadata)
-    if a.balanced:
-        w, balance = balance_train_weights(y, w)
     profiles = load_profiles(a.profiles) if a.profiles else BALANCED_PROFILES if a.balanced else PROFILES
-    auxiliary = None
-    auxiliary_summary = None
-    if any(p.get('auxiliary_phrase_weight', 0) for p in profiles):
+    needs_auxiliary = any(p.get('auxiliary_phrase_weight', 0) for p in profiles)
+    events = None
+    if needs_auxiliary or a.phrase_boundaries:
         if not a.phrase_events:
-            raise ValueError('Verified TRAIN phrase events required for auxiliary supervision')
-        from wake_phrase_auxiliary import training_targets
+            raise ValueError('Verified TRAIN phrase events required for phrase supervision')
         events = json.loads(a.phrase_events.read_text())
         if (events['proof']['original_features_sha256'] != sha(a.baseline/'features.npz') or
                 events['proof']['protected_sha256'] != sha(a.protected)):
@@ -387,6 +383,19 @@ def main():
         if keep is not None:
             from wake_train_admission import subset_phrase_events
             events = subset_phrase_events(events, original_metadata, keep)
+    boundary_summary = None
+    if a.phrase_boundaries:
+        from wake_phrase_boundaries import emphasize
+        w, boundary_summary = emphasize(events, y, w)
+    balance, cohort_balance = None, None
+    if a.cohort_meta:
+        w, cohort_balance = balance_positive_cohorts(y, w, metadata)
+    if a.balanced:
+        w, balance = balance_train_weights(y, w)
+    auxiliary = None
+    auxiliary_summary = None
+    if needs_auxiliary:
+        from wake_phrase_auxiliary import training_targets
         ay, aw, auxiliary_summary = training_targets(events, y, w)
         auxiliary = ay, aw
     old_info = json.loads((prepared/'old-dev-cases.json').read_text())
@@ -418,6 +427,7 @@ def main():
         'TRAIN_event_balance': balance,
         'TRAIN_positive_cohort_balance': cohort_balance,
         'TRAIN_auxiliary_phrase': auxiliary_summary,
+        'TRAIN_phrase_boundaries': boundary_summary,
         'TRAIN_content_admission': admission_summary,
         'TRAIN_admission_sha256': sha(a.train_admission) if a.train_admission else None,
         'retained_original_TRAIN_indices': keep.tolist() if keep is not None else None,
@@ -433,7 +443,8 @@ def main():
     names = ('wake_int8_iterate.py', 'hi_pikoo_model.py', 'hi_pikoo_train.py',
              'wake_negative_finetune.py', 'wake_playback_negatives.py', 'streaming_runtime.py',
              'wake_phrase_auxiliary.py', 'wake_train_events.py', 'hi_pikoo_contrast.py',
-             'hi_pikoo_timing.py', 'acoustic_augment.py', 'wake_train_admission.py')
+             'hi_pikoo_timing.py', 'acoustic_augment.py', 'wake_train_admission.py',
+             'wake_phrase_boundaries.py')
     if snapshot.exists() and any((snapshot/name).exists() and
             sha(snapshot/name) != sha(Path(__file__).with_name(name)) for name in names):
         snapshot = a.output/f'source-continuation-{sha(Path(__file__))[:16]}'

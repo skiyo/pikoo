@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-03",
+  "snapshot_at": "2026-11-03T00:38:24.777591+08:00",
+  "status": "fixed-TRAIN-boundary-loss-comparison-running-not-qualified",
+  "goal_completed": false,
+  "device_changed": false,
+  "server_behavior_changed": false,
+  "previous_comparison": {
+    "profiles_completed": 4,
+    "native_epochs_completed": 80,
+    "qualified_candidates": 0,
+    "failure_summary": {
+      "scope": "completed reused DEV diagnostics only, no household or TEST",
+      "profiles": [
+        {
+          "profile": "clean-phrase-aux48-long-seed-42",
+          "epochs": 20,
+          "best_epoch": 20,
+          "positive_shortfall": 2,
+          "old_false_by_family": {
+            "t_name": 1
+          },
+          "old_early": 1,
+          "new_false": 0,
+          "qualified": false
+        },
+        {
+          "profile": "clean-phrase-aux48-long-seed-43",
+          "epochs": 20,
+          "best_epoch": 19,
+          "positive_shortfall": 4,
+          "old_false_by_family": {},
+          "old_early": 0,
+          "new_false": 0,
+          "qualified": false
+        },
+        {
+          "profile": "clean-phrase-aux48-short-seed-42",
+          "epochs": 20,
+          "best_epoch": 16,
+          "positive_shortfall": 2,
+          "old_false_by_family": {
+            "t_name": 1
+          },
+          "old_early": 0,
+          "new_false": 0,
+          "qualified": false
+        },
+        {
+          "profile": "clean-phrase-aux48-short-seed-43",
+          "epochs": 20,
+          "best_epoch": 5,
+          "positive_shortfall": 3,
+          "old_false_by_family": {
+            "t_name": 1
+          },
+          "old_early": 0,
+          "new_false": 0,
+          "qualified": false
+        }
+      ]
+    }
+  },
+  "initialization": {
+    "source_profile": "clean-phrase-aux48-long-seed-42",
+    "source_epoch": "epoch-02",
+    "checkpoint_sha256": "20f67770b8d22165d026396d9e3984dc2bb12039a54373cc98c1a688d0ddaa07",
+    "eligible_DEV_checkpoints": 40,
+    "selection_scope": "Predeclared DEV initialization rule only; not release qualification; no household or TEST"
+  },
+  "TRAIN_boundary_loss": {
+    "factor": 4,
+    "complete_target_prefix_steps": 38784,
+    "competitor_ending_steps": 9348,
+    "target_prefix_ms_relative_to_completion": [
+      -600,
+      -120
+    ],
+    "competitor_ending_ms_relative_to_completion": [
+      -120,
+      450
+    ],
+    "scope": "original verified TRAIN metadata only, before event/cohort balancing",
+    "labels_changed": false,
+    "positive_events_amplified_here": false,
+    "trigger_policy_changed": false
+  },
+  "TRAIN_balance": {
+    "positive_mass_before": 290880.0,
+    "negative_mass": 4774690.0,
+    "positive_factor": 5.471546112944628,
+    "negative_to_positive_mass_target": 3.0,
+    "scope": "TRAIN temporal loss weights only; no threshold or DEV calibration change"
+  },
+  "TRAIN_admission": {
+    "original_synthetic_recordings": 407,
+    "accepted_recordings": 323,
+    "quarantined_recordings": 84,
+    "excluded_original_and_augmented_examples": 762,
+    "retained_examples": 10150,
+    "all_descendants_follow_original": true,
+    "no_confirmed_error_claim_from_ASR_alone": true
+  },
+  "profiles": [
+    {
+      "name": "boundary48-long-binary",
+      "channels": 48,
+      "head": 64,
+      "context_steps": 72,
+      "learning_rate": 0.0001,
+      "max_epochs": 20,
+      "seeds": [
+        42,
+        43
+      ],
+      "auxiliary_phrase_weight": 0
+    },
+    {
+      "name": "boundary48-long-auxiliary",
+      "channels": 48,
+      "head": 64,
+      "context_steps": 72,
+      "learning_rate": 0.0001,
+      "max_epochs": 20,
+      "seeds": [
+        42,
+        43
+      ],
+      "auxiliary_phrase_weight": 0.2
+    }
+  ],
+  "fixed_policy": {
+    "rolling": 3,
+    "threshold": 0.9
+  },
+  "current_status": {
+    "stage": "INT8-evaluated",
+    "profile": "boundary48-long-binary",
+    "seed": 42,
+    "epoch": 7,
+    "negative_DEV_false_clips": 0,
+    "positive_shortfall": 5,
+    "qualified": false,
+    "goal_completed": false
+  },
+  "formal_gate_unchanged": true,
+  "old_DEV_cases": 144,
+  "new_negative_DEV_challenges": 261,
+  "independent_TEST_opened": false,
+  "household_used": false,
+  "software_checks": {
+    "entrypoint": "tools/check.sh",
+    "training_tests_run": 260,
+    "training_tests_skipped": 12,
+    "completed": true,
+    "not_hardware_or_live_acceptance": true
+  },
+  "additional_paid_requests": 0,
+  "budget_cap_usd": 2,
+  "weights_and_audio_public": false
+}

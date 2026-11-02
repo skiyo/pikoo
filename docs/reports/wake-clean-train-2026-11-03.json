@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-11-03",
-  "snapshot_at": "2026-11-03T00:25:24.263319+08:00",
-  "status": "clean-TRAIN-auxiliary-comparison-running-not-qualified",
+  "snapshot_at": "2026-11-03T00:38:24.774160+08:00",
+  "status": "clean-TRAIN-auxiliary-comparison-completed-no-qualification",
   "goal_completed": false,
   "device_changed": false,
   "server_behavior_changed": false,
@@ -147,14 +147,9 @@
       "no_confirmed_error_claim_from_ASR_alone": true
     },
     "latest_status": {
-      "stage": "INT8-evaluated",
-      "profile": "clean-phrase-aux48-long",
-      "seed": 42,
-      "epoch": 19,
-      "negative_DEV_false_clips": 0,
-      "positive_shortfall": 3,
-      "qualified": false,
-      "goal_completed": false
+      "stage": "finite-INT8-comparison-completed-no-qualification",
+      "goal_completed": false,
+      "device_changed": false
     },
     "formal_gate_unchanged": true,
     "old_DEV_cases": 144,
@@ -163,13 +158,13 @@
     "profile_snapshots": [
       {
         "profile": "clean-phrase-aux48-long-seed-42",
-        "epochs_completed": 19,
-        "terminal": false,
-        "best_epoch": 2,
-        "positive_shortfall": 1,
+        "epochs_completed": 20,
+        "terminal": true,
+        "best_epoch": 20,
+        "positive_shortfall": 2,
         "new_negative_DEV_false_clips": 0,
         "original_false_clips": 1,
-        "original_early_wakes": 2,
+        "original_early_wakes": 1,
         "qualified": false,
         "old_DEV_groups": {
           "adult:standard:piku": {
@@ -194,7 +189,44 @@
           },
           "childlike:Chinese-accent:piko": {
             "targets": 13,
-            "hits": 12
+            "hits": 11
+          }
+        }
+      },
+      {
+        "profile": "clean-phrase-aux48-long-seed-43",
+        "epochs_completed": 20,
+        "terminal": true,
+        "best_epoch": 19,
+        "positive_shortfall": 4,
+        "new_negative_DEV_false_clips": 0,
+        "original_false_clips": 0,
+        "original_early_wakes": 0,
+        "qualified": false,
+        "old_DEV_groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 27
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 25
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 9
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 10
           }
         }
       },
@@ -310,5 +342,6 @@
     "legacy_generation_or_audition_attempts": 509,
     "ASR_audit_attempts_separate_from_synthesis_count": 553,
     "synthesis_attempt_cap_including_auditions": 1000
-  }
+  },
+  "next_experiment_report": "wake-boundary-loss-2026-11-03.json"
 }
