@@ -98,3 +98,37 @@ The negative DEV comprises 257 originals and four derived playlists, about
 reused model-selection DEV, not an independent test or eight-hour acceptance.
 Source references: Piczak (2015), ESC-50; Panayotov et al. (2015), LibriSpeech;
 [Zhou et al. (2024), ChildMandarin](https://arxiv.org/abs/2409.18584).
+
+## Continued goal: native INT8 selection
+
+`training/wake_int8_iterate.py` now exports and evaluates **every epoch** on
+the pinned native Micro backend. It evaluates all 144 original wake DEV cases
+and all 261 new negative challenges, with three identical reset replays per
+recording. Floating-point accuracy no longer selects the checkpoint.
+
+The formal freeze gate retains at least 90% recall in every original subgroup,
+preserves the installed baseline's subgroup hit counts, permits no original
+false/early activations, and requires **zero** new negative DEV false clips.
+The earlier at-most-one-negative milestone remains an intermediate milestone.
+No candidate has been installed by this continuation.
+
+Prepared TRAIN/DEV arrays are reused only after input, protected-registry,
+source/preparation semantics, and array hashes match. Original recordings,
+the consumed TEST and historical failures remain unchanged. The first full
+qualification freezes a candidate before a new independent TEST is opened.
+
+The continuation compares TRAIN-only event weighting and six positive
+age/accent/pronunciation cohorts. An optional JSON profile can initialize from
+an audited previous checkpoint or the existing phonetic encoder trained only
+on public Chinese child TRAIN recordings. The encoder's phone error rate is
+not wake-word acceptance. No large model download or household training is
+involved. CLI flags are documented by `--help`.
+
+A separate blind content review used
+[GPT-Transcribe](https://developers.openai.com/api/docs/models/gpt-transcribe)
+on all 144 **fictional synthetic** original DEV recordings. Actual public child
+recordings and household audio were not uploaded. Its 263 billed audio seconds
+give an estimated $0.019725 at the documented rate, within the existing $2
+corpus budget; this is not an invoice reconciliation. ASR disagreement does
+not automatically delete or relabel a recording. Human content clarification
+is kept separate from actual household wake acceptance.
