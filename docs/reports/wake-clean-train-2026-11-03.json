@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "date": "2026-11-03",
-  "snapshot_at": "2026-11-03T00:02:30.446636+08:00",
+  "snapshot_at": "2026-11-03T00:25:24.263319+08:00",
   "status": "clean-TRAIN-auxiliary-comparison-running-not-qualified",
   "goal_completed": false,
   "device_changed": false,
@@ -148,9 +148,9 @@
     },
     "latest_status": {
       "stage": "INT8-evaluated",
-      "profile": "clean-phrase-aux48-short",
+      "profile": "clean-phrase-aux48-long",
       "seed": 42,
-      "epoch": 3,
+      "epoch": 19,
       "negative_DEV_false_clips": 0,
       "positive_shortfall": 3,
       "qualified": false,
@@ -159,13 +159,156 @@
     "formal_gate_unchanged": true,
     "old_DEV_cases": 144,
     "new_negative_DEV_challenges": 261,
-    "independent_TEST_opened": false
+    "independent_TEST_opened": false,
+    "profile_snapshots": [
+      {
+        "profile": "clean-phrase-aux48-long-seed-42",
+        "epochs_completed": 19,
+        "terminal": false,
+        "best_epoch": 2,
+        "positive_shortfall": 1,
+        "new_negative_DEV_false_clips": 0,
+        "original_false_clips": 1,
+        "original_early_wakes": 2,
+        "qualified": false,
+        "old_DEV_groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 25
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 12
+          }
+        }
+      },
+      {
+        "profile": "clean-phrase-aux48-short-seed-42",
+        "epochs_completed": 20,
+        "terminal": true,
+        "best_epoch": 16,
+        "positive_shortfall": 2,
+        "new_negative_DEV_false_clips": 0,
+        "original_false_clips": 1,
+        "original_early_wakes": 0,
+        "qualified": false,
+        "old_DEV_groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 27
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 25
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 11
+          }
+        }
+      },
+      {
+        "profile": "clean-phrase-aux48-short-seed-43",
+        "epochs_completed": 20,
+        "terminal": true,
+        "best_epoch": 5,
+        "positive_shortfall": 3,
+        "new_negative_DEV_false_clips": 0,
+        "original_false_clips": 1,
+        "original_early_wakes": 0,
+        "qualified": false,
+        "old_DEV_groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 26
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 25
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 10
+          }
+        }
+      }
+    ]
   },
   "software_checks": {
     "entrypoint": "tools/check.sh",
     "completed": true,
-    "training_tests_run": 254,
+    "training_tests_run": 258,
     "training_tests_skipped": 12,
-    "not_hardware_or_provider_acceptance": true
+    "not_hardware_or_provider_acceptance": true,
+    "generation_node_tests_passed": 8,
+    "post_edit_finalizer_targeted_tests_passed": 3
+  },
+  "post_freeze_tool_validation": {
+    "finalizer": "training/wake_native_finalize.py",
+    "requires_numeric_native_freeze": true,
+    "requires_resolved_independent_content_review": true,
+    "requires_eight_retained_TRAIN_parity_fixtures": true,
+    "smoke_on_unqualified_immutable_epoch": {
+      "TRAIN_fixtures": 2,
+      "native_reset_rounds_each": 3,
+      "byte_exact": true,
+      "host_arena_bytes": 24272,
+      "candidate_finalized": false,
+      "hardware_accepted": false
+    },
+    "fresh_TEST_source_metadata_reserved": [
+      "openai:echo",
+      "openai:shimmer"
+    ],
+    "used_source_identities_from_declared_manifests": 8,
+    "old_TEST_identities_not_reused": [
+      "openai:ballad",
+      "openai:verse"
+    ],
+    "fresh_TEST_generated": false,
+    "new_API_requests": 0,
+    "legacy_generation_or_audition_attempts": 509,
+    "ASR_audit_attempts_separate_from_synthesis_count": 553,
+    "synthesis_attempt_cap_including_auditions": 1000
   }
 }

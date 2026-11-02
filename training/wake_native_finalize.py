@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+"""Finalize a numerically frozen native candidate for fresh TEST tooling.
+
+Requires complete synthetic DEV content review and eight TRAIN-only byte-exact
+reference/Micro fixtures. Never opens TEST, household recordings or a device.
+"""
+import argparse
+import datetime
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+
+import numpy as np
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def validate_gate(frozen, review, original_manifest_sha256):
+    result = frozen['evaluation']
+    old = result['old_DEV']
+    expected = {'adult:standard:piku': 28, 'adult:standard:piko': 3,
+                'adult:Chinese-accent:piku': 27, 'adult:Chinese-accent:piko': 10,
+                'childlike:Chinese-accent:piku': 11, 'childlike:Chinese-accent:piko': 13}
+    required = {'adult:standard:piku': 26, 'adult:standard:piko': 3,
+                'adult:Chinese-accent:piku': 26, 'adult:Chinese-accent:piko': 10,
+                'childlike:Chinese-accent:piku': 11, 'childlike:Chinese-accent:piko': 12}
+    if (frozen.get('policy') != {'rolling': 3, 'threshold': .9} or
+            result.get('qualified') is not True or old.get('passed') is not True or
+            result.get('old_DEV_preserved') is not True or
+            result.get('backend') != 'pinned native TFLite Micro' or
+            result.get('household_used') is not False or result.get('TEST_opened') is not False or
+            result.get('new_negative_DEV_cases') != 261 or
+            result.get('new_negative_DEV_false_clips') != 0 or
+            old.get('false_wakes') != 0 or old.get('early_wakes') != 0 or
+            old.get('latency_p95_ms') is None or not np.isfinite(old['latency_p95_ms']) or
+            not 0 <= old['latency_p95_ms'] <= 800 or
+            result.get('required_group_hits') != required or
+            {g: v['targets'] for g, v in old['groups'].items()} != expected or
+            any(not 0 <= v['hits'] <= v['targets'] or v['hits']/v['targets'] < .9
+                for v in old['groups'].values()) or
+            any(old['groups'][g]['hits'] < n for g, n in result['required_group_hits'].items())):
+        raise ValueError('Full unchanged native DEV gate is not proved')
+    if (review.get('scope') != 'complete-original-synthetic-DEV-content-review' or
+            review.get('original_manifest_sha256') != original_manifest_sha256 or
+            review.get('all_pending_questions_resolved') is not True or
+            review.get('labels_unchanged') is not True or
+            review.get('household_used') is not False or
+            set(review.get('reviewed_uncertainty_indices', [])) != {10, 21, 40, 57, 58, 60, 72} or
+            review.get('review_clip_selection_used_wake_scores') is not False):
+        raise ValueError('Resolve independent synthetic DEV content questions before TEST')
+    return result
+
+
+def parity(model, micro, features, fixture):
+    from streaming_runtime import interpreter, quantize
+    run = interpreter(model)
+    run.allocate_tensors()
+    inp, out = run.get_input_details()[0], run.get_output_details()[0]
+    if list(inp['shape']) != [1, 3, 40] or out['dtype'] != np.uint8:
+        raise ValueError('Frozen candidate streaming ABI differs')
+    data = quantize(features, *inp['quantization'])
+    expected = []
+    for start in range(0, len(data), 3):
+        run.set_tensor(inp['index'], data[None, start:start+3])
+        run.invoke()
+        expected.append(int(run.get_tensor(out['index']).flat[0]))
+    trace = fixture.with_suffix('.trace')
+    fixture.write_bytes(data.tobytes())
+    response = subprocess.run([str(micro.resolve()), str(model.resolve()), str(fixture.resolve()),
+        '--trace-output', str(trace.resolve())], check=True, capture_output=True, text=True)
+    proof = json.loads(response.stdout.strip().splitlines()[-1])
+    actual = np.frombuffer(trace.read_bytes(), np.uint8)
+    exact = actual.shape == (len(expected)*3,) and np.array_equal(actual, np.tile(expected, 3))
+    return {'steps': len(expected), 'byte_exact': bool(exact), 'native_reset_rounds': 3,
+            'host_arena_bytes': proof['host_arena_used_bytes']}
+
+
+def finalize(experiment, baseline, prepared, micro, review_path, isolation_path, output):
+    frozen_path = experiment/'frozen.json'
+    frozen = json.loads(frozen_path.read_text())
+    baseline_proof = json.loads((baseline/'provenance.json').read_text())
+    result = validate_gate(frozen, json.loads(review_path.read_text()), baseline_proof['manifest_sha256'])
+    from wake_test_isolation import validate as validate_isolation
+    isolation = json.loads(isolation_path.read_text())
+    validate_isolation(isolation, [Path(p) for p in isolation['source_manifests_sha256']])
+    if baseline_proof['manifest_sha256'] not in isolation['source_manifests_sha256'].values():
+        raise ValueError('Fresh TEST isolation must cover this original TRAIN/DEV corpus')
+    checkpoint = (experiment/frozen['checkpoint']).resolve()
+    if not checkpoint.is_relative_to(experiment.resolve()):
+        raise ValueError('Frozen checkpoint escapes experiment')
+    model = checkpoint/'hi_pikoo.tflite'
+    if (sha(model) != frozen['model_sha256'] or sha(model) != result['static']['sha256'] or
+            sha(micro) != result['micro_sha256'] or
+            result.get('host_arena_bytes', 262145) > 262144):
+        raise ValueError('Frozen model, native backend or resource evidence changed')
+    evaluation = json.loads((checkpoint/'evaluation.json').read_text())
+    for key in ('old_DEV', 'new_negative_DEV_false_clips', 'new_negative_DEV_cases', 'static'):
+        if evaluation[key] != result[key]:
+            raise ValueError('Frozen evaluation differs from source checkpoint')
+    cases = json.loads((checkpoint/'old-dev-cases.json').read_text())
+    negatives = json.loads((checkpoint/'negative-dev-scores.json').read_text())
+    if (len(cases) != 144 or sum(not c['label'] for c in cases) != 52 or
+            len(negatives) != 261 or any(c['activated'] for c in negatives)):
+        raise ValueError('Complete DEV trace evidence required')
+    from hi_pikoo_model import policy_metrics
+    if policy_metrics(cases, 3, .9) != result['old_DEV']:
+        raise ValueError('Frozen original DEV metrics do not match saved traces')
+    plan = json.loads((experiment/'plan.json').read_text())
+    if sha(prepared/'provenance.json') != plan['prepared_provenance_sha256']:
+        raise ValueError('TRAIN fixture provenance differs')
+    preparation = json.loads((prepared/'provenance.json').read_text())
+    for name in ('train_x.npy', 'train_y.npy', 'train_w.npy'):
+        if sha(prepared/name) != preparation['prepared_sha256'][name]:
+            raise ValueError('TRAIN fixture array changed')
+    x, y, w = [np.load(prepared/name, mmap_mode='r') for name in ('train_x.npy', 'train_y.npy', 'train_w.npy')]
+    retained = plan.get('retained_original_TRAIN_indices')
+    retained = list(range(len(x))) if retained is None else retained
+    available = [retained[i] for i in plan['representative_TRAIN_indices']]
+    selected = []
+    for label in (False, True):
+        part = sorted({i for i in available if bool(y[i].max() > .5) == label})
+        if len(part) < 4:
+            raise ValueError('Balanced retained TRAIN-only parity fixtures required')
+        selected.extend(part[i] for i in np.linspace(0, len(part)-1, 4).astype(int))
+    output.mkdir(parents=True, exist_ok=False)
+    shutil.copyfile(model, output/'hi_pikoo.tflite')
+    evidence = []
+    for index in selected:
+        steps = int(np.flatnonzero(w[index] > 0)[-1])+1
+        evidence.append({'original_TRAIN_feature_index': index, 'label': bool(y[index].max() > .5),
+            **parity(model, micro, x[index, :steps*3], output/f'train-{index}.int8')})
+    proof = {'model_sha256': sha(model), 'micro_sha256': sha(micro), 'fixtures': evidence,
+        'passed': all(c['byte_exact'] and c['host_arena_bytes'] <= 262144 for c in evidence),
+        'scope': 'TRAIN-only builtin reference vs native Micro; host resource evidence',
+        'TEST_opened': False, 'household_used': False, 'hardware_accepted': False}
+    (output/'micro-parity.json').write_text(json.dumps(proof, indent=2)+'\n')
+    if not proof['passed']:
+        raise ValueError('Reference/native parity failed; no qualified policy emitted')
+    import sys
+    sys.path.insert(0, str(Path(__file__).parents[1]/'tools'))
+    from check_wake_policy import frontend_fingerprint, validate
+    policy = {'schema_version': 1, 'target': 'hi-piku-piko-v2', 'accepted_names': ['piku', 'piko'],
+        'model_sha256': sha(model), 'rolling': 3, 'threshold': .9,
+        'candidate_frozen_at': datetime.datetime.fromtimestamp(frozen_path.stat().st_mtime, datetime.timezone.utc).isoformat(),
+        'development_passed': True, 'development_qualified': True, 'formal_goal_passed': False,
+        'frontend_fingerprint': frontend_fingerprint(),
+        'frontend': {'sample_rate': 16000, 'feature_bins': 40, 'window_ms': 30,
+                     'feature_step_ms': 10, 'inference_step_ms': 30},
+        'source_native_freeze_sha256': sha(frozen_path), 'source_report_sha256': sha(checkpoint/'evaluation.json'),
+        'micro_proof_sha256': sha(output/'micro-parity.json'), 'content_review_sha256': sha(review_path),
+        'test_isolation_sha256': sha(isolation_path),
+        'required_fresh_test_speakers': isolation['reserved_source_speakers'],
+        'forbidden_test_speakers': isolation['used_source_speakers'],
+        'status': 'DEV-qualified-awaiting-fresh-TEST', 'sealed_test_passed': False,
+        'esp32_resource_accepted': False, 'real_child_accepted': False, 'release_eligible': False}
+    validate(output/'hi_pikoo.tflite', policy)
+    (output/'wake-policy.json').write_text(json.dumps(policy, indent=2)+'\n')
+    return policy
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    for name in ('experiment', 'baseline', 'prepared', 'micro', 'review', 'test-isolation', 'output'):
+        p.add_argument('--'+name, type=Path, required=True)
+    a = p.parse_args()
+    os.umask(0o077)
+    policy = finalize(a.experiment, a.baseline, a.prepared, a.micro, a.review, a.test_isolation, a.output)
+    print(json.dumps({'status': policy['status'], 'model_sha256': policy['model_sha256'],
+                      'TEST_opened': False, 'device_changed': False}))
+
+
+if __name__ == '__main__': main()

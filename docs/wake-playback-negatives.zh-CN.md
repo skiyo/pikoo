@@ -136,3 +136,21 @@ ASR 冲突**不等于已确认错音**：口音、陌生名字拼写和 ASR 自�
 上一组 4 个分组／音素模型对照均已结束但未达标，实际结果、接口费用估算和软件
 检查见[带日期的运行快照](reports/wake-clean-train-2026-11-03.json)。全新独立 TEST、
 ESP32 耗时与并发、家庭真人验收均尚未完成。
+
+### 原生冻结记录与全新 TEST 的衔接
+
+`training/wake_native_finalize.py` 将首次数值达标的原生冻结记录转换为现有工具
+使用的 `wake-policy.json`。它重新检查完整 DEV 轨迹、模型和后端摘要、固定触发
+规则、已解决的独立内容审核问题，以及 8 份保留下来的 TRAIN 后端一致性样本。
+任何门槛失败都不会输出合格策略；成功转换也不代表 TEST、真人儿童或硬件通过。
+
+此前已消耗的合成 TEST 使用 ballad／verse；同一声线重新生成不能当成新的独立
+来源。`training/wake_test_isolation.py` 因此只读元数据，预留未出现在所声明的
+TRAIN／DEV 和已消耗 TEST 中的 echo／shimmer，不读原音、不生成 TEST。
+这两个名称来自[官方 Realtime 音色列表](https://developers.openai.com/api/docs/guides/realtime-conversations#voice-options)。
+冻结策略通过摘要绑定预留记录；生成工具必须传入 `--fresh-test-isolation`，并使用
+独立 ID、清单、计划和封存文件，保留旧测试。真正生成仍须等候选完整达标冻结。
+
+ASR 和生成仍共用原来的 $2 费用账本。另设的 1,000 次生成请求限制排除明确标记
+的 ASR 审核条目，历史试听和未知请求仍保守计数。这些准备与校验工具本身不发起
+新的 API 请求。

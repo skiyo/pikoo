@@ -62,6 +62,24 @@ function validateFrozen(contract,frozen,binary,allowTrial=false){
  if(contract.target==='hi-piku-piko-v2'&&JSON.stringify(frozen.accepted_names)!==JSON.stringify(contract.accepted_names))throw Error('Frozen target names differ');
  if(!Buffer.isBuffer(binary)||crypto.createHash('sha256').update(binary).digest('hex')!==frozen.model_sha256)throw Error('Frozen model hash mismatch');
 }
+function generationCount(ledger){
+ // Legacy entries without a model are generation/audition attempts. Audits
+ // share the dollar cap but must not consume the separate synthesis count.
+ return ledger.entries.filter(e=>!(e.model==='gpt-transcribe'&&e.id.startsWith('blind-ASR-'))).length;
+}
+function freshTestPlan(rows,isolation,frozen){
+ const speakers=['openai:echo','openai:shimmer'];
+ if(isolation.target!==frozen.target||JSON.stringify(isolation.reserved_source_speakers)!==JSON.stringify(speakers)||
+  JSON.stringify(frozen.required_fresh_test_speakers)!==JSON.stringify(speakers)||
+  JSON.stringify(isolation.covered_splits)!==JSON.stringify(['test','train','validation'])||
+  isolation.metadata_only!==true||isolation.audio_read!==false||isolation.household_used!==false||
+  speakers.some(s=>isolation.used_source_speakers.includes(s))||
+  JSON.stringify(isolation.used_source_speakers)!==JSON.stringify(frozen.forbidden_test_speakers))throw Error('Fresh TEST source isolation mismatch');
+ let index=0;
+ return rows.map(r=>{if(r.split!=='test')return r;const speaker=speakers[index++%2];
+  return {...r,id:'native-fresh2-'+r.id,voice:speaker.slice('openai:'.length),speaker,group:speaker,recipe:r.recipe+'-fresh-source-v2'};
+ });
+}
 function tunnel(){return new Promise((resolve,reject)=>{const r=http.request({hostname:'127.0.0.1',port:proxyPort,method:'CONNECT',path:'api.openai.com:443',headers:{Host:'api.openai.com:443'},timeout:15000});r.on('timeout',()=>r.destroy(Error('proxy-connect-timeout')));r.on('error',reject);r.on('connect',(res,socket,head)=>{if(res.statusCode!==200){socket.destroy();return reject(Error('proxy-status-'+res.statusCode));}if(head.length)socket.unshift(head);const s=tls.connect({socket,servername:'api.openai.com',rejectUnauthorized:true});s.once('secureConnect',()=>resolve(s));s.once('error',reject);});r.end();});}
 function wav(pcm){const b=Buffer.alloc(44);b.write('RIFF');b.writeUInt32LE(36+pcm.length,4);b.write('WAVEfmt ',8);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);b.writeUInt32LE(24000,24);b.writeUInt32LE(48000,28);b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(pcm.length,40);return Buffer.concat([b,pcm]);}
 async function generate([name,voice,style,text]){
@@ -90,7 +108,7 @@ function args(argv){const a={};for(let i=0;i<argv.length;i+=2){if(!argv[i].start
 async function main(){
  const a=args(process.argv.slice(2));if(!a.output||!a['key-file']||!a['audition-root'])throw Error('Required: --output, --key-file, --audition-root');
  const phase=a.phase||'pilot';if(!['pilot','training','development','sealed'].includes(phase))throw Error('Unknown collection phase');
- let contract=null,frozenForTest=null;
+ let contract=null,frozenForTest=null,freshIsolation=null;
  if(a['target-contract']){contract=JSON.parse(fs.readFileSync(a['target-contract'],'utf8'));targetPlan([],contract);}
  if(phase!=='pilot'){
   if(!a['source-review'])throw Error('Source audition evidence is required before expansion');
@@ -102,6 +120,15 @@ async function main(){
   const frozen=JSON.parse(fs.readFileSync(a['frozen-candidate'],'utf8'));
   if(!a['candidate-model'])throw Error('Candidate model required before TEST');
   validateFrozen(contract,frozen,fs.readFileSync(a['candidate-model']),a['allow-trial-test']==='yes');
+  if(frozen.required_fresh_test_speakers){
+   if(!a['fresh-test-isolation'])throw Error('Candidate requires its predeclared fresh TEST isolation file');
+   const bytes=fs.readFileSync(a['fresh-test-isolation']);
+   if(crypto.createHash('sha256').update(bytes).digest('hex')!==frozen.test_isolation_sha256)throw Error('Fresh TEST isolation hash changed');
+   freshIsolation=JSON.parse(bytes);freshTestPlan([],freshIsolation,frozen);
+   for(const [file,digest] of Object.entries(freshIsolation.source_manifests_sha256)){
+    if(crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')!==digest)throw Error('Fresh TEST source manifest changed');
+   }
+  }
   frozenForTest=frozen;
  }
  out=path.resolve(a.output);proxyPort=Number(a['proxy-port']||7897);if(!Number.isInteger(proxyPort)||proxyPort<1||proxyPort>65535)throw Error('Invalid proxy port');
@@ -110,7 +137,7 @@ async function main(){
  const lock=path.join(out,'generation.lock');const fd=fs.openSync(lock,'wx',0o600);fs.writeSync(fd,String(process.pid));
  try{
  if(frozenForTest){
-  const seal=path.join(out,'sealed-candidate.json');
+  const seal=path.join(out,freshIsolation?'sealed-native-fresh2-candidate.json':'sealed-candidate.json');
   if(fs.existsSync(seal)){
    const prior=JSON.parse(fs.readFileSync(seal));
    if(prior.model_sha256!==frozenForTest.model_sha256||prior.candidate_frozen_at!==frozenForTest.candidate_frozen_at)throw Error('This TEST revision is bound to a different frozen candidate; never reuse consumed TEST');
@@ -130,16 +157,17 @@ async function main(){
  if(contract)planned=targetPlan(planned,contract);
  if(phase!=='pilot')for(const row of planned){row.requested_style=row.synthetic_style;row.synthetic_style='adult';row.recipe='literal-adult-v3';row.style='Read the user text aloud exactly once, without commentary or repetition. Natural relaxed adult speech. '+(row.accent==='Chinese-accent'?'A gentle Mandarin Chinese accent when reading English. ':'Natural English. ');}
  if(phase==='training')planned=expansionPlan(contract);
- const planFile=path.join(out,phase==='training'?'generation-plan.training-expansion-v2.json':phase==='sealed'?'generation-plan.sealed.'+contract.target+'.json':phase==='pilot'?'generation-plan.literal-v2.json':'generation-plan.literal-adult-v3.json');
+ if(freshIsolation)planned=freshTestPlan(planned,freshIsolation,frozenForTest);
+ const planFile=path.join(out,freshIsolation?'generation-plan.sealed-native-fresh2.json':phase==='training'?'generation-plan.training-expansion-v2.json':phase==='sealed'?'generation-plan.sealed.'+contract.target+'.json':phase==='pilot'?'generation-plan.literal-v2.json':'generation-plan.literal-adult-v3.json');
  if(fs.existsSync(planFile)){if(JSON.stringify(JSON.parse(fs.readFileSync(planFile)))!==JSON.stringify(planned))throw Error('Frozen generation plan differs');}else write(planFile,planned);
- const manifestFile=path.join(out,phase==='sealed'?'manifest-test.json':phase==='training'?'manifest-training-expansion.json':'manifest.json');
+ const manifestFile=path.join(out,freshIsolation?'manifest-test-native-fresh2.json':phase==='sealed'?'manifest-test.json':phase==='training'?'manifest-training-expansion.json':'manifest.json');
  let newAttempts=0;let done=fs.existsSync(manifestFile)?JSON.parse(fs.readFileSync(manifestFile)):[];
  const selected=phase==='training'?planned:phase==='pilot'?planned.filter(x=>x.split==='train').slice(0,200):planned.filter(x=>x.split===(phase==='development'?'validation':'test'));
  for(const row of selected){
   if(done.some(x=>x.id===row.id))continue;
   const prior=ledger.entries.find(x=>x.id===row.id); if(prior){if(['failed-known-usage','failed-estimated-charge'].includes(prior.status))continue;throw Error('Unresolved prior attempt; manual reconciliation required');}
   if(newAttempts>=(phase==='pilot'?20:150)){write(path.join(out,'status.json'),{phase:'literal-pilot-awaiting-review',new_attempts:newAttempts,completed:done.length,updated_at:new Date().toISOString()});return;}
-  if(ledger.entries.length>=1008)throw Error('1000 generation-attempt cap reached');
+  if(generationCount(ledger)>=1000)throw Error('1000 generation-attempt cap reached');
   ++newAttempts;reserve(ledger,{id:row.id},phase==='sealed'?.2:.5);write(ledgerFile,ledger);const started=Date.now();
   try{
    const saved=await generate([row.id,row.voice,row.style,row.text]);
@@ -158,5 +186,5 @@ async function main(){
  write(path.join(out,'status.json'),{phase:phase+'-generated-awaiting-independent-review',completed:selected.filter(x=>done.some(y=>y.id===x.id)).length,total:selected.length,total_retained_files:done.length,updated_at:new Date().toISOString(),next:'independent content and pronunciation review; no training admission yet'});
  }finally{fs.closeSync(fd);fs.unlinkSync(lock);}
 }
-module.exports={cost,reserve,plan,targetPlan,expansionPlan,validateFrozen,RESERVATION,tunnel};
+module.exports={cost,reserve,plan,targetPlan,expansionPlan,validateFrozen,generationCount,freshTestPlan,RESERVATION,tunnel};
 if(require.main===module)main().catch(err=>{console.error(JSON.stringify({status:'stopped',error:String(err.message).replace(/sk-[A-Za-z0-9_-]+/g,'[REDACTED]')}));process.exitCode=1;});

@@ -1,7 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {cost,reserve,plan,targetPlan,expansionPlan,validateFrozen,RESERVATION}=require('./hi_pikoo_generate.cjs');
+const {cost,reserve,plan,targetPlan,expansionPlan,validateFrozen,generationCount,freshTestPlan,RESERVATION}=require('./hi_pikoo_generate.cjs');
+test('ASR shares the dollar budget but not the synthesis request count',()=>{
+ const entries=Array.from({length:509},(_,i)=>({id:'legacy-'+i,reserved_usd:.001}));
+ entries.push(...Array.from({length:553},(_,i)=>({id:'blind-ASR-'+i,model:'gpt-transcribe',actual_usd:.0001})));
+ assert.equal(generationCount({entries}),509);
+ entries.push({id:'unknown',model:'unknown-provider',reserved_usd:.012});
+ assert.equal(generationCount({entries}),510);
+});
+test('fresh TEST uses reserved untouched identities and unique ids, not old ballad or verse',()=>{
+ const used=['openai:cedar','openai:ash','openai:sage','openai:ballad','openai:verse'];
+ const isolation={target:'hi-piku-piko-v2',reserved_source_speakers:['openai:echo','openai:shimmer'],
+  used_source_speakers:used,covered_splits:['test','train','validation'],metadata_only:true,audio_read:false,household_used:false};
+ const frozen={target:isolation.target,required_fresh_test_speakers:isolation.reserved_source_speakers,forbidden_test_speakers:used};
+ const rows=plan(),mapped=freshTestPlan(rows,isolation,frozen);
+ assert.deepEqual(mapped.filter(r=>r.split!=='test'),rows.filter(r=>r.split!=='test'));
+ assert.deepEqual([...new Set(mapped.filter(r=>r.split==='test').map(r=>r.speaker))],isolation.reserved_source_speakers);
+ assert.ok(mapped.filter(r=>r.split==='test').every(r=>r.id.startsWith('native-fresh2-')&&!used.includes(r.speaker)));
+ assert.throws(()=>freshTestPlan(rows,{...isolation,used_source_speakers:[...used,'openai:echo']},frozen),/isolation mismatch/);
+ assert.throws(()=>freshTestPlan(rows,{...isolation,covered_splits:['train']},frozen),/isolation mismatch/);
+});
 test('reasoning is not charged twice and unaccounted usage fails closed',()=>{
  const u={input_tokens:98,output_tokens:100,input_token_details:{text_tokens:98,audio_tokens:0},output_token_details:{text_tokens:69,audio_tokens:31,reasoning_tokens:54}};
  assert.ok(Math.abs(cost(u)-.0008444)<1e-10);

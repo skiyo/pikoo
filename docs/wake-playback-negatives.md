@@ -175,3 +175,27 @@ The preceding four cohort/phonetic profiles all completed without a qualified
 candidate. See [the dated running snapshot](reports/wake-clean-train-2026-11-03.json)
 for actual results, API cost estimates and software checks. There is still no
 new independent TEST, ESP32 timing/concurrency or household acceptance.
+
+### Native freeze handoff and genuinely fresh TEST sources
+
+`training/wake_native_finalize.py` bridges a first qualified native freeze to
+the existing `wake-policy.json` tooling. It rechecks complete saved DEV traces,
+model/backend hashes, the fixed trigger rule, resolved independent content
+questions, and eight retained TRAIN-only reference/Micro fixtures. It emits no
+qualified policy when any gate fails. Successful finalization still leaves
+TEST, real-child and hardware acceptance false.
+
+The previous consumed synthetic TEST used ballad/verse. New waveforms from
+those same identities are not a new independent source family. Metadata-only
+`training/wake_test_isolation.py` therefore reserves echo/shimmer, absent from
+the declared TRAIN/DEV and consumed TEST manifests; it neither reads audio nor
+generates TEST. These identities are in the
+[official Realtime voice list](https://developers.openai.com/api/docs/guides/realtime-conversations#voice-options).
+The finalized policy binds this reservation by hash. The generator requires
+`--fresh-test-isolation` and uses separate IDs, manifest, plan and seal files,
+preserving the old test. New synthesis must wait for a qualified freeze.
+
+ASR audits and synthesis share the same $2 ledger. The separate 1,000-request
+synthesis limit now excludes explicitly identified ASR audit entries, while
+still counting legacy auditions and unknown attempts conservatively. No new
+API requests are made by these preparation or validation tools.
