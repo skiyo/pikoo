@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-03",
+  "snapshot_at": "2026-11-02T19:16:42.923228+00:00",
+  "status": "expanded-TRAIN-boundary-comparison-running-not-qualified",
+  "goal_completed": false,
+  "profiles": [
+    {
+      "name": "expanded-boundary96-long-fresh",
+      "channels": 96,
+      "head": 64,
+      "context_steps": 72,
+      "initialization": "fresh",
+      "learning_rate": 0.0005,
+      "max_epochs": 30,
+      "seeds": [
+        42,
+        43
+      ],
+      "auxiliary_phrase_weight": 0.2
+    }
+  ],
+  "effective_TRAIN_examples": 10696,
+  "TRAIN_extension": {
+    "manifest_sha256": "b16730332130d6436c5ffaa0bd53d13141f86d857e6ba307722e0070eed75d23",
+    "review_sha256": "be7c46e1eaa931ed935f72f20b03bc7a154a2ba6a7f766d1b192ac0bf449c658",
+    "original_manifest_sha256": "e5664680838fe7cf621fc11bf215fe21fbf0cf4a2cca6e00065c5321a9395129",
+    "source_recordings": 52,
+    "positive_sources": 39,
+    "negative_sources": 13,
+    "base_retained_examples": 10150,
+    "appended_examples": 546,
+    "base_prefix_arrays_unchanged": true,
+    "DEV_changed": false,
+    "TEST_opened": false,
+    "household_used": false,
+    "ASR_is_not_phonetic_gold": true,
+    "per_record_human_audition": false,
+    "source_identities_not_new_speakers": true,
+    "metadata_sha256": "a510a9f70c6367beda0eea0c2bc65ca672a10c7efa366fa12c3c6177fc719ea1",
+    "events_sha256": "52e7e68c56d21fc6de65e959dd4efe1255e676c78f157ce41dd759485707718c"
+  },
+  "TRAIN_boundary_weights": {
+    "factor": 4,
+    "complete_target_prefix_steps": 46272,
+    "competitor_ending_steps": 10830,
+    "target_prefix_ms_relative_to_completion": [
+      -600,
+      -120
+    ],
+    "competitor_ending_ms_relative_to_completion": [
+      -120,
+      450
+    ],
+    "scope": "original verified TRAIN metadata only, before event/cohort balancing",
+    "labels_changed": false,
+    "positive_events_amplified_here": false,
+    "trigger_policy_changed": false
+  },
+  "TRAIN_event_balance": {
+    "positive_mass_before": 347040.0,
+    "negative_mass": 4870378.0,
+    "positive_factor": 4.678017903795912,
+    "negative_to_positive_mass_target": 3.0,
+    "scope": "TRAIN temporal loss weights only; no threshold or DEV calibration change"
+  },
+  "policy": {
+    "rolling": 3,
+    "threshold": 0.9
+  },
+  "numeric_quality_gates_unchanged": true,
+  "labels_or_DEV_changed": false,
+  "new_API_requests": 0,
+  "new_downloads": 0,
+  "household_used": false,
+  "TEST_opened": false,
+  "device_changed": false,
+  "server_behavior_changed": false,
+  "predeclared_plan_sha256": "315d1cac588ebb9ecc8adc8acd2d42dd0e5082a20c779194a95ec44dbb283951",
+  "prior_completed_profiles": 2,
+  "prior_qualified_candidates": 0,
+  "fresh_TEST_coverage_fix": {
+    "required_groups": [
+      "adult:Chinese-accent:piko",
+      "adult:Chinese-accent:piku",
+      "adult:standard:piko",
+      "adult:standard:piku",
+      "childlike:Chinese-accent:piko",
+      "childlike:Chinese-accent:piku"
+    ],
+    "incomplete_adult_only_plan_rejected_before_key_read_or_seal_ledger_creation": true,
+    "planned_metadata_not_actual_audio_age_or_pronunciation_proof": true,
+    "child_TEST_sources_and_independent_review_still_required": true,
+    "new_TEST_generated": false,
+    "native_finalizer_will_emit_required_cohorts": true
+  },
+  "software_checks": {
+    "generation_unit_and_offline_CLI_tests": 12,
+    "native_finalize_unit_tests": 4,
+    "live_API_or_hardware_acceptance": false
+  }
+}

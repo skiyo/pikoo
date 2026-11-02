@@ -279,3 +279,24 @@ phonetic gold claim is made from ASR agreement. A two-seed fresh 96-channel
 comparison now holds architecture, loss and trigger policy fixed while
 expanding admitted TRAIN coverage. Details are in the
 [expanded-source snapshot](reports/wake-expanded-adults-2026-11-03.json).
+
+Both expanded-source seeds completed (30 and 24 epochs) without qualification.
+The first native-ranked best checkpoint hit 91/92 synthetic targets and had
+zero false activations on the 261 new negatives, but still activated on three
+original near-word negatives. The other seed also remained below the full
+gate. Read-only checks of the originally allowed higher threshold and
+five-score policies found no old-DEV gate survivor; no trigger was changed.
+The next comparison holds the expanded data, fresh 96-channel architecture,
+two seeds and 3-score/.90 policy fixed, enabling only the existing fixed 4x
+TRAIN prefix/competitor-ending loss. Earlier narrower-model failures remain.
+See the [boundary snapshot](reports/wake-expanded-boundaries-2026-11-03.json).
+
+Fresh TEST has an additional explicit coverage preflight. Native finalization
+will carry all six required cohorts into the policy. The current OpenAI
+adult-only plan cannot satisfy that contract and is rejected before reading a
+key or creating a seal, ledger or audio. A CLI fixture verifies that behavior
+without credentials or network requests. Childlike TEST sources and independent
+audio/age review still need to be prepared; intended style metadata does not
+prove audible child age or pronunciation. An adult-only TEST cannot stand in
+for the full acceptance, and synthetic childlike scores cannot replace family
+child testing. No new TEST has been generated or consumed.

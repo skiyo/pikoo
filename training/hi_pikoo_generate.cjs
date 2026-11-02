@@ -5,6 +5,7 @@ const {createRequire}=require('module');
 const req=createRequire(path.join(__dirname,'../server/package.json')); const WebSocket=req('ws');
 const MODEL='gpt-realtime-2.1-mini', CAP=2, RESERVATION=.012;
 const VOICES={train:['marin','cedar','coral','alloy'],validation:['ash','sage'],test:['ballad','verse']};
+const NATIVE_TEST_COHORTS=['adult:standard:piku','adult:standard:piko','adult:Chinese-accent:piku','adult:Chinese-accent:piko','childlike:Chinese-accent:piku','childlike:Chinese-accent:piko'];
 let out,key,model=MODEL,proxyPort=7897;
 function cost(u){
  if(!u||!Number.isFinite(u.input_tokens)||!Number.isFinite(u.output_tokens))throw Error('Missing usage');
@@ -96,6 +97,24 @@ function freshTestPlan(rows,isolation,frozen){
   return {...r,id:'native-fresh2-'+r.id,voice:speaker.slice('openai:'.length),speaker,group:speaker,recipe:r.recipe+'-fresh-source-v2'};
  });
 }
+function assertNativeTestPlanCoverage(rows,frozen){
+ // Historical trial plans remain historical. A new native-qualified policy
+ // must carry the entire DEV cohort contract into its independent TEST.
+ if(!frozen?.source_native_freeze_sha256&&!frozen?.required_test_cohorts)return;
+ const required=frozen.required_test_cohorts;
+ if(!Array.isArray(required)||JSON.stringify([...required].sort())!==JSON.stringify([...NATIVE_TEST_COHORTS].sort()))throw Error('Native TEST requires the complete six-cohort contract');
+ const planned=new Set();
+ for(const r of rows.filter(r=>r.split==='test'&&r.label===1)){
+  const text=r.text.toLowerCase().replace(/[\s,.!?:;，。！？、\-]/g,'');
+  const variant=text==='hipiko'?'piko':['hipikoo','hipeekoo','嗨批枯'].includes(text)?'piku':null;
+  if(!variant)throw Error('Unknown intended TEST target; no request sent');
+  planned.add([r.synthetic_style,r.accent,variant].join(':'));
+ }
+ const missing=required.filter(g=>!planned.has(g));
+ if(missing.length)throw Error('Native TEST plan misses required cohorts: '+missing.join(', ')+'; no request sent');
+ // Intended metadata coverage is not evidence of audible pronunciation/age.
+ // Actual audio still needs independent review before any TEST pass claim.
+}
 function tunnel(){return new Promise((resolve,reject)=>{const r=http.request({hostname:'127.0.0.1',port:proxyPort,method:'CONNECT',path:'api.openai.com:443',headers:{Host:'api.openai.com:443'},timeout:15000});r.on('timeout',()=>r.destroy(Error('proxy-connect-timeout')));r.on('error',reject);r.on('connect',(res,socket,head)=>{if(res.statusCode!==200){socket.destroy();return reject(Error('proxy-status-'+res.statusCode));}if(head.length)socket.unshift(head);const s=tls.connect({socket,servername:'api.openai.com',rejectUnauthorized:true});s.once('secureConnect',()=>resolve(s));s.once('error',reject);});r.end();});}
 function wav(pcm){const b=Buffer.alloc(44);b.write('RIFF');b.writeUInt32LE(36+pcm.length,4);b.write('WAVEfmt ',8);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);b.writeUInt32LE(24000,24);b.writeUInt32LE(48000,28);b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(pcm.length,40);return Buffer.concat([b,pcm]);}
 async function generate([name,voice,style,text]){
@@ -149,6 +168,14 @@ async function main(){
   }
   frozenForTest=frozen;
  }
+ const recipe=a.recipe||'literal';if(recipe!=='literal')throw Error('Annotated recipe failed content review; only literal synthesis is enabled');
+ let planned=plan().map(row=>recipe==='annotated'?row:{...row,recipe:'literal-v2',text:row.label?(row.text.includes('Pee')?'Hi, Pee Koo!':'Hi, Pikoo!'):row.text,style:'Read the user text aloud exactly once, without commentary, repetition, or reading these instructions. '+(row.synthetic_style==='childlike'?'Youthful fictional synthetic delivery. ':'Relaxed adult delivery. ')+(row.accent==='Chinese-accent'?'Natural Mandarin Chinese accent when speaking English. ':'Natural English. ')+'Casual connected speech, normal volume and pace.'});
+ if(contract)planned=targetPlan(planned,contract);
+ if(phase!=='pilot')for(const row of planned){row.requested_style=row.synthetic_style;row.synthetic_style='adult';row.recipe='literal-adult-v3';row.style='Read the user text aloud exactly once, without commentary or repetition. Natural relaxed adult speech. '+(row.accent==='Chinese-accent'?'A gentle Mandarin Chinese accent when reading English. ':'Natural English. ');}
+ if(phase==='training')planned=expansionPlan(contract);
+ if(phase==='adult-refresh')planned=adultRefreshPlan(contract);
+ if(freshIsolation)planned=freshTestPlan(planned,freshIsolation,frozenForTest);
+ if(frozenForTest)assertNativeTestPlanCoverage(planned,frozenForTest);
  out=path.resolve(a.output);proxyPort=Number(a['proxy-port']||7897);if(!Number.isInteger(proxyPort)||proxyPort<1||proxyPort>65535)throw Error('Invalid proxy port');
  const env=fs.readFileSync(a['key-file'],'utf8');const line=env.split(/\r?\n/).find(l=>/^\s*(?:export\s+)?OPENAI_API_KEY\s*=/.test(l));if(!line)throw Error('Missing existing API key');key=line.slice(line.indexOf('=')+1).trim().replace(/^['"]|['"]$/g,'');
  process.umask(0o077);fs.mkdirSync(out,{recursive:true,mode:0o700});
@@ -170,13 +197,6 @@ async function main(){
    for(const r of JSON.parse(fs.readFileSync(file)))ledger.entries.push({id:name+'/'+r.file,status:'completed',reserved_usd:0,actual_usd:cost(r.usage)});
   }write(ledgerFile,ledger);
  }
- const recipe=a.recipe||'literal';if(recipe!=='literal')throw Error('Annotated recipe failed content review; only literal synthesis is enabled');
- let planned=plan().map(row=>recipe==='annotated'?row:{...row,recipe:'literal-v2',text:row.label?(row.text.includes('Pee')?'Hi, Pee Koo!':'Hi, Pikoo!'):row.text,style:'Read the user text aloud exactly once, without commentary, repetition, or reading these instructions. '+(row.synthetic_style==='childlike'?'Youthful fictional synthetic delivery. ':'Relaxed adult delivery. ')+(row.accent==='Chinese-accent'?'Natural Mandarin Chinese accent when speaking English. ':'Natural English. ')+'Casual connected speech, normal volume and pace.'});
- if(contract)planned=targetPlan(planned,contract);
- if(phase!=='pilot')for(const row of planned){row.requested_style=row.synthetic_style;row.synthetic_style='adult';row.recipe='literal-adult-v3';row.style='Read the user text aloud exactly once, without commentary or repetition. Natural relaxed adult speech. '+(row.accent==='Chinese-accent'?'A gentle Mandarin Chinese accent when reading English. ':'Natural English. ');}
- if(phase==='training')planned=expansionPlan(contract);
- if(phase==='adult-refresh')planned=adultRefreshPlan(contract);
- if(freshIsolation)planned=freshTestPlan(planned,freshIsolation,frozenForTest);
  const planFile=path.join(out,phase==='adult-refresh'?'generation-plan.adult-refresh-v5.json':freshIsolation?'generation-plan.sealed-native-fresh2.json':phase==='training'?'generation-plan.training-expansion-v2.json':phase==='sealed'?'generation-plan.sealed.'+contract.target+'.json':phase==='pilot'?'generation-plan.literal-v2.json':'generation-plan.literal-adult-v3.json');
  if(fs.existsSync(planFile)){if(JSON.stringify(JSON.parse(fs.readFileSync(planFile)))!==JSON.stringify(planned))throw Error('Frozen generation plan differs');}else write(planFile,planned);
  const manifestFile=path.join(out,phase==='adult-refresh'?'manifest-adult-refresh-v5.json':freshIsolation?'manifest-test-native-fresh2.json':phase==='sealed'?'manifest-test.json':phase==='training'?'manifest-training-expansion.json':'manifest.json');
@@ -205,5 +225,5 @@ async function main(){
  write(path.join(out,'status.json'),{phase:phase+'-generated-awaiting-independent-review',completed:selected.filter(x=>done.some(y=>y.id===x.id)).length,total:selected.length,total_retained_files:done.length,updated_at:new Date().toISOString(),next:'independent content and pronunciation review; no training admission yet'});
  }finally{fs.closeSync(fd);fs.unlinkSync(lock);}
 }
-module.exports={cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,validateFrozen,generationCount,freshTestPlan,RESERVATION,tunnel};
+module.exports={cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,validateFrozen,generationCount,freshTestPlan,assertNativeTestPlanCoverage,NATIVE_TEST_COHORTS,RESERVATION,tunnel};
 if(require.main===module)main().catch(err=>{console.error(JSON.stringify({status:'stopped',error:String(err.message).replace(/sk-[A-Za-z0-9_-]+/g,'[REDACTED]')}));process.exitCode=1;});

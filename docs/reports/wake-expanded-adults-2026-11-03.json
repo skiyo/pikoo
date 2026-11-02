@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-11-03",
-  "snapshot_at": "2026-11-02T18:54:12.114782+00:00",
-  "status": "expanded-adult-TRAIN-native-comparison-running-not-qualified",
+  "snapshot_at": "2026-11-02T19:16:42.923228+00:00",
+  "status": "finite-comparison-completed-no-qualified-candidate",
   "goal_completed": false,
   "source_synthesis": {
     "cumulative_sources": 100,
@@ -146,17 +146,74 @@
       "host_arena_bytes": 37808,
       "model_sha256": "b5b65c82c717b56d1fc600d368d136ced6f22c6e975420a51e1f845aaaec567e",
       "hardware_accepted": false
+    },
+    {
+      "profile": "expanded-adult96-long-fresh-seed-43",
+      "epochs_completed": 24,
+      "native_ranked_best_epoch": 18,
+      "old_DEV": {
+        "rolling": 3,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 27
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 10
+          }
+        },
+        "false_wakes": 2,
+        "early_wakes": 0,
+        "worst_recall": 0.7692307692307693,
+        "latency_p95_ms": 76.38749999999999,
+        "passed": false
+      },
+      "new_negative_DEV_cases": 261,
+      "new_negative_DEV_false_clips": 0,
+      "positive_shortfall": 2,
+      "qualified": false,
+      "model_bytes": 98088,
+      "host_arena_bytes": 37808,
+      "model_sha256": "207b019c1d578d0550c02b473c78a6483ac0a8d960ea92d9820645cb43f2b4cf",
+      "hardware_accepted": false
     }
   ],
   "current_status": {
-    "stage": "INT8-evaluated",
-    "profile": "expanded-adult96-long-fresh",
-    "seed": 43,
-    "epoch": 1,
-    "negative_DEV_false_clips": 0,
-    "positive_shortfall": 21,
-    "qualified": false,
-    "goal_completed": false
+    "stage": "finite-INT8-comparison-completed-no-qualification",
+    "goal_completed": false,
+    "device_changed": false
   },
-  "actual_ESP32_timing_or_concurrency_verified": false
+  "actual_ESP32_timing_or_concurrency_verified": false,
+  "read_only_policy_diagnostics": {
+    "first_five_score_completed_epochs": 127,
+    "subsequent_five_score_new_completed_epochs": 24,
+    "five_score_thresholds": [
+      0.9,
+      0.95
+    ],
+    "higher_three_score_threshold": 0.95,
+    "higher_three_score_R8_epochs": 54,
+    "old_gate_survivors": 0,
+    "model_data_or_policy_changed": false,
+    "TEST_opened": false
+  },
+  "next_comparison": "Same expanded TRAIN, fresh96 architecture/seeds and policy; enable existing fixed4x TRAIN boundary-negative loss only."
 }

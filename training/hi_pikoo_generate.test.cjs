@@ -1,7 +1,46 @@
 // SPDX-License-Identifier: Apache-2.0
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,validateFrozen,generationCount,freshTestPlan,RESERVATION}=require('./hi_pikoo_generate.cjs');
+const {cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,validateFrozen,generationCount,freshTestPlan,assertNativeTestPlanCoverage,NATIVE_TEST_COHORTS,RESERVATION}=require('./hi_pikoo_generate.cjs');
+test('native TEST cannot spend on an adult-only plan and silently omit childlike cohorts',()=>{
+ const frozen={source_native_freeze_sha256:'fixture',required_test_cohorts:NATIVE_TEST_COHORTS};
+ const rows=targetPlan(plan(),{target:'hi-piku-piko-v2',accepted_names:['piku','piko'],declared_before_corpus_training:true});
+ const adultOnly=rows.map(r=>({...r,synthetic_style:'adult'}));
+ assert.throws(()=>assertNativeTestPlanCoverage(adultOnly,frozen),/misses required cohorts: childlike/);
+ const onlyKu=rows.filter(r=>r.text!=='Hi, Piko!');
+ assert.throws(()=>assertNativeTestPlanCoverage(onlyKu,frozen),/piko/);
+ // An intended complete plan passes preflight, not audible age/content review.
+ assertNativeTestPlanCoverage(rows,frozen);
+});
+test('native TEST cannot remove the required cohort contract or satisfy it using negative rows',()=>{
+ const rows=targetPlan(plan(),{target:'hi-piku-piko-v2',accepted_names:['piku','piko'],declared_before_corpus_training:true});
+ assert.throws(()=>assertNativeTestPlanCoverage(rows,{source_native_freeze_sha256:'fixture'}),/complete six-cohort/);
+ assert.throws(()=>assertNativeTestPlanCoverage(rows,{source_native_freeze_sha256:'fixture',required_test_cohorts:NATIVE_TEST_COHORTS.slice(0,4)}),/complete six-cohort/);
+ const negativesOnly=rows.map(r=>({...r,label:r.synthetic_style==='childlike'?0:r.label}));
+ assert.throws(()=>assertNativeTestPlanCoverage(negativesOnly,{source_native_freeze_sha256:'fixture',required_test_cohorts:NATIVE_TEST_COHORTS}),/misses required cohorts/);
+});
+test('sealed CLI rejects incomplete native TEST coverage before reading keys or creating a seal/ledger',()=>{
+ const fs=require('fs'),os=require('os'),path=require('path'),crypto=require('crypto'),{spawnSync}=require('child_process');
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'pikoo-test-preflight-'));
+ try{
+  const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
+  const put=(name,value)=>{const p=path.join(root,name);fs.writeFileSync(p,JSON.stringify(value));return p;};
+  const model=path.join(root,'model.fixture');fs.writeFileSync(model,'fixture');
+  const source=put('source.json',[]),used=['openai:marin'],reserved=['openai:echo','openai:shimmer'];
+  const contract={target:'hi-piku-piko-v2',accepted_names:['piku','piko'],declared_before_corpus_training:true};
+  const isolation=put('isolation.json',{target:contract.target,reserved_source_speakers:reserved,used_source_speakers:used,
+   covered_splits:['test','train','validation'],metadata_only:true,audio_read:false,household_used:false,source_manifests_sha256:{[source]:hash(fs.readFileSync(source))}});
+  const frozen=put('policy.json',{...contract,candidate_frozen_at:'fixture',development_passed:true,model_sha256:hash(fs.readFileSync(model)),
+   source_native_freeze_sha256:'fixture',required_test_cohorts:NATIVE_TEST_COHORTS,required_fresh_test_speakers:reserved,forbidden_test_speakers:used,test_isolation_sha256:hash(fs.readFileSync(isolation))});
+  const output=path.join(root,'output');
+  const result=spawnSync(process.execPath,[path.join(__dirname,'hi_pikoo_generate.cjs'),'--output',output,'--key-file',path.join(root,'missing-key'),
+   '--audition-root',path.join(root,'missing-auditions'),'--phase','sealed','--target-contract',put('contract.json',contract),
+   '--source-review',put('review.json',{clips:{'train-0060':{pronunciation_piku:'accepted'}}}),
+   '--frozen-candidate',frozen,'--candidate-model',model,'--fresh-test-isolation',isolation],{encoding:'utf8',timeout:5000});
+  assert.equal(result.status,1);assert.match(result.stderr,/misses required cohorts: childlike/);
+  assert.ok(!fs.existsSync(output));
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
 test('adult coverage refresh stays TRAIN-only, held-out voices untouched and has a bounded diverse pilot',()=>{
  const rows=adultRefreshPlan({target:'hi-piku-piko-v2'}),pilot=rows.slice(0,20);
  assert.equal(rows.length,200);assert.equal(rows.filter(r=>r.label).length,160);
