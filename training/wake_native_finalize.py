@@ -15,6 +15,7 @@ import shutil
 import subprocess
 
 import numpy as np
+from hi_pikoo_model import GRID, policy_metrics
 
 
 def sha(path):
@@ -30,7 +31,10 @@ def validate_gate(frozen, review, original_manifest_sha256):
     required = {'adult:standard:piku': 26, 'adult:standard:piko': 3,
                 'adult:Chinese-accent:piku': 26, 'adult:Chinese-accent:piko': 10,
                 'childlike:Chinese-accent:piku': 11, 'childlike:Chinese-accent:piko': 12}
-    if (frozen.get('policy') != {'rolling': 3, 'threshold': .9} or
+    policy = frozen.get('policy', {})
+    if (set(policy) != {'rolling', 'threshold'} or
+            (policy.get('rolling'), policy.get('threshold')) not in GRID or
+            any(result.get(k) != v or old.get(k) != v for k, v in policy.items()) or
             result.get('qualified') is not True or old.get('passed') is not True or
             result.get('old_DEV_preserved') is not True or
             result.get('backend') != 'pinned native TFLite Micro' or
@@ -55,6 +59,29 @@ def validate_gate(frozen, review, original_manifest_sha256):
             review.get('review_clip_selection_used_wake_scores') is not False):
         raise ValueError('Resolve independent synthetic DEV content questions before TEST')
     return result
+
+
+def verify_saved_dev(cases, negatives, result, policy, plan):
+    """Never reuse another smoothing/threshold's negative peak summaries."""
+    if any(plan.get(k) != v or result.get(k) != v for k, v in policy.items()):
+        raise ValueError('Frozen policy differs from evaluated and declared policy')
+    if (len(cases) != 144 or sum(not c['label'] for c in cases) != 52 or
+            len(negatives) != 261):
+        raise ValueError('Complete DEV trace evidence required')
+    if policy_metrics(cases, **policy) != result['old_DEV']:
+        raise ValueError('Frozen original DEV metrics do not match saved traces')
+    false_clips = 0
+    for case in negatives:
+        peak = case.get('peak')
+        if (not isinstance(peak, (int, float)) or isinstance(peak, bool) or
+                not np.isfinite(peak) or not 0 <= peak <= 1):
+            raise ValueError('Finite negative DEV peak evidence required')
+        activated = bool(np.float32(peak) >= np.float32(policy['threshold']))
+        if type(case.get('activated')) is not bool or case['activated'] != activated:
+            raise ValueError('Negative DEV decisions disagree with selected policy')
+        false_clips += activated
+    if false_clips != result['new_negative_DEV_false_clips'] or false_clips:
+        raise ValueError('Negative DEV gate differs from saved evidence')
 
 
 def parity(model, micro, features, fixture):
@@ -111,18 +138,14 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
             result.get('host_arena_bytes', 262145) > 262144):
         raise ValueError('Frozen model, native backend or resource evidence changed')
     evaluation = json.loads((checkpoint/'evaluation.json').read_text())
-    for key in ('old_DEV', 'new_negative_DEV_false_clips', 'new_negative_DEV_cases', 'static'):
+    for key in ('old_DEV', 'new_negative_DEV_false_clips', 'new_negative_DEV_cases', 'static',
+                'rolling', 'threshold'):
         if evaluation[key] != result[key]:
             raise ValueError('Frozen evaluation differs from source checkpoint')
     cases = json.loads((checkpoint/'old-dev-cases.json').read_text())
     negatives = json.loads((checkpoint/'negative-dev-scores.json').read_text())
-    if (len(cases) != 144 or sum(not c['label'] for c in cases) != 52 or
-            len(negatives) != 261 or any(c['activated'] for c in negatives)):
-        raise ValueError('Complete DEV trace evidence required')
-    from hi_pikoo_model import policy_metrics
-    if policy_metrics(cases, 3, .9) != result['old_DEV']:
-        raise ValueError('Frozen original DEV metrics do not match saved traces')
     plan = json.loads((experiment/'plan.json').read_text())
+    verify_saved_dev(cases, negatives, result, frozen['policy'], plan)
     if (plan.get('TRAIN_extra_sources') and
             plan['TRAIN_extra_sources']['manifest_sha256'] not in isolation['source_manifests_sha256'].values()):
         raise ValueError('Fresh TEST isolation must cover the extra TRAIN source manifest too')
@@ -160,7 +183,7 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
     sys.path.insert(0, str(Path(__file__).parents[1]/'tools'))
     from check_wake_policy import frontend_fingerprint, validate
     policy = {'schema_version': 1, 'target': 'hi-piku-piko-v2', 'accepted_names': ['piku', 'piko'],
-        'model_sha256': sha(model), 'rolling': 3, 'threshold': .9,
+        'model_sha256': sha(model), **frozen['policy'],
         'candidate_frozen_at': datetime.datetime.fromtimestamp(frozen_path.stat().st_mtime, datetime.timezone.utc).isoformat(),
         'development_passed': True, 'development_qualified': True, 'formal_goal_passed': False,
         'frontend_fingerprint': frontend_fingerprint(),

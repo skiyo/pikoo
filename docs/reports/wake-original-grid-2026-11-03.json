@@ -1,0 +1,78 @@
+{
+  "date": "2026-11-03",
+  "scope": "Original predeclared policy coverage on completed post-quarantine fresh models; reused DEV, not independent TEST.",
+  "policies": [
+    [
+      3,
+      0.8
+    ],
+    [
+      3,
+      0.85
+    ],
+    [
+      3,
+      0.9
+    ],
+    [
+      3,
+      0.95
+    ],
+    [
+      5,
+      0.8
+    ],
+    [
+      5,
+      0.85
+    ],
+    [
+      5,
+      0.9
+    ],
+    [
+      5,
+      0.95
+    ]
+  ],
+  "comparisons": [
+    {
+      "phase": "adult coverage",
+      "fresh_checkpoints": 50,
+      "policy_cells": 400,
+      "positive_bound_pruned_cells": 49,
+      "old_DEV_survivors": 0
+    },
+    {
+      "phase": "expanded adult sources",
+      "fresh_checkpoints": 54,
+      "policy_cells": 432,
+      "positive_bound_pruned_cells": 0,
+      "old_DEV_survivors": 0
+    },
+    {
+      "phase": "expanded boundary loss",
+      "fresh_checkpoints": 52,
+      "policy_cells": 416,
+      "positive_bound_pruned_cells": 0,
+      "old_DEV_survivors": 0
+    }
+  ],
+  "total_fresh_checkpoints": 156,
+  "total_policy_cells_accounted_for": 1248,
+  "cells_excluded_by_monotonic_positive_bound": 49,
+  "all_other_cells_evaluated_from_saved_native_evidence": true,
+  "qualified_candidates": 0,
+  "new_negative_replay_note": "Every policy failed the original 144-case gate, so no additional 261-case replay was needed for these newly examined bins. Previous 3-score/.90 native negative replays remain recorded separately.",
+  "formal_goal_passed": false,
+  "fresh_TEST_opened": false,
+  "household_used": false,
+  "device_changed": false,
+  "API_requests_in_this_policy_audit": 0,
+  "numeric_gate_unchanged": true,
+  "source_content_questions_still_pending": true,
+  "software_change": "Native finalizer accepts original GRID only when frozen, evaluation, saved original DEV metrics, and experiment plan agree; verifies negative peak/activation consistency and preserves all quality/content gates.",
+  "targeted_native_finalizer_tests": 7,
+  "tests_passed": true,
+  "hardware_or_child_acceptance": false
+}

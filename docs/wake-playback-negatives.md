@@ -344,3 +344,21 @@ voiced duration are not inferred from file duration. Existing synthetic DEV
 content questions also remain pending. No household audio, new TEST, board
 change or new OpenAI request was involved. See the
 [source-review record](reports/wake-google-source-review-2026-11-03.json).
+
+
+The complete original finite policy grid is now accounted for across the three
+latest clean fresh-initialization comparisons: 50, 54 and 52 checkpoints,
+respectively, with 3/5-score smoothing and thresholds .80/.85/.90/.95. Of the
+1,248 policy cells, 49 higher-threshold cells were rejected by the monotonic
+positive-hit bound; the others use saved native evidence. None passed the
+original 144-case gate. Consequently no additional 261-negative replay was
+needed for these newly checked policies. Previous fixed-policy failures remain
+unchanged; no trigger setting was installed. See the
+[complete grid record](reports/wake-original-grid-2026-11-03.json).
+
+The finalization tool also no longer hardcodes 3-score/.90: it requires agreement
+between a permitted original-grid policy, its declared plan, frozen evaluation
+and saved DEV evidence, then checks negative peak/activation consistency. Seven
+targeted tests passed. This is tooling readiness, not a qualified model. Pending
+independent synthetic-content answers and actual /ku/-/ko/ source coverage still
+need resolution before a new source admission or formal candidate can proceed.
