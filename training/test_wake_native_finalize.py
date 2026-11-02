@@ -1,10 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 import copy
 import unittest
-from wake_native_finalize import validate_gate
+from wake_native_finalize import validate_gate, base_representatives
 
 
 class NativeFinalize(unittest.TestCase):
+    def test_appended_sources_are_not_mistaken_for_retained_cached_fixture_indices(self):
+        plan = {'retained_original_TRAIN_indices': [0, 2, 4, 5],
+                'TRAIN_effective_examples': 6, 'representative_TRAIN_indices': [1, 3, 4, 5]}
+        self.assertEqual(base_representatives(plan, 6), [2, 5])
+        with self.assertRaises(ValueError):
+            base_representatives({**plan, 'representative_TRAIN_indices': [-1]}, 6)
+        with self.assertRaises(ValueError):
+            base_representatives({**plan, 'representative_TRAIN_indices': [6]}, 6)
+
     def inputs(self):
         groups = {'adult:standard:piku': 28, 'adult:standard:piko': 3,
                   'adult:Chinese-accent:piku': 27, 'adult:Chinese-accent:piko': 10,

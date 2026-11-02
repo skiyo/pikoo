@@ -218,3 +218,35 @@ Initialization is chosen from completed prior long-context checkpoints under
 a predeclared DEV rule; it is not a release decision. A prior freeze stops the
 queued comparison. This operation neither adds device inference work nor
 demonstrates successful natural wake detection by itself.
+
+### Adult coverage pilot and appended TRAIN (2026-11-03)
+
+After conservative quarantine, standard-English piku had only six adult TRAIN
+originals. `adult-refresh` defines a bounded 200-request TRAIN-only plan using
+the four existing adult TRAIN identities. Only **20** were generated, limited
+by `--new-attempt-limit 20`; expansion stopped for review. Existing manifests,
+DEV and source-isolated TEST voices were preserved.
+
+Blind GPT-Transcribe agreed with the existing content rule on 17/20; the already
+downloaded offline Qwen3-ASR agreed on 12/20. Twelve recordings had matching
+normalized transcripts from both systems: nine targets and three competitors.
+They form a separate consensus-reviewed TRAIN supplement; eight uncertainties
+remain quarantined. This is weak-label audio evidence, **not phonetic gold** or
+per-record human listening. Adult style uses the previously reviewed unchanged
+built-in source identities; four voices do not become twenty new speakers.
+
+`--extra-train-manifest`, `--extra-train-review` and `--base-admitted-manifest`
+bind that supplement to its audio hashes, independent review and original
+TRAIN-only identities. `training/wake_extra_train.py` appends 126 examples,
+bringing effective TRAIN to 10,276, without moving or rebuilding base/DEV
+features. Ordinary cached negatives explicitly use feature-domain digests in
+their completed metadata, not fabricated original-audio hashes. Backend parity
+fixtures map to retained base indices; TEST isolation must include the extra
+source manifest too.
+
+The next finite comparison is 48-channel continuation versus a fresh 96-channel
+model, both long-context with training-only auxiliary supervision. Each has two
+seeds, at most 30 epochs, unchanged trigger and acceptance gates. Static file
+size, host arena and eventual ESP32 timing/concurrency remain separate checks.
+No board was changed by this pilot. Actual pilot, diagnostic and training
+results are in [the dated snapshot](reports/wake-adult-coverage-2026-11-03.json).

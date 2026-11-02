@@ -56,6 +56,22 @@ function expansionPlan(contract){
    style:'Read the user text aloud exactly once without commentary or repetition. '+(accent==='Chinese-accent'?'A natural Mandarin Chinese accent when reading English. ':'Natural English. ')+['Casual connected everyday speech.','Slightly fast natural speech.','Soft everyday speech, without whispering.','A brief natural pause after Hi; no syllable-by-syllable reading.'][Math.floor(i/10)%4]};
  });
 }
+function adultRefreshPlan(contract){
+ if(contract?.target!=='hi-piku-piko-v2')throw Error('Adult refresh requires dual target');
+ const positive=['Hi, Pikoo!','Hi, Pee Koo!','Hi, Piko!','Hi, Pikoo!'];
+ const negative=['Hi, Tikoo!','Hi, Tiko!','Pikoo!','Piko!','Hi!','Hi, pee!'];
+ const delivery=['Casual connected everyday speech.','A slightly quick natural greeting.','Soft everyday speech at normal audibility, not a whisper.','A brief natural pause after Hi, without separating name syllables.'];
+ return Array.from({length:200},(_,i)=>{
+  const label=i%5!==4?1:0,voice=VOICES.train[i%VOICES.train.length],accent=Math.floor(i/4)%2?'Chinese-accent':'standard';
+  const text=label?positive[Math.floor(i/8)%positive.length]:negative[Math.floor(i/5)%negative.length];
+  return {id:'train-adult-refresh-v5-'+String(i).padStart(4,'0'),split:'train',voice,speaker:'openai:'+voice,group:'openai:'+voice,text,label,
+   target_contract:contract.target,synthetic_style:'adult',accent,kind:label?'wake':'incomplete-or-confusable',recipe:'literal-adult-coverage-v5',
+   source:'OpenAI-Realtime-synthetic',synthetic:true,real_child:false,family_inputs_used:false,reference_audio_used:false,model:MODEL,
+   style:'Read the user text aloud exactly once without commentary, introductions or repetition. Natural relaxed adult delivery. '+
+    (accent==='Chinese-accent'?'A natural Mandarin Chinese accent when speaking English. ':'Natural English. ')+delivery[Math.floor(i/16)%delivery.length]+
+    ' Do not stretch vowels or recite individual syllables.'};
+ });
+}
 function validateFrozen(contract,frozen,binary,allowTrial=false){
  const trial=allowTrial&&frozen.development_passed===false&&frozen.trial_authorized===true&&frozen.status==='best-available-unqualified-trial'&&frozen.formal_goal_passed===false&&frozen.release_eligible===false;
  if(!contract||frozen.target!==contract.target||!frozen.candidate_frozen_at||(frozen.development_passed!==true&&!trial))throw Error('Qualified candidate and matching explicit target required before TEST');
@@ -107,7 +123,9 @@ async function generate([name,voice,style,text]){
 function args(argv){const a={};for(let i=0;i<argv.length;i+=2){if(!argv[i].startsWith('--')||argv[i+1]===undefined)throw Error('Expected --name value');a[argv[i].slice(2)]=argv[i+1];}return a;}
 async function main(){
  const a=args(process.argv.slice(2));if(!a.output||!a['key-file']||!a['audition-root'])throw Error('Required: --output, --key-file, --audition-root');
- const phase=a.phase||'pilot';if(!['pilot','training','development','sealed'].includes(phase))throw Error('Unknown collection phase');
+ const phase=a.phase||'pilot';if(!['pilot','training','adult-refresh','development','sealed'].includes(phase))throw Error('Unknown collection phase');
+ const invocationLimit=Number(a['new-attempt-limit']||(phase==='pilot'?20:150));
+ if(!Number.isInteger(invocationLimit)||invocationLimit<1||invocationLimit>(phase==='pilot'?20:150))throw Error('Invalid bounded request limit');
  let contract=null,frozenForTest=null,freshIsolation=null;
  if(a['target-contract']){contract=JSON.parse(fs.readFileSync(a['target-contract'],'utf8'));targetPlan([],contract);}
  if(phase!=='pilot'){
@@ -157,16 +175,17 @@ async function main(){
  if(contract)planned=targetPlan(planned,contract);
  if(phase!=='pilot')for(const row of planned){row.requested_style=row.synthetic_style;row.synthetic_style='adult';row.recipe='literal-adult-v3';row.style='Read the user text aloud exactly once, without commentary or repetition. Natural relaxed adult speech. '+(row.accent==='Chinese-accent'?'A gentle Mandarin Chinese accent when reading English. ':'Natural English. ');}
  if(phase==='training')planned=expansionPlan(contract);
+ if(phase==='adult-refresh')planned=adultRefreshPlan(contract);
  if(freshIsolation)planned=freshTestPlan(planned,freshIsolation,frozenForTest);
- const planFile=path.join(out,freshIsolation?'generation-plan.sealed-native-fresh2.json':phase==='training'?'generation-plan.training-expansion-v2.json':phase==='sealed'?'generation-plan.sealed.'+contract.target+'.json':phase==='pilot'?'generation-plan.literal-v2.json':'generation-plan.literal-adult-v3.json');
+ const planFile=path.join(out,phase==='adult-refresh'?'generation-plan.adult-refresh-v5.json':freshIsolation?'generation-plan.sealed-native-fresh2.json':phase==='training'?'generation-plan.training-expansion-v2.json':phase==='sealed'?'generation-plan.sealed.'+contract.target+'.json':phase==='pilot'?'generation-plan.literal-v2.json':'generation-plan.literal-adult-v3.json');
  if(fs.existsSync(planFile)){if(JSON.stringify(JSON.parse(fs.readFileSync(planFile)))!==JSON.stringify(planned))throw Error('Frozen generation plan differs');}else write(planFile,planned);
- const manifestFile=path.join(out,freshIsolation?'manifest-test-native-fresh2.json':phase==='sealed'?'manifest-test.json':phase==='training'?'manifest-training-expansion.json':'manifest.json');
+ const manifestFile=path.join(out,phase==='adult-refresh'?'manifest-adult-refresh-v5.json':freshIsolation?'manifest-test-native-fresh2.json':phase==='sealed'?'manifest-test.json':phase==='training'?'manifest-training-expansion.json':'manifest.json');
  let newAttempts=0;let done=fs.existsSync(manifestFile)?JSON.parse(fs.readFileSync(manifestFile)):[];
- const selected=phase==='training'?planned:phase==='pilot'?planned.filter(x=>x.split==='train').slice(0,200):planned.filter(x=>x.split===(phase==='development'?'validation':'test'));
+ const selected=['training','adult-refresh'].includes(phase)?planned:phase==='pilot'?planned.filter(x=>x.split==='train').slice(0,200):planned.filter(x=>x.split===(phase==='development'?'validation':'test'));
  for(const row of selected){
   if(done.some(x=>x.id===row.id))continue;
   const prior=ledger.entries.find(x=>x.id===row.id); if(prior){if(['failed-known-usage','failed-estimated-charge'].includes(prior.status))continue;throw Error('Unresolved prior attempt; manual reconciliation required');}
-  if(newAttempts>=(phase==='pilot'?20:150)){write(path.join(out,'status.json'),{phase:'literal-pilot-awaiting-review',new_attempts:newAttempts,completed:done.length,updated_at:new Date().toISOString()});return;}
+  if(newAttempts>=invocationLimit){write(path.join(out,'status.json'),{phase:phase+'-bounded-batch-awaiting-review',new_attempts:newAttempts,completed:done.length,updated_at:new Date().toISOString()});return;}
   if(generationCount(ledger)>=1000)throw Error('1000 generation-attempt cap reached');
   ++newAttempts;reserve(ledger,{id:row.id},phase==='sealed'?.2:.5);write(ledgerFile,ledger);const started=Date.now();
   try{
@@ -186,5 +205,5 @@ async function main(){
  write(path.join(out,'status.json'),{phase:phase+'-generated-awaiting-independent-review',completed:selected.filter(x=>done.some(y=>y.id===x.id)).length,total:selected.length,total_retained_files:done.length,updated_at:new Date().toISOString(),next:'independent content and pronunciation review; no training admission yet'});
  }finally{fs.closeSync(fd);fs.unlinkSync(lock);}
 }
-module.exports={cost,reserve,plan,targetPlan,expansionPlan,validateFrozen,generationCount,freshTestPlan,RESERVATION,tunnel};
+module.exports={cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,validateFrozen,generationCount,freshTestPlan,RESERVATION,tunnel};
 if(require.main===module)main().catch(err=>{console.error(JSON.stringify({status:'stopped',error:String(err.message).replace(/sk-[A-Za-z0-9_-]+/g,'[REDACTED]')}));process.exitCode=1;});

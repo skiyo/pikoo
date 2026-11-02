@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-11-03",
-  "snapshot_at": "2026-11-03T00:38:24.777591+08:00",
-  "status": "fixed-TRAIN-boundary-loss-comparison-running-not-qualified",
+  "snapshot_at": "2026-11-03T01:34:57.550276+08:00",
+  "status": "fixed-TRAIN-boundary-loss-comparison-completed-no-qualification",
   "goal_completed": false,
   "device_changed": false,
   "server_behavior_changed": false,
@@ -135,14 +135,9 @@
     "threshold": 0.9
   },
   "current_status": {
-    "stage": "INT8-evaluated",
-    "profile": "boundary48-long-binary",
-    "seed": 42,
-    "epoch": 7,
-    "negative_DEV_false_clips": 0,
-    "positive_shortfall": 5,
-    "qualified": false,
-    "goal_completed": false
+    "stage": "finite-INT8-comparison-completed-no-qualification",
+    "goal_completed": false,
+    "device_changed": false
   },
   "formal_gate_unchanged": true,
   "old_DEV_cases": 144,
@@ -158,5 +153,48 @@
   },
   "additional_paid_requests": 0,
   "budget_cap_usd": 2,
-  "weights_and_audio_public": false
+  "weights_and_audio_public": false,
+  "completed_profiles": [
+    {
+      "profile": "boundary48-long-auxiliary-seed-42",
+      "epochs": 20,
+      "best_epoch": 19,
+      "positive_shortfall": 2,
+      "old_false": 0,
+      "old_early": 1,
+      "new_false": 0,
+      "qualified": false
+    },
+    {
+      "profile": "boundary48-long-auxiliary-seed-43",
+      "epochs": 19,
+      "best_epoch": 3,
+      "positive_shortfall": 3,
+      "old_false": 0,
+      "old_early": 1,
+      "new_false": 0,
+      "qualified": false
+    },
+    {
+      "profile": "boundary48-long-binary-seed-42",
+      "epochs": 20,
+      "best_epoch": 19,
+      "positive_shortfall": 4,
+      "old_false": 1,
+      "old_early": 1,
+      "new_false": 0,
+      "qualified": false
+    },
+    {
+      "profile": "boundary48-long-binary-seed-43",
+      "epochs": 20,
+      "best_epoch": 12,
+      "positive_shortfall": 3,
+      "old_false": 1,
+      "old_early": 1,
+      "new_false": 0,
+      "qualified": false
+    }
+  ],
+  "next_experiment_report": "wake-adult-coverage-2026-11-03.json"
 }

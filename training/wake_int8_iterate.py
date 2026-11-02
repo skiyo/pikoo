@@ -335,6 +335,9 @@ def main():
                         help='Complete independent TRAIN content audit; quarantine uncertain originals and descendants')
     parser.add_argument('--phrase-boundaries', action='store_true',
                         help='Fixed 4x TRAIN loss on incomplete target prefixes and competitor endings')
+    parser.add_argument('--extra-train-manifest', type=Path)
+    parser.add_argument('--extra-train-review', type=Path)
+    parser.add_argument('--base-admitted-manifest', type=Path)
     a = parser.parse_args()
     os.umask(0o077)
     a.output.mkdir(parents=True, exist_ok=True)
@@ -373,7 +376,7 @@ def main():
     profiles = load_profiles(a.profiles) if a.profiles else BALANCED_PROFILES if a.balanced else PROFILES
     needs_auxiliary = any(p.get('auxiliary_phrase_weight', 0) for p in profiles)
     events = None
-    if needs_auxiliary or a.phrase_boundaries:
+    if needs_auxiliary or a.phrase_boundaries or a.extra_train_manifest:
         if not a.phrase_events:
             raise ValueError('Verified TRAIN phrase events required for phrase supervision')
         events = json.loads(a.phrase_events.read_text())
@@ -383,6 +386,18 @@ def main():
         if keep is not None:
             from wake_train_admission import subset_phrase_events
             events = subset_phrase_events(events, original_metadata, keep)
+    groups = json.loads((prepared/'train-groups.json').read_text())
+    if keep is not None:
+        groups = [groups[i] for i in keep]
+    extra_summary = None
+    if a.extra_train_manifest:
+        if not a.extra_train_review or not a.base_admitted_manifest or metadata is None:
+            raise ValueError('Extra TRAIN needs its independent review and original admitted source metadata')
+        from wake_extra_train import append
+        original_manifest_sha = json.loads((a.baseline/'provenance.json').read_text())['manifest_sha256']
+        x, y, w, metadata, events, groups, extra_summary = append(x, y, w, metadata, events, groups,
+            a.extra_train_manifest, a.extra_train_review, a.base_admitted_manifest,
+            original_manifest_sha, a.protected, a.output)
     boundary_summary = None
     if a.phrase_boundaries:
         from wake_phrase_boundaries import emphasize
@@ -402,9 +417,6 @@ def main():
     baseline = policy_metrics(old_info, 3, .9)
     with np.load(prepared/'negative-dev-features.npz') as data:
         negative_features = [data[f'case_{i}'] for i in range(len(data.files))]
-    groups = json.loads((prepared/'train-groups.json').read_text())
-    if keep is not None:
-        groups = [groups[i] for i in keep]
     indices = defaultdict(list)
     for i, group in enumerate(groups):
         indices[group].append(i)
@@ -428,6 +440,8 @@ def main():
         'TRAIN_positive_cohort_balance': cohort_balance,
         'TRAIN_auxiliary_phrase': auxiliary_summary,
         'TRAIN_phrase_boundaries': boundary_summary,
+        'TRAIN_extra_sources': extra_summary,
+        'TRAIN_effective_examples': len(x),
         'TRAIN_content_admission': admission_summary,
         'TRAIN_admission_sha256': sha(a.train_admission) if a.train_admission else None,
         'retained_original_TRAIN_indices': keep.tolist() if keep is not None else None,
@@ -444,7 +458,7 @@ def main():
              'wake_negative_finetune.py', 'wake_playback_negatives.py', 'streaming_runtime.py',
              'wake_phrase_auxiliary.py', 'wake_train_events.py', 'hi_pikoo_contrast.py',
              'hi_pikoo_timing.py', 'acoustic_augment.py', 'wake_train_admission.py',
-             'wake_phrase_boundaries.py')
+             'wake_phrase_boundaries.py', 'wake_extra_train.py')
     if snapshot.exists() and any((snapshot/name).exists() and
             sha(snapshot/name) != sha(Path(__file__).with_name(name)) for name in names):
         snapshot = a.output/f'source-continuation-{sha(Path(__file__))[:16]}'

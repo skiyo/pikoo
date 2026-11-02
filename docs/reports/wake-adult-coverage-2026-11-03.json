@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-03",
+  "snapshot_at": "2026-11-03T01:34:57.567564+08:00",
+  "status": "adult-coverage-and-wider-network-comparison-running-not-qualified",
+  "goal_completed": false,
+  "device_changed": false,
+  "server_behavior_changed": false,
+  "pilot": {
+    "model": "gpt-realtime-2.1-mini",
+    "plan_request_limit": 200,
+    "requests_executed": 20,
+    "additional_generated_without_review": 0,
+    "positive_recordings": 16,
+    "negative_recordings": 4,
+    "source_voices": [
+      "marin",
+      "cedar",
+      "coral",
+      "alloy"
+    ],
+    "all_TRAIN_only": true,
+    "source_identities_not_new_speakers": true,
+    "median_active_span_ms": 1040.0,
+    "cloud_blind_ASR_content_agreement": 17,
+    "offline_blind_ASR_content_agreement": 12,
+    "dual_consensus_sources": 12,
+    "consensus_target_sources": 9,
+    "consensus_competitor_sources": 3,
+    "uncertain_quarantined": 8,
+    "per_record_human_audition": false,
+    "ASR_is_not_phonetic_gold": true,
+    "age_review_scope": "Previously reviewed unchanged built-in synthetic adult source identity, not per-record age gold",
+    "household_or_real_child_uploaded": false
+  },
+  "TRAIN_audibility_diagnostic": {
+    "scope": "accepted synthetic original TRAIN positives and existing augmentation only; diagnostic, no automatic filtering",
+    "examples": 2424,
+    "original_sources": 202,
+    "all_replayed_features_labels_weights_byte_equal": true,
+    "estimated_snr_method": "Last 300ms through 40ms-before guarded completion, minus final 250ms noise power; approximate final-syllable estimate, not intelligibility gold",
+    "below_0dB": 0,
+    "below_5dB": 0,
+    "clipped_more_than_1_percent": 0,
+    "household_used": false,
+    "DEV_waveforms_read": false,
+    "TEST_opened": false,
+    "training_data_or_weights_changed": false,
+    "source_preparation_sha256": "787fc0c83a9e832cdbca0f07f6e162f0abcedeaf50fd0abe222340cc087fc773",
+    "minimum_estimated_final_syllable_snr_db": 6.6758248477749325,
+    "augmented_examples_with_noise_estimates": 2222,
+    "automatic_filtering_performed": false
+  },
+  "additional_paid_requests": {
+    "synthesis": 20,
+    "transcription": 20,
+    "offline_ASR_downloads": 0,
+    "accounted_or_reserved_usd": 0.015751600000000015,
+    "price_source_synthesis": "https://developers.openai.com/api/docs/models/gpt-realtime-2.1-mini",
+    "price_source_transcription": "https://developers.openai.com/api/docs/models/gpt-transcribe",
+    "invoice_reconciled": false
+  },
+  "wake_budget": {
+    "accounted_or_reserved_usd": 0.5133851999999917,
+    "cap_usd": 2
+  },
+  "TRAIN_extension": {
+    "manifest_sha256": "85d0ef9b72efb0823c7e245a39fbc81143977dc73eb101b2696c12d793e42a61",
+    "review_sha256": "b1219c18dacdc524d197793fe0afad7764b3034954012276bb608e3f191818b9",
+    "original_manifest_sha256": "e5664680838fe7cf621fc11bf215fe21fbf0cf4a2cca6e00065c5321a9395129",
+    "source_recordings": 12,
+    "positive_sources": 9,
+    "negative_sources": 3,
+    "base_retained_examples": 10150,
+    "appended_examples": 126,
+    "base_prefix_arrays_unchanged": true,
+    "DEV_changed": false,
+    "TEST_opened": false,
+    "household_used": false,
+    "ASR_is_not_phonetic_gold": true,
+    "per_record_human_audition": false,
+    "source_identities_not_new_speakers": true,
+    "metadata_sha256": "2592bb4e008a457ec10bd83054bcaba85e27f59fbde658e4073d23516793a58d",
+    "events_sha256": "e2f53c9bae4fab7c85c1d01fb7e8792021ada3e4a0879c7133a55d108fb2c76a"
+  },
+  "effective_TRAIN_examples": 10276,
+  "profiles": [
+    {
+      "name": "adult-extra48-long",
+      "channels": 48,
+      "head": 64,
+      "context_steps": 72,
+      "initialization": "checkpoint",
+      "learning_rate": 0.0001,
+      "max_epochs": 30,
+      "seeds": [
+        42,
+        43
+      ],
+      "auxiliary_phrase_weight": 0.2
+    },
+    {
+      "name": "adult-extra96-long-fresh",
+      "channels": 96,
+      "head": 64,
+      "context_steps": 72,
+      "initialization": "fresh",
+      "learning_rate": 0.0005,
+      "max_epochs": 30,
+      "seeds": [
+        42,
+        43
+      ],
+      "auxiliary_phrase_weight": 0.2
+    }
+  ],
+  "prior_boundary_comparison": {
+    "completed_profiles": 4,
+    "qualified_candidates": 0
+  },
+  "current_status": {
+    "stage": "INT8-evaluated",
+    "profile": "adult-extra48-long",
+    "seed": 43,
+    "epoch": 2,
+    "negative_DEV_false_clips": 0,
+    "positive_shortfall": 3,
+    "qualified": false,
+    "goal_completed": false
+  },
+  "fixed_policy": {
+    "rolling": 3,
+    "threshold": 0.9
+  },
+  "formal_quality_gates_unchanged": true,
+  "original_DEV_cases": 144,
+  "new_negative_DEV_challenges": 261,
+  "independent_TEST_opened": false,
+  "household_used_for_training_or_selection": false,
+  "weights_or_audio_public": false,
+  "software_checks": {
+    "entrypoint": "tools/check.sh",
+    "training_tests_run": 263,
+    "training_tests_skipped": 12,
+    "generation_node_tests_passed": 9,
+    "completed": true,
+    "not_hardware_or_live_acceptance": true
+  },
+  "preparation_repair": {
+    "initial_prepare_stopped_before_training": true,
+    "cause": "Missing audited public-speech-playlist role in ordinary metadata completion",
+    "repaired_role_validated": true,
+    "features_or_labels_changed": false
+  }
+}

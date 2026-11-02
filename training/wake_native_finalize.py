@@ -81,6 +81,17 @@ def parity(model, micro, features, fixture):
             'host_arena_bytes': proof['host_arena_used_bytes']}
 
 
+def base_representatives(plan, cached_count):
+    retained = plan.get('retained_original_TRAIN_indices')
+    retained = list(range(cached_count)) if retained is None else retained
+    effective = plan.get('TRAIN_effective_examples', len(retained))
+    selected = plan['representative_TRAIN_indices']
+    if (any(not isinstance(i, int) or not 0 <= i < cached_count for i in retained) or
+            any(not isinstance(i, int) or not 0 <= i < effective for i in selected)):
+        raise ValueError('Malformed retained BASE or effective TRAIN fixture index')
+    return [retained[i] for i in selected if i < len(retained)]
+
+
 def finalize(experiment, baseline, prepared, micro, review_path, isolation_path, output):
     frozen_path = experiment/'frozen.json'
     frozen = json.loads(frozen_path.read_text())
@@ -112,6 +123,9 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
     if policy_metrics(cases, 3, .9) != result['old_DEV']:
         raise ValueError('Frozen original DEV metrics do not match saved traces')
     plan = json.loads((experiment/'plan.json').read_text())
+    if (plan.get('TRAIN_extra_sources') and
+            plan['TRAIN_extra_sources']['manifest_sha256'] not in isolation['source_manifests_sha256'].values()):
+        raise ValueError('Fresh TEST isolation must cover the extra TRAIN source manifest too')
     if sha(prepared/'provenance.json') != plan['prepared_provenance_sha256']:
         raise ValueError('TRAIN fixture provenance differs')
     preparation = json.loads((prepared/'provenance.json').read_text())
@@ -119,9 +133,9 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
         if sha(prepared/name) != preparation['prepared_sha256'][name]:
             raise ValueError('TRAIN fixture array changed')
     x, y, w = [np.load(prepared/name, mmap_mode='r') for name in ('train_x.npy', 'train_y.npy', 'train_w.npy')]
-    retained = plan.get('retained_original_TRAIN_indices')
-    retained = list(range(len(x))) if retained is None else retained
-    available = [retained[i] for i in plan['representative_TRAIN_indices']]
+    # New appended sources are TRAIN too, but the cache-only parity fixtures
+    # must map to actual retained BASE indices, not beyond the cached array.
+    available = base_representatives(plan, len(x))
     selected = []
     for label in (False, True):
         part = sorted({i for i in available if bool(y[i].max() > .5) == label})
@@ -153,6 +167,7 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
         'frontend': {'sample_rate': 16000, 'feature_bins': 40, 'window_ms': 30,
                      'feature_step_ms': 10, 'inference_step_ms': 30},
         'source_native_freeze_sha256': sha(frozen_path), 'source_report_sha256': sha(checkpoint/'evaluation.json'),
+        'source_training_plan_sha256': sha(experiment/'plan.json'),
         'micro_proof_sha256': sha(output/'micro-parity.json'), 'content_review_sha256': sha(review_path),
         'test_isolation_sha256': sha(isolation_path),
         'required_fresh_test_speakers': isolation['reserved_source_speakers'],

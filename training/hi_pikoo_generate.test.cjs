@@ -1,7 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {cost,reserve,plan,targetPlan,expansionPlan,validateFrozen,generationCount,freshTestPlan,RESERVATION}=require('./hi_pikoo_generate.cjs');
+const {cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,validateFrozen,generationCount,freshTestPlan,RESERVATION}=require('./hi_pikoo_generate.cjs');
+test('adult coverage refresh stays TRAIN-only, held-out voices untouched and has a bounded diverse pilot',()=>{
+ const rows=adultRefreshPlan({target:'hi-piku-piko-v2'}),pilot=rows.slice(0,20);
+ assert.equal(rows.length,200);assert.equal(rows.filter(r=>r.label).length,160);
+ assert.equal(new Set(rows.map(r=>r.id)).size,200);
+ assert.ok(rows.every(r=>r.split==='train'&&r.synthetic_style==='adult'&&r.synthetic&&!r.real_child&&!r.family_inputs_used&&!r.reference_audio_used));
+ assert.deepEqual([...new Set(pilot.map(r=>r.voice))].sort(),['alloy','cedar','coral','marin']);
+ assert.deepEqual([...new Set(pilot.map(r=>r.accent))].sort(),['Chinese-accent','standard']);
+ assert.ok(rows.every(r=>!['echo','shimmer','ash','sage','ballad','verse'].includes(r.voice)));
+ assert.ok(rows.some(r=>!r.label&&r.text==='Hi, Tikoo!'));
+ assert.throws(()=>adultRefreshPlan({target:'other'}),/dual target/);
+});
 test('ASR shares the dollar budget but not the synthesis request count',()=>{
  const entries=Array.from({length:509},(_,i)=>({id:'legacy-'+i,reserved_usd:.001}));
  entries.push(...Array.from({length:553},(_,i)=>({id:'blind-ASR-'+i,model:'gpt-transcribe',actual_usd:.0001})));
