@@ -323,3 +323,24 @@ per-record /ku/ versus /ko/ phonetic annotation. Thus these cohort labels do
 not prove actual adult /ko/ coverage; this is an unresolved coverage question,
 not a finding that all 32 recordings are wrong. Both vowels remain valid
 binary targets, and no label or training inclusion was changed by the audit.
+
+The boundary comparison also ended without qualification (30/22 epochs).
+Source revision now takes priority over adding more unchanged-data epochs.
+Google's current [TTS guide](https://aistudio.google.com/docs/speech-generation)
+places permanent age/accent traits in a stable voice identity rather than a
+long turn-style prompt. The existing project was visibly verified as Free
+Tier without changing billing. Read-only catalog queries worked; one prompted
+child voice request was safety-blocked, was not retried, and a subsequent
+metadata lookup found no matching created resource. This single rejection is
+not a claim about every possible child voice request.
+
+A separate adult-only source pilot generated four clips on two prebuilt
+catalog IDs absent from 121 historical source-metadata manifests. Identifier
+separation is not biometric speaker-independence evidence. All clips remain
+unadmitted, and actual /ku/ versus /ko/ still needs independent listening;
+blind ASR spelling is insufficient. File durations are 1.16–1.56 seconds,
+while detected active spans are about 0.58–0.80 seconds, so naturalness and
+voiced duration are not inferred from file duration. Existing synthetic DEV
+content questions also remain pending. No household audio, new TEST, board
+change or new OpenAI request was involved. See the
+[source-review record](reports/wake-google-source-review-2026-11-03.json).

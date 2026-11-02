@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-03",
+  "status": "synthetic-source-vowel-and-content-review-pending",
+  "goal_completed": false,
+  "training_live": false,
+  "previous_phase": "R9 both native seeds completed without qualification",
+  "free_tier": {
+    "existing_key_matched_AI_Studio_free_tier_row": true,
+    "billing_or_credentials_changed": false,
+    "verification_tab_closed": true,
+    "verification": "read-only native browser UI; key not revealed"
+  },
+  "catalog_metadata": {
+    "child_search_matches": 0,
+    "unfiltered_first_page_voices": 1000,
+    "more_pages_exist": true,
+    "metadata_only": true,
+    "not_proof_of_child_age": true
+  },
+  "child_voice_design_attempt": {
+    "requests": 1,
+    "HTTP_status": 400,
+    "provider_message": "Voice prompt was blocked by safety policies.",
+    "automatic_retries": 0,
+    "keyword_clips_generated": 0,
+    "matching_created_resources_after_readonly_reconciliation": 0,
+    "not_claimed_all_child_voice_design_is_unsupported": true
+  },
+  "adult_prebuilt_pilot": {
+    "provider_model": "gemini-3.8-flash-tts",
+    "new_source_catalog_ids": [
+      "en-us-advisor-4",
+      "en-us-advisor-11"
+    ],
+    "source_voice_ID_isolation_metadata_manifests": 121,
+    "real_human_speaker_independence_not_proved_by_IDs": true,
+    "source_role": "TRAIN-only audition, not admitted",
+    "TTS_requests": 4,
+    "audio_file_seconds": [
+      1.56,
+      1.4,
+      1.32,
+      1.16
+    ],
+    "blind_local_ASR_records": 4,
+    "ASR_not_phonetic_or_age_gold": true,
+    "actual_ku_ko_labels_pending": true,
+    "source_admission_changed": false,
+    "detected_active_spans_ms": [
+      800.0,
+      760.0,
+      580.0,
+      760.0
+    ],
+    "voiced_duration_not_assumed_from_file_duration": true,
+    "naturalness_and_full_content_pending_human": true,
+    "reported_response_metadata": [
+      {
+        "status": "completed",
+        "model": "gemini-3.8-flash-tts",
+        "model_version": null
+      },
+      {
+        "status": "completed",
+        "model": "gemini-3.8-flash-tts",
+        "model_version": null
+      },
+      {
+        "status": "completed",
+        "model": "gemini-3.8-flash-tts",
+        "model_version": null
+      },
+      {
+        "status": "completed",
+        "model": "gemini-3.8-flash-tts",
+        "model_version": null
+      }
+    ]
+  },
+  "audition_packs": {
+    "new_adult_letters": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "new_reel_seconds": 7.69,
+    "existing_synthetic_DEV_uncertainties": [
+      "E",
+      "F",
+      "G"
+    ],
+    "original_waveforms_unchanged": true,
+    "human_label_request_uses_no_KWS_scores": true
+  },
+  "new_OpenAI_requests": 0,
+  "new_TEST_generated_or_scored": false,
+  "household_audio_used": false,
+  "server_or_device_changed": false,
+  "references": [
+    "https://aistudio.google.com/docs/speech-generation",
+    "https://aistudio.google.com/docs/voice-design",
+    "https://aistudio.google.com/docs/pricing"
+  ]
+}

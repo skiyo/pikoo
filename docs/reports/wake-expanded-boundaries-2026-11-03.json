@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-11-03",
-  "snapshot_at": "2026-11-02T19:43:07.352309+00:00",
-  "status": "expanded-TRAIN-boundary-comparison-running-not-qualified",
+  "snapshot_at": "2026-11-02T20:05:20.396394+00:00",
+  "status": "finite-comparison-completed-no-qualified-candidate",
   "goal_completed": false,
   "profiles": [
     {
@@ -146,17 +146,59 @@
       "model_bytes": 98088,
       "host_arena_bytes": 37808,
       "hardware_accepted": false
+    },
+    {
+      "profile": "expanded-boundary96-long-fresh-seed-43",
+      "epochs_completed": 22,
+      "native_ranked_best_epoch": 16,
+      "old_DEV": {
+        "rolling": 3,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 26
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 10
+          }
+        },
+        "false_wakes": 0,
+        "early_wakes": 0,
+        "worst_recall": 0.7692307692307693,
+        "latency_p95_ms": 70.8375,
+        "passed": false
+      },
+      "new_negative_DEV_cases": 261,
+      "new_negative_DEV_false_clips": 0,
+      "positive_shortfall": 3,
+      "qualified": false,
+      "model_bytes": 98088,
+      "host_arena_bytes": 37808,
+      "hardware_accepted": false
     }
   ],
   "current_status": {
-    "stage": "INT8-evaluated",
-    "profile": "expanded-boundary96-long-fresh",
-    "seed": 43,
-    "epoch": 9,
-    "negative_DEV_false_clips": 0,
-    "positive_shortfall": 9,
-    "qualified": false,
-    "goal_completed": false
+    "stage": "finite-INT8-comparison-completed-no-qualification",
+    "goal_completed": false,
+    "device_changed": false
   },
   "TRAIN_fit_diagnostic": "wake-train-fit-2026-11-03.json",
   "TRAIN_metadata_coverage": {
@@ -173,5 +215,6 @@
     "household_or_TEST_used": false,
     "training_admission_unchanged": true,
     "KWS_scores_not_used_for_metadata_audit": true
-  }
+  },
+  "next_work": "Independent actual-vowel/content/source coverage revision, not additional same-data epochs or larger models based only on training loss."
 }
