@@ -269,3 +269,13 @@ data step adds at most 80 synthetic adult TRAIN requests, reuses the first
 Uncertain utterances remain quarantined. This adds utterances from existing
 TRAIN voice identities, not new speakers, and does not open TEST or change the
 device. The cumulative generation/audit budget remains capped at $2.
+
+That bounded addition completed: the cumulative 100 synthetic TRAIN sources
+yielded 52 admitted utterances (39 targets, 13 competitors), retaining all
+12 previously admitted sources. The other 48 remain uncertain, not confirmed
+bad labels. The first 20 blind audits were reused after verifying identical
+audio; only the new 80 incurred new cloud transcription requests. No age or
+phonetic gold claim is made from ASR agreement. A two-seed fresh 96-channel
+comparison now holds architecture, loss and trigger policy fixed while
+expanding admitted TRAIN coverage. Details are in the
+[expanded-source snapshot](reports/wake-expanded-adults-2026-11-03.json).

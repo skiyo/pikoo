@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-03",
+  "snapshot_at": "2026-11-02T18:32:39.990082+00:00",
+  "status": "expanded-adult-TRAIN-native-comparison-running-not-qualified",
+  "goal_completed": false,
+  "source_synthesis": {
+    "cumulative_sources": 100,
+    "new_generation_requests": 80,
+    "prior_sources": 20,
+    "all_TRAIN_only": true,
+    "same_predeclared_200_request_plan": true,
+    "generation_stopped_after_new80": true,
+    "source_voices": [
+      "marin",
+      "cedar",
+      "coral",
+      "alloy"
+    ],
+    "source_identities_not_new_speakers": true
+  },
+  "independent_content_evidence": {
+    "cloud_model": "gpt-transcribe",
+    "local_model": "Qwen3-ASR-0.6B-4bit",
+    "new_cloud_requests": 80,
+    "new_local_inferences": 80,
+    "prior20_audits_reused_with_byte_identical_fixtures": true,
+    "new_downloads": 0,
+    "cloud_rule_agreement": 71,
+    "local_rule_agreement": 66,
+    "both_rule_agreement": 53,
+    "accepted_cumulative": 52,
+    "accepted_targets": 39,
+    "accepted_competitors": 13,
+    "prior_accepted_sources_preserved": 12,
+    "new_accepted_sources": 40,
+    "uncertain_quarantined": 48,
+    "source_labels_unchanged": true,
+    "per_record_human_audition": false,
+    "ASR_is_not_phonetic_gold": true,
+    "no_wake_scores_used_for_admission": true,
+    "synthetic_age_not_real_child_evidence": true
+  },
+  "TRAIN_extension": {
+    "manifest_sha256": "b16730332130d6436c5ffaa0bd53d13141f86d857e6ba307722e0070eed75d23",
+    "review_sha256": "be7c46e1eaa931ed935f72f20b03bc7a154a2ba6a7f766d1b192ac0bf449c658",
+    "original_manifest_sha256": "e5664680838fe7cf621fc11bf215fe21fbf0cf4a2cca6e00065c5321a9395129",
+    "source_recordings": 52,
+    "positive_sources": 39,
+    "negative_sources": 13,
+    "base_retained_examples": 10150,
+    "appended_examples": 546,
+    "base_prefix_arrays_unchanged": true,
+    "DEV_changed": false,
+    "TEST_opened": false,
+    "household_used": false,
+    "ASR_is_not_phonetic_gold": true,
+    "per_record_human_audition": false,
+    "source_identities_not_new_speakers": true,
+    "metadata_sha256": "a510a9f70c6367beda0eea0c2bc65ca672a10c7efa366fa12c3c6177fc719ea1",
+    "events_sha256": "52e7e68c56d21fc6de65e959dd4efe1255e676c78f157ce41dd759485707718c"
+  },
+  "effective_TRAIN_examples": 10696,
+  "profiles": [
+    {
+      "name": "expanded-adult96-long-fresh",
+      "channels": 96,
+      "head": 64,
+      "context_steps": 72,
+      "initialization": "fresh",
+      "learning_rate": 0.0005,
+      "max_epochs": 30,
+      "seeds": [
+        42,
+        43
+      ],
+      "auxiliary_phrase_weight": 0.2
+    }
+  ],
+  "policy": {
+    "rolling": 3,
+    "threshold": 0.9
+  },
+  "same_as_completed_R7_fresh96_except_admitted_source_coverage": true,
+  "original_DEV_reused_for_selection": 144,
+  "negative_DEV_reused_for_selection": 261,
+  "numeric_quality_gates_unchanged": true,
+  "fresh_independent_TEST_opened": false,
+  "household_used": false,
+  "device_changed": false,
+  "server_behavior_changed": false,
+  "weights_or_audio_public": false,
+  "budget": {
+    "accounted_or_reserved_usd": 0.5764339999999922,
+    "cap_usd": 2,
+    "invoice_reconciled": false
+  },
+  "source_manifest_sha256": "b16730332130d6436c5ffaa0bd53d13141f86d857e6ba307722e0070eed75d23",
+  "dual_review_sha256": "be7c46e1eaa931ed935f72f20b03bc7a154a2ba6a7f766d1b192ac0bf449c658",
+  "predeclared_plan_sha256": "59ff226846607c72f4ba9c6f0859a710de5927f83302c1a7fde810dc31f02701"
+}
