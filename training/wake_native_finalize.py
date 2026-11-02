@@ -142,10 +142,19 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
                 'rolling', 'threshold'):
         if evaluation[key] != result[key]:
             raise ValueError('Frozen evaluation differs from source checkpoint')
+    for key in ('reviewed_DEV', 'reviewed_DEV_gate_passed', 'reviewed_DEV_required_group_hits'):
+        if evaluation.get(key) != result.get(key):
+            raise ValueError('Reviewed DEV evidence differs from source checkpoint')
     cases = json.loads((checkpoint/'old-dev-cases.json').read_text())
     negatives = json.loads((checkpoint/'negative-dev-scores.json').read_text())
     plan = json.loads((experiment/'plan.json').read_text())
     verify_saved_dev(cases, negatives, result, frozen['policy'], plan)
+    if plan.get('DEV_content_review_sha256') or 'reviewed_DEV' in result:
+        if plan.get('DEV_content_review_sha256') != sha(review_path):
+            raise ValueError('Declared human content review differs')
+        from wake_dev_content_review import verify_reviewed_gate
+        verify_reviewed_gate(cases, json.loads((prepared/'old-dev-cases.json').read_text()),
+                             json.loads(review_path.read_text()), result, frozen['policy'])
     if (plan.get('TRAIN_extra_sources') and
             plan['TRAIN_extra_sources']['manifest_sha256'] not in isolation['source_manifests_sha256'].values()):
         raise ValueError('Fresh TEST isolation must cover the extra TRAIN source manifest too')

@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 from hi_pikoo_review import content_match, normalized, validate
 from hi_pikoo_train import read_audio, example
+from wake_catalog_train import load_context, validate_catalog_row
 
 
 def sha(path):
@@ -42,13 +43,21 @@ def append(x, y, w, metadata, events, groups, manifest, review_path,
     source_hashes = {r['sha256'] for r in originals}
     originals_by_hash = {r['sha256']: r for r in originals}
     rows = json.loads(manifest.read_text())
-    reviews = {r['source_sha256']: r for r in json.loads(review_path.read_text())['records']}
+    review = json.loads(review_path.read_text())
+    reviews = {r['source_sha256']: r for r in review['records']}
+    catalog = load_context(review, review_path, original_manifest_sha256)
     protected = set(json.loads(protected_path.read_text())['audio_sha256'].values())
     if not 1 <= len(rows) <= 200 or len({r['sha256'] for r in rows}) != len(rows):
         raise ValueError('Bounded unique extra TRAIN originals required')
     paths = []
     for row in rows:
         path = validate(row, manifest.parent, protected)
+        if row['sha256'] in source_hashes:
+            raise ValueError('Extra TRAIN cannot reuse an original TRAIN/DEV waveform')
+        if row.get('source') == 'Google-Gemini-TTS-prebuilt':
+            validate_catalog_row(row, catalog, source_train, source_dev)
+            paths.append(path)
+            continue
         evidence = reviews.get(row['sha256'])
         voice_review = originals_by_hash.get(row.get('source_voice_review_recording_sha256'))
         if (row['split'] != 'train' or row['speaker'] not in source_train or row['speaker'] in source_dev or
@@ -91,7 +100,12 @@ def append(x, y, w, metadata, events, groups, manifest, review_path,
         'base_retained_examples': len(x), 'appended_examples': count,
         'base_prefix_arrays_unchanged': True, 'DEV_changed': False, 'TEST_opened': False,
         'household_used': False, 'ASR_is_not_phonetic_gold': True,
-        'per_record_human_audition': False, 'source_identities_not_new_speakers': True}
+        'per_record_human_audition': all(r.get('per_record_human_audition') is True for r in rows),
+        'human_reviewed_originals': sum(r.get('per_record_human_audition') is True for r in rows),
+        'source_identities_not_new_speakers': not any(r['source'] == 'Google-Gemini-TTS-prebuilt' for r in rows),
+        'new_catalog_voice_ids': sorted({r['provider_voice_id'] for r in rows if r['source'] == 'Google-Gemini-TTS-prebuilt'}),
+        'catalog_age_is_provider_metadata_not_human_age_review': True,
+        'real_speaker_independence_proven': False}
     full_events['proof'] = {**events['proof'], 'extra_audited_TRAIN': proof}
     (output/'extra-train-metadata.json').write_text(json.dumps(full_metadata)+'\n')
     (output/'extra-train-events.json').write_text(json.dumps(full_events)+'\n')

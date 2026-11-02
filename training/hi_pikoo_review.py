@@ -49,7 +49,8 @@ def content_match(row, transcript):
 
 
 def validate(row, root, protected):
-    if (row.get('source') not in {'OpenAI-Realtime-synthetic', 'Qwen3-TTS-hi-piku-synthetic-local'} or
+    if (row.get('source') not in {'OpenAI-Realtime-synthetic', 'Qwen3-TTS-hi-piku-synthetic-local',
+                                 'Google-Gemini-TTS-prebuilt'} or
         not row.get('synthetic') or row.get('real_child') or
         row.get('family_inputs_used') or row.get('reference_audio_used') or
         row.get('evaluation_only') or row.get('frozen_holdout') or

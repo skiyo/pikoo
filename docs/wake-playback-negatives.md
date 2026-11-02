@@ -362,3 +362,26 @@ and saved DEV evidence, then checks negative peak/activation consistency. Seven
 targeted tests passed. This is tooling readiness, not a qualified model. Pending
 independent synthetic-content answers and actual /ku/-/ko/ source coverage still
 need resolution before a new source admission or formal candidate can proceed.
+
+
+Human listening has now closed all seven independent synthetic DEV content
+questions: E was heard as piko, F/G as piku, all accepted as complete targets.
+The four new adult catalog-source auditions were all heard as piko, including
+the two requested as piku. Admission records preserve requested spelling and
+store the actual listening verdict separately. Four originals are appended to
+the 52 earlier audited TRAIN sources, with no new API request. Catalog adult
+age remains provider metadata; this reply did not annotate perceived age.
+
+Audition order is not model evaluation order. Original audio hashes bind these
+answers to DEV cases. Two childlike vowel tags swap under the human-heard
+view; the historical 144-case gate and all its failures stay intact, and the
+new comparison must also pass a second full gate with those two corrected tags.
+No waveform, binary target label, endpoint or probability trace is changed by
+the overlay. Remaining variant metadata is not claimed as phonetic gold.
+
+The next bounded comparison uses two fresh 96-channel seeds, at most 30 epochs
+each, with the prior model/loss/optimizer and all negative data retained. It
+adds the four reviewed piko TRAIN originals plus the additional grouping gate;
+it is not a single-factor causal experiment. No independent TEST or board
+operation follows without qualification. See the
+[review and comparison record](reports/wake-human-reviewed-piko-2026-11-03.json).

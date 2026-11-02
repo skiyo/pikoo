@@ -259,7 +259,8 @@ class NativeEvaluator:
         return (raw[0].astype(float)-zero)*scale, proof['host_arena_used_bytes']
 
 
-def export_and_evaluate(model, folder, representative, evaluator, vx, old_info, new_features, baseline):
+def export_and_evaluate(model, folder, representative, evaluator, vx, old_info, new_features, baseline,
+                        content_review=None):
     import tensorflow as tf
     begin = time.monotonic()
     deploy = stream(model)
@@ -296,6 +297,16 @@ def export_and_evaluate(model, folder, representative, evaluator, vx, old_info, 
     old = policy_metrics(cases, 3, .9)
     false = sum(n['activated'] for n in negatives)
     quality = qualification(old, false, baseline)
+    reviewed = None
+    if content_review is not None:
+        from wake_dev_content_review import reviewed_cohorts
+        reviewed = policy_metrics(reviewed_cohorts(cases, content_review), 3, .9)
+        reviewed_baseline = policy_metrics(reviewed_cohorts(old_info, content_review), 3, .9)
+        reviewed_quality = qualification(reviewed, false, reviewed_baseline)
+        quality['qualified'] = quality['qualified'] and reviewed_quality['qualified']
+        quality['selection_score'] = min(quality['selection_score'], reviewed_quality['selection_score'])
+        quality['positive_shortfall'] = max(quality['positive_shortfall'], reviewed_quality['positive_shortfall'])
+        quality['reviewed_DEV_required_group_hits'] = reviewed_quality['required_group_hits']
     positive_confidence = []
     for case in cases:
         if case['label']:
@@ -315,6 +326,9 @@ def export_and_evaluate(model, folder, representative, evaluator, vx, old_info, 
         'backend': 'pinned native TFLite Micro', 'threshold': .9, 'rolling': 3,
         'elapsed_seconds': time.monotonic()-begin,
         'household_used': False, 'TEST_opened': False, 'device_accepted': False}
+    if reviewed is not None:
+        report['reviewed_DEV'] = reviewed
+        report['reviewed_DEV_gate_passed'] = reviewed_quality['qualified']
     write_json(folder/'evaluation.json', report)
     (folder/'old-dev-cases.json').write_text(json.dumps(cases)+'\n')
     write_json(folder/'negative-dev-scores.json', negatives)
@@ -338,6 +352,8 @@ def main():
     parser.add_argument('--extra-train-manifest', type=Path)
     parser.add_argument('--extra-train-review', type=Path)
     parser.add_argument('--base-admitted-manifest', type=Path)
+    parser.add_argument('--dev-content-review', type=Path,
+                        help='Independent human-heard vowels add a second gate without replacing historical DEV')
     a = parser.parse_args()
     os.umask(0o077)
     a.output.mkdir(parents=True, exist_ok=True)
@@ -414,6 +430,12 @@ def main():
         ay, aw, auxiliary_summary = training_targets(events, y, w)
         auxiliary = ay, aw
     old_info = json.loads((prepared/'old-dev-cases.json').read_text())
+    content_review = json.loads(a.dev_content_review.read_text()) if a.dev_content_review else None
+    if content_review is not None:
+        from wake_dev_content_review import reviewed_cohorts
+        if content_review['original_manifest_sha256'] != json.loads((a.baseline/'provenance.json').read_text())['manifest_sha256']:
+            raise ValueError('DEV content review belongs to another original corpus')
+        reviewed_cohorts(old_info, content_review)
     baseline = policy_metrics(old_info, 3, .9)
     with np.load(prepared/'negative-dev-features.npz') as data:
         negative_features = [data[f'case_{i}'] for i in range(len(data.files))]
@@ -452,13 +474,15 @@ def main():
         'prepared_provenance_sha256': sha(prepared/'provenance.json'),
         'representative_TRAIN_indices': selected, 'calibration_uses_DEV': False,
         'selection_rule': 'first full native INT8 qualification, then freeze; no TEST model choice',
-        'household_used': False, 'threshold': .9, 'rolling': 3})
+        'household_used': False, 'threshold': .9, 'rolling': 3,
+        'DEV_content_review_sha256': sha(a.dev_content_review) if a.dev_content_review else None})
     snapshot = a.output/'source'
     names = ('wake_int8_iterate.py', 'hi_pikoo_model.py', 'hi_pikoo_train.py',
              'wake_negative_finetune.py', 'wake_playback_negatives.py', 'streaming_runtime.py',
              'wake_phrase_auxiliary.py', 'wake_train_events.py', 'hi_pikoo_contrast.py',
              'hi_pikoo_timing.py', 'acoustic_augment.py', 'wake_train_admission.py',
-             'wake_phrase_boundaries.py', 'wake_extra_train.py')
+             'wake_phrase_boundaries.py', 'wake_extra_train.py', 'wake_catalog_train.py',
+             'hi_pikoo_review.py', 'wake_dev_content_review.py')
     if snapshot.exists() and any((snapshot/name).exists() and
             sha(snapshot/name) != sha(Path(__file__).with_name(name)) for name in names):
         snapshot = a.output/f'source-continuation-{sha(Path(__file__))[:16]}'
@@ -525,7 +549,7 @@ def main():
                     checkpoint.mkdir()
                     model.save_weights(checkpoint/'checkpoint.weights.h5')
                     result = export_and_evaluate(model, checkpoint, representative,
-                        evaluator, vx, old_info, negative_features, baseline)
+                        evaluator, vx, old_info, negative_features, baseline, content_review=content_review)
                     result.update(epoch=epoch+1, profile=profile['name'], seed=seed)
                     history.append(result)
                     logs['val_native_quality'] = result['selection_score']
