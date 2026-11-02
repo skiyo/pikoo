@@ -300,3 +300,26 @@ audio/age review still need to be prepared; intended style metadata does not
 prove audible child age or pronunciation. An adult-only TEST cannot stand in
 for the full acceptance, and synthetic childlike scores cannot replace family
 child testing. No new TEST has been generated or consumed.
+
+A same-checkpoint TRAIN-fit diagnostic on R8 seed42 epoch28 covered 10,696
+reconstructed admitted TRAIN windows: float inference hit all 2,892 target
+windows, rejected all 7,804 negative windows and produced no early target
+activations under the fixed decision rule. These are correlated augmented
+windows, not independent recordings or TEST scores. Base array hashes matched;
+appended data was reconstructed from pinned code/source/seeds with matching
+metadata, since the original appended feature bytes were not archived.
+On the same 144 reused DEV cases, float/native per-case decisions matched,
+including three near-word false activations and one target miss. Probabilities
+and exact trigger timing were not identical. This supports investigating
+generalization and remaining independent label questions for this checkpoint;
+it does not prove that every model has the same cause or justify a release.
+No label, model or policy was changed. See the
+[TRAIN-fit diagnostic](reports/wake-train-fit-2026-11-03.json).
+
+A TRAIN-only metadata audit also found that all 32 adult originals assigned
+to `piko` come from OpenAI. Fifteen use an ASR-inferred variant tag and the
+17 newer ones explicitly use agreed ASR spelling as a proxy. None establishes
+per-record /ku/ versus /ko/ phonetic annotation. Thus these cohort labels do
+not prove actual adult /ko/ coverage; this is an unresolved coverage question,
+not a finding that all 32 recordings are wrong. Both vowels remain valid
+binary targets, and no label or training inclusion was changed by the audit.

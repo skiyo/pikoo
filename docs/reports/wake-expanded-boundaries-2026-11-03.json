@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "date": "2026-11-03",
-  "snapshot_at": "2026-11-02T19:16:42.923228+00:00",
+  "snapshot_at": "2026-11-02T19:43:07.352309+00:00",
   "status": "expanded-TRAIN-boundary-comparison-running-not-qualified",
   "goal_completed": false,
   "profiles": [
@@ -98,5 +98,80 @@
     "generation_unit_and_offline_CLI_tests": 12,
     "native_finalize_unit_tests": 4,
     "live_API_or_hardware_acceptance": false
+  },
+  "completed_profiles": [
+    {
+      "profile": "expanded-boundary96-long-fresh-seed-42",
+      "epochs_completed": 30,
+      "native_ranked_best_epoch": 24,
+      "old_DEV": {
+        "rolling": 3,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 26
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 2
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 27
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 11
+          }
+        },
+        "false_wakes": 0,
+        "early_wakes": 0,
+        "worst_recall": 0.6666666666666666,
+        "latency_p95_ms": 94.98750000000001,
+        "passed": false
+      },
+      "new_negative_DEV_cases": 261,
+      "new_negative_DEV_false_clips": 0,
+      "positive_shortfall": 2,
+      "qualified": false,
+      "model_bytes": 98088,
+      "host_arena_bytes": 37808,
+      "hardware_accepted": false
+    }
+  ],
+  "current_status": {
+    "stage": "INT8-evaluated",
+    "profile": "expanded-boundary96-long-fresh",
+    "seed": 43,
+    "epoch": 9,
+    "negative_DEV_false_clips": 0,
+    "positive_shortfall": 9,
+    "qualified": false,
+    "goal_completed": false
+  },
+  "TRAIN_fit_diagnostic": "wake-train-fit-2026-11-03.json",
+  "TRAIN_metadata_coverage": {
+    "synthetic_originals": 375,
+    "complete_targets": 241,
+    "t_name": 43,
+    "adult_piko_labelled_sources": 32,
+    "adult_piko_source_providers": {
+      "OpenAI-Realtime-synthetic": 32
+    },
+    "adult_piko_variant_evidence": "15 ASR-inferred-not-gold, 17 agreed-blind-ASR-spelling-proxy-not-gold; no per-record ku/ko phonetic annotation established",
+    "actual_ko_coverage_confirmed": false,
+    "binary_positive_labels_changed": false,
+    "household_or_TEST_used": false,
+    "training_admission_unchanged": true,
+    "KWS_scores_not_used_for_metadata_audit": true
   }
 }
