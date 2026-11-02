@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "date": "2026-11-03",
-  "snapshot_at": "2026-11-02T18:32:39.990082+00:00",
+  "snapshot_at": "2026-11-02T18:54:12.114782+00:00",
   "status": "expanded-adult-TRAIN-native-comparison-running-not-qualified",
   "goal_completed": false,
   "source_synthesis": {
@@ -97,5 +97,66 @@
   },
   "source_manifest_sha256": "b16730332130d6436c5ffaa0bd53d13141f86d857e6ba307722e0070eed75d23",
   "dual_review_sha256": "be7c46e1eaa931ed935f72f20b03bc7a154a2ba6a7f766d1b192ac0bf449c658",
-  "predeclared_plan_sha256": "59ff226846607c72f4ba9c6f0859a710de5927f83302c1a7fde810dc31f02701"
+  "predeclared_plan_sha256": "59ff226846607c72f4ba9c6f0859a710de5927f83302c1a7fde810dc31f02701",
+  "completed_profiles": [
+    {
+      "profile": "expanded-adult96-long-fresh-seed-42",
+      "epochs_completed": 30,
+      "native_ranked_best_epoch": 28,
+      "old_DEV": {
+        "rolling": 3,
+        "threshold": 0.9,
+        "groups": {
+          "adult:standard:piku": {
+            "targets": 28,
+            "hits": 28
+          },
+          "adult:standard:piko": {
+            "targets": 3,
+            "hits": 3
+          },
+          "adult:Chinese-accent:piku": {
+            "targets": 27,
+            "hits": 27
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 10,
+            "hits": 10
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 11,
+            "hits": 11
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 13,
+            "hits": 12
+          }
+        },
+        "false_wakes": 3,
+        "early_wakes": 0,
+        "worst_recall": 0.9230769230769231,
+        "latency_p95_ms": 66.5,
+        "passed": false
+      },
+      "new_negative_DEV_cases": 261,
+      "new_negative_DEV_false_clips": 0,
+      "positive_shortfall": 0,
+      "qualified": false,
+      "model_bytes": 98088,
+      "host_arena_bytes": 37808,
+      "model_sha256": "b5b65c82c717b56d1fc600d368d136ced6f22c6e975420a51e1f845aaaec567e",
+      "hardware_accepted": false
+    }
+  ],
+  "current_status": {
+    "stage": "INT8-evaluated",
+    "profile": "expanded-adult96-long-fresh",
+    "seed": 43,
+    "epoch": 1,
+    "negative_DEV_false_clips": 0,
+    "positive_shortfall": 21,
+    "qualified": false,
+    "goal_completed": false
+  },
+  "actual_ESP32_timing_or_concurrency_verified": false
 }
