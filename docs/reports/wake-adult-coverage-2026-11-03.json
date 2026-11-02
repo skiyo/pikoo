@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-11-03",
-  "snapshot_at": "2026-11-03T01:34:57.567564+08:00",
-  "status": "adult-coverage-and-wider-network-comparison-running-not-qualified",
+  "snapshot_at": "2026-11-03T02:21:32.120732+08:00",
+  "status": "finite-comparison-completed-no-qualified-candidate",
   "goal_completed": false,
   "device_changed": false,
   "server_behavior_changed": false,
@@ -119,14 +119,9 @@
     "qualified_candidates": 0
   },
   "current_status": {
-    "stage": "INT8-evaluated",
-    "profile": "adult-extra48-long",
-    "seed": 43,
-    "epoch": 2,
-    "negative_DEV_false_clips": 0,
-    "positive_shortfall": 3,
-    "qualified": false,
-    "goal_completed": false
+    "stage": "finite-INT8-comparison-completed-no-qualification",
+    "goal_completed": false,
+    "device_changed": false
   },
   "fixed_policy": {
     "rolling": 3,
@@ -151,5 +146,170 @@
     "cause": "Missing audited public-speech-playlist role in ordinary metadata completion",
     "repaired_role_validated": true,
     "features_or_labels_changed": false
+  },
+  "completed_profiles": [
+    {
+      "profile": "adult-extra48-long-seed-42",
+      "epochs_completed": 28,
+      "best_epoch": 22,
+      "positive_shortfall": 2,
+      "old_false_wakes": 0,
+      "old_early_wakes": 1,
+      "new_negative_false_clips": 0,
+      "model_bytes": 59920,
+      "host_arena_bytes": 24272,
+      "qualified": false
+    },
+    {
+      "profile": "adult-extra48-long-seed-43",
+      "epochs_completed": 19,
+      "best_epoch": 3,
+      "positive_shortfall": 3,
+      "old_false_wakes": 0,
+      "old_early_wakes": 1,
+      "new_negative_false_clips": 0,
+      "model_bytes": 59896,
+      "host_arena_bytes": 24272,
+      "qualified": false
+    },
+    {
+      "profile": "adult-extra96-long-fresh-seed-42",
+      "epochs_completed": 25,
+      "best_epoch": 19,
+      "positive_shortfall": 3,
+      "old_false_wakes": 1,
+      "old_early_wakes": 0,
+      "new_negative_false_clips": 0,
+      "model_bytes": 98088,
+      "host_arena_bytes": 37808,
+      "qualified": false
+    },
+    {
+      "profile": "adult-extra96-long-fresh-seed-43",
+      "epochs_completed": 25,
+      "best_epoch": 19,
+      "positive_shortfall": 3,
+      "old_false_wakes": 0,
+      "old_early_wakes": 0,
+      "new_negative_false_clips": 0,
+      "model_bytes": 98088,
+      "host_arena_bytes": 37808,
+      "qualified": false
+    }
+  ],
+  "same_checkpoint_float_INT8_diagnostic": {
+    "scope": "read-only same-checkpoint reused synthetic DEV diagnostic, no selection by float metrics",
+    "source_profile": "adult-extra96-long-fresh-seed-42",
+    "source_epoch": 19,
+    "source_native_checkpoint_selection": "existing native selection_score only",
+    "source_weights_sha256": "b0c9f81491654d3971533bf754c12c049e66fa239d42da7891ff8dda5017f94f",
+    "native_model_sha256": "2f8f379e0748649a658b979c2cb13695e77427bbb81832ffce4518adad30bfba",
+    "DEV_cases": 144,
+    "fixed_policy": {
+      "rolling": 3,
+      "threshold": 0.9
+    },
+    "float_DEV": {
+      "rolling": 3,
+      "threshold": 0.9,
+      "groups": {
+        "adult:standard:piku": {
+          "targets": 28,
+          "hits": 28
+        },
+        "adult:standard:piko": {
+          "targets": 3,
+          "hits": 2
+        },
+        "adult:Chinese-accent:piku": {
+          "targets": 27,
+          "hits": 27
+        },
+        "adult:Chinese-accent:piko": {
+          "targets": 10,
+          "hits": 10
+        },
+        "childlike:Chinese-accent:piku": {
+          "targets": 11,
+          "hits": 11
+        },
+        "childlike:Chinese-accent:piko": {
+          "targets": 13,
+          "hits": 10
+        }
+      },
+      "false_wakes": 1,
+      "early_wakes": 0,
+      "worst_recall": 0.6666666666666666,
+      "latency_p95_ms": 72.66874999999999,
+      "passed": false
+    },
+    "native_INT8_DEV": {
+      "rolling": 3,
+      "threshold": 0.9,
+      "groups": {
+        "adult:standard:piku": {
+          "targets": 28,
+          "hits": 28
+        },
+        "adult:standard:piko": {
+          "targets": 3,
+          "hits": 2
+        },
+        "adult:Chinese-accent:piku": {
+          "targets": 27,
+          "hits": 27
+        },
+        "adult:Chinese-accent:piko": {
+          "targets": 10,
+          "hits": 10
+        },
+        "childlike:Chinese-accent:piku": {
+          "targets": 11,
+          "hits": 11
+        },
+        "childlike:Chinese-accent:piko": {
+          "targets": 13,
+          "hits": 10
+        }
+      },
+      "false_wakes": 1,
+      "early_wakes": 0,
+      "worst_recall": 0.6666666666666666,
+      "latency_p95_ms": 72.66874999999999,
+      "passed": false
+    },
+    "probability_delta": {
+      "max": 0.26677584648132324,
+      "p95": 0.0039057135581970215,
+      "median": 1.236325495104773e-12
+    },
+    "float_batch_vs_float_stream_max_abs_delta_one_case": 5.960464477539063e-08,
+    "float_stream_consistent_one_case": true,
+    "activation_presence_changed_case_indices": [],
+    "per_case_valid_target_or_negative_decision_changes": [],
+    "new_negative_DEV_not_replayed": true,
+    "household_used": false,
+    "TEST_opened": false,
+    "model_or_policy_changed": false,
+    "hardware_tested": false,
+    "matches_final_native_best_checkpoint": true,
+    "source_seed_completed_epochs": 25,
+    "formal_goal_completed": false
+  },
+  "original_grid_095_readonly_diagnostic": {
+    "native_epochs_considered": 477,
+    "necessary_positive_gate_survivors": 1,
+    "qualified_candidates": 0,
+    "scope": "Higher threshold at same rolling3 cannot recover existing .90 target misses. The one positive-gate survivor still has9 original and2 new false clips at .95. No policy changes or TEST."
+  },
+  "next_data_phase": {
+    "bounded_additional_synthesis_requests": 80,
+    "TRAIN_only": true,
+    "independent_content_review_required": true,
+    "automatic_training_admission": false,
+    "source_identities_unchanged": true,
+    "household_or_TEST_used": false,
+    "numeric_acceptance_unchanged": true
   }
 }

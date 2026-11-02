@@ -250,3 +250,22 @@ seeds, at most 30 epochs, unchanged trigger and acceptance gates. Static file
 size, host arena and eventual ESP32 timing/concurrency remain separate checks.
 No board was changed by this pilot. Actual pilot, diagnostic and training
 results are in [the dated snapshot](reports/wake-adult-coverage-2026-11-03.json).
+
+For the first completed fresh 96-channel seed, a read-only diagnostic compared
+the final native-selected checkpoint with its floating-point weights on the
+same 144 original synthetic DEV cases. Per-case valid-target/negative trigger
+decisions and aggregate metrics matched. Frame probabilities were not identical
+(95th-percentile absolute difference about 0.00391, maximum about 0.267).
+One batch/causal-float-stream replay differed by less than 1e-7. This does not
+explain away the remaining recall/near-word errors as conversion failures on
+that checkpoint. It neither reselects a model using float scores nor opens a
+new TEST; it is not the required frozen-candidate TRAIN parity or ESP32 test.
+
+All four adult-coverage profiles subsequently completed without qualification.
+A read-only check of the originally declared 3-score/.95 policy also found no
+qualified checkpoint; the trigger policy remains unchanged. The next bounded
+data step adds at most 80 synthetic adult TRAIN requests, reuses the first
+20 audits, and requires the same blind cloud/offline consensus before admission.
+Uncertain utterances remain quarantined. This adds utterances from existing
+TRAIN voice identities, not new speakers, and does not open TEST or change the
+device. The cumulative generation/audit budget remains capped at $2.
