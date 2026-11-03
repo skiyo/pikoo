@@ -7,10 +7,19 @@ import tempfile
 import unittest
 
 import numpy as np
-from wake_tempo import stretch, source_rows, apply_gate, preservation_cases, variants, verify_dev_reference
+from wake_tempo import stretch, source_rows, apply_gate, preservation_cases, variants, verify_dev_reference, prepare
 
 
 class TempoTest(unittest.TestCase):
+    def test_legacy_acoustic_cache_cannot_silently_keep_post_noise_clock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = Path(tmp)/'config.json'
+            config.write_text(json.dumps({'method': 'ffmpeg-atempo-pitch-preserving',
+                'factors': [1.15, 1.3, 1.5], 'TRAIN_only_augmentation': True,
+                'TRAIN_continuous_variants_per_source': 6, 'TRAIN_acoustic_augmentation': True}))
+            with self.assertRaisesRegex(ValueError, 'v2 clean-reference'):
+                prepare(None, None, None, None, None, None, None, None, None, config, Path(tmp))
+
     def test_fixed_DEV_reference_rejects_feature_or_clock_drift(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); x = np.zeros((1, 6, 40), np.float32)

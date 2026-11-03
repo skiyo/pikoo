@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "bounded-phone-encoder-finetuning-running-not-qualified",
+  "status": "stopped-for-confirmed-TRAIN-clock-defect-not-qualified",
   "predecessor": "Frozen-encoder R15: first seed28evaluated epochs; second seed5evaluated epochs interrupted; NOT all60planned epochs completed",
   "change": "Only encoder_frozen True to False; pretrained BatchNorm stays frozen. Same encoder initialization/new-head seeds,data,optimizer,loss,rate,decision and required secondary guard.",
   "initial_encoder_sha256": "c6ad568f63a51ea09b33ec2fb98497fcdb2c53b2ecd67eb5cacacda4e4972159",
@@ -32,5 +32,14 @@
   "prior_arm_incomplete_second_seed_no_equal_budget_causal_claim": true,
   "source_originals_and_all_phone_consumed_data_excluded_from_future_TEST": true,
   "restricted_weights_and_audio_private": true,
-  "encoder_trainable_layer_count_is_Keras_flag_including_parameterless_layers": true
+  "encoder_trainable_layer_count_is_Keras_flag_including_parameterless_layers": true,
+  "validated_epochs_by_seed": {
+    "42": 22,
+    "43": 12
+  },
+  "all_planned_epochs_completed": false,
+  "terminal_returncode": -15,
+  "TRAIN_clock_affected": true,
+  "DEV_unchanged": true,
+  "qualification": false
 }

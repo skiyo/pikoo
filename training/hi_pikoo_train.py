@@ -128,10 +128,21 @@ def speech_endpoint(pcm):
     return timing(pcm)['endpoint_sample']
 
 
-def example(pcm, row, rng, augment=False, background_pcm=None):
+def example(pcm, row, rng, augment=False, background_pcm=None, timing_reference=None):
     x = pcm.copy()
     source_timing = None
-    if row.get('synthetic'):
+    if timing_reference is not None:
+        reference = np.asarray(timing_reference)
+        if (not row.get('synthetic') or row.get('split') != 'train' or augment or
+                any(row.get(k) for k in ('real_child', 'family_inputs_used', 'reference_audio_used',
+                                        'evaluation_only', 'frozen_holdout')) or
+                reference.ndim != 1 or reference.shape != x.shape or not np.isfinite(reference).all()):
+            raise ValueError('Same-length clean synthetic TRAIN reference before acoustics required')
+        _, source_timing = view(reference)
+        start, end = source_timing['view_start_sample'], source_timing['view_end_sample']
+        x = x[start:end]
+        endpoint = source_timing['endpoint_sample']-start
+    elif row.get('synthetic'):
         x, source_timing = view(x)
         endpoint = source_timing['endpoint_sample']-source_timing['view_start_sample']
     else:
@@ -187,13 +198,18 @@ def example(pcm, row, rng, augment=False, background_pcm=None):
         weights[:n][(times >= completion-120) & (times < completion)] = 0
         weights[:n][(times > completion+300) & (times < completion+600)] = 0
         weights[labels > 0] *= 12
-    return batch, labels, weights, {'label': row['label'],
+    metadata = {'label': row['label'],
         'cohort': row.get('synthetic_style', 'ordinary')+':'+row.get('accent', 'public')+':'+row.get('pronunciation_variant', 'ordinary'),
         'perceived_gender': row.get('perceived_gender', 'unverified'),
         'completion_ms': completion, 'times_ms': times.tolist(),
         'endpoint_method': 'synthetic-RMS20ms-peakMinus26dB-plus40ms-guard',
         'valid_steps': n, 'sha256': row['sha256'], 'source_timing': source_timing,
         'contrast_class': family(row)}
+    if timing_reference is not None:
+        metadata['timing_reference_source'] = 'clean-stretched-before-acoustic-v2'
+        metadata['timing_reference_pcm16_sha256'] = hashlib.sha256(
+            np.asarray(np.clip(timing_reference, -32768, 32767), '<i2').tobytes()).hexdigest()
+    return batch, labels, weights, metadata
 
 
 def prepare(selected, background):

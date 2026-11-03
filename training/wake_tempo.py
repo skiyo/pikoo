@@ -107,6 +107,8 @@ def prepare(x, y, w, metadata, events, groups, original, extra, protected_path, 
         raise ValueError('Exact finite tempo experiment required')
     if config.get('TRAIN_continuous_variants_per_source') is not None:
         variants({'split': 'train', 'sha256': 'configuration-check'}, config)
+        if config.get('TRAIN_timing_reference') != 'clean-stretched-before-acoustic-v2':
+            raise ValueError('Acoustic TRAIN requires v2 clean-reference timing; legacy caches are research history only')
     ffmpeg = Path(config['ffmpeg']).resolve()
     if sha(ffmpeg) != config['ffmpeg_sha256']:
         raise ValueError('Declared tempo backend changed')
@@ -155,6 +157,7 @@ def prepare(x, y, w, metadata, events, groups, original, extra, protected_path, 
         base, _ = view(read_audio(path))
         for factor, seed_key, acoustic in variants(row, config):
             pcm = stretch(base, factor, ffmpeg)
+            clean_reference = pcm.copy() if acoustic else None
             seed = hashlib.sha256(seed_key.encode()).digest()
             rng = np.random.default_rng(int.from_bytes(seed[:8], 'little'))
             if acoustic:
@@ -163,7 +166,7 @@ def prepare(x, y, w, metadata, events, groups, original, extra, protected_path, 
                 from acoustic_augment import augment as room
                 pcm = room(pcm, rng)
                 pcm = pcm + rng.normal(0, rng.uniform(1, 30), len(pcm))
-            a, b, c, meta = example(pcm, row, rng, augment=False)
+            a, b, c, meta = example(pcm, row, rng, augment=False, timing_reference=clean_reference)
             meta.update(tempo_factor=factor, tempo_method=config['method'],
                 source=row['source'], source_split=row['split'], source_speaker=row['speaker'],
                 sha256_domain='original-source-audio', tempo_derived=True, acoustic_augmentation=acoustic)
@@ -200,6 +203,7 @@ def prepare(x, y, w, metadata, events, groups, original, extra, protected_path, 
     if config.get('TRAIN_continuous_variants_per_source'):
         proof.update(TRAIN_continuous_variants_per_source=6, TRAIN_acoustic_augmentation=True,
             TRAIN_speed_range=[1.0, 1.5], DEV_speed_factors_unchanged=True,
+            TRAIN_timing_reference='clean-stretched-before-acoustic-v2',
             pitch_augmentation=False, no_acoustic_or_pitch_augmentation_on_new_derivatives=False)
     if config.get('DEV_reference_preparation'):
         proof['DEV_reference_provenance_sha256'] = config['DEV_reference_provenance_sha256']
