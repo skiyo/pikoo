@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "checkpoint-encoder-frozen-control-started-not-qualified",
+  "status": "two-seed-comparison-completed-no-qualification",
   "start_condition": "R18 actual terminal, no qualified/frozen checkpoint, old process exited",
   "hypothesis": "Preserve wake-trained R12 acoustic encoder while adapting ordered temporal/wake head to faster speech",
   "training_change_vs_R18": "freeze_checkpoint_encoder=true",
@@ -52,5 +52,32 @@
   "first_export_bytes": 98064,
   "first_export_host_arena_bytes": 37808,
   "first_epoch_DEV_qualified": false,
-  "hardware_latency_and_concurrency_accepted": false
+  "hardware_latency_and_concurrency_accepted": false,
+  "validated_epochs_by_seed": {
+    "42": 12,
+    "43": 12
+  },
+  "all24configured_epochs_completed": true,
+  "terminal_returncode": 0,
+  "qualified_checkpoints": 0,
+  "all_epochs_frozen_weights_verified": true,
+  "TRAIN_fit_diagnostic": {
+    "scope": "same seed42 terminal12, all2322appendedseenTRAIN; not TEST or impossibility proof",
+    "float": {
+      "hits": 1508,
+      "targets": 1518,
+      "negative_false": 48,
+      "negative_cases": 804,
+      "early": 1
+    },
+    "native": {
+      "hits": 1507,
+      "targets": 1518,
+      "negative_false": 51,
+      "negative_cases": 804,
+      "early": 1
+    },
+    "reference_Micro_byte_exact_fixtures": 8,
+    "same_budget_R18_float_and_native_all_targets_correct_all_negatives_rejected": true
+  }
 }

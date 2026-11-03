@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-04",
+  "status": "conditional-partial-encoder-control-prepared-not-trained",
+  "start_condition": "R19 actual terminal no qualification and process exit",
+  "training_change_vs_R19": "checkpoint_encoder_freeze_before=context_2 instead of default ordered_context",
+  "hypothesis": "Preserve earlier acoustic features while final encoder block adapts; complete freeze left seenTRAIN rejection errors at same budget",
+  "same_model_dimensions_data_labels_optimizer_loss_rate_seeds_epochs_gates": true,
+  "TRAIN_examples": 13162,
+  "tempo_TRAIN_examples": 2322,
+  "tempo_DEV_cases": 432,
+  "ordinary_negative_DEV_cases": 261,
+  "mandatory_secondary_DEV_cases": 16,
+  "learning_rate": 0.0001,
+  "auxiliary_weight": 0.2,
+  "seeds": [
+    42,
+    43
+  ],
+  "max_epochs_each": 12,
+  "threshold": 0.9,
+  "rolling": 3,
+  "gradient_and_profile_tests_passed": 4,
+  "existing_training_control_tests_passed": 9,
+  "optional_checks_skipped_in_minimal_python": 4,
+  "actual_partial_gradient_preserves_prefix_and_updates_final_block": true,
+  "new_source_auditions_admitted": false,
+  "new_API_calls": 0,
+  "new_downloads": false,
+  "household_used": false,
+  "TEST_opened": false,
+  "USB_server_volume_changed": false,
+  "goal_completed": false
+}

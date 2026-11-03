@@ -228,6 +228,9 @@ def load_profiles(path):
              (type(profile['encoder_frozen']) is not bool or profile['initialization'] != 'phone-encoder')) or
             ('freeze_checkpoint_encoder' in profile and
              (type(profile['freeze_checkpoint_encoder']) is not bool or profile['initialization'] != 'checkpoint')) or
+            ('checkpoint_encoder_freeze_before' in profile and
+             (profile['initialization'] != 'checkpoint' or profile.get('freeze_checkpoint_encoder') is not True or
+              profile['checkpoint_encoder_freeze_before'] not in ('ordered_context', 'context_2'))) or
             profile['initialization'] not in ('fresh', 'baseline', 'checkpoint', 'phone-encoder') or
             not .00001 <= profile['learning_rate'] <= .001 or
             not 1 <= profile['max_epochs'] <= 30 or sorted(profile['seeds']) != [42, 43]):
@@ -263,22 +266,24 @@ def set_encoder_trainability(encoder, batch_norm_type, frozen=False):
             'encoder_trainable_layers': sum(bool(layer.trainable) for layer in encoder.layers)}
 
 
-def checkpoint_encoder_policy(model, freeze=False):
-    """Preserve a known wake encoder while adapting its ordered temporal head.
+def checkpoint_encoder_policy(model, freeze=False, before='ordered_context'):
+    """Preserve a known wake encoder prefix while adapting the remaining layers.
 
     Opt-in training control only: no data/label/decision or architecture change.
     The default leaves every existing trainability flag untouched.
     """
     if type(freeze) is not bool:
         raise ValueError('Explicit boolean checkpoint encoder policy required')
+    if before not in ('ordered_context', 'context_2') or (not freeze and before != 'ordered_context'):
+        raise ValueError('Explicit freeze and declared encoder boundary required')
     if not freeze:
         return {}
     import tensorflow as tf
-    encoder = tf.keras.Model(model.input, model.get_layer('ordered_context').input)
+    encoder = tf.keras.Model(model.input, model.get_layer(before).input)
     proof = set_encoder_trainability(encoder, tf.keras.layers.BatchNormalization, frozen=True)
     if not model.trainable_weights:
         raise ValueError('Checkpoint temporal/classification head must remain trainable')
-    return {**proof, 'checkpoint_encoder_hook': 'ordered_context.input',
+    return {**proof, 'checkpoint_encoder_hook': before+'.input',
             'encoder_weight_count': len(encoder.weights),
             'encoder_weights_sha256': weights_fingerprint(encoder.weights),
             'remaining_trainable_weight_count': len(model.trainable_weights)}
@@ -629,10 +634,12 @@ def main():
                 if proof['household_used'] is not False or proof['TEST_opened'] is not False:
                     raise ValueError('Protected donor checkpoint')
                 model.load_weights(initial)
-                trainability = checkpoint_encoder_policy(model, profile.get('freeze_checkpoint_encoder', False))
+                freeze_before = profile.get('checkpoint_encoder_freeze_before', 'ordered_context')
+                trainability = checkpoint_encoder_policy(model, profile.get('freeze_checkpoint_encoder', False),
+                                                         before=freeze_before)
                 if profile.get('freeze_checkpoint_encoder', False):
                     frozen_checkpoint_weights = tuple(tf.keras.Model(
-                        model.input, model.get_layer('ordered_context').input).weights)
+                        model.input, model.get_layer(freeze_before).input).weights)
                 write_json(folder/'initialization.json', {'kind': 'continued-known-TRAIN-DEV-checkpoint',
                     'checkpoint_sha256': sha(initial), 'donor_evaluation_sha256': sha(initial.parent/'evaluation.json'),
                     **trainability})

@@ -35,24 +35,48 @@ class CheckpointFreeze(unittest.TestCase):
         for value in ('yes', 1, None):
             with self.assertRaises(ValueError): checkpoint_encoder_policy(object(), value)
 
+    def test_partial_boundary_requires_checkpoint_freeze_and_known_hook(self):
+        profile = {'name': 'partial', 'channels': 96, 'head': 64, 'context_steps': 72,
+                   'initialization': 'checkpoint', 'learning_rate': .0001,
+                   'max_epochs': 12, 'seeds': [42, 43], 'freeze_checkpoint_encoder': True}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)/'profiles.json'
+            for boundary in ('ordered_context', 'context_2'):
+                path.write_text(json.dumps([{**profile, 'checkpoint_encoder_freeze_before': boundary}]))
+                self.assertEqual(load_profiles(path)[0]['checkpoint_encoder_freeze_before'], boundary)
+            for override in ({'checkpoint_encoder_freeze_before': 'context_1'},
+                             {'checkpoint_encoder_freeze_before': None},
+                             {'freeze_checkpoint_encoder': False}, {'initialization': 'fresh'}):
+                path.write_text(json.dumps([{**profile, 'checkpoint_encoder_freeze_before': 'context_2', **override}]))
+                with self.assertRaises(ValueError): load_profiles(path)
+        with self.assertRaises(ValueError): checkpoint_encoder_policy(object(), False, before='context_2')
+        with self.assertRaises(ValueError): checkpoint_encoder_policy(object(), True, before='context_1')
+
     @unittest.skipUnless(os.environ.get('PIKOO_MWW_UPSTREAM'),
                          'Set PIKOO_MWW_UPSTREAM to the existing pinned upstream for gradient check')
     def test_real_gradient_preserves_all_encoder_weights_and_updates_head(self):
+        for boundary in ('ordered_context', 'context_2'):
+            with self.subTest(boundary=boundary): self.check_gradient_boundary(boundary)
+
+    def check_gradient_boundary(self, boundary):
         import tensorflow as tf
         from hi_pikoo_model import build, sequence_loss
         from wake_phrase_auxiliary import attach
         upstream = Path(os.environ['PIKOO_MWW_UPSTREAM'])
         if not upstream.is_dir(): self.fail('Configured pinned upstream is unavailable; never download')
         model = build(upstream, 72, 42, 24, False, head_units=32)
-        encoder = tf.keras.Model(model.input, model.get_layer('ordered_context').input)
+        encoder = tf.keras.Model(model.input, model.get_layer(boundary).input)
         before = [w.numpy().copy() for w in encoder.weights]
+        last_block = model.get_layer('mix_2')
+        last_block_before = [w.numpy().copy() for w in last_block.weights]
         head = model.get_layer('wake_probability')
         head_before = [w.numpy().copy() for w in head.weights]
         shape = (model.input_shape, model.output_shape)
-        proof = checkpoint_encoder_policy(model, True)
+        proof = checkpoint_encoder_policy(model, True, before=boundary)
         self.assertEqual(proof['encoder_trainable_layers'], 0)
         self.assertGreater(proof['remaining_trainable_weight_count'], 0)
         self.assertTrue(head.trainable)
+        self.assertEqual(last_block.trainable, boundary == 'context_2')
         self.assertFalse({id(w) for w in encoder.weights} & {id(w) for w in model.trainable_weights})
         training = attach(model)
         training.compile(optimizer=tf.keras.optimizers.SGD(.01),
@@ -65,6 +89,8 @@ class CheckpointFreeze(unittest.TestCase):
             np.testing.assert_array_equal(weight.numpy(), old)
         verify_frozen_checkpoint_weights(encoder.weights, proof['encoder_weights_sha256'])
         self.assertTrue(any(not np.array_equal(old, w.numpy()) for old, w in zip(head_before, head.weights)))
+        self.assertEqual(any(not np.array_equal(old, w.numpy()) for old, w in
+                             zip(last_block_before, last_block.weights)), boundary == 'context_2')
         self.assertEqual((model.input_shape, model.output_shape), shape)
         # The runtime guard must detect an optimizer/ownership regression,
         # even if layer.trainable still reports the requested frozen flags.
