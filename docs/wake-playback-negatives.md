@@ -385,3 +385,14 @@ adds the four reviewed piko TRAIN originals plus the additional grouping gate;
 it is not a single-factor causal experiment. No independent TEST or board
 operation follows without qualification. See the
 [review and comparison record](reports/wake-human-reviewed-piko-2026-11-03.json).
+
+
+The human-reviewed piko-source comparison completed both seeds at 23 epochs
+(46 checkpoints). All 368 original-grid cells were audited against both DEV
+grouping gates; none qualified. The native-ranked seed42 checkpoint rejected
+all 52 old and 261 new negatives with no early activation, but its historical
+childlike piko group remained at 11/13. No new TEST or device operation occurred.
+A bounded two-seed comparison now tests AdamW weight decay .01 while retaining
+R10's data, model, learning rate, auxiliary loss and both gates. Regularization
+is a generalization hypothesis, not proof of the failure's cause. It adds no
+inference layer or API request; hardware resource validation remains required.

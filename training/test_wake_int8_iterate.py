@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 try:
-    from wake_int8_iterate import qualification, balance_train_weights, balance_positive_cohorts, load_profiles
+    from wake_int8_iterate import qualification, balance_train_weights, balance_positive_cohorts, load_profiles, optimizer_spec
     import numpy as np
 except ImportError:
     qualification = None
@@ -12,6 +12,22 @@ except ImportError:
 
 @unittest.skipIf(qualification is None, 'Optional pinned training runtime required')
 class Int8Qualification(unittest.TestCase):
+    def test_regularization_is_bounded_and_legacy_Adam_is_unchanged(self):
+        profile = {'learning_rate': .0005}
+        self.assertEqual(optimizer_spec(profile), ('Adam', {'learning_rate': .0005}))
+        name, options = optimizer_spec({**profile, 'weight_decay': .01}, clipnorm=True)
+        self.assertEqual(name, 'AdamW')
+        self.assertEqual(options, {'learning_rate': .0005, 'weight_decay': .01, 'global_clipnorm': 1.})
+        for value in (-.01, .001, .1, float('nan'), float('inf')):
+            with self.assertRaises(ValueError): optimizer_spec({**profile, 'weight_decay': value})
+        bounded = {**profile, 'name': 'regularized', 'channels': 96, 'head': 64,
+                   'initialization': 'fresh', 'max_epochs': 30, 'seeds': [42, 43], 'weight_decay': .01}
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder)/'profiles.json'; path.write_text(json.dumps([bounded]))
+            self.assertEqual(load_profiles(path)[0]['weight_decay'], .01)
+            bounded['weight_decay'] = .1; path.write_text(json.dumps([bounded]))
+            with self.assertRaises(ValueError): load_profiles(path)
+
     def test_auxiliary_weight_is_a_bounded_predeclared_training_choice(self):
         profile = {'name': 'auxiliary', 'channels': 48, 'head': 64, 'context_steps': 20,
                    'initialization': 'fresh', 'learning_rate': .0001, 'max_epochs': 20,

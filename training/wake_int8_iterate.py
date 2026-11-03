@@ -223,6 +223,7 @@ def load_profiles(path):
             profile['channels'] not in (24, 48, 96) or profile['head'] not in (32, 64) or
             profile.get('context_steps', 20) not in (20, 72) or
             profile.get('auxiliary_phrase_weight', 0) not in (0, .2, .5) or
+            profile.get('weight_decay', 0) not in (0, .01) or
             profile['initialization'] not in ('fresh', 'baseline', 'checkpoint', 'phone-encoder') or
             not .00001 <= profile['learning_rate'] <= .001 or
             not 1 <= profile['max_epochs'] <= 30 or sorted(profile['seeds']) != [42, 43]):
@@ -230,6 +231,18 @@ def load_profiles(path):
     if len({p['name'] for p in profiles}) != len(profiles):
         raise ValueError('Duplicate profile name')
     return profiles
+
+
+def optimizer_spec(profile, clipnorm=False):
+    decay = profile.get('weight_decay', 0)
+    if decay not in (0, .01):
+        raise ValueError('Only the declared zero/.01 weight-decay comparison is eligible')
+    options = {'learning_rate': profile['learning_rate']}
+    if clipnorm:
+        options['global_clipnorm'] = 1.
+    if decay:
+        options['weight_decay'] = decay
+    return ('AdamW' if decay else 'Adam'), options
 
 
 class NativeEvaluator:
@@ -527,8 +540,8 @@ def main():
                         layer.trainable = False
                 write_json(folder/'initialization.json', {'kind': 'public-TRAIN-only-phonetic-encoder',
                     'encoder_sha256': sha(initial), 'report_sha256': sha(report), 'source_phone_error_rate': proof['phone_error_rate']})
-            optimizer_options = {'global_clipnorm': 1.} if a.cohort_meta else {}
-            optimizer = tf.keras.optimizers.Adam(profile['learning_rate'], **optimizer_options)
+            optimizer_name, optimizer_options = optimizer_spec(profile, clipnorm=bool(a.cohort_meta))
+            optimizer = getattr(tf.keras.optimizers, optimizer_name)(**optimizer_options)
             if profile.get('auxiliary_phrase_weight', 0):
                 from wake_phrase_auxiliary import attach
                 training_model = attach(model)

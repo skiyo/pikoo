@@ -1,6 +1,6 @@
 {
   "date": "2026-11-03",
-  "stage": "native-comparison-running",
+  "stage": "completed-no-qualified-candidate",
   "human_source_feedback": {
     "new_adult_catalog_originals": 4,
     "actual_name_variant_all": "piko",
@@ -54,10 +54,23 @@
     },
     "frozen_candidate_exists": false,
     "actual_effective_TRAIN_windows": 10744,
-    "completed_native_epochs_snapshot": 7,
-    "current_seed_snapshot": 42,
     "latest_checkpoint_qualified": false,
-    "additional_reviewed_gate_active": true
+    "additional_reviewed_gate_active": true,
+    "completed_epochs_by_seed": {
+      "42": 23,
+      "43": 23
+    },
+    "completed_checkpoints": 46,
+    "original_grid_cells": 368,
+    "numeric_gate_survivors": 0,
+    "best_native_seed42": {
+      "legacy_childlike_piko_hits": 11,
+      "legacy_childlike_piko_targets": 13,
+      "old_false_wakes": 0,
+      "early_wakes": 0,
+      "new_negative_false_clips": 0,
+      "qualified": false
+    }
   },
   "new_API_requests": 0,
   "device_changed": false,
@@ -81,5 +94,19 @@
     "initial_default_Python_run": "failed missing optional dependencies; only affected Python stages rerun in correct existing runtime, all passed"
   },
   "automatic_postprocessing": "Single continuation of the specific live trainer, not a recurring automation. On terminal, audit original finite GRID against both full grouping gates; no TEST, API or USB. Numeric survivors still require full replay and canonical freeze.",
-  "snapshot_at": "2026-11-03T00:05:11.508115+00:00"
+  "snapshot_at": "2026-11-03T00:05:11.508115+00:00",
+  "next_comparison": {
+    "stage": "predeclared",
+    "optimizer": "AdamW",
+    "weight_decay": 0.01,
+    "fresh_seeds": [
+      42,
+      43
+    ],
+    "max_epochs_each": 30,
+    "data_model_and_gates_unchanged": true,
+    "hypothesis": "Weight regularization may improve held-out synthetic voice generalization; unproven.",
+    "extra_inference_layers": 0,
+    "new_API_requests": 0
+  }
 }
