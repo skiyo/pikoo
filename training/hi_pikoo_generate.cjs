@@ -159,6 +159,15 @@ async function generate([name,voice,style,text]){
  });
 }
 function args(argv){const a={};for(let i=0;i<argv.length;i+=2){if(!argv[i].startsWith('--')||argv[i+1]===undefined)throw Error('Expected --name value');a[argv[i].slice(2)]=argv[i+1];}return a;}
+function existingKeyClient({output,keyFile,port=7897}){
+ if(!Number.isInteger(port)||port<1||port>65535)throw Error('Invalid proxy port');
+ const env=fs.readFileSync(keyFile,'utf8'),line=env.split(/\r?\n/).find(l=>/^\s*(?:export\s+)?OPENAI_API_KEY\s*=/.test(l));
+ if(!line)throw Error('Missing existing API key');
+ const value=line.slice(line.indexOf('=')+1).trim().replace(/^['"]|['"]$/g,'');
+ if(!value)throw Error('Empty existing API key');
+ out=path.resolve(output);key=value;proxyPort=port;
+ return generate;
+}
 async function main(){
  const a=args(process.argv.slice(2));if(!a.output||!a['key-file']||!a['audition-root'])throw Error('Required: --output, --key-file, --audition-root');
  const phase=a.phase||'pilot';if(!['pilot','training','adult-refresh','development','sealed'].includes(phase))throw Error('Unknown collection phase');
@@ -251,5 +260,5 @@ async function main(){
  write(path.join(out,'status.json'),{phase:phase+'-generated-awaiting-independent-review',completed:selected.filter(x=>done.some(y=>y.id===x.id)).length,total:selected.length,total_retained_files:done.length,updated_at:new Date().toISOString(),next:'independent content and pronunciation review; no training admission yet'});
  }finally{fs.closeSync(fd);fs.unlinkSync(lock);}
 }
-module.exports={cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,nativeSourcePilotPlan,validateFrozen,generationCount,freshTestPlan,assertNativeTestPlanCoverage,NATIVE_TEST_COHORTS,RESERVATION,tunnel};
+module.exports={cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,nativeSourcePilotPlan,validateFrozen,generationCount,freshTestPlan,assertNativeTestPlanCoverage,NATIVE_TEST_COHORTS,RESERVATION,tunnel,existingKeyClient,write};
 if(require.main===module)main().catch(err=>{console.error(JSON.stringify({status:'stopped',error:String(err.message).replace(/sk-[A-Za-z0-9_-]+/g,'[REDACTED]')}));process.exitCode=1;});

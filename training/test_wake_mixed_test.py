@@ -54,6 +54,7 @@ class MixedTestIsolation(unittest.TestCase):
                 _, proof = decode_capture(raw); proof['old_model_scores_ignored'] = True
                 (folder / 'capture.log').write_bytes(raw)
                 capture = {'status': 'captured-unlabelled-not-scored', 'speaker_id': slot['speaker'],
+                    'test_slot_id': slot['id'], 'protocol_sha256': 'protocol-sha',
                     'speaker_role_user_declared': slot['role'], 'prompt': slot['prompt'],
                     'model_sha256': 'model-fixture', 'policy_sha256': 'policy-sha',
                     'split': 'test', 'evaluation_only': True, 'frozen_holdout': True,
@@ -64,6 +65,7 @@ class MixedTestIsolation(unittest.TestCase):
                 row['capture_metadata_path'] = str((folder / 'capture.json').relative_to(cls.root))
             cls.rows.append(row)
             records.append({'id': slot['id'], 'sha256': digest, 'quality_valid': True,
+                'reviewed_at': '2026-11-03T04:00:00+00:00',
                 'actual_label': slot['expected_label'], 'actual_age': slot['role'],
                 'actual_accent': slot['accent'], 'no_repetition_or_extra_words': True,
                 'actual_variant': slot['prompt'].split()[1] if slot['expected_label'] else 'non-target',
@@ -127,6 +129,10 @@ class MixedTestIsolation(unittest.TestCase):
                        {'records': self.review['records'][:-1]}, {'reviewed_at': '2026-11-03T02:30:00+00:00'}):
             with self.subTest(change=list(change)), self.assertRaises(ValueError):
                 self.validate(review={**self.review, **change})
+        for stamp in ('2026-11-03T02:30:00+00:00', '2026-11-03T05:00:00+00:00'):
+            review = copy.deepcopy(self.review); review['records'][0]['reviewed_at'] = stamp
+            with self.subTest(stamp=stamp), self.assertRaises(ValueError):
+                self.validate(review=review)
 
     def test_family_transport_success_flag_cannot_override_modified_pcm_log(self):
         row = next(r for r in self.rows if r['source_kind'] == 'family')
@@ -152,7 +158,7 @@ class MixedTestIsolation(unittest.TestCase):
 
     def test_native_trace_truncation_and_reset_difference_rejected(self):
         from wake_mixed_test_score import checked_trace
-        self.assertEqual(checked_trace(bytes([1, 2]*3), 2).tolist(), [1, 2])
+        self.assertEqual(list(checked_trace(bytes([1, 2]*3), 2)), [1, 2])
         for raw in (bytes([1, 2]*3)[:-1], bytes([1, 2, 1, 2, 1, 3])):
             with self.assertRaises(ValueError): checked_trace(raw, 2)
 

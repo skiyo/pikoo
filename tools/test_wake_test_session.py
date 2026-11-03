@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from test_wake_test_capture import log, diagnostic
-from wake_test_session import Monitor, collect_one, private_file
+from wake_test_session import Monitor, collect_one, private_file, case_config
 
 
 class FakeMonitor:
@@ -137,6 +137,25 @@ class CaptureSessionSafety(unittest.TestCase):
             collect_one(monitor, ready, lambda: None)
             self.assertEqual(monitor.commands.count('wake test on'), 2)
             self.assertTrue(monitor.muted)
+
+    def test_predeclared_case_binds_speaker_prompt_and_output_before_usb(self):
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'training'))
+        from wake_mixed_test import COHORTS, protocol
+        policy = {'target': 'hi-piku-piko-v2', 'development_passed': True,
+            'source_native_freeze_sha256': 'fixture', 'micro_proof_sha256': 'fixture',
+            'required_test_cohorts': COHORTS, 'required_fresh_test_speakers': ['openai:echo', 'openai:shimmer'],
+            'model_sha256': 'fixture', 'candidate_frozen_at': '2026-11-03T01:00:00+00:00',
+            'rolling': 3, 'threshold': .9}
+        plan = protocol(policy, 'policy-sha', 'protected-sha', '2026-11-03T02:00:00+00:00')
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / 'protocol.json'
+            case = next(s for s in plan['slots'] if s['source_kind']=='family')
+            out = Path(root) / 'captures' / case['id']
+            self.assertEqual(case_config(plan, policy, 'policy-sha', case['id'], path, out), case)
+            for case_id, output in [('unknown', out), ('TEST-041', out), (case['id'], Path(root)/'wrong')]:
+                with self.subTest(case_id=case_id), self.assertRaises(ValueError):
+                    case_config(plan, policy, 'policy-sha', case_id, path, output)
 
 
 if __name__ == '__main__': unittest.main()

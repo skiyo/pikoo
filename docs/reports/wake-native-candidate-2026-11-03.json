@@ -126,11 +126,29 @@
       "family_recorded": false,
       "end_to_end_capture_workflow_ready": false
     },
-    "family_availability": "User chose to arrange later; no capture scheduled or started"
+    "family_availability": "User chose to arrange later; no capture scheduled or started",
+    "synthetic_sub_bundle": {
+      "API_completed": 70,
+      "API_failed": 0,
+      "intended_positive": 40,
+      "negative": 30,
+      "content_qualified": false,
+      "human_labelled": 0,
+      "independent_local_ASR_reviewed": 70,
+      "ASR_is_not_phoneme_or_age_gold": true,
+      "content_triage_pending_human": 4,
+      "all_sources_still_require_human_labels": true,
+      "new_estimated_generation_USD": 0.060292,
+      "frozen_wake_model_scored": false,
+      "raw_sources_unmodified": true,
+      "source_retries": 0,
+      "partial_70_bundle_rejected_before_inference": true,
+      "family_recorded": 0
+    }
   },
   "source_pilot_generator_tests": 14,
   "source_pilot_generator_tests_passed": true,
-  "corpus_generation_accounted_or_reserved_USD": 0.5891476,
+  "corpus_generation_accounted_or_reserved_USD": 0.6494396,
   "corpus_cumulative_cap_USD": 2,
   "formal_goal_passed": false,
   "fresh_TEST_passed": false,
@@ -140,22 +158,24 @@
   "device_changed": false,
   "weights_and_recordings_private": true,
   "post_freeze_TEST_tooling": {
-    "software_tests_passed": 32,
+    "software_tests_passed": 56,
     "fixture_audio_only": true,
     "private_protocol_slots": 150,
     "prior_protected_unique_hashes": 1885,
     "prior_metadata_sources": 8,
     "actual_empty_bundle_preflight_rejected": true,
-    "actual_TEST_rows": 0,
+    "actual_TEST_rows": 70,
     "fresh_TEST_inference_started": false,
     "consumption_marker_created": false,
     "bounded_single_capture_implemented": true,
     "connected_board_capture_validated": false,
     "family_recorded": false,
-    "adult_synthetic_sub_bundle_generation_integrated": false,
-    "human_label_workflow_integrated": false,
+    "adult_synthetic_sub_bundle_generation_integrated": true,
+    "human_label_workflow_integrated": true,
     "old_trial_context_clear_bug_fixed": true,
-    "new_API_requests": 0,
-    "user_family_availability": "arrange-later"
+    "new_API_requests": 70,
+    "user_family_availability": "arrange-later",
+    "full_slot_records": 150,
+    "missing_family": 80
   }
 }

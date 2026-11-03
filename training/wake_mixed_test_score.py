@@ -37,14 +37,12 @@ def preflight(args):
 
 
 def checked_trace(data, steps):
-    import numpy as np
-    raw = np.frombuffer(data, np.uint8)
-    if raw.size != steps * 3:
+    if type(steps) is not int or steps <= 0 or len(data) != steps * 3:
         raise ValueError('Truncated native probability trace')
-    raw = raw.reshape(3, steps)
-    if not np.all(raw == raw[0]):
+    first = data[:steps]
+    if data != first * 3:
         raise ValueError('Native state reset replay differs')
-    return raw[0]
+    return first
 
 
 def main():
@@ -95,7 +93,7 @@ def main():
         response = subprocess.run([str(args.micro_check.resolve()), str(args.model.resolve()),
             str(fixture.resolve()), '--trace-output', str(trace.resolve())],
             capture_output=True, text=True, check=True, timeout=60)
-        actual = checked_trace(trace.read_bytes(), steps)
+        actual = np.frombuffer(checked_trace(trace.read_bytes(), steps), np.uint8)
         native = json.loads(response.stdout.strip().splitlines()[-1])
         if native['host_arena_used_bytes'] > 262144:
             raise ValueError('Native host arena exceeds candidate resource gate')

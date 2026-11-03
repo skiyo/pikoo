@@ -516,3 +516,39 @@ generated fixtures. No new synthesis request, family recording, device change or
 model/policy change occurred. The adult-synthesis sub-bundle generation and human
 content-label collection still need integration; this is not an end-to-end TEST
 pass. Family readiness remains deferred at the user's request.
+
+
+The synthetic sub-bundle is now integrated with the full protocol. The separate
+`wake_mixed_test_source.py` preflight validates the unchanged150-slot plan, native
+freeze, untouched-speaker reservation and prior-recording snapshot. The Node
+`wake_mixed_test_generate.cjs` wrapper emits only the70 predeclared adult sources,
+uses the protected historical cumulative ledger and generation lock, refuses a
+new budget or public/symlinked output, and never retries failed attempts. Requests
+are at least five seconds apart. No family audio is sent to a provider.
+
+All70 API generations completed (40 intended targets and30 negatives), adding
+about$0.060292 to the same ledger: about$0.64944 accounted/reserved out of$2.
+These are completed API outputs, not70 content-qualified examples. Existing local
+Qwen3-ASR inspected all70 offline; four target sources were flagged for possible
+missing names or extra words and await human CONTENT review. All70 still need
+human labels; the other66 were not automatically admitted. ASR spelling/timing is
+not vowel/age gold, and no failed source was cropped, repaired or regenerated.
+The frozen wake model has not scored any of these recordings.
+
+`wake_mixed_test_labels.py` provides explicit assemble/label/seal operations.
+Assembly preserves all150 slots, including80 absent family recordings. Each label
+records actual complete Hi+piku/piko or a specific negative, observed age/accent,
+quality, extra-word/repetition status, waveform hash and pre-score endpoint.
+Requested prompts never fill these observations. Draft revisions are logged;
+sealing requires all actual cohorts and labels and refuses partial evidence.
+A real70/150 partial bundle was refused before inference or TEST consumption.
+Family capture now derives its pseudonymous speaker/prompt from the protocol's
+case ID and binds both ID and protocol hash into the raw transport evidence.
+
+Fifty-six relevant software checks passed (including the stdlib-only Python
+preflight/label path). No household recording, USB access, firmware write,
+threshold change or training took place. Household availability remains deferred;
+QC1–4 is a new synthetic-content question, separate from the old TS1–12 pack.
+The [official model pricing](https://developers.openai.com/api/docs/models/gpt-realtime-2.1-mini)
+was rechecked without changing the generator model or the$2 cap. Independent TEST,
+ESP32 resource/concurrency, family two-session and eight-hour gates remain open.

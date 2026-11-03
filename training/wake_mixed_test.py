@@ -100,11 +100,13 @@ def inside(root, value):
     return path
 
 
-def family_proof(root, row, slot, plan, pcm):
+def family_proof(root, row, slot, plan, pcm, protocol_sha256):
     """Replay bounded transport proof; no trust in a success flag alone."""
     path = inside(root, row['capture_metadata_path'])
     capture = json.loads(path.read_text())
     if (capture.get('status') != 'captured-unlabelled-not-scored' or
+            capture.get('test_slot_id') != row['id'] or
+            capture.get('protocol_sha256') != protocol_sha256 or
             capture.get('speaker_id') != slot['speaker'] or
             capture.get('speaker_role_user_declared') != slot['role'] or
             capture.get('prompt') != slot['prompt'] or
@@ -184,11 +186,13 @@ def validate_bundle(plan, rows, review, root, policy, policy_sha256, protected, 
         if slot['source_kind'] == 'family':
             if rate != 16000 or count != 64000:
                 raise ValueError('Full bounded family capture required; never trim/crop')
-            family_proof(root, row, slot, plan, pcm)
+            family_proof(root, row, slot, plan, pcm, protocol_sha256)
         elif (row.get('synthetic') is not True or row.get('real_child') is not False or
               row.get('family_inputs_used') is not False or row.get('reference_audio_used') is not False):
             raise ValueError('Held-out synthetic originals cannot contain family/child reference audio')
         if (label.get('sha256') != digest or label.get('quality_valid') is not True or
+                timestamp(label['reviewed_at']) < timestamp(row['created_at']) or
+                timestamp(label['reviewed_at']) > timestamp(review['reviewed_at']) or
                 type(label.get('actual_label')) is not int or label['actual_label'] != slot['expected_label'] or
                 label.get('actual_age') != slot['role'] or label.get('actual_accent') != slot['accent'] or
                 label.get('no_repetition_or_extra_words') is not True):

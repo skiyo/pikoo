@@ -27,6 +27,19 @@ ROOT = Path(__file__).resolve().parents[1]
 COMMANDS = {'status', 'mute', 'unmute', 'wake test on', 'wake test off', 'wake capture'}
 
 
+def case_config(plan, policy, policy_sha256, case_id, protocol_path, output):
+    sys.path.insert(0, str(ROOT / 'training'))
+    from wake_mixed_test import protocol
+    if plan != protocol(policy, policy_sha256, plan['protected_registry_sha256'], plan['declared_at']):
+        raise ValueError('Unchanged predeclared TEST protocol required before capture')
+    slot = next((s for s in plan['slots'] if s['id'] == case_id), None)
+    if slot is None or slot['source_kind'] != 'family':
+        raise ValueError('Choose a predeclared family TEST slot, not a synthetic source')
+    if output.resolve() != protocol_path.resolve().parent / 'captures' / case_id:
+        raise ValueError('Capture output must be this protocol\'s private captures/case-ID directory')
+    return slot
+
+
 def private_file(path):
     info = path.stat()
     if (info.st_uid != os.getuid() or not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077):
@@ -154,12 +167,10 @@ def collect_one(monitor, ready, cue, timeout=10):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    for name in ('port', 'speaker-id'):
+    for name in ('port', 'case-id'):
         p.add_argument('--' + name, required=True)
-    for name in ('private-log', 'model', 'policy', 'output'):
+    for name in ('private-log', 'model', 'policy', 'protocol', 'output'):
         p.add_argument('--' + name, type=Path, required=True)
-    p.add_argument('--role', choices=('adult', 'child'), required=True)
-    p.add_argument('--prompt', choices=('Hi piku', 'Hi piko'), required=True)
     p.add_argument('--ready', action='store_true', help='Only after explicit human readiness')
     a = p.parse_args()
     if a.output.resolve().is_relative_to(ROOT) or a.output.exists():
@@ -170,6 +181,10 @@ def main():
     policy = validate(a.model, json.loads(a.policy.read_text()))
     if not policy.get('source_native_freeze_sha256') or not policy.get('micro_proof_sha256'):
         raise ValueError('Native-qualified freeze and parity proof required before TEST capture')
+    policy_sha256 = hashlib.sha256(a.policy.read_bytes()).hexdigest()
+    protocol_sha256 = hashlib.sha256(a.protocol.read_bytes()).hexdigest()
+    slot = case_config(json.loads(a.protocol.read_text()), policy, policy_sha256,
+                       a.case_id, a.protocol, a.output)
     now = datetime.now(timezone.utc)
     if datetime.fromisoformat(policy['candidate_frozen_at']) >= now:
         raise ValueError('Capture must be strictly after candidate freeze')
@@ -181,11 +196,12 @@ def main():
         a.output.mkdir(mode=0o700, parents=True, exist_ok=False)
         metadata = {'status': 'planned-not-captured', 'started_at': now.isoformat(),
             'model_sha256': policy['model_sha256'],
-            'policy_sha256': hashlib.sha256(a.policy.read_bytes()).hexdigest(),
-            'speaker_id': a.speaker_id, 'speaker_role_user_declared': a.role,
-            'prompt': a.prompt, 'actual_content_label': None, 'split': 'test',
+            'policy_sha256': policy_sha256, 'protocol_sha256': protocol_sha256,
+            'test_slot_id': a.case_id,
+            'speaker_id': slot['speaker'], 'speaker_role_user_declared': slot['role'],
+            'prompt': slot['prompt'], 'actual_content_label': None, 'split': 'test',
             'evaluation_only': True, 'frozen_holdout': True, 'family_inputs_used': True,
-            'synthetic': False, 'real_child': a.role == 'child',
+            'synthetic': False, 'real_child': slot['role'] == 'child',
             'training_or_tuning_allowed': False, 'model_scored': False}
         output = a.output / 'capture.json'
         output.write_text(json.dumps(metadata, indent=2) + '\n')
@@ -196,7 +212,7 @@ def main():
 
         try:
             raw, pcm, proof = collect_one(monitor, ready,
-                lambda: print('开始：' + a.prompt + '（4秒，只说一遍）', flush=True))
+                lambda: print('开始：' + slot['prompt'] + '（4秒，只说一遍）', flush=True))
             (a.output / 'capture.log').write_bytes(raw)
             with wave.open(str(a.output / 'TEST-only.wav'), 'wb') as audio:
                 audio.setparams((1, 2, 16000, 0, 'NONE', 'not compressed'))
