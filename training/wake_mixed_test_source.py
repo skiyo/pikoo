@@ -82,11 +82,13 @@ def preflight(args):
     rows = source_plan(plan, policy, sha(args.protocol))
     repair_path = getattr(args, 'source_repair', None)
     if repair_path:
-        from wake_mixed_test_repair import validate_declaration, generation_rows, unconsumed
+        from wake_mixed_test_repair import validate_declaration, generation_rows, unconsumed, repair_round
         unconsumed(args.policy, args.protocol.resolve().parent)
-        if repair_path.resolve() != args.protocol.resolve().parent / 'source-repair1-plan.json':
+        repair_value = json.loads(repair_path.read_text())
+        round_number = repair_round(repair_value)
+        if repair_path.resolve() != args.protocol.resolve().parent / ('source-repair' + str(round_number) + '-plan.json'):
             raise ValueError('Use only the private bundle source repair plan')
-        repair = validate_declaration(json.loads(repair_path.read_text()), plan, args.policy, args.protocol.resolve().parent)
+        repair = validate_declaration(repair_value, plan, args.policy, args.protocol.resolve().parent)
         rows = generation_rows(repair, rows, sha(repair_path))
     # Anchor billing to the already protected historical corpus, never a new
     # output folder's ledger. Refuse ambiguity instead of selecting a cheaper one.
@@ -104,7 +106,8 @@ def preflight(args):
         'family_slots_still_required': 80, 'full_TEST_complete': False,
         'shared_budget_root': next(iter(budget_roots)), 'rows': rows}
     if repair_path:
-        result.update(source_repair_plan_sha256=sha(repair_path), source_repair_requests=4,
+        result.update(source_repair_plan_sha256=sha(repair_path), source_repair_requests=len(rows),
+                      source_repair_round=round_number, source_repair_active_slots=4,
                       original70_sources_retained=True, automatic_retry=False)
     return result
 

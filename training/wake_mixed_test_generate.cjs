@@ -5,20 +5,27 @@ const {cost,reserve,generationCount,existingKeyClient,write,RESERVATION}=require
 function args(argv){const a={};for(let i=0;i<argv.length;i+=2){if(!argv[i].startsWith('--')||argv[i+1]===undefined)throw Error('Expected --name value');a[argv[i].slice(2)]=argv[i+1];}return a;}
 function sourcePreflight(a){
  for(const name of ['python','protocol','policy','model','protected-hashes','native-proof','isolation','output','budget-root','key-file'])if(!a[name])throw Error('Missing --'+name);
- const repair=!!a['source-repair'],maximum=repair?4:70,limit=Number(a['new-attempt-limit']||maximum);
+ const repair=!!a['source-repair'];let maximum=repair?4:70,limit=Number(a['new-attempt-limit']||maximum);
  if(!Number.isInteger(limit)||limit<1||limit>maximum)throw Error('At most'+maximum+' source attempts per invocation');
  const result=spawnSync(a.python,[path.join(__dirname,'wake_mixed_test_source.py'),
   ...['protocol','policy','model','protected-hashes','native-proof','isolation'].flatMap(k=>['--'+k,a[k]]),
   ...(repair?['--source-repair',a['source-repair']]:[])],{encoding:'utf8',timeout:15000,maxBuffer:1024*1024});
  if(result.status!==0)throw Error('Mixed TEST source preflight failed before credentials: '+String(result.stderr||result.error?.message||'').slice(-1600));
  const plan=JSON.parse(result.stdout);
+ if(repair){
+  const round=plan.source_repair_round??1;
+  if(![1,2].includes(round))throw Error('Only the declared first repair or single follow-up is allowed');
+  maximum=round===2?1:4;
+  limit=Number(a['new-attempt-limit']||maximum);
+  if(limit>maximum)throw Error('At most'+maximum+' source attempts per invocation');
+ }
  if(plan.scope!=='synthetic-source-sub-bundle-not-full-TEST'||plan.full_TEST_complete!==false||plan.whole_TEST_slots!==150||plan.synthetic_slots!==70||plan.family_slots_still_required!==80||plan.rows.length!==maximum)throw Error('Full mixed TEST scope missing');
- if(repair&&(plan.source_repair_requests!==4||plan.original70_sources_retained!==true||plan.automatic_retry!==false||
+ if(repair&&(plan.source_repair_requests!==maximum||plan.source_repair_active_slots!==4||plan.original70_sources_retained!==true||plan.automatic_retry!==false||
    plan.rows.some(r=>r.source_repair_plan_sha256!==plan.source_repair_plan_sha256||r.generation_request_policy!=='literal-target-response-v2')))throw Error('Source repair proof missing');
  const requested=path.resolve(a.output),root=fs.realpathSync(path.resolve(__dirname,'..'));
  const output=fs.existsSync(requested)?fs.realpathSync(requested):path.join(fs.realpathSync(path.dirname(requested)),path.basename(requested));
  if(output===root||output.startsWith(root+path.sep))throw Error('Audio must remain outside the source repository');
- if(output!==path.join(fs.realpathSync(path.dirname(a.protocol)),repair?'source-repair1':'synthetic'))throw Error('Use only this TEST protocol\'s private source subdirectory');
+ if(output!==path.join(fs.realpathSync(path.dirname(a.protocol)),repair?'source-repair'+(plan.source_repair_round??1):'synthetic'))throw Error('Use only this TEST protocol\'s private source subdirectory');
  if(fs.realpathSync(a['budget-root'])!==plan.shared_budget_root)throw Error('Must use the protected historical cumulative budget root');
  return {plan,output,limit};
 }

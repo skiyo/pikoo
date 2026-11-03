@@ -28,7 +28,7 @@ test('approved repair shape keeps full scope, four literal requests and a separa
  try{
   const plan={scope:'synthetic-source-sub-bundle-not-full-TEST',full_TEST_complete:false,
    whole_TEST_slots:150,synthetic_slots:70,family_slots_still_required:80,
-   source_repair_requests:4,original70_sources_retained:true,automatic_retry:false,
+   source_repair_requests:4,source_repair_round:1,source_repair_active_slots:4,original70_sources_retained:true,automatic_retry:false,
    source_repair_plan_sha256:'a'.repeat(64),shared_budget_root:root,
    rows:Array.from({length:4},()=>({source_repair_plan_sha256:'a'.repeat(64),generation_request_policy:'literal-target-response-v2'}))};
   const executable=path.join(root,'fixture-python'),payload=path.join(root,'fixture-plan.json');
@@ -44,5 +44,12 @@ test('approved repair shape keeps full scope, four literal requests and a separa
   fs.writeFileSync(payload,JSON.stringify({...plan,automatic_retry:true}));
   assert.throws(()=>sourcePreflight(a),/Source repair proof/);
   assert.ok(!fs.existsSync(a.output));assert.ok(!fs.existsSync(a['key-file']));
+  const single={...plan,source_repair_requests:1,source_repair_round:2,rows:plan.rows.slice(0,1)};
+  fs.writeFileSync(payload,JSON.stringify(single));
+  const second={...a,output:path.join(root,'source-repair2')};
+  assert.equal(sourcePreflight(second).limit,1);
+  assert.throws(()=>sourcePreflight({...second,'new-attempt-limit':'2'}),/At most1/);
+  fs.writeFileSync(payload,JSON.stringify({...single,source_repair_round:3}));
+  assert.throws(()=>sourcePreflight(second),/single follow-up/);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });

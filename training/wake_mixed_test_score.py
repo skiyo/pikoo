@@ -116,10 +116,14 @@ def main():
         'hardware_resource_or_concurrency_passed': False, 'family_two_sessions_passed': False,
         'eight_hour_background_passed': False, 'formal_goal_completed': False}
     if args.source_repair:
+        from wake_mixed_test_repair import repair_round
+        round_number = repair_round(json.loads(args.source_repair.read_text()))
         report['source_repair_plan_sha256'] = consumption['source_repair_plan_sha256']
         report['source_quality_repair'] = {
+            'round': round_number,
             'original_rejected_source_attempts_retained': 4,
-            'additional_predeclared_benchmark_attempts': 4,
+            'rejected_first_repair_attempts_retained': int(round_number == 2),
+            'additional_predeclared_benchmark_attempts': 5 if round_number == 2 else 4,
             'scored_slots_unchanged': 150,
             'recipe_auditions_scored': False,
             'not_a_retry_after_KWS_scores': True}

@@ -692,3 +692,29 @@ family captures. The four old rejected sources, original source/slot manifests,
 protocol, weights and fixed3/.90 policy are unchanged. Incremental generation
 is estimated at$0.0039692, cumulative accounted/reserved$0.6560276 of$2; neither
 number is a reconciled provider bill. Family and device acceptance remain open.
+
+
+Human RT review confirms RT3 is Hi only; RT1/2/4 are otherwise normal. The three
+complete targets still lack exact human ku/ko annotations. The failed original
+remains intact and does not become a valid negative in the fixed target slot.
+
+A prospective **single** follow-up is now supported: `wake_mixed_test_repair.py`
+accepts `--previous-repair` and `--previous-human-review` to declare
+`source-repair2-plan.json`. It requires all four original content observations,
+explicit rejection of RT3, and acceptance of the other three. It allows one new
+TEST-074 request with the already approved model/voice/text/style; no third
+repair round or changed good source is allowed. Generation output, manifests
+and sealed reviews remain separate under `source-repair2`. The original four
+QC failures and first-repair RT3 remain bound through immutable evidence hashes.
+All150 slots/six20-target cohorts/30 negatives remain required. Content approval
+does not invent missing vowel labels. All28 affected Python and3 Node checks
+pass, including a full150-case sealed follow-up fixture without model inference.
+
+The actual one-request follow-up completed once. RX1 is4.05s raw, with720ms
+measured activity and3310ms quiet tail; blind offline ASR returned Hi, Piku.
+This is content evidence pending human review, not wake recall or human phoneme
+gold. Raw audio is untouched; the reel is RT1→RT2→RX1→RT4, preserving the three
+previously accepted sources. The amended full-scope manifest still has70
+recorded sources and80 missing family captures; no KWS TEST was consumed.
+Incremental generation is estimated at$0.0017496, cumulative accounted/reserved
+$0.6577772 of$2. No family recording, device access or frozen-policy change occurred.

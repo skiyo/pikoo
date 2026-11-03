@@ -17,6 +17,7 @@ import wave
 from wake_mixed_test import ROOT, inside, protocol, sha, timestamp
 
 SCOPE = 'pre-score-synthetic-source-repair-v1'
+FOLLOWUP_SCOPE = 'pre-score-single-rejected-source-followup-v1'
 SLOTS = ('TEST-057', 'TEST-068', 'TEST-074', 'TEST-077')
 RECIPE = 'literal-target-response-v2'
 
@@ -25,7 +26,7 @@ def unconsumed(policy_path, root, allow_sealed=False):
     if any((policy_path.parent / name).exists() for name in
            ('sealed-test-consumption.json', 'independent-TEST-consumption.json')):
         raise ValueError('Consumed TEST cannot be repaired or called fresh')
-    for name in ('human-review.json', 'human-review.source-repair1.json'):
+    for name in ('human-review.json', 'human-review.source-repair1.json', 'human-review.source-repair2.json'):
         path = root / name
         if not allow_sealed and path.exists() and json.loads(path.read_text()).get('labels_committed_before_model_scores') is True:
             raise ValueError('Do not amend a sealed content review')
@@ -128,6 +129,16 @@ def declaration(plan, policy_path, root, rejection_path, pilot_manifest, recipe_
 
 
 def validate_declaration(value, plan, policy_path, root):
+    if value.get('scope') == FOLLOWUP_SCOPE:
+        evidence(root, value['previous_repair_plan'])
+        evidence(root, value['human_previous_round_review'])
+        expected = followup_declaration(plan, policy_path, root,
+            inside(root, value['previous_repair_plan']['path']),
+            inside(root, value['human_previous_round_review']['path']),
+            value['declared_at'], allow_sealed=True)
+        if value != expected:
+            raise ValueError('Single source follow-up changed or weakens TEST scope')
+        return value
     for name in ('original_source_manifest', 'human_original_rejection',
                  'recipe_audition_manifest', 'human_recipe_review'):
         evidence(root, value[name])
@@ -138,6 +149,59 @@ def validate_declaration(value, plan, policy_path, root):
     if value != expected:
         raise ValueError('Repair plan changed or weakens fixed TEST scope')
     return value
+
+
+def repair_round(value):
+    if value.get('scope') == SCOPE:
+        return 1
+    if value.get('scope') == FOLLOWUP_SCOPE:
+        return 2
+    raise ValueError('Unknown bounded source repair scope')
+
+
+def followup_declaration(plan, policy_path, root, previous_plan, human_review,
+                         declared_at=None, allow_sealed=False):
+    """One extra attempt for human-rejected RT3; never an automatic retry loop."""
+    unconsumed(policy_path, root, allow_sealed)
+    prior = json.loads(previous_plan.read_text())
+    if repair_round(prior) != 1:
+        raise ValueError('Only one follow-up round is allowed')
+    validate_declaration(prior, plan, policy_path, root)
+    previous = repaired_rows(plan, root, policy_path, previous_plan)
+    review = json.loads(human_review.read_text()); labels = review.get('records', [])
+    stamp = declared_at or datetime.now(timezone.utc).isoformat()
+    if (review.get('reviewed_by') != 'human-content-only' or review.get('model_scored') is not False or
+            not isinstance(review.get('human_statement'), str) or not review['human_statement'].strip() or
+            len(labels) != 4 or {r['id'] for r in labels} != set(previous) or
+            not timestamp(prior['declared_at']) < timestamp(review['reviewed_at']) < timestamp(stamp)):
+        raise ValueError('Actual content review of all four previous attempts required')
+    rejected = []
+    for label in labels:
+        row = previous[label['id']]
+        if (label.get('sha256') != row['sha256'] or label.get('request_id') != row['request_id'] or
+                label.get('model_scored') is not False or
+                timestamp(row['created_at']) > timestamp(review['reviewed_at'])):
+            raise ValueError('Human follow-up review differs from previous raw sources')
+        if label['id'] == 'TEST-074':
+            if (label.get('complete_hi_and_name') is not False or label.get('quality_valid') is not False or
+                    label.get('heard') != 'hi-alone' or label.get('actual_label') != 0):
+                raise ValueError('RT3 must be explicitly human-rejected as Hi only')
+            rejected.append(label['id'])
+        elif (label.get('complete_hi_and_name') is not True or label.get('quality_valid') is not True or
+              label.get('actual_label') != 1 or label.get('actual_age') != 'adult' or
+              label.get('actual_accent') != 'standard' or label.get('no_repetition_or_extra_words') is not True):
+            raise ValueError('Keep the other three human-accepted sources unchanged')
+    if rejected != ['TEST-074']:
+        raise ValueError('Only the single human-rejected RT3 slot may receive a follow-up')
+    request = next(r for r in prior['requests'] if r['id'] == 'TEST-074')
+    request = {**request, 'request_id': 'r12-TEST-source-amend2-TEST-074',
+        'old_source_sha256': previous['TEST-074']['sha256']}
+    return {**prior, 'scope': FOLLOWUP_SCOPE, 'declared_at': stamp,
+        'previous_repair_plan': ref(root, previous_plan),
+        'human_previous_round_review': ref(root, human_review),
+        'additional_benchmark_attempts_including_previous_round': 5,
+        'only_one_followup_round_allowed': True, 'previous_raw_attempts_retained': True,
+        'requests': [request]}
 
 
 def generation_rows(value, source_rows, plan_sha256):
@@ -152,17 +216,22 @@ def repaired_rows(plan, root, policy_path, repair_path):
     """Return four NEW, unlabelled raw benchmark attempts; never select by score."""
     root = root.resolve()
     value = validate_declaration(json.loads(repair_path.read_text()), plan, policy_path, root)
-    folder = root / 'source-repair1'; raw = json.loads((folder / 'manifest.json').read_text())
+    round_number = repair_round(value)
+    previous = repaired_rows(plan, root, policy_path, inside(root, value['previous_repair_plan']['path'])) if round_number == 2 else {}
+    folder = root / ('source-repair' + str(round_number)); raw = json.loads((folder / 'manifest.json').read_text())
     requests = {r['id']: r for r in value['requests']}; actual = {r['id']: r for r in raw}
-    if len(raw) != 4 or set(actual) != set(requests):
-        raise ValueError('Exactly four attempted replacements required; failures cannot disappear')
+    if len(raw) != len(requests) or set(actual) != set(requests):
+        raise ValueError(('Exactly four' if round_number == 1 else 'Exactly one') +
+                         ' attempted replacements required; failures cannot disappear')
     pilots = evidence(root, value['recipe_audition_manifest'])
     original = evidence(root, value['original_source_manifest'])
     protected = {r['sha256'] for r in pilots + original if r.get('sha256')}
     protected_pcm = {pcm_hash(inside(root / 'synthetic', r['path'])) for r in original if r.get('status') == 'recorded'}
     pilot_root = inside(root, value['recipe_audition_manifest']['path']).parent
     protected_pcm.update(pcm_hash(inside(pilot_root, r['path'])) for r in pilots)
-    results = {}
+    protected.update(row['sha256'] for row in previous.values())
+    protected_pcm.update(pcm_hash(inside(root, row['path'])) for row in previous.values())
+    results = dict(previous)
     for id, row in actual.items():
         request = requests[id]
         if (row.get('status') != 'recorded' or row.get('request_id') != request['request_id'] or
@@ -188,17 +257,28 @@ def repaired_rows(plan, root, policy_path, repair_path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ('protocol', 'policy', 'rejection', 'pilot-manifest', 'recipe-review', 'output'):
+    for name in ('protocol', 'policy', 'output'):
         parser.add_argument('--' + name, type=Path, required=True)
+    for name in ('rejection', 'pilot-manifest', 'recipe-review', 'previous-repair', 'previous-human-review'):
+        parser.add_argument('--' + name, type=Path)
     args = parser.parse_args(); os.umask(0o077)
     root = args.protocol.resolve().parent
-    if root.is_relative_to(ROOT) or args.output.resolve() != root / 'source-repair1-plan.json':
+    followup = bool(args.previous_repair or args.previous_human_review)
+    round_number = 2 if followup else 1
+    if root.is_relative_to(ROOT) or args.output.resolve() != root / ('source-repair' + str(round_number) + '-plan.json'):
         raise ValueError('Use this private TEST bundle and a separate fixed plan file')
     plan = json.loads(args.protocol.read_text())
-    value = declaration(plan, args.policy, root, args.rejection, args.pilot_manifest, args.recipe_review)
+    if followup:
+        if not args.previous_repair or not args.previous_human_review:
+            raise ValueError('Both prior source plan and actual human content review required')
+        value = followup_declaration(plan, args.policy, root, args.previous_repair, args.previous_human_review)
+    else:
+        if not all((args.rejection, args.pilot_manifest, args.recipe_review)):
+            raise ValueError('Original rejection, audition manifest and human recipe review required')
+        value = declaration(plan, args.policy, root, args.rejection, args.pilot_manifest, args.recipe_review)
     with args.output.open('x') as output:
         json.dump(value, output, indent=2); output.write('\n')
-    print(json.dumps({'plan_written': True, 'planned_requests': 4, 'API_called': False, 'model_scored': False}))
+    print(json.dumps({'plan_written': True, 'planned_requests': len(value['requests']), 'API_called': False, 'model_scored': False}))
 
 
 if __name__ == '__main__': main()

@@ -11,7 +11,7 @@ import wave
 from wake_mixed_test import COHORTS, protocol, sha, validate_bundle
 from wake_mixed_test_labels import assemble
 from wake_mixed_test_repair import (
-    SLOTS, declaration, generation_rows, repaired_rows, validate_declaration)
+    SLOTS, declaration, generation_rows, repaired_rows, validate_declaration, followup_declaration)
 from wake_mixed_test_source import source_plan
 
 
@@ -86,6 +86,33 @@ class SourceRepair(unittest.TestCase):
                 created_at='2026-11-03T08:00:00+00:00')
         self.save(folder/'manifest.json',rows)
         return rows
+
+    def new_followup(self, existing=False):
+        if not existing:self.new_sources()
+        prior=repaired_rows(self.plan,self.root,self.policy_path,self.repair_path)
+        labels=[]
+        for id,row in prior.items():
+            bad=id=='TEST-074'
+            labels.append({'id':id,'request_id':row['request_id'],'sha256':row['sha256'],
+                'model_scored':False,'complete_hi_and_name':not bad,'quality_valid':not bad,
+                'actual_label':0 if bad else 1,'heard':'hi-alone' if bad else 'hi-piku-or-piko',
+                'actual_age':'adult','actual_accent':'standard','no_repetition_or_extra_words':True,
+                'actual_variant':None})
+        review={'reviewed_by':'human-content-only','model_scored':False,
+            'reviewed_at':'2026-11-03T09:00:00+00:00','human_statement':'Fixture: third only Hi, others normal.',
+            'records':labels}
+        review_path=self.root/'source-repair1/human-content-feedback.json';self.save(review_path,review)
+        value=followup_declaration(self.plan,self.policy_path,self.root,self.repair_path,review_path,
+            '2026-11-03T10:00:00+00:00')
+        plan_path=self.root/'source-repair2-plan.json';self.save(plan_path,value)
+        folder=self.root/'source-repair2';folder.mkdir()
+        rows=generation_rows(value,source_plan(self.plan,self.policy,self.protocol_sha),sha(plan_path))
+        self.assertEqual(len(rows),1)
+        file=folder/(rows[0]['request_id']+'.wav');self.pcm(file,400)
+        rows[0].update(path=file.name,sha256=sha(file),status='recorded',model='gpt-realtime-2.1-mini',
+            created_at='2026-11-03T11:00:00+00:00')
+        self.save(folder/'manifest.json',rows)
+        return plan_path,review_path,prior
 
     def test_declaration_preserves_every_original_and_full_scope(self):
         before={p:sha(p) for p in self.root.rglob('*') if p.is_file()}
@@ -181,7 +208,7 @@ class SourceRepair(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'promote auditions'):
             repaired_rows(self.plan,self.root,self.policy_path,self.repair_path)
 
-    def test_full_150_fixture_with_sealed_repair_is_valid_but_no_other_source_can_change(self):
+    def full_150_fixture(self, followup=False):
         import test_wake_mixed_test as fixtures
         cls=fixtures.MixedTestIsolation;cls.setUpClass()
         try:
@@ -193,13 +220,15 @@ class SourceRepair(unittest.TestCase):
                 meta=folder/'capture.json';capture=json.loads(meta.read_text())
                 capture.update(protocol_sha256=self.protocol_sha,policy_sha256=sha(self.policy_path))
                 self.save(meta,capture)
-            self.new_sources();rows=assemble(self.plan,self.root,self.repair_path,self.policy_path)
+            self.new_sources()
+            repair_path=self.new_followup(existing=True)[0] if followup else self.repair_path
+            rows=assemble(self.plan,self.root,repair_path,self.policy_path)
             labels=[]
             slots={r['id']:r for r in self.plan['slots']}
             for row in rows:
                 slot=slots[row['id']]
                 labels.append({'id':row['id'],'sha256':row['sha256'],'quality_valid':True,
-                    'reviewed_at':'2026-11-03T09:00:00+00:00','actual_label':slot['expected_label'],
+                'reviewed_at':'2026-11-03T12:00:00+00:00','actual_label':slot['expected_label'],
                     'actual_age':slot['role'],'actual_accent':slot['accent'],
                     'no_repetition_or_extra_words':True,'complete_hi_and_name':bool(slot['expected_label']),
                     'actual_variant':slot['prompt'].split()[1] if slot['expected_label'] else 'non-target',
@@ -208,12 +237,12 @@ class SourceRepair(unittest.TestCase):
             review={'protocol_sha256':self.protocol_sha,'manifest_sha256':'manifest-fixture',
                 'model_sha256':self.policy['model_sha256'],'policy_sha256':sha(self.policy_path),
                 'labels_committed_before_model_scores':True,'model_scored':False,
-                'reviewed_by':'human-content-only','reviewed_at':'2026-11-03T10:00:00+00:00',
-                'source_repair_plan_sha256':sha(self.repair_path),'records':labels}
-            self.save(self.root/'human-review.source-repair1.json',review)
+                'reviewed_by':'human-content-only','reviewed_at':'2026-11-03T13:00:00+00:00',
+                'source_repair_plan_sha256':sha(repair_path),'records':labels}
+            self.save(self.root/('human-review.source-repair2.json' if followup else 'human-review.source-repair1.json'),review)
             def validate(value):
                 return validate_bundle(self.plan,value,review,self.root,self.policy,sha(self.policy_path),
-                    set(),'protection-fixture','manifest-fixture',self.protocol_sha,self.repair_path,self.policy_path)
+                    set(),'protection-fixture','manifest-fixture',self.protocol_sha,repair_path,self.policy_path)
             cases=validate(rows)
             self.assertEqual(len(cases),150);self.assertEqual(sum(c['role']=='child' for c in cases),40)
             changed=copy.deepcopy(rows)
@@ -222,6 +251,44 @@ class SourceRepair(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'exact new original rows'):validate(changed)
             self.assertFalse((self.root/'independent-TEST-consumption.json').exists())
         finally:cls.tearDownClass()
+
+    def test_full_150_fixture_with_sealed_repair_is_valid_but_no_other_source_can_change(self):
+        self.full_150_fixture()
+
+    def test_full_150_fixture_with_single_followup_keeps_all_original_coverage(self):
+        self.full_150_fixture(followup=True)
+
+    def test_single_followup_keeps_other_three_and_every_failed_original(self):
+        path,review,previous=self.new_followup()
+        prior_hash=sha(self.root/'source-repair1/manifest.json')
+        current=repaired_rows(self.plan,self.root,self.policy_path,path)
+        for id in ['TEST-057','TEST-068','TEST-077']:self.assertEqual(current[id],previous[id])
+        self.assertNotEqual(current['TEST-074']['sha256'],previous['TEST-074']['sha256'])
+        self.assertEqual(current['TEST-074']['old_source_sha256'],previous['TEST-074']['sha256'])
+        self.assertEqual(sha(self.root/'source-repair1/manifest.json'),prior_hash)
+        self.assertEqual(len(assemble(self.plan,self.root,path,self.policy_path)),150)
+        with self.assertRaisesRegex(ValueError,'Only one follow-up'):
+            followup_declaration(self.plan,self.policy_path,self.root,path,review,'2026-11-03T14:00:00+00:00')
+
+    def test_single_followup_rejects_changed_human_evidence_extra_rejections_and_old_audio(self):
+        path,review,previous=self.new_followup();value=json.loads(path.read_text());original=review.read_bytes()
+        for change in ({'model_scored':True},{'human_statement':''},{'reviewed_at':'2026-11-03T07:00:00+00:00'}):
+            data=json.loads(original);data.update(change);self.save(review,data)
+            with self.subTest(change=change),self.assertRaises(ValueError):
+                followup_declaration(self.plan,self.policy_path,self.root,self.repair_path,review,'2026-11-03T10:00:00+00:00')
+        data=json.loads(original);data['records'][0]['complete_hi_and_name']=False;self.save(review,data)
+        with self.assertRaisesRegex(ValueError,'other three'):
+            followup_declaration(self.plan,self.policy_path,self.root,self.repair_path,review,'2026-11-03T10:00:00+00:00')
+        review.write_bytes(original)
+        changed=copy.deepcopy(value);changed['requests'][0]['voice']='different'
+        with self.assertRaisesRegex(ValueError,'follow-up changed'):
+            validate_declaration(changed,self.plan,self.policy_path,self.root)
+        manifest=self.root/'source-repair2/manifest.json';rows=json.loads(manifest.read_text())
+        target=self.root/'source-repair2'/rows[0]['path']
+        target.write_bytes((self.root/previous['TEST-074']['path']).read_bytes())
+        rows[0]['sha256']=sha(target);self.save(manifest,rows)
+        with self.assertRaisesRegex(ValueError,'promote auditions'):
+            repaired_rows(self.plan,self.root,self.policy_path,path)
 
 
 if __name__ == '__main__': unittest.main()

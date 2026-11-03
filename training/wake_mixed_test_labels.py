@@ -157,7 +157,11 @@ def main():
     if any((args.policy.parent / name).exists() for name in
            ('sealed-test-consumption.json', 'independent-TEST-consumption.json')):
         raise ValueError('TEST already consumed; labels cannot change after predictions')
-    suffix = '.source-repair1' if args.source_repair else ''
+    if args.source_repair:
+        from wake_mixed_test_repair import repair_round
+        suffix = '.source-repair' + str(repair_round(json.loads(args.source_repair.read_text())))
+    else:
+        suffix = ''
     manifest = root / ('manifest' + suffix + '.json'); draft_path = root / ('human-review' + suffix + '.draft.json')
     sealed = root / ('human-review' + suffix + '.json')
     if sealed.exists() and json.loads(sealed.read_text()).get('labels_committed_before_model_scores'):
