@@ -10,12 +10,20 @@ import tempfile
 import unittest
 import wave
 
-from wake_mixed_test import COHORTS, protocol, validate_bundle, protection_snapshot
+from wake_mixed_test import COHORTS, protocol, validate_bundle, protection_snapshot, timestamp
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from wake_test_capture import decode_capture
 
 
 class MixedTestIsolation(unittest.TestCase):
+    def test_JS_UTC_Z_and_offset_timestamps_are_equal_and_naive_is_rejected(self):
+        self.assertEqual(timestamp('2026-11-03T09:34:54.881Z'),
+                         timestamp('2026-11-03T09:34:54.881+00:00'))
+        self.assertEqual(timestamp('2026-11-03T09:34:54.881Z'),
+                         timestamp('2026-11-03T17:34:54.881+08:00'))
+        with self.assertRaisesRegex(ValueError,'Timezone-aware'):
+            timestamp('2026-11-03T09:34:54.881')
+
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()

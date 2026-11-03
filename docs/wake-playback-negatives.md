@@ -672,3 +672,23 @@ English accents. Exact ku/ko labels were not supplied; they remain unset rather
 than copied from synthesis prompts or ASR. The partial review correctly refuses
 source-repair declaration. No new API request, scoring, family recording or board
 operation was performed. Original QC failures remain unchanged.
+
+
+Human QP vowel review is complete: **piko, piku, piku, piku**. The approved
+recipe unlocked the immutable four-request source plan. Four distinct new
+benchmark originals were generated once each; the auditions were not reused.
+The first declaration exposed Python3.9's lack of support for JavaScript UTC
+`Z` timestamps; normalization now preserves the exact UTC instant, with naive
+timestamps still rejected. All25 affected Python checks pass, and the actual
+private declaration/assembly now succeed. Preflight failures made no API calls.
+
+New RT1–4 files last1.60/1.20/4.05/1.15s. Blind local ASR found three full
+greetings; RT3 returned only Hi, with380ms measured activity and3650ms quiet
+tail. It remains content-suspect pending human listening, not an automatically
+relabelled negative or an accepted positive. Originals and quiet tails are
+retained; the listening reel concatenates whole raw files. No wake scores exist.
+The amended manifest still has150 slots,70 recorded sources and80 missing
+family captures. The four old rejected sources, original source/slot manifests,
+protocol, weights and fixed3/.90 policy are unchanged. Incremental generation
+is estimated at$0.0039692, cumulative accounted/reserved$0.6560276 of$2; neither
+number is a reconciled provider bill. Family and device acceptance remain open.

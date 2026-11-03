@@ -47,7 +47,8 @@ def protection_snapshot(registries, manifests):
 
 
 def timestamp(value):
-    stamp = datetime.fromisoformat(value)
+    # JS provider records use UTC `Z`; Python 3.9 needs the equivalent offset.
+    stamp = datetime.fromisoformat(value[:-1] + '+00:00' if value.endswith('Z') else value)
     if stamp.tzinfo is None:
         raise ValueError('Timezone-aware evidence timestamps required')
     return stamp
