@@ -136,8 +136,22 @@ function assertNativeTestPlanCoverage(rows,frozen){
 }
 function tunnel(){return new Promise((resolve,reject)=>{const r=http.request({hostname:'127.0.0.1',port:proxyPort,method:'CONNECT',path:'api.openai.com:443',headers:{Host:'api.openai.com:443'},timeout:15000});r.on('timeout',()=>r.destroy(Error('proxy-connect-timeout')));r.on('error',reject);r.on('connect',(res,socket,head)=>{if(res.statusCode!==200){socket.destroy();return reject(Error('proxy-status-'+res.statusCode));}if(head.length)socket.unshift(head);const s=tls.connect({socket,servername:'api.openai.com',rejectUnauthorized:true});s.once('secureConnect',()=>resolve(s));s.once('error',reject);});r.end();});}
 function wav(pcm){const b=Buffer.alloc(44);b.write('RIFF');b.writeUInt32LE(36+pcm.length,4);b.write('WAVEfmt ',8);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);b.writeUInt32LE(24000,24);b.writeUInt32LE(48000,28);b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(pcm.length,40);return Buffer.concat([b,pcm]);}
-async function generate([name,voice,style,text]){
- const file=path.join(out,name+'.wav'),meta=path.join(out,name+'.json');if(fs.existsSync(file)&&fs.existsSync(meta)){console.log(JSON.stringify({clip:name,cached:true}));return JSON.parse(fs.readFileSync(meta));}
+function responseCreate(text,{literalTargetOnly=false}={}){
+ if(typeof literalTargetOnly!=='boolean')throw Error('Literal target policy must be an explicit boolean');
+ const response={output_modalities:['audio'],max_output_tokens:512};
+ if(literalTargetOnly){
+  if(!['Hi, Pikoo!','Hi, Pico!'].includes(text))throw Error('Literal target audition accepts only predeclared Hi Pikoo/Pico text');
+  response.instructions='Your entire spoken output must be exactly this text, once: '+JSON.stringify(text)+'. Use natural connected adult speech at everyday pace. Every word and both syllables of the name must be audible.';
+ }
+ return {type:'response.create',response};
+}
+async function generate([name,voice,style,text],options={}){
+ const responseEvent=responseCreate(text,options),requestPolicy=options.literalTargetOnly?'literal-target-response-v2':'session-instructions-v1';
+ const file=path.join(out,name+'.wav'),meta=path.join(out,name+'.json');if(fs.existsSync(file)&&fs.existsSync(meta)){
+  const cached=JSON.parse(fs.readFileSync(meta));
+  if(options.literalTargetOnly&&(cached.generation_request_policy!==requestPolicy||cached.text!==text||cached.voice!==voice||cached.style!==style||cached.model!==model||cached.sha256!==crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')))throw Error('Cached audio belongs to a different generation request or hash; never replace it silently');
+  console.log(JSON.stringify({clip:name,cached:true}));return cached;
+ }
  console.log(JSON.stringify({clip:name,status:'requesting',model}));
  const socket=await tunnel(); const agent=new https.Agent({keepAlive:false}); agent.createConnection=()=>socket;
  return new Promise((resolve,reject)=>{let settled=false,chunks=[],size=0,transcript='',started=false;
@@ -147,13 +161,13 @@ async function generate([name,voice,style,text]){
  ws.on('error',err=>finish(Error('websocket-transport-error '+String(err.message).split(key).join('[REDACTED]'))));ws.on('close',()=>{if(!settled)finish(Error('closed-before-completion'));});
  ws.on('open',()=>ws.send(JSON.stringify({type:'session.update',session:{type:'realtime',model,instructions:style,output_modalities:['audio'],audio:{output:{format:{type:'audio/pcm',rate:24000},voice}},max_output_tokens:512}})));
  ws.on('message',raw=>{try{const e=JSON.parse(raw.toString());if(e.type==='error'){const err={code:e.error?.code,type:e.error?.type,message:String(e.error?.message||'').split(key).join('[REDACTED]')};fs.writeFileSync(path.join(out,name+'-error.json'),JSON.stringify(err,null,2));return finish(Error('API error '+JSON.stringify(err)));}
- if(e.type==='session.updated'&&!started){started=true;ws.send(JSON.stringify({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text}]}}));ws.send(JSON.stringify({type:'response.create',response:{output_modalities:['audio'],max_output_tokens:512}}));}
+ if(e.type==='session.updated'&&!started){started=true;ws.send(JSON.stringify({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text}]}}));ws.send(JSON.stringify(responseEvent));}
  if(e.type==='response.output_audio.delta'){const b=Buffer.from(e.delta,'base64');chunks.push(b);size+=b.length;if(size>48000*10)finish(Error('audio-duration-limit'));}
  if(e.type==='response.output_audio_transcript.delta')transcript+=e.delta;
  if(e.type==='response.done'){
   fs.writeFileSync(path.join(out,name+'-response.json'),JSON.stringify({status:e.response?.status,status_details:e.response?.status_details,usage:e.response?.usage,model:e.response?.model},null,2));
   if(e.response?.status!=='completed'||!size)return finish(Error('response-incomplete-or-empty'));
-  const bytes=wav(Buffer.concat(chunks));fs.writeFileSync(file,bytes);const row={file:path.basename(file),model,reported_model:e.response?.model,voice,style:style,text,transcript,seconds:size/48000,usage:e.response?.usage,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),synthetic:true,real_child:false,purpose:'audition-only-not-admitted-to-training',created_at:new Date().toISOString()};fs.writeFileSync(meta,JSON.stringify(row,null,2));console.log(JSON.stringify({clip:name,status:'saved',seconds:row.seconds,transcript,usage:row.usage}));finish(null,row);
+  const bytes=wav(Buffer.concat(chunks));fs.writeFileSync(file,bytes);const row={file:path.basename(file),model,reported_model:e.response?.model,voice,style:style,text,transcript,seconds:size/48000,usage:e.response?.usage,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),synthetic:true,real_child:false,purpose:'audition-only-not-admitted-to-training',generation_request_policy:requestPolicy,created_at:new Date().toISOString()};fs.writeFileSync(meta,JSON.stringify(row,null,2));console.log(JSON.stringify({clip:name,status:'saved',seconds:row.seconds,transcript,usage:row.usage}));finish(null,row);
  }
  }catch(err){finish(Error('event-processing-error '+String(err.message).split(key).join('[REDACTED]')));}});
  });
@@ -260,5 +274,5 @@ async function main(){
  write(path.join(out,'status.json'),{phase:phase+'-generated-awaiting-independent-review',completed:selected.filter(x=>done.some(y=>y.id===x.id)).length,total:selected.length,total_retained_files:done.length,updated_at:new Date().toISOString(),next:'independent content and pronunciation review; no training admission yet'});
  }finally{fs.closeSync(fd);fs.unlinkSync(lock);}
 }
-module.exports={cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,nativeSourcePilotPlan,validateFrozen,generationCount,freshTestPlan,assertNativeTestPlanCoverage,NATIVE_TEST_COHORTS,RESERVATION,tunnel,existingKeyClient,write};
+module.exports={cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,nativeSourcePilotPlan,validateFrozen,generationCount,freshTestPlan,assertNativeTestPlanCoverage,NATIVE_TEST_COHORTS,RESERVATION,tunnel,existingKeyClient,write,responseCreate};
 if(require.main===module)main().catch(err=>{console.error(JSON.stringify({status:'stopped',error:String(err.message).replace(/sk-[A-Za-z0-9_-]+/g,'[REDACTED]')}));process.exitCode=1;});

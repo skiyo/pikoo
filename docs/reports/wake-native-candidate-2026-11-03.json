@@ -153,7 +153,7 @@
   },
   "source_pilot_generator_tests": 14,
   "source_pilot_generator_tests_passed": true,
-  "corpus_generation_accounted_or_reserved_USD": 0.6494396,
+  "corpus_generation_accounted_or_reserved_USD": 0.6520584,
   "corpus_cumulative_cap_USD": 2,
   "formal_goal_passed": false,
   "fresh_TEST_passed": false,
@@ -207,5 +207,33 @@
     "release_eligible": false,
     "build_request_safety_tests_passed": 4,
     "compiled_image_consistency_is_not_hardware_acceptance": true
+  },
+  "source_quality_pilot1": {
+    "completed_API_requests": 4,
+    "maximum_attempts_each": 1,
+    "automatic_retry": false,
+    "output_token_cap": 512,
+    "request_policy": "literal-target-response-v2",
+    "raw_durations_seconds": [
+      1.15,
+      1.45,
+      1.15,
+      1.15
+    ],
+    "local_ASR_complete_Hi_name_text": 4,
+    "local_ASR_is_not_phoneme_or_age_gold": true,
+    "human_content_or_vowel_review_passed": false,
+    "human_age_or_accent_review_passed": false,
+    "human_review_pending_namespace": "QP1-4, distinct from rejected QC1-4",
+    "incremental_estimated_USD": 0.0026188,
+    "original_evidence_unchanged": true,
+    "frozen_model_or_threshold_changed": false,
+    "wake_model_scored": false,
+    "TRAIN_admitted": false,
+    "benchmark_sources_replaced": 0,
+    "direct_benchmark_use_forbidden": true,
+    "generator_checks_passed": 18,
+    "future_source_amendment_draft_enabled": false,
+    "future_NEW_benchmark_source_requests_executed": 0
   }
 }

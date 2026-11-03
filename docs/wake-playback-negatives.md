@@ -580,3 +580,27 @@ Linker RAM statistics are NOT runtime free-heap measurements. Tensor allocation,
 ESP-NN/device parity, timing, audio/display/network concurrency and all real-world
 acceptance remain unmeasured for this candidate. The private image is not release
 eligible and is not installed. See [firmware build options](firmware.md).
+
+
+The bounded source-quality pilot is complete: four new source auditions used
+explicit per-response literal reading instructions, retaining512 output tokens
+and the same model/voices. This is supported by the [official client-event
+schema](https://developers.openai.com/api/reference/resources/realtime/client-events);
+it is not a guarantee of correct speech. The old request path is unchanged, and
+strict-mode caches must match request policy, text, voice, style, model and raw
+hash. Eighteen related generator/preflight checks passed.
+
+The new auditions are1.15/1.45/1.15/1.15 seconds. Existing local ASR read complete
+Hi+name text in all four, but this is not phonetic or age gold. Estimated added
+usage is$0.0026188; the shared ledger is about$0.65206/$2. Original protocol,
+benchmark manifest, four invalid recordings, weights and frozen policy hashes
+remain unchanged. QP1–4 (distinct from rejectedQC1–4) await human content/vowel
+and adult/accent review. No wake inference, family recording, device access or
+benchmark replacement occurred.
+
+These four recipe auditions stay excluded from TRAIN and direct benchmark use.
+A disabled amendment draft preserves150 scored slots, all six20-target cohort
+minima and30 negatives. Only after human recipe review may a separately declared
+four-request batch create NEW benchmark source attempts, with every failed
+original retained and a separate amended manifest. No consumed model TEST may be
+recycled through this route; no thresholds or family data are changed.

@@ -3,6 +3,33 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,validateFrozen,generationCount,freshTestPlan,assertNativeTestPlanCoverage,NATIVE_TEST_COHORTS,RESERVATION}=require('./hi_pikoo_generate.cjs');
 const {nativeSourcePilotPlan}=require('./hi_pikoo_generate.cjs');
+test('literal audition overrides response instructions without changing token cap or legacy requests',()=>{
+ const {responseCreate}=require('./hi_pikoo_generate.cjs');
+ assert.deepEqual(responseCreate('ordinary text'),{type:'response.create',response:{output_modalities:['audio'],max_output_tokens:512}});
+ for(const text of ['Hi, Pikoo!','Hi, Pico!']){
+  const event=responseCreate(text,{literalTargetOnly:true});
+  assert.equal(event.response.max_output_tokens,512);assert.deepEqual(event.response.output_modalities,['audio']);
+  assert.ok(event.response.instructions.includes(JSON.stringify(text)));
+ }
+ for(const text of ['Hi, Tikoo!','Pikoo!','Hi!','你好 Pikoo'])assert.throws(()=>responseCreate(text,{literalTargetOnly:true}),/only predeclared/);
+ assert.throws(()=>responseCreate('Hi, Pikoo!',{literalTargetOnly:'yes'}),/explicit boolean/);
+});
+test('literal audition cannot silently reuse a different prompt, voice or corrupted cached source',async()=>{
+ const {existingKeyClient}=require('./hi_pikoo_generate.cjs'),fs=require('fs'),path=require('path'),os=require('os'),crypto=require('crypto');
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'pikoo-literal-cache-'));
+ try{
+  const keyFile=path.join(root,'fixture.env');fs.writeFileSync(keyFile,'OPENAI_API_KEY=fixture-not-a-real-api-key\n');
+  const file=path.join(root,'clip.wav'),meta=path.join(root,'clip.json');fs.writeFileSync(file,'fixture-not-a-recording');
+  const good={generation_request_policy:'literal-target-response-v2',text:'Hi, Pikoo!',voice:'echo',style:'fixture-style',model:'gpt-realtime-2.1-mini',sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')};
+  const generate=existingKeyClient({output:root,keyFile});
+  for(const change of [{generation_request_policy:'session-instructions-v1'},{text:'Hi, Pico!'},{voice:'shimmer'},{style:'other'},{sha256:'changed'}]){
+   fs.writeFileSync(meta,JSON.stringify({...good,...change}));
+   await assert.rejects(generate(['clip','echo','fixture-style','Hi, Pikoo!'],{literalTargetOnly:true}),/different generation request or hash/);
+  }
+  fs.writeFileSync(meta,JSON.stringify(good));
+  assert.deepEqual(await generate(['clip','echo','fixture-style','Hi, Pikoo!'],{literalTargetOnly:true}),good);
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
 test('native source audition plans all six cohorts but never claims actual child age or vowel',()=>{
  const contract={target:'hi-piku-piko-v2',accepted_names:['piku','piko'],declared_before_corpus_training:true};
  const rows=nativeSourcePilotPlan(contract);
