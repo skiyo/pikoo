@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-03",
+  "scope": "Explicit listening to eight previously quarantined synthetic childlike TRAIN originals; not family recordings, model accuracy or TEST.",
+  "source_selection": {
+    "eligible_uncertain_childlike_TRAIN_targets": 37,
+    "selected": 8,
+    "prompt_families": 2,
+    "selected_each_family": 4,
+    "fixed_seed": 2026110301,
+    "wake_scores_used": false
+  },
+  "human_feedback": {
+    "all_eight_complete_targets_accepted": true,
+    "accepted_names": [
+      "piku",
+      "piko"
+    ],
+    "specific_vowel_per_record_annotated": false,
+    "perceived_age_newly_annotated": false,
+    "source_raw_waveforms_unchanged": true
+  },
+  "prepared_next_data_version": {
+    "restored_originals": 8,
+    "restored_original_and_augmented_feature_windows": 96,
+    "original_synthetic_TRAIN_accepted_before": 323,
+    "original_synthetic_TRAIN_accepted_after": 331,
+    "unconfirmed_originals_still_quarantined": 76,
+    "expected_effective_TRAIN_windows_with_same_extra_sources": 10840,
+    "new_speaker_or_prompt_family_claim": false
+  },
+  "status": "human-reviewed admission proposal prepared; current R11 inputs unchanged; loader integration and next comparison not started",
+  "tool_validation": {
+    "human_override_unit_tests": 3,
+    "passed": true,
+    "privacy_holdout_duplicate_unreviewed_promotion_and_label_mismatch_rejections_covered": true
+  },
+  "current_model_qualified": false,
+  "family_audio_used": false,
+  "fresh_TEST_opened": false,
+  "new_API_requests": 0,
+  "device_changed": false,
+  "formal_goal_passed": false
+}

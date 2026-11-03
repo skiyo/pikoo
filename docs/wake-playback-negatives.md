@@ -410,3 +410,16 @@ stable, provenance-backed childlike voice diversity and matched negatives over
 further same-family repeats. No household recordings, TEST audio, scoring or
 new API request was used. See the
 [child-source coverage audit](reports/wake-child-source-coverage-2026-11-03.json).
+
+
+There were also 37 childlike target originals in the independent-ASR uncertainty
+quarantine. Eight were selected with a fixed seed, four from each TRAIN prompt
+family, independently of wake scores. The user accepted all eight complete
+Hi+piku/piko utterances after listening to raw-audio review reels. No exact
+vowel or age was newly annotated. A versioned human-review proposal can restore
+those eight originals and their 96 existing TRAIN feature descendants, leaving
+76 unconfirmed originals quarantined. This adds no new speaker identity and
+uses no family data. The current regularization comparison is unchanged;
+loader integration and a separate new-data comparison must follow its terminal
+audit if needed. Three focused admission tests passed. See the
+[human TRAIN review record](reports/wake-child-TRAIN-human-review-2026-11-03.json).
