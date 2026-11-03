@@ -148,7 +148,7 @@
       "other_sources_unreviewed": 66,
       "all_rejected_attempts_retained": true,
       "original_protocol_input_ready": false,
-      "repair_pilot_predeclared_not_executed": true
+      "repair_pilot_predeclared_not_executed": false
     }
   },
   "source_pilot_generator_tests": 14,
@@ -185,13 +185,13 @@
   },
   "private_ESP32_compilation": {
     "passed": true,
-    "project_version": "0.2.2-dev-r12",
+    "project_version": "0.2.2-dev-r12id",
     "idf_version": "5.5.5",
     "model_bytes": 98088,
-    "app_bytes": 2655248,
+    "app_bytes": 2655456,
     "app_partition_bytes": 6291456,
-    "app_partition_free_bytes": 3636208,
-    "app_sha256": "00f0042c0b9a14fba8ec78c58b9fe57c4acac68e7067284ff683a603c2b72124",
+    "app_partition_free_bytes": 3636000,
+    "app_sha256": "04eee87954ad950b6cc9f27ebd4718d41ebe903c383f96016a934626b9400a20",
     "model_embedded_exactly_once_in_bin_and_ELF": true,
     "generated_policy_compiled": true,
     "all12_required_operator_names_registered": true,
@@ -206,7 +206,10 @@
     "audio_display_network_concurrency_passed": false,
     "release_eligible": false,
     "build_request_safety_tests_passed": 4,
-    "compiled_image_consistency_is_not_hardware_acceptance": true
+    "compiled_image_consistency_is_not_hardware_acceptance": true,
+    "model_policy_hashes_and_version_embedded": true,
+    "live_identity_fields_compiled": true,
+    "previous_build_artifacts_preserved": true
   },
   "source_quality_pilot1": {
     "completed_API_requests": 4,
@@ -235,5 +238,46 @@
     "generator_checks_passed": 18,
     "future_source_amendment_draft_enabled": false,
     "future_NEW_benchmark_source_requests_executed": 0
+  },
+  "previous_private_ESP32_compilation": {
+    "passed": true,
+    "project_version": "0.2.2-dev-r12",
+    "idf_version": "5.5.5",
+    "model_bytes": 98088,
+    "app_bytes": 2655248,
+    "app_partition_bytes": 6291456,
+    "app_partition_free_bytes": 3636208,
+    "app_sha256": "00f0042c0b9a14fba8ec78c58b9fe57c4acac68e7067284ff683a603c2b72124",
+    "model_embedded_exactly_once_in_bin_and_ELF": true,
+    "generated_policy_compiled": true,
+    "all12_required_operator_names_registered": true,
+    "full_voice_app_not_benchmark": true,
+    "all_sdkconfig_values_match_known_0_2_1_live16": true,
+    "existing_build_dependency_model_policy_hashes_unchanged": true,
+    "configured_arena_bytes": 262144,
+    "static_RAM_is_not_runtime_free_heap": true,
+    "USB_accessed": false,
+    "flashed": false,
+    "ESP32_runtime_allocation_or_timing_measured": false,
+    "audio_display_network_concurrency_passed": false,
+    "release_eligible": false,
+    "build_request_safety_tests_passed": 4,
+    "compiled_image_consistency_is_not_hardware_acceptance": true
+  },
+  "formal_trial_tooling": {
+    "software_checks_passed": 31,
+    "checks_use_fixtures_only": true,
+    "formal_prompt": "Hi, Pikoo (piku or piko)",
+    "requires_full_matching_TEST_and_consumption_proof": true,
+    "checks_live_version_model_policy": true,
+    "silent_visual_start_cue": true,
+    "machine_hits_require_post_run_human_confirmation": true,
+    "requires_four_people_two_distinct_sessions_each": true,
+    "interrupt_cleanup_mutes_before_disabling_isolation": true,
+    "actual_candidate_preflight_refused_without_completed_TEST": true,
+    "USB_accessed": false,
+    "family_trial_started": false,
+    "raw_audio_saved": false,
+    "formal_goal_completed": false
   }
 }

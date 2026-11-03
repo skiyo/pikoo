@@ -49,7 +49,9 @@ def main():
     a.output.write_text('#pragma once\n'
         f'#define PIKOO_WAKE_ROLLING {result["rolling"]}\n'
         f'#define PIKOO_WAKE_THRESHOLD {result["threshold"]:.2f}f\n'
-        f'#define PIKOO_WAKE_TRIAL {int(result.get("development_passed") is not True)}\n')
+        f'#define PIKOO_WAKE_TRIAL {int(result.get("development_passed") is not True)}\n'
+        f'#define PIKOO_WAKE_MODEL_SHA256 "{result["model_sha256"]}"\n'
+        f'#define PIKOO_WAKE_POLICY_SHA256 "{hashlib.sha256(a.policy.read_bytes()).hexdigest()}"\n')
 
 
 if __name__ == '__main__':

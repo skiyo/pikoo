@@ -9,6 +9,12 @@
 #ifndef PIKOO_WAKE_TRIAL
 #define PIKOO_WAKE_TRIAL 0
 #endif
+#ifndef PIKOO_WAKE_MODEL_SHA256
+#define PIKOO_WAKE_MODEL_SHA256 "legacy-unbound"
+#define PIKOO_WAKE_POLICY_SHA256 "legacy-unbound"
+#endif
+const char *wake_model_identity(){return PIKOO_WAKE_MODEL_SHA256;}
+const char *wake_policy_identity(){return PIKOO_WAKE_POLICY_SHA256;}
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"

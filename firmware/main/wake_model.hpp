@@ -16,3 +16,5 @@ size_t wake_arena_used_bytes();
 void wake_trace_start();
 void wake_capture_start();
 void wake_cancel_diagnostics();
+const char *wake_model_identity();
+const char *wake_policy_identity();

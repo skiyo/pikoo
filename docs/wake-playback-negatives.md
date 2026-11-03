@@ -604,3 +604,23 @@ minima and30 negatives. Only after human recipe review may a separately declared
 four-request batch create NEW benchmark source attempts, with every failed
 original retained and a separate amended manifest. No consumed model TEST may be
 recycled through this route; no thresholds or family data are changed.
+
+
+### Formal trial preparation (2026-11-03)
+
+The future [family trial workflow](wake-family-trials.md) now uses natural Hi +
+piku/piko instead of the legacy Chinese cue. Formal mode requires the full
+matching six-cohort TEST and its completed consumption proof before accessing
+the existing project monitor. It checks the running version, model and policy
+hashes, uses a silent visual cue, and requires post-run human confirmation before
+18/20 machine hits can count. The four-person/two-session summary rejects missing,
+duplicate or overlapping runs. Interrupt cleanup mutes before removing isolation.
+All31 related fixture checks pass; the actual candidate correctly refuses formal
+entry while independent TEST is missing. No human or USB trial was performed.
+
+The identity-diagnostic extension compiles as private `0.2.2-dev-r12id`,
+2,655,456 bytes, with the same frozen model, 3/.90 policy and SDK settings.
+Model/policy hashes and version are present in the image; previous artifacts
+are archived. This is compilation evidence, not a flashed or accepted device.
+QC1–4 remain rejected; QP1–4 are separate source auditions awaiting review.
+No additional generation charge or family recording was introduced.

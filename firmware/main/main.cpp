@@ -794,7 +794,7 @@ void diagnostics() {
 #endif
   wifi_ap_record_t ap{};
   int rssi=esp_wifi_sta_get_ap_info(&ap)==ESP_OK?ap.rssi:0;
-  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu volume_db=%d dac_reg=%d rssi=%d playback_gaps=%lu playback_gap_max_us=%lu wake_score=%.3f wake_peak=%.3f wake_raw_peak=%.3f wake_hits=%lu wake_errors=%lu wake_dropped=%lu wake_test=%d veto_candidates=%lu veto_rejected=%lu veto_cancelled=%lu veto_errors=%lu veto_last_us=%lu frame_tx=%lu frame_tx_errors=%lu stop_max_us=%lu upload_pending=%u session_steps=%lu tx_holds=%lu sender_stack_free=%u companion=%d",
+  ESP_LOGI("diag","board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu captured_samples=%lu processed_samples=%lu uploaded_samples=%lu processed_level=%.5f render_us=%lu transfer_us=%lu send_us=%lu send_max_us=%lu resample_max_us=%lu receive_max_us=%lu volume_db=%d dac_reg=%d rssi=%d playback_gaps=%lu playback_gap_max_us=%lu wake_score=%.3f wake_peak=%.3f wake_raw_peak=%.3f wake_hits=%lu wake_errors=%lu wake_dropped=%lu wake_test=%d veto_candidates=%lu veto_rejected=%lu veto_cancelled=%lu veto_errors=%lu veto_last_us=%lu frame_tx=%lu frame_tx_errors=%lu stop_max_us=%lu upload_pending=%u session_steps=%lu tx_holds=%lu sender_stack_free=%u companion=%d wake_model_sha=%s wake_policy_sha=%s",
     board::Name,esp_app_get_description()->version,int(visual_state.load()),int(wifi_ready.load()),int(muted.load()),int(uploading.load()),
     (unsigned long)upload_count.load(),(unsigned long)reconnect_count.load(),unsigned(esp_get_free_heap_size()),unsigned(esp_get_minimum_free_heap_size()),
     unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),board::display_fps(),board::microphone_level(),board::reference_level(),board::output_level(),
@@ -811,7 +811,7 @@ void diagnostics() {
     0UL,0UL,0UL,0UL,0UL
 #endif
     ,(unsigned long)pikoo::coalesced_frames(),(unsigned long)pikoo::frame_write_errors(),
-    (unsigned long)transport_stop_max_us.load(),unsigned(uxQueueMessagesWaiting(upload_queue)),(unsigned long)session_steps.load(),(unsigned long)tx_holds.load(),unsigned(sender_handle?uxTaskGetStackHighWaterMark(sender_handle):0),int(companion_mode.load())
+    (unsigned long)transport_stop_max_us.load(),unsigned(uxQueueMessagesWaiting(upload_queue)),(unsigned long)session_steps.load(),(unsigned long)tx_holds.load(),unsigned(sender_handle?uxTaskGetStackHighWaterMark(sender_handle):0),int(companion_mode.load()),wake_model_identity(),wake_policy_identity()
   );
 }
 void controls_task(void *) {

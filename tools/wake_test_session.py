@@ -98,7 +98,7 @@ def isolated_idle(item):
 @contextmanager
 def local_session(monitor):
     """Arm the offline gate while muted; always mute before disabling it."""
-    previous = {sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGHUP)}
+    previous = {sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT)}
 
     def interrupted(*_):
         raise KeyboardInterrupt
