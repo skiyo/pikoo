@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "complete-independent-audit-human-content-review-pending",
+  "status": "complete-independent-audit-human-review-partial",
   "scope": "Entire declared reused synthetic DEV, all144originals with guardedview controls and all432fixedtempo derivatives; no selection by keyword-model scores",
   "sources": 144,
   "views": 576,
@@ -106,13 +106,17 @@
     "1.5": 12
   },
   "human_review": {
-    "status": "prepared-not-yet-answered",
+    "status": "three-positive-pairs-accepted-near-word-pair-content-clarification-pending",
     "paired_files": 4,
     "composition": "adult positive concern, childlike positive concern, negative concern and both-match control; neutral order",
     "selection": "complete paired audit, no keyword scores; predeclared strata then stable source hashes; omit no failures",
     "audio": "unchanged guardedoriginal then exacttempo waveform with800ms separator, no gain or pitch change",
     "age_or_pronunciation_inferred_from_ASR": false,
     "expected_labels_remain_private": true,
-    "family_recorded": false
+    "family_recorded": false,
+    "positive_pairs_target_content_accepted": 3,
+    "acceptance_scope": "Only the reviewed original/accelerated pairs; no vowel/age or whole-corpus validity inference",
+    "near_word_pair_original_negative_preserved": true,
+    "remaining_clarification": "Actual p/t content in the near-word pair; general acceptability does not establish its class"
   }
 }
