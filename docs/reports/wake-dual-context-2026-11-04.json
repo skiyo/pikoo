@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "R22-started-seed42-first-native-epoch-unqualified",
+  "status": "completed-all24-no-qualified-checkpoint",
   "start_condition": "R21 actual terminal0, all24 evaluations unqualified, frozen absent and actual trainer exit; if any numerical candidate, finalize it first",
   "reference": "R21 full-trainable R12 donor with milder TRAIN tempo",
   "architectural_change": "Parallel ordered20 branch from shared encoder alongside ordered72; concatenate hidden features and retain scalar wake output",
@@ -66,5 +66,45 @@
   "first_native_ordinary_negative_false_clips": 0,
   "actual_serialized_checkpoint_reconstructed": true,
   "new_short_classifier_nonzero_weights": 64,
-  "actual_short_filter_and_hidden_and_shared_final_block_updated": true
+  "actual_short_filter_and_hidden_and_shared_final_block_updated": true,
+  "terminal_returncode": 0,
+  "actual_trainer_exit_verified": true,
+  "completed_epochs_per_seed": {
+    "42": 12,
+    "43": 12
+  },
+  "all24_model_evaluation_hashes_match": true,
+  "all24_native_backends_pinned": true,
+  "qualified_checkpoints": 0,
+  "original_floor_preserved_epochs_per_seed": {
+    "42": 6,
+    "43": 4
+  },
+  "ordinary_negative_false_exposures_per_seed": {
+    "42": 1,
+    "43": 0
+  },
+  "new_model_frozen": false,
+  "new_model_installed": false,
+  "fixed_first_seed_paired_diagnostic": {
+    "scope": "All12terminal seed42 checkpoints per R21/R22, same budget and identical TRAIN/DEV files; repeated reusedDEV, not independentTEST or multiple-seed causal estimate",
+    "only_profile_change_except_name": "short_context_steps:20",
+    "all_recomputed_original_and_tempo_trace_metrics_match": true,
+    "R21": {
+      "original_floor_preserved_epochs": 4,
+      "ordinary_negative_false_exposures": 0,
+      "t_name_false_exposures": 36,
+      "missing_last_false_exposures": 4,
+      "source_rate_pairs_missed_all12_epochs": 12
+    },
+    "R22": {
+      "original_floor_preserved_epochs": 6,
+      "ordinary_negative_false_exposures": 1,
+      "t_name_false_exposures": 38,
+      "missing_last_false_exposures": 0,
+      "source_rate_pairs_missed_all12_epochs": 11
+    },
+    "shared_source_rate_pairs_missed_all12_epochs": 11,
+    "interpretation": "This control did not resolve fast-speech qualification under this budget; does not prove parallel temporal branches can never help"
+  }
 }
