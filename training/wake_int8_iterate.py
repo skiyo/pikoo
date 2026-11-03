@@ -226,6 +226,8 @@ def load_profiles(path):
             profile.get('weight_decay', 0) not in (0, .01) or
             ('encoder_frozen' in profile and
              (type(profile['encoder_frozen']) is not bool or profile['initialization'] != 'phone-encoder')) or
+            ('freeze_checkpoint_encoder' in profile and
+             (type(profile['freeze_checkpoint_encoder']) is not bool or profile['initialization'] != 'checkpoint')) or
             profile['initialization'] not in ('fresh', 'baseline', 'checkpoint', 'phone-encoder') or
             not .00001 <= profile['learning_rate'] <= .001 or
             not 1 <= profile['max_epochs'] <= 30 or sorted(profile['seeds']) != [42, 43]):
@@ -259,6 +261,42 @@ def set_encoder_trainability(encoder, batch_norm_type, frozen=False):
     return {'encoder_frozen': bool(frozen),
             'encoder_layers': len(encoder.layers),
             'encoder_trainable_layers': sum(bool(layer.trainable) for layer in encoder.layers)}
+
+
+def checkpoint_encoder_policy(model, freeze=False):
+    """Preserve a known wake encoder while adapting its ordered temporal head.
+
+    Opt-in training control only: no data/label/decision or architecture change.
+    The default leaves every existing trainability flag untouched.
+    """
+    if type(freeze) is not bool:
+        raise ValueError('Explicit boolean checkpoint encoder policy required')
+    if not freeze:
+        return {}
+    import tensorflow as tf
+    encoder = tf.keras.Model(model.input, model.get_layer('ordered_context').input)
+    proof = set_encoder_trainability(encoder, tf.keras.layers.BatchNormalization, frozen=True)
+    if not model.trainable_weights:
+        raise ValueError('Checkpoint temporal/classification head must remain trainable')
+    return {**proof, 'checkpoint_encoder_hook': 'ordered_context.input',
+            'encoder_weight_count': len(encoder.weights),
+            'encoder_weights_sha256': weights_fingerprint(encoder.weights),
+            'remaining_trainable_weight_count': len(model.trainable_weights)}
+
+
+def weights_fingerprint(weights):
+    fingerprint = hashlib.sha256()
+    for weight in weights:
+        value = np.asarray(weight.numpy())
+        fingerprint.update(json.dumps({'shape': list(value.shape), 'dtype': value.dtype.str},
+                                      sort_keys=True).encode()+b'\0')
+        fingerprint.update(value.tobytes(order='C'))
+    return fingerprint.hexdigest()
+
+
+def verify_frozen_checkpoint_weights(weights, expected):
+    if weights_fingerprint(weights) != expected:
+        raise ValueError('Frozen checkpoint encoder weights changed during training')
 
 
 class NativeEvaluator:
@@ -582,6 +620,7 @@ def main():
             folder.mkdir(exist_ok=False)
             model = build(a.upstream, profile.get('context_steps', 20), seed,
                           profile['channels'], profile.get('batch_normalization', False), head_units=profile['head'])
+            frozen_checkpoint_weights = None
             if profile['initialization'] == 'baseline':
                 model.load_weights(a.baseline/'context-20-seed-43/checkpoint.weights.h5')
             elif profile['initialization'] == 'checkpoint':
@@ -590,8 +629,13 @@ def main():
                 if proof['household_used'] is not False or proof['TEST_opened'] is not False:
                     raise ValueError('Protected donor checkpoint')
                 model.load_weights(initial)
+                trainability = checkpoint_encoder_policy(model, profile.get('freeze_checkpoint_encoder', False))
+                if profile.get('freeze_checkpoint_encoder', False):
+                    frozen_checkpoint_weights = tuple(tf.keras.Model(
+                        model.input, model.get_layer('ordered_context').input).weights)
                 write_json(folder/'initialization.json', {'kind': 'continued-known-TRAIN-DEV-checkpoint',
-                    'checkpoint_sha256': sha(initial), 'donor_evaluation_sha256': sha(initial.parent/'evaluation.json')})
+                    'checkpoint_sha256': sha(initial), 'donor_evaluation_sha256': sha(initial.parent/'evaluation.json'),
+                    **trainability})
             elif profile['initialization'] == 'phone-encoder':
                 initial, report = Path(profile['encoder']), Path(profile['encoder_report'])
                 proof = json.loads(report.read_text())
@@ -626,6 +670,9 @@ def main():
 
             class NativeQuality(tf.keras.callbacks.Callback):
                 def on_epoch_end(self, epoch, logs=None):
+                    if frozen_checkpoint_weights is not None:
+                        verify_frozen_checkpoint_weights(frozen_checkpoint_weights,
+                                                         trainability['encoder_weights_sha256'])
                     checkpoint = folder/f'epoch-{epoch+1:02}'
                     checkpoint.mkdir()
                     model.save_weights(checkpoint/'checkpoint.weights.h5')
@@ -633,6 +680,9 @@ def main():
                         evaluator, vx, old_info, negative_features, baseline, content_review=content_review,
                         tempo_data=tempo_data)
                     result.update(epoch=epoch+1, profile=profile['name'], seed=seed)
+                    if frozen_checkpoint_weights is not None:
+                        result['frozen_checkpoint_encoder_weights_unchanged'] = True
+                        result['encoder_weights_sha256'] = trainability['encoder_weights_sha256']
                     history.append(result)
                     logs['val_native_quality'] = result['selection_score']
                     if best[0] is None or result['selection_score'] > best[0]['selection_score']:
