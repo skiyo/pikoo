@@ -231,6 +231,10 @@ def load_profiles(path):
             ('checkpoint_encoder_freeze_before' in profile and
              (profile['initialization'] != 'checkpoint' or profile.get('freeze_checkpoint_encoder') is not True or
               profile['checkpoint_encoder_freeze_before'] not in ('ordered_context', 'context_2'))) or
+            ('short_context_steps' in profile and
+             (type(profile['short_context_steps']) is not int or profile['short_context_steps'] != 20 or
+              profile.get('context_steps') != 72 or profile['initialization'] != 'checkpoint' or
+              profile.get('batch_normalization', False) or profile.get('freeze_checkpoint_encoder', False))) or
             profile['initialization'] not in ('fresh', 'baseline', 'checkpoint', 'phone-encoder') or
             not .00001 <= profile['learning_rate'] <= .001 or
             not 1 <= profile['max_epochs'] <= 30 or sorted(profile['seeds']) != [42, 43]):
@@ -594,7 +598,7 @@ def main():
              'hi_pikoo_timing.py', 'acoustic_augment.py', 'wake_train_admission.py',
              'wake_phrase_boundaries.py', 'wake_extra_train.py', 'wake_catalog_train.py',
              'hi_pikoo_review.py', 'wake_dev_content_review.py', 'wake_train_human_review.py', 'wake_tempo.py',
-             'wake_secondary_dev.py')
+             'wake_secondary_dev.py', 'wake_dual_context.py')
     if snapshot.exists() and any((snapshot/name).exists() and
             sha(snapshot/name) != sha(Path(__file__).with_name(name)) for name in names):
         snapshot = a.output/f'source-continuation-{sha(Path(__file__))[:16]}'
@@ -634,6 +638,10 @@ def main():
                 if proof['household_used'] is not False or proof['TEST_opened'] is not False:
                     raise ValueError('Protected donor checkpoint')
                 model.load_weights(initial)
+                branch = {}
+                if profile.get('short_context_steps'):
+                    from wake_dual_context import add_short_context
+                    model, branch = add_short_context(model, profile['short_context_steps'])
                 freeze_before = profile.get('checkpoint_encoder_freeze_before', 'ordered_context')
                 trainability = checkpoint_encoder_policy(model, profile.get('freeze_checkpoint_encoder', False),
                                                          before=freeze_before)
@@ -642,7 +650,7 @@ def main():
                         model.input, model.get_layer(freeze_before).input).weights)
                 write_json(folder/'initialization.json', {'kind': 'continued-known-TRAIN-DEV-checkpoint',
                     'checkpoint_sha256': sha(initial), 'donor_evaluation_sha256': sha(initial.parent/'evaluation.json'),
-                    **trainability})
+                    **trainability, **branch})
             elif profile['initialization'] == 'phone-encoder':
                 initial, report = Path(profile['encoder']), Path(profile['encoder_report'])
                 proof = json.loads(report.read_text())
