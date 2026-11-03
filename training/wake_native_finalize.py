@@ -44,7 +44,8 @@ def validate_gate(frozen, review, original_manifest_sha256):
             old.get('false_wakes') != 0 or old.get('early_wakes') != 0 or
             old.get('latency_p95_ms') is None or not np.isfinite(old['latency_p95_ms']) or
             not 0 <= old['latency_p95_ms'] <= 800 or
-            result.get('required_group_hits') != required or
+            set(result.get('required_group_hits', {})) != set(required) or
+            any(not required[g] <= result['required_group_hits'][g] <= expected[g] for g in required) or
             {g: v['targets'] for g, v in old['groups'].items()} != expected or
             any(not 0 <= v['hits'] <= v['targets'] or v['hits']/v['targets'] < .9
                 for v in old['groups'].values()) or
@@ -119,6 +120,25 @@ def base_representatives(plan, cached_count):
     return [retained[i] for i in selected if i < len(retained)]
 
 
+def verify_tempo(cases, metadata, result, review):
+    """Recompute each new tempo gate from its complete saved native trace set."""
+    from wake_dev_content_review import reviewed_cohorts
+    keys = ('sha256', 'label', 'cohort', 'valid_steps', 'completion_ms', 'times_ms', 'tempo_factor')
+    if (len(cases) != 432 or len(metadata) != len(cases) or result.get('qualified') is not True or
+            result.get('fixed_policy') != {'rolling': 3, 'threshold': .9} or
+            any(any(a[k] != b[k] for k in keys) for a, b in zip(cases, metadata)) or
+            [r['factor'] for r in result['factors']] != [1.15, 1.3, 1.5]):
+        raise ValueError('Complete unchanged tempo DEV trace evidence required')
+    for factor, saved in zip((1.15, 1.3, 1.5), result['factors']):
+        part = [c for c in cases if c['tempo_factor'] == factor]
+        historical = policy_metrics(part, 3, .9)
+        heard = policy_metrics(reviewed_cohorts(part, review), 3, .9)
+        if (len(part) != 144 or historical != saved['historical_groups'] or
+                heard != saved['reviewed_groups'] or not historical['passed'] or not heard['passed'] or
+                saved.get('positive_shortfall') != 0 or saved.get('qualified') is not True):
+            raise ValueError('Tempo DEV pass is not supported by native traces')
+
+
 def finalize(experiment, baseline, prepared, micro, review_path, isolation_path, output):
     frozen_path = experiment/'frozen.json'
     frozen = json.loads(frozen_path.read_text())
@@ -149,12 +169,41 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
     negatives = json.loads((checkpoint/'negative-dev-scores.json').read_text())
     plan = json.loads((experiment/'plan.json').read_text())
     verify_saved_dev(cases, negatives, result, frozen['policy'], plan)
+    preservation_base = json.loads((prepared/'old-dev-cases.json').read_text())
+    if plan.get('current_candidate_DEV_preservation'):
+        preservation = plan['current_candidate_DEV_preservation']
+        donor_cases = experiment/'preservation-dev-cases.json'
+        donor_proof = experiment/'preservation-dev-evaluation.json'
+        if (sha(donor_cases) != preservation['cases_sha256'] or
+                sha(donor_proof) != preservation['evaluation_sha256']):
+            raise ValueError('Declared preservation baseline changed')
+        proof = json.loads(donor_proof.read_text())
+        if proof['static']['sha256'] != preservation['baseline_model_sha256']:
+            raise ValueError('Preservation baseline model differs')
+        from wake_tempo import preservation_cases
+        preservation_base = preservation_cases(preservation_base, json.loads(donor_cases.read_text()), proof)
+        import math
+        required = {g: max(v['hits'], math.ceil(.9*v['targets'])) for g, v in proof['old_DEV']['groups'].items()}
+        if result['required_group_hits'] != required:
+            raise ValueError('Current candidate preservation floor was relaxed')
     if plan.get('DEV_content_review_sha256') or 'reviewed_DEV' in result:
         if plan.get('DEV_content_review_sha256') != sha(review_path):
             raise ValueError('Declared human content review differs')
         from wake_dev_content_review import verify_reviewed_gate
-        verify_reviewed_gate(cases, json.loads((prepared/'old-dev-cases.json').read_text()),
+        verify_reviewed_gate(cases, preservation_base,
                              json.loads(review_path.read_text()), result, frozen['policy'])
+    if plan.get('pitch_preserving_tempo'):
+        tempo = experiment/'tempo'
+        proof = json.loads((tempo/'provenance.json').read_text())
+        if proof != plan['pitch_preserving_tempo']:
+            raise ValueError('Tempo preparation provenance differs')
+        for name, digest in proof['files_sha256'].items():
+            if Path(name).name != name or sha(tempo/name) != digest:
+                raise ValueError('Tempo preparation changed')
+        if result.get('tempo_DEV') != evaluation.get('tempo_DEV'):
+            raise ValueError('Frozen tempo evaluation differs from source')
+        verify_tempo(json.loads((checkpoint/'tempo-dev-cases.json').read_text()),
+            json.loads((tempo/'dev-metadata.json').read_text()), result['tempo_DEV'], json.loads(review_path.read_text()))
     if (plan.get('TRAIN_extra_sources') and
             plan['TRAIN_extra_sources']['manifest_sha256'] not in isolation['source_manifests_sha256'].values()):
         raise ValueError('Fresh TEST isolation must cover the extra TRAIN source manifest too')

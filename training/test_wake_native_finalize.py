@@ -2,7 +2,7 @@
 import copy
 import unittest
 from unittest.mock import patch
-from wake_native_finalize import validate_gate, base_representatives, verify_saved_dev
+from wake_native_finalize import validate_gate, base_representatives, verify_saved_dev, verify_tempo
 from hi_pikoo_model import GRID, policy_metrics
 
 
@@ -41,6 +41,33 @@ class NativeFinalize(unittest.TestCase):
     def test_numeric_native_gate_and_complete_independent_content_review(self):
         frozen, review = self.inputs()
         self.assertIs(validate_gate(frozen, review, 'manifest'), frozen['evaluation'])
+
+    def test_stronger_current_candidate_floor_is_allowed_but_weaker_floor_is_not(self):
+        frozen, review = self.inputs()
+        frozen['evaluation']['required_group_hits']['adult:standard:piku'] = 28
+        self.assertIs(validate_gate(frozen, review, 'manifest'), frozen['evaluation'])
+        frozen['evaluation']['required_group_hits']['adult:standard:piku'] = 25
+        with self.assertRaises(ValueError): validate_gate(frozen, review, 'manifest')
+
+    def test_tempo_gate_requires_all_saved_cases_and_recomputes_probabilities(self):
+        frozen, review = self.inputs(); review = {**review, 'feedback': []}
+        base = [{'label': 0, 'probabilities': [0.]*40} for _ in range(52)]
+        for group, record in frozen['evaluation']['old_DEV']['groups'].items():
+            base.extend({'label': 1, 'cohort': group, 'probabilities': [0.]*10+[1.]*30}
+                        for _ in range(record['targets']))
+        cases = [{**c, 'sha256': str(i), 'valid_steps': 40, 'completion_ms': 360,
+                  'times_ms': list(range(0, 1200, 30)), 'cohort': c.get('cohort', 'ordinary'),
+                  'tempo_factor': factor} for i, c in enumerate(base) for factor in (1.15, 1.3, 1.5)]
+        metadata = [{k: v for k, v in c.items() if k != 'probabilities'} for c in cases]
+        result = {'qualified': True, 'fixed_policy': {'rolling': 3, 'threshold': .9}, 'factors': []}
+        for factor in (1.15, 1.3, 1.5):
+            metrics = policy_metrics([c for c in cases if c['tempo_factor'] == factor], 3, .9)
+            result['factors'].append({'factor': factor, 'historical_groups': metrics, 'reviewed_groups': metrics,
+                                     'positive_shortfall': 0, 'qualified': True})
+        verify_tempo(cases, metadata, result, review)
+        with self.assertRaises(ValueError): verify_tempo(cases[:-1], metadata[:-1], result, review)
+        changed = copy.deepcopy(cases); changed[0]['probabilities'] = [1.]*40
+        with self.assertRaises(ValueError): verify_tempo(changed, metadata, result, review)
 
     def test_original_grid_requires_matching_policy_evidence(self):
         for rolling, threshold in GRID:

@@ -273,7 +273,7 @@ class NativeEvaluator:
 
 
 def export_and_evaluate(model, folder, representative, evaluator, vx, old_info, new_features, baseline,
-                        content_review=None):
+                        content_review=None, tempo_data=None):
     import tensorflow as tf
     begin = time.monotonic()
     deploy = stream(model)
@@ -332,6 +332,12 @@ def export_and_evaluate(model, folder, representative, evaluator, vx, old_info, 
                      float(np.mean([n['peak']**2 for n in negatives])))
     quality['selection_score'] += tie_break
     quality['INT8_confidence_tie_break'] = tie_break
+    tempo = None
+    if tempo_data is not None:
+        from wake_tempo import evaluate, apply_gate
+        with tempfile.TemporaryDirectory(dir=folder) as temporary:
+            tempo = evaluate(evaluator, tempo_data, Path(temporary), folder, content_review)
+        quality = apply_gate(quality, tempo)
     report = {'old_DEV': old, 'new_negative_DEV_false_clips': false,
         'new_negative_DEV_cases': len(negatives), **quality,
         'static': static, 'host_arena_bytes': arena,
@@ -342,6 +348,8 @@ def export_and_evaluate(model, folder, representative, evaluator, vx, old_info, 
     if reviewed is not None:
         report['reviewed_DEV'] = reviewed
         report['reviewed_DEV_gate_passed'] = reviewed_quality['qualified']
+    if tempo is not None:
+        report['tempo_DEV'] = tempo
     write_json(folder/'evaluation.json', report)
     (folder/'old-dev-cases.json').write_text(json.dumps(cases)+'\n')
     write_json(folder/'negative-dev-scores.json', negatives)
@@ -367,6 +375,11 @@ def main():
     parser.add_argument('--base-admitted-manifest', type=Path)
     parser.add_argument('--dev-content-review', type=Path,
                         help='Independent human-heard vowels add a second gate without replacing historical DEV')
+    parser.add_argument('--tempo-config', type=Path,
+                        help='Bounded pitch-preserving faster TRAIN augmentation and separate reused-DEV gate')
+    parser.add_argument('--reuse-tempo', type=Path, help='Verified tempo preparation cache only')
+    parser.add_argument('--preserve-dev-cases', type=Path, help='Current-candidate native DEV trace preservation floor')
+    parser.add_argument('--preserve-dev-evaluation', type=Path)
     a = parser.parse_args()
     os.umask(0o077)
     a.output.mkdir(parents=True, exist_ok=True)
@@ -405,7 +418,7 @@ def main():
     profiles = load_profiles(a.profiles) if a.profiles else BALANCED_PROFILES if a.balanced else PROFILES
     needs_auxiliary = any(p.get('auxiliary_phrase_weight', 0) for p in profiles)
     events = None
-    if needs_auxiliary or a.phrase_boundaries or a.extra_train_manifest:
+    if needs_auxiliary or a.phrase_boundaries or a.extra_train_manifest or a.tempo_config:
         if not a.phrase_events:
             raise ValueError('Verified TRAIN phrase events required for phrase supervision')
         events = json.loads(a.phrase_events.read_text())
@@ -427,6 +440,16 @@ def main():
         x, y, w, metadata, events, groups, extra_summary = append(x, y, w, metadata, events, groups,
             a.extra_train_manifest, a.extra_train_review, a.base_admitted_manifest,
             original_manifest_sha, a.protected, a.output)
+    tempo_summary, tempo_data = None, None
+    if a.tempo_config:
+        if metadata is None or events is None or not a.base_admitted_manifest or not a.train_admission:
+            raise ValueError('Tempo experiment needs complete admitted TRAIN lineage and events')
+        if len(metadata) != len(x) or len(events['records']) != len(x):
+            raise ValueError('Complete TRAIN metadata required before tempo augmentation')
+        from wake_tempo import prepare as prepare_tempo
+        x, y, w, metadata, events, groups, tempo_summary, tempo_data = prepare_tempo(
+            x, y, w, metadata, events, groups, a.base_admitted_manifest,
+            a.extra_train_manifest, a.protected, a.tempo_config, a.output, reuse=a.reuse_tempo)
     boundary_summary = None
     if a.phrase_boundaries:
         from wake_phrase_boundaries import emphasize
@@ -443,6 +466,20 @@ def main():
         ay, aw, auxiliary_summary = training_targets(events, y, w)
         auxiliary = ay, aw
     old_info = json.loads((prepared/'old-dev-cases.json').read_text())
+    preservation = None
+    if a.preserve_dev_cases:
+        if not a.preserve_dev_evaluation or not a.tempo_config:
+            raise ValueError('Preservation floor requires declared tempo donor proof')
+        from wake_tempo import preservation_cases
+        donor_proof = json.loads(a.preserve_dev_evaluation.read_text())
+        config = json.loads(a.tempo_config.read_text())
+        if donor_proof['static']['sha256'] != config['baseline_model_sha256']:
+            raise ValueError('Preservation proof belongs to another model')
+        old_info = preservation_cases(old_info, json.loads(a.preserve_dev_cases.read_text()), donor_proof)
+        preservation = {'cases_sha256': sha(a.preserve_dev_cases), 'evaluation_sha256': sha(a.preserve_dev_evaluation),
+            'baseline_model_sha256': config['baseline_model_sha256']}
+        shutil.copyfile(a.preserve_dev_cases, a.output/'preservation-dev-cases.json')
+        shutil.copyfile(a.preserve_dev_evaluation, a.output/'preservation-dev-evaluation.json')
     content_review = json.loads(a.dev_content_review.read_text()) if a.dev_content_review else None
     if content_review is not None:
         from wake_dev_content_review import reviewed_cohorts
@@ -476,6 +513,8 @@ def main():
         'TRAIN_auxiliary_phrase': auxiliary_summary,
         'TRAIN_phrase_boundaries': boundary_summary,
         'TRAIN_extra_sources': extra_summary,
+        'pitch_preserving_tempo': tempo_summary,
+        'current_candidate_DEV_preservation': preservation,
         'TRAIN_effective_examples': len(x),
         'TRAIN_content_admission': admission_summary,
         'TRAIN_admission_sha256': sha(a.train_admission) if a.train_admission else None,
@@ -495,7 +534,7 @@ def main():
              'wake_phrase_auxiliary.py', 'wake_train_events.py', 'hi_pikoo_contrast.py',
              'hi_pikoo_timing.py', 'acoustic_augment.py', 'wake_train_admission.py',
              'wake_phrase_boundaries.py', 'wake_extra_train.py', 'wake_catalog_train.py',
-             'hi_pikoo_review.py', 'wake_dev_content_review.py', 'wake_train_human_review.py')
+             'hi_pikoo_review.py', 'wake_dev_content_review.py', 'wake_train_human_review.py', 'wake_tempo.py')
     if snapshot.exists() and any((snapshot/name).exists() and
             sha(snapshot/name) != sha(Path(__file__).with_name(name)) for name in names):
         snapshot = a.output/f'source-continuation-{sha(Path(__file__))[:16]}'
@@ -504,6 +543,18 @@ def main():
         if not (snapshot/name).exists():
             shutil.copyfile(Path(__file__).with_name(name), snapshot/name)
     evaluator = NativeEvaluator(a.micro)
+    if a.tempo_config:
+        from wake_tempo import evaluate as evaluate_tempo
+        config = json.loads(a.tempo_config.read_text())
+        donor = Path(config['baseline_model'])
+        if sha(donor) != config['baseline_model_sha256']:
+            raise ValueError('Tempo comparison baseline changed')
+        baseline_folder = a.output/'tempo-baseline'
+        baseline_folder.mkdir(exist_ok=False)
+        evaluator.configure(donor)
+        with tempfile.TemporaryDirectory(dir=baseline_folder) as temporary:
+            tempo_baseline = evaluate_tempo(evaluator, tempo_data, Path(temporary), baseline_folder, content_review)
+        write_json(baseline_folder/'evaluation.json', tempo_baseline)
     all_results = []
     for profile in profiles:
         for seed in profile['seeds']:
@@ -562,7 +613,8 @@ def main():
                     checkpoint.mkdir()
                     model.save_weights(checkpoint/'checkpoint.weights.h5')
                     result = export_and_evaluate(model, checkpoint, representative,
-                        evaluator, vx, old_info, negative_features, baseline, content_review=content_review)
+                        evaluator, vx, old_info, negative_features, baseline, content_review=content_review,
+                        tempo_data=tempo_data)
                     result.update(epoch=epoch+1, profile=profile['name'], seed=seed)
                     history.append(result)
                     logs['val_native_quality'] = result['selection_score']
