@@ -28,7 +28,7 @@
     "expected_effective_TRAIN_windows_with_same_extra_sources": 10840,
     "new_speaker_or_prompt_family_claim": false
   },
-  "status": "loader integrated and separate restored-child comparison predeclared; not yet a qualified model",
+  "status": "separate restored-child comparison running; no qualified candidate",
   "tool_validation": {
     "human_override_unit_tests": 3,
     "passed": true,
@@ -58,6 +58,22 @@
       "rolling": 3,
       "threshold": 0.9
     },
-    "no_new_inference_layers": true
-  }
+    "no_new_inference_layers": true,
+    "actual_effective_TRAIN_windows": 10840,
+    "current_seed_snapshot": 42,
+    "completed_native_epoch_snapshot": 4,
+    "qualified_snapshot": false
+  },
+  "restored_source_signal_check": {
+    "only_newly_restored_originals": 8,
+    "no_exterior_waveform_removed": true,
+    "zero_PCM16_clipping_in_all8": true,
+    "raw_file_duration_range_seconds": [
+      1.04,
+      2.48
+    ],
+    "duration_not_phonetic_or_audibility_gold": true,
+    "data_changed_by_check": false
+  },
+  "snapshot_at": "2026-11-03T06:19:16.724609+00:00"
 }
