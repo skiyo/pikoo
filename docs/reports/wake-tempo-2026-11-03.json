@@ -269,5 +269,131 @@
     "Reused augmented DEV cannot prove natural coarticulation or real-child performance",
     "Existing TRAIN prefix still contains historical coupled pitch/speed augmentation; only new tempo derivatives preserve pitch",
     "Formal independent TEST and real family/hardware acceptance remain incomplete"
-  ]
+  ],
+  "seen_TRAIN_diagnostic": {
+    "scope": "seen TRAIN diagnostic only; not independent or family acceptance",
+    "model_sha256": "313084288d2160ceea967851744a325cf8cd4fde97dd0b5a08b742dbfd083a49",
+    "case_count": 1161,
+    "household_used": false,
+    "DEV_used": false,
+    "TEST_opened": false,
+    "fixed_policy": {
+      "rolling": 3,
+      "threshold": 0.9
+    },
+    "by_speed": {
+      "1.15": {
+        "rolling": 3,
+        "threshold": 0.9,
+        "groups": {
+          "adult:Chinese-accent:piku": {
+            "targets": 26,
+            "hits": 26
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 15,
+            "hits": 15
+          },
+          "adult:standard:piku": {
+            "targets": 19,
+            "hits": 19
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 73,
+            "hits": 73
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 99,
+            "hits": 99
+          },
+          "adult:standard:piko": {
+            "targets": 21,
+            "hits": 21
+          }
+        },
+        "false_wakes": 0,
+        "early_wakes": 0,
+        "worst_recall": 1.0,
+        "latency_p95_ms": 66.57499999999999,
+        "passed": true
+      },
+      "1.3": {
+        "rolling": 3,
+        "threshold": 0.9,
+        "groups": {
+          "adult:Chinese-accent:piku": {
+            "targets": 26,
+            "hits": 26
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 15,
+            "hits": 15
+          },
+          "adult:standard:piku": {
+            "targets": 19,
+            "hits": 19
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 73,
+            "hits": 73
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 99,
+            "hits": 99
+          },
+          "adult:standard:piko": {
+            "targets": 21,
+            "hits": 21
+          }
+        },
+        "false_wakes": 0,
+        "early_wakes": 0,
+        "worst_recall": 1.0,
+        "latency_p95_ms": 65.8625,
+        "passed": true
+      },
+      "1.5": {
+        "rolling": 3,
+        "threshold": 0.9,
+        "groups": {
+          "adult:Chinese-accent:piku": {
+            "targets": 26,
+            "hits": 26
+          },
+          "adult:Chinese-accent:piko": {
+            "targets": 15,
+            "hits": 15
+          },
+          "adult:standard:piku": {
+            "targets": 19,
+            "hits": 19
+          },
+          "childlike:Chinese-accent:piku": {
+            "targets": 73,
+            "hits": 73
+          },
+          "childlike:Chinese-accent:piko": {
+            "targets": 99,
+            "hits": 99
+          },
+          "adult:standard:piko": {
+            "targets": 21,
+            "hits": 21
+          }
+        },
+        "false_wakes": 0,
+        "early_wakes": 0,
+        "worst_recall": 1.0,
+        "latency_p95_ms": 77.6625,
+        "passed": true
+      }
+    },
+    "selected_epoch": 9,
+    "selected_seed": 42,
+    "checkpoint_selection": "Fixed chronological epoch, not best score or household feedback"
+  },
+  "latest_completed_seed_at_documentation": 43,
+  "seed42_terminal_epochs": 12,
+  "seed42_any_qualified": false,
+  "evidence_interpretation": "Complete seen TRAIN tempo set is learned; current reused DEV errors indicate a generalization gap. This does not establish real-child, natural connected-speech, independent TEST or hardware acceptance."
 }
