@@ -1,6 +1,6 @@
 {
   "date": "2026-11-03",
-  "stage": "new-comparison-predeclared-not-yet-started",
+  "stage": "native-comparison-running",
   "human_source_feedback": {
     "new_adult_catalog_originals": 4,
     "actual_name_variant_all": "piko",
@@ -52,7 +52,12 @@
       "rolling": 3,
       "threshold": 0.9
     },
-    "frozen_candidate_exists": false
+    "frozen_candidate_exists": false,
+    "actual_effective_TRAIN_windows": 10744,
+    "completed_native_epochs_snapshot": 7,
+    "current_seed_snapshot": 42,
+    "latest_checkpoint_qualified": false,
+    "additional_reviewed_gate_active": true
   },
   "new_API_requests": 0,
   "device_changed": false,
@@ -63,5 +68,18 @@
     "Qualified candidate then fresh independent TEST with all required cohorts",
     "ESP32 resources and concurrency",
     "Frozen-policy family and 8-hour background acceptance"
-  ]
+  ],
+  "validation": {
+    "native_audio_and_eyes": "passed",
+    "simulator_Node_tests": 25,
+    "server_Node_tests": 68,
+    "generator_Node_tests": 12,
+    "tools_Python_tests": 26,
+    "training_Python_tests": 273,
+    "optional_training_skips": 12,
+    "Python_runtime": "existing pinned training environment",
+    "initial_default_Python_run": "failed missing optional dependencies; only affected Python stages rerun in correct existing runtime, all passed"
+  },
+  "automatic_postprocessing": "Single continuation of the specific live trainer, not a recurring automation. On terminal, audit original finite GRID against both full grouping gates; no TEST, API or USB. Numeric survivors still require full replay and canonical freeze.",
+  "snapshot_at": "2026-11-03T00:05:11.508115+00:00"
 }
