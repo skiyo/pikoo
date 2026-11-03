@@ -224,12 +224,18 @@ def load_profiles(path):
             profile.get('context_steps', 20) not in (20, 72) or
             profile.get('auxiliary_phrase_weight', 0) not in (0, .2, .5) or
             profile.get('weight_decay', 0) not in (0, .01) or
+            ('encoder_frozen' in profile and
+             (type(profile['encoder_frozen']) is not bool or profile['initialization'] != 'phone-encoder')) or
             profile['initialization'] not in ('fresh', 'baseline', 'checkpoint', 'phone-encoder') or
             not .00001 <= profile['learning_rate'] <= .001 or
             not 1 <= profile['max_epochs'] <= 30 or sorted(profile['seeds']) != [42, 43]):
             raise ValueError('Profile outside declared architecture/training bounds')
     if len({p['name'] for p in profiles}) != len(profiles):
         raise ValueError('Duplicate profile name')
+    for profile in profiles:
+        if profile.get('required_secondary_negative_dev'):
+            from wake_secondary_dev import load
+            load(profile['required_secondary_negative_dev'])
     return profiles
 
 
@@ -243,6 +249,16 @@ def optimizer_spec(profile, clipnorm=False):
     if decay:
         options['weight_decay'] = decay
     return ('AdamW' if decay else 'Adam'), options
+
+
+def set_encoder_trainability(encoder, batch_norm_type, frozen=False):
+    """Freeze the shared public-speech encoder without freezing the wake head."""
+    for layer in encoder.layers:
+        if frozen or isinstance(layer, batch_norm_type):
+            layer.trainable = False
+    return {'encoder_frozen': bool(frozen),
+            'encoder_layers': len(encoder.layers),
+            'encoder_trainable_layers': sum(bool(layer.trainable) for layer in encoder.layers)}
 
 
 class NativeEvaluator:
@@ -534,7 +550,8 @@ def main():
              'wake_phrase_auxiliary.py', 'wake_train_events.py', 'hi_pikoo_contrast.py',
              'hi_pikoo_timing.py', 'acoustic_augment.py', 'wake_train_admission.py',
              'wake_phrase_boundaries.py', 'wake_extra_train.py', 'wake_catalog_train.py',
-             'hi_pikoo_review.py', 'wake_dev_content_review.py', 'wake_train_human_review.py', 'wake_tempo.py')
+             'hi_pikoo_review.py', 'wake_dev_content_review.py', 'wake_train_human_review.py', 'wake_tempo.py',
+             'wake_secondary_dev.py')
     if snapshot.exists() and any((snapshot/name).exists() and
             sha(snapshot/name) != sha(Path(__file__).with_name(name)) for name in names):
         snapshot = a.output/f'source-continuation-{sha(Path(__file__))[:16]}'
@@ -586,11 +603,11 @@ def main():
                     raise ValueError('Phonetic encoder provenance/quality does not match')
                 encoder = tf.keras.Model(model.input, model.get_layer('ordered_context').input)
                 encoder.load_weights(initial)
-                for layer in encoder.layers:
-                    if isinstance(layer, tf.keras.layers.BatchNormalization):
-                        layer.trainable = False
+                trainability = set_encoder_trainability(encoder, tf.keras.layers.BatchNormalization,
+                                                       frozen=profile.get('encoder_frozen', False))
                 write_json(folder/'initialization.json', {'kind': 'public-TRAIN-only-phonetic-encoder',
-                    'encoder_sha256': sha(initial), 'report_sha256': sha(report), 'source_phone_error_rate': proof['phone_error_rate']})
+                    'encoder_sha256': sha(initial), 'report_sha256': sha(report),
+                    'source_phone_error_rate': proof['phone_error_rate'], **trainability})
             optimizer_name, optimizer_options = optimizer_spec(profile, clipnorm=bool(a.cohort_meta))
             optimizer = getattr(tf.keras.optimizers, optimizer_name)(**optimizer_options)
             if profile.get('auxiliary_phrase_weight', 0):
@@ -634,6 +651,7 @@ def main():
                     if result['qualified']:
                         write_json(a.output/'frozen.json', {'checkpoint': str(checkpoint.relative_to(a.output)),
                             'model_sha256': sha(checkpoint/'hi_pikoo.tflite'), 'policy': {'rolling': 3, 'threshold': .9},
+                            'secondary_DEV_pending': bool(profile.get('required_secondary_negative_dev')),
                             'evaluation': result, 'TEST_opened': False, 'device_accepted': False,
                             'goal_completed': False})
                         self.model.stop_training = True
@@ -649,7 +667,9 @@ def main():
             write_json(a.output/'comparison.json', all_results)
             tf.keras.backend.clear_session()
             if (a.output/'frozen.json').exists():
-                write_json(a.output/'status.json', {'stage': 'candidate-frozen-awaiting-independent-TEST',
+                stage = ('candidate-numerically-frozen-awaiting-secondary-DEV' if
+                         profile.get('required_secondary_negative_dev') else 'candidate-frozen-awaiting-independent-TEST')
+                write_json(a.output/'status.json', {'stage': stage,
                     'goal_completed': False, 'device_changed': False})
                 return
     write_json(a.output/'status.json', {'stage': 'finite-INT8-comparison-completed-no-qualification',

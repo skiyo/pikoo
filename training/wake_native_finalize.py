@@ -139,6 +139,14 @@ def verify_tempo(cases, metadata, result, review):
             raise ValueError('Tempo DEV pass is not supported by native traces')
 
 
+def secondary_spec(plan, result):
+    profiles = plan.get('profiles', [])
+    matches = [p for p in profiles if p['name'] == result.get('profile')]
+    if any(p.get('required_secondary_negative_dev') for p in profiles) and len(matches) != 1:
+        raise ValueError('Candidate profile cannot bypass required secondary DEV')
+    return matches[0].get('required_secondary_negative_dev') if matches else None
+
+
 def finalize(experiment, baseline, prepared, micro, review_path, isolation_path, output):
     frozen_path = experiment/'frozen.json'
     frozen = json.loads(frozen_path.read_text())
@@ -204,6 +212,18 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
             raise ValueError('Frozen tempo evaluation differs from source')
         verify_tempo(json.loads((checkpoint/'tempo-dev-cases.json').read_text()),
             json.loads((tempo/'dev-metadata.json').read_text()), result['tempo_DEV'], json.loads(review_path.read_text()))
+    secondary = None
+    spec = secondary_spec(plan, result)
+    if spec is not None:
+        if spec['source_manifest_sha256'] not in isolation['source_manifests_sha256'].values():
+            raise ValueError('Fresh TEST isolation must cover secondary DEV too')
+        train_speakers = set()
+        for path in isolation['source_manifests_sha256']:
+            for row in json.loads(Path(path).read_text()):
+                if row.get('split') == 'train':
+                    train_speakers.add(row.get('speaker'))
+        from wake_secondary_dev import evaluate as evaluate_secondary
+        secondary = evaluate_secondary(model, micro, spec, checkpoint, train_speakers=train_speakers)
     if (plan.get('TRAIN_extra_sources') and
             plan['TRAIN_extra_sources']['manifest_sha256'] not in isolation['source_manifests_sha256'].values()):
         raise ValueError('Fresh TEST isolation must cover the extra TRAIN source manifest too')
@@ -256,6 +276,9 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
         'forbidden_test_speakers': isolation['used_source_speakers'],
         'status': 'DEV-qualified-awaiting-fresh-TEST', 'sealed_test_passed': False,
         'esp32_resource_accepted': False, 'real_child_accepted': False, 'release_eligible': False}
+    if secondary is not None:
+        policy['secondary_negative_DEV_passed'] = True
+        policy['secondary_negative_DEV_report_sha256'] = sha(checkpoint/'secondary-negative-dev-report.json')
     validate(output/'hi_pikoo.tflite', policy)
     (output/'wake-policy.json').write_text(json.dumps(policy, indent=2)+'\n')
     return policy

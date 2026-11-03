@@ -2,11 +2,19 @@
 import copy
 import unittest
 from unittest.mock import patch
-from wake_native_finalize import validate_gate, base_representatives, verify_saved_dev, verify_tempo
+from wake_native_finalize import validate_gate, base_representatives, verify_saved_dev, verify_tempo, secondary_spec
 from hi_pikoo_model import GRID, policy_metrics
 
 
 class NativeFinalize(unittest.TestCase):
+    def test_required_secondary_guard_cannot_be_skipped_by_missing_candidate_profile(self):
+        spec = {'source_manifest_sha256': 'manifest'}
+        plan = {'profiles': [{'name': 'candidate', 'required_secondary_negative_dev': spec}]}
+        self.assertEqual(secondary_spec(plan, {'profile': 'candidate'}), spec)
+        for result in ({}, {'profile': 'other'}):
+            with self.assertRaises(ValueError): secondary_spec(plan, result)
+        self.assertIsNone(secondary_spec({}, {}))
+
     def test_appended_sources_are_not_mistaken_for_retained_cached_fixture_indices(self):
         plan = {'retained_original_TRAIN_indices': [0, 2, 4, 5],
                 'TRAIN_effective_examples': 6, 'representative_TRAIN_indices': [1, 3, 4, 5]}

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 try:
-    from wake_int8_iterate import qualification, balance_train_weights, balance_positive_cohorts, load_profiles, optimizer_spec
+    from wake_int8_iterate import qualification, balance_train_weights, balance_positive_cohorts, load_profiles, optimizer_spec, set_encoder_trainability
     import numpy as np
 except ImportError:
     qualification = None
@@ -12,6 +12,31 @@ except ImportError:
 
 @unittest.skipIf(qualification is None, 'Optional pinned training runtime required')
 class Int8Qualification(unittest.TestCase):
+    def test_public_phone_encoder_can_be_frozen_without_changing_the_head(self):
+        from types import SimpleNamespace
+        class Norm:
+            trainable = True
+        conv, norm, head = SimpleNamespace(trainable=True), Norm(), SimpleNamespace(trainable=True)
+        encoder = SimpleNamespace(layers=[conv, norm])
+        set_encoder_trainability(encoder, Norm, frozen=False)
+        self.assertTrue(conv.trainable)
+        self.assertFalse(norm.trainable)
+        result = set_encoder_trainability(encoder, Norm, frozen=True)
+        self.assertEqual(result['encoder_trainable_layers'], 0)
+        self.assertFalse(conv.trainable)
+        self.assertTrue(head.trainable)
+
+    def test_encoder_freeze_is_explicit_and_phone_initialization_only(self):
+        profile = {'name': 'phone', 'channels': 96, 'head': 64, 'context_steps': 72,
+                   'initialization': 'phone-encoder', 'learning_rate': .0005, 'max_epochs': 30,
+                   'seeds': [42, 43], 'encoder_frozen': True}
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder)/'profiles.json'; path.write_text(json.dumps([profile]))
+            self.assertTrue(load_profiles(path)[0]['encoder_frozen'])
+            for update in ({'encoder_frozen': 'yes'}, {'initialization': 'fresh'}):
+                path.write_text(json.dumps([{**profile, **update}]))
+                with self.assertRaises(ValueError): load_profiles(path)
+
     def test_regularization_is_bounded_and_legacy_Adam_is_unchanged(self):
         profile = {'learning_rate': .0005}
         self.assertEqual(optimizer_spec(profile), ('Adam', {'learning_rate': .0005}))

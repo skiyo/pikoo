@@ -1,6 +1,6 @@
 {
   "date": "2026-11-03",
-  "status": "preparation-complete-native-baseline-and-training-running",
+  "status": "finite-comparison-completed-no-qualification",
   "motivation": "Prior fixed-speed clean TRAIN derivatives were learned but R13 all24DEV checkpoints failed. Address generalization without increasing capacity or lowering threshold.",
   "change": "Six seeded continuous pitch-preserving tempo views per admitted TRAIN source, with existing synthetic bandlimit/reverb/gain/noise augmentation",
   "TRAIN_tempo_bands": [
@@ -49,5 +49,682 @@
   "actual_TRAIN_original_sources": 387,
   "actual_new_TRAIN_examples": 2322,
   "actual_total_TRAIN_examples": 13162,
-  "all_derived_DEV_features_labels_timing_verified_identical": true
+  "all_derived_DEV_features_labels_timing_verified_identical": true,
+  "terminal_returncode": 0,
+  "completed_checkpoints": 24,
+  "qualified_checkpoints": 0,
+  "checkpoint_outcomes": [
+    {
+      "seed": 42,
+      "epoch": 1,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 0,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          1,
+          1,
+          1
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          1,
+          2,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 2,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 0,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          1
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          1,
+          2,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 3,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          0,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 4,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 2,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          0,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 5,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          0,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 6,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          0,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 7,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          0,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 8,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          0,
+          2,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 9,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 0,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          0,
+          2,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 10,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 0,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          0,
+          2,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 11,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 0,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          0,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 12,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          0,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 1,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 0,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          1,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 2,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 0,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          0,
+          0
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          1,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 3,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 1,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          1,
+          1,
+          0
+        ],
+        [
+          1.5,
+          1,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 4,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 1,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          0,
+          1,
+          0
+        ],
+        [
+          1.5,
+          0,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 5,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 1,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          0,
+          1,
+          0
+        ],
+        [
+          1.5,
+          0,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 6,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 1,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          0,
+          1,
+          0
+        ],
+        [
+          1.5,
+          0,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 7,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          0,
+          1,
+          0
+        ],
+        [
+          1.5,
+          1,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 8,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          0,
+          1,
+          0
+        ],
+        [
+          1.5,
+          1,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 9,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          0,
+          0
+        ],
+        [
+          1.3,
+          0,
+          1,
+          0
+        ],
+        [
+          1.5,
+          1,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 10,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          0,
+          1,
+          0
+        ],
+        [
+          1.5,
+          1,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 11,
+      "qualified": false,
+      "original_recall_shortfall": 0,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          0,
+          1,
+          0
+        ],
+        [
+          1.5,
+          1,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 12,
+      "qualified": false,
+      "original_recall_shortfall": 1,
+      "original_false_wakes": 1,
+      "ordinary_false_clips": 0,
+      "tempo": [
+        [
+          1.15,
+          0,
+          1,
+          0
+        ],
+        [
+          1.3,
+          0,
+          1,
+          0
+        ],
+        [
+          1.5,
+          1,
+          1,
+          0
+        ]
+      ]
+    }
+  ]
 }
