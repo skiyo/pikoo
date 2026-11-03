@@ -2,6 +2,29 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,validateFrozen,generationCount,freshTestPlan,assertNativeTestPlanCoverage,NATIVE_TEST_COHORTS,RESERVATION}=require('./hi_pikoo_generate.cjs');
+const {nativeSourcePilotPlan}=require('./hi_pikoo_generate.cjs');
+test('native source audition plans all six cohorts but never claims actual child age or vowel',()=>{
+ const contract={target:'hi-piku-piko-v2',accepted_names:['piku','piko'],declared_before_corpus_training:true};
+ const rows=nativeSourcePilotPlan(contract);
+ assert.equal(rows.length,12);assert.equal(new Set(rows.map(r=>r.id)).size,12);
+ assertNativeTestPlanCoverage(rows,{source_native_freeze_sha256:'fixture',required_test_cohorts:NATIVE_TEST_COHORTS});
+ assert.ok(rows.every(r=>r.split==='test'&&r.perceived_style==='unreviewed'&&r.actual_pronunciation_variant===null&&r.admitted_to_evaluation===false));
+ assert.equal(rows.filter(r=>r.synthetic_style==='childlike').length,4);
+ assert.ok(rows.filter(r=>r.requested_variant==='piko').every(r=>r.text==='Hi, Pico!'));
+ assert.throws(()=>nativeSourcePilotPlan({...contract,target:'hi-piku-v1'}));
+});
+test('native source pilot rejects nonsealed or excessive requests before reading credentials or writing files',()=>{
+ const {spawnSync}=require('node:child_process'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'pikoo-source-pilot-'));
+ try{
+  for(const [phase,limit,message] of [['pilot','12',/frozen sealed/],['sealed','13',/bounded to12/]]){
+   const output=path.join(root,'output');
+   const result=spawnSync(process.execPath,[path.join(__dirname,'hi_pikoo_generate.cjs'),'--output',output,'--key-file',path.join(root,'absent-key'),
+    '--audition-root',root,'--phase',phase,'--native-test-source-pilot','yes','--new-attempt-limit',limit],{encoding:'utf8',timeout:5000});
+   assert.equal(result.status,1);assert.match(result.stdout+result.stderr,message);assert.ok(!fs.existsSync(output));
+  }
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
 test('native TEST cannot spend on an adult-only plan and silently omit childlike cohorts',()=>{
  const frozen={source_native_freeze_sha256:'fixture',required_test_cohorts:NATIVE_TEST_COHORTS};
  const rows=targetPlan(plan(),{target:'hi-piku-piko-v2',accepted_names:['piku','piko'],declared_before_corpus_training:true});

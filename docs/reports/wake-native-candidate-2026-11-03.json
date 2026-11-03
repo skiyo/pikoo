@@ -1,0 +1,142 @@
+{
+  "date": "2026-11-03",
+  "status": "DEV-qualified frozen candidate, native parity confirmed; fresh TEST source pilot has no childlike coverage",
+  "model_sha256": "da40f6b815b6b2e4325152220a9d41375ecdc4bcda233e4616ffddc9038638a6",
+  "policy": {
+    "rolling": 3,
+    "threshold": 0.9
+  },
+  "model_bytes": 98088,
+  "host_arena_bytes": 37808,
+  "host_allocation_is_not_ESP32_resource_acceptance": true,
+  "legacy_DEV": {
+    "rolling": 3,
+    "threshold": 0.9,
+    "groups": {
+      "adult:standard:piku": {
+        "targets": 28,
+        "hits": 28
+      },
+      "adult:standard:piko": {
+        "targets": 3,
+        "hits": 3
+      },
+      "adult:Chinese-accent:piku": {
+        "targets": 27,
+        "hits": 26
+      },
+      "adult:Chinese-accent:piko": {
+        "targets": 10,
+        "hits": 10
+      },
+      "childlike:Chinese-accent:piku": {
+        "targets": 11,
+        "hits": 11
+      },
+      "childlike:Chinese-accent:piko": {
+        "targets": 13,
+        "hits": 12
+      }
+    },
+    "false_wakes": 0,
+    "early_wakes": 0,
+    "worst_recall": 0.9230769230769231,
+    "latency_p95_ms": 54.91874999999998,
+    "passed": true
+  },
+  "human_heard_DEV": {
+    "rolling": 3,
+    "threshold": 0.9,
+    "groups": {
+      "adult:standard:piku": {
+        "targets": 28,
+        "hits": 28
+      },
+      "adult:standard:piko": {
+        "targets": 3,
+        "hits": 3
+      },
+      "adult:Chinese-accent:piku": {
+        "targets": 27,
+        "hits": 26
+      },
+      "adult:Chinese-accent:piko": {
+        "targets": 10,
+        "hits": 10
+      },
+      "childlike:Chinese-accent:piku": {
+        "targets": 11,
+        "hits": 11
+      },
+      "childlike:Chinese-accent:piko": {
+        "targets": 13,
+        "hits": 12
+      }
+    },
+    "false_wakes": 0,
+    "early_wakes": 0,
+    "worst_recall": 0.9230769230769231,
+    "latency_p95_ms": 54.91874999999998,
+    "passed": true
+  },
+  "positive_targets": 92,
+  "positive_hits": 90,
+  "old_negative_cases": 52,
+  "new_negative_cases": 261,
+  "old_false_wakes": 0,
+  "new_false_wakes": 0,
+  "early_wakes": 0,
+  "development_samples_are_synthetic_targets_not_real_child_acceptance": true,
+  "training_checkpoints_completed": 51,
+  "post_terminal_original_grid_cells": 408,
+  "selected_policy_unchanged_from_first_qualified_native_epoch": true,
+  "reference_vs_native_TRAIN_fixtures": 8,
+  "all_reference_Micro_output_bytes_equal": true,
+  "native_reset_rounds_per_fixture": 3,
+  "frozen_full_DEV_confirmation": {
+    "cases": 405,
+    "native_reset_rounds_each": 3,
+    "all_original_probability_traces_equal": true,
+    "all_negative_peaks_and_decisions_equal": true,
+    "passed": true
+  },
+  "independent_TEST": {
+    "full_benchmark_generated": false,
+    "model_scoring_started": false,
+    "all_six_cohorts_required": true,
+    "new_source_auditions_generated": 12,
+    "requested_voices": [
+      "echo",
+      "shimmer"
+    ],
+    "unseen_voice_IDs_in_prior_TRAIN_DEV_and_consumed_TEST_metadata": true,
+    "source_audition_cannot_enter_TRAIN_or_benchmark_scores": true,
+    "prompted_age_not_claimed_as_perceived_age": true,
+    "source_pilot_human_age_verdict": "All12 adult; zero accepted childlike source",
+    "source_pilot_TS3": "Hi only, target name missing; quarantined",
+    "full_six_cohort_source_coverage": false,
+    "pilot_not_benchmark_scored": true,
+    "actual_vowels_not_fully_annotated": true,
+    "proposed_next_route": "Fresh local family TEST samples after freeze plus held-out standard-adult synthesis; tools/readiness and full coverage verification required first. No family recording performed.",
+    "actual_perceived_age_review_completed": true,
+    "local_capture_transport_checker": {
+      "offline_only": true,
+      "fault_injection_tests_passed": 7,
+      "USB_opened": false,
+      "family_recorded": false,
+      "end_to_end_capture_workflow_ready": false
+    },
+    "family_availability": "User chose to arrange later; no capture scheduled or started"
+  },
+  "source_pilot_generator_tests": 14,
+  "source_pilot_generator_tests_passed": true,
+  "corpus_generation_accounted_or_reserved_USD": 0.5891476,
+  "corpus_cumulative_cap_USD": 2,
+  "formal_goal_passed": false,
+  "fresh_TEST_passed": false,
+  "ESP32_resource_or_concurrency_accepted": false,
+  "real_family_two_session_testing_passed": false,
+  "eight_hour_background_passed": false,
+  "device_changed": false,
+  "weights_and_recordings_private": true
+}

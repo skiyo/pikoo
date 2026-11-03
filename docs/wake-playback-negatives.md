@@ -433,3 +433,50 @@ the R10 Adam control and restores only the eight confirmed targets/96 cached
 feature descendants (10,840 TRAIN windows total). All 76 unconfirmed originals
 remain quarantined; both DEV grouping gates stay mandatory. No new waveform,
 voice identity, API request, TEST or board operation is introduced.
+
+
+The restored-child comparison completed 24/27 epochs (51 checkpoints) and froze
+the first fully native-qualified candidate at seed43 epoch27, retaining the
+3-score/.90 policy. Historical and human-heard DEV views both hit 90/92 targets;
+the six cohorts hit 28/28, 3/3, 26/27, 10/10, 11/11 and 12/13. All 52 old and
+261 new negatives were rejected, with zero measured early activations and
+about 54.9ms p95 event delay on these synthetic cases. These are reused DEV
+results, not independent TEST or real-child accuracy.
+
+The frozen 98,088-byte model uses 37,808 bytes of host Micro arena. Eight
+TRAIN-only reference/Micro fixtures were byte-exact across three resets;
+one post-freeze 405-case DEV replay reproduced all saved target traces and
+negative peaks/decisions exactly. No board timing or concurrency is accepted.
+See the [frozen candidate record](reports/wake-native-candidate-2026-11-03.json).
+
+Independent TEST remains unscored. A separate, bounded 12-request source pilot
+uses untouched echo/shimmer identities after the qualified freeze. It plans
+all six intended cohorts, leaves actual age/vowels unreviewed, and cannot enter
+TRAIN or benchmark scoring. Human listening must establish source quality;
+ordinary adult-only sealed generation still fails the full-scope preflight.
+The existing shared $2 ledger remains enforced (about $0.58915 accounted or
+reserved after the pilot). The [official Realtime reference](https://developers.openai.com/api/reference/resources/realtime/client-events)
+lists these voices; API voice names do not establish a childlike listening
+verdict. Firmware, independent TEST, family and eight-hour acceptance remain.
+
+
+Human listening rejected the pilot's childlike-age assumption: all twelve
+samples sounded adult, and TS3 contained only Hi without the name. TS3 stays
+quarantined; no pilot clip enters TRAIN or benchmark scores. The candidate
+remains frozen, with full TEST coverage still incomplete. A mixed-source TEST
+route is proposed using newly collected local family speech only after this
+freeze and held-out standard-adult synthesis. Consent/readiness, a verified
+bounded capture tool and all-six-cohort content coverage are required first;
+no family recording has occurred. The same family testers may have prior tests,
+so new recordings must not be misrepresented as previously unseen people.
+No model tuning or unqualified device installation follows this source failure.
+
+`tools/wake_test_capture.py` now extracts **one existing, opt-in** four-second
+`wake capture` log into a new private directory outside the repository. It does
+not open USB or record anything. It requires idle diagnostics before/after,
+exact packet ordering and 64,000 samples, stable upload/reconnect/error counters,
+and no observed reset. Seven integrity/privacy tests cover truncated/duplicate
+packets, corrupt payloads, missing diagnostics, upload/state changes and crashes.
+This proves bounded transport integrity only: consent, post-freeze collection
+time and human content labels must be recorded separately before TEST admission.
+The mixed-source capture/benchmark workflow is not yet ready for a family run.

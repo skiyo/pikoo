@@ -73,6 +73,25 @@ function adultRefreshPlan(contract){
     ' Do not stretch vowels or recite individual syllables.'};
  });
 }
+function nativeSourcePilotPlan(contract){
+ targetPlan([],contract);
+ if(contract.target!=='hi-piku-piko-v2')throw Error('Native source pilot requires dual target');
+ const rows=[];
+ for(const [style,accent,instruction] of [
+  ['adult','standard','Natural relaxed adult English.'],
+  ['adult','Chinese-accent','Natural Mandarin-influenced adult English.'],
+  ['childlike','Chinese-accent','Fictional young-child style: a small light clear voice and natural Mandarin-influenced English. No imitation of a real person. Not a cartoon performance.']]){
+  for(const [variant,text] of [['piku','Hi, Pee Koo!'],['piko','Hi, Pico!']])for(let i=0;i<2;i++){
+   rows.push({id:`native-source-pilot-${style}-${accent}-${variant}-${i}`,split:'test',voice:'unassigned',speaker:'unassigned',group:'unassigned',
+    text,label:1,target_contract:contract.target,synthetic_style:style,requested_style:style,accent,requested_variant:variant,
+    perceived_style:'unreviewed',perceived_style_review:'pending',actual_pronunciation_variant:null,
+    evaluation_role:'frozen-TEST-source-audition-only',admitted_to_evaluation:false,
+    recipe:'native-source-pilot-v1',source:'OpenAI-Realtime-synthetic',synthetic:true,real_child:false,family_inputs_used:false,reference_audio_used:false,
+    style:'Read the supplied text exactly once without commentary or repetition. '+instruction+' A short natural connected greeting at everyday volume and pace.'});
+  }
+ }
+ return rows;
+}
 function validateFrozen(contract,frozen,binary,allowTrial=false){
  const trial=allowTrial&&frozen.development_passed===false&&frozen.trial_authorized===true&&frozen.status==='best-available-unqualified-trial'&&frozen.formal_goal_passed===false&&frozen.release_eligible===false;
  if(!contract||frozen.target!==contract.target||!frozen.candidate_frozen_at||(frozen.development_passed!==true&&!trial))throw Error('Qualified candidate and matching explicit target required before TEST');
@@ -106,7 +125,7 @@ function assertNativeTestPlanCoverage(rows,frozen){
  const planned=new Set();
  for(const r of rows.filter(r=>r.split==='test'&&r.label===1)){
   const text=r.text.toLowerCase().replace(/[\s,.!?:;，。！？、\-]/g,'');
-  const variant=text==='hipiko'?'piko':['hipikoo','hipeekoo','嗨批枯'].includes(text)?'piku':null;
+  const variant=['hipiko','hipico'].includes(text)?'piko':['hipikoo','hipeekoo','嗨批枯'].includes(text)?'piku':null;
   if(!variant)throw Error('Unknown intended TEST target; no request sent');
   planned.add([r.synthetic_style,r.accent,variant].join(':'));
  }
@@ -143,11 +162,15 @@ function args(argv){const a={};for(let i=0;i<argv.length;i+=2){if(!argv[i].start
 async function main(){
  const a=args(process.argv.slice(2));if(!a.output||!a['key-file']||!a['audition-root'])throw Error('Required: --output, --key-file, --audition-root');
  const phase=a.phase||'pilot';if(!['pilot','training','adult-refresh','development','sealed'].includes(phase))throw Error('Unknown collection phase');
- const invocationLimit=Number(a['new-attempt-limit']||(phase==='pilot'?20:150));
+ const nativePilot=a['native-test-source-pilot']==='yes';
+ if(a['native-test-source-pilot']&&!nativePilot)throw Error('Native source pilot must be explicit yes');
+ if(nativePilot&&phase!=='sealed')throw Error('Native source pilot requires frozen sealed phase');
+ const invocationLimit=Number(a['new-attempt-limit']||(nativePilot?12:phase==='pilot'?20:150));
  if(!Number.isInteger(invocationLimit)||invocationLimit<1||invocationLimit>(phase==='pilot'?20:150))throw Error('Invalid bounded request limit');
  let contract=null,frozenForTest=null,freshIsolation=null;
  if(a['target-contract']){contract=JSON.parse(fs.readFileSync(a['target-contract'],'utf8'));targetPlan([],contract);}
- if(phase!=='pilot'){
+ if(nativePilot&&invocationLimit>12)throw Error('Native source pilot is bounded to12 requests');
+ if(phase!=='pilot'&&!nativePilot){
   if(!a['source-review'])throw Error('Source audition evidence is required before expansion');
   const evidence=JSON.parse(fs.readFileSync(a['source-review'],'utf8'));
   if(evidence.clips?.['train-0060']?.pronunciation_piku!=='accepted')throw Error('Adult source audition not accepted');
@@ -155,6 +178,8 @@ async function main(){
  if(phase==='sealed'){
   if(!a['frozen-candidate'])throw Error('Frozen candidate required before TEST synthesis');
   const frozen=JSON.parse(fs.readFileSync(a['frozen-candidate'],'utf8'));
+  if(nativePilot&&(!frozen.source_native_freeze_sha256||frozen.development_passed!==true))throw Error('Native source pilot requires a native DEV-qualified freeze');
+  if(nativePilot&&(!frozen.required_fresh_test_speakers||!frozen.test_isolation_sha256))throw Error('Native source pilot requires fresh source isolation');
   if(!a['candidate-model'])throw Error('Candidate model required before TEST');
   validateFrozen(contract,frozen,fs.readFileSync(a['candidate-model']),a['allow-trial-test']==='yes');
   if(frozen.required_fresh_test_speakers){
@@ -174,6 +199,7 @@ async function main(){
  if(phase!=='pilot')for(const row of planned){row.requested_style=row.synthetic_style;row.synthetic_style='adult';row.recipe='literal-adult-v3';row.style='Read the user text aloud exactly once, without commentary or repetition. Natural relaxed adult speech. '+(row.accent==='Chinese-accent'?'A gentle Mandarin Chinese accent when reading English. ':'Natural English. ');}
  if(phase==='training')planned=expansionPlan(contract);
  if(phase==='adult-refresh')planned=adultRefreshPlan(contract);
+ if(nativePilot)planned=nativeSourcePilotPlan(contract);
  if(freshIsolation)planned=freshTestPlan(planned,freshIsolation,frozenForTest);
  if(frozenForTest)assertNativeTestPlanCoverage(planned,frozenForTest);
  out=path.resolve(a.output);proxyPort=Number(a['proxy-port']||7897);if(!Number.isInteger(proxyPort)||proxyPort<1||proxyPort>65535)throw Error('Invalid proxy port');
@@ -182,7 +208,7 @@ async function main(){
  const lock=path.join(out,'generation.lock');const fd=fs.openSync(lock,'wx',0o600);fs.writeSync(fd,String(process.pid));
  try{
  if(frozenForTest){
-  const seal=path.join(out,freshIsolation?'sealed-native-fresh2-candidate.json':'sealed-candidate.json');
+  const seal=path.join(out,nativePilot?'sealed-native-source-pilot-candidate.json':freshIsolation?'sealed-native-fresh2-candidate.json':'sealed-candidate.json');
   if(fs.existsSync(seal)){
    const prior=JSON.parse(fs.readFileSync(seal));
    if(prior.model_sha256!==frozenForTest.model_sha256||prior.candidate_frozen_at!==frozenForTest.candidate_frozen_at)throw Error('This TEST revision is bound to a different frozen candidate; never reuse consumed TEST');
@@ -197,9 +223,9 @@ async function main(){
    for(const r of JSON.parse(fs.readFileSync(file)))ledger.entries.push({id:name+'/'+r.file,status:'completed',reserved_usd:0,actual_usd:cost(r.usage)});
   }write(ledgerFile,ledger);
  }
- const planFile=path.join(out,phase==='adult-refresh'?'generation-plan.adult-refresh-v5.json':freshIsolation?'generation-plan.sealed-native-fresh2.json':phase==='training'?'generation-plan.training-expansion-v2.json':phase==='sealed'?'generation-plan.sealed.'+contract.target+'.json':phase==='pilot'?'generation-plan.literal-v2.json':'generation-plan.literal-adult-v3.json');
+ const planFile=path.join(out,nativePilot?'generation-plan.native-source-pilot.json':phase==='adult-refresh'?'generation-plan.adult-refresh-v5.json':freshIsolation?'generation-plan.sealed-native-fresh2.json':phase==='training'?'generation-plan.training-expansion-v2.json':phase==='sealed'?'generation-plan.sealed.'+contract.target+'.json':phase==='pilot'?'generation-plan.literal-v2.json':'generation-plan.literal-adult-v3.json');
  if(fs.existsSync(planFile)){if(JSON.stringify(JSON.parse(fs.readFileSync(planFile)))!==JSON.stringify(planned))throw Error('Frozen generation plan differs');}else write(planFile,planned);
- const manifestFile=path.join(out,phase==='adult-refresh'?'manifest-adult-refresh-v5.json':freshIsolation?'manifest-test-native-fresh2.json':phase==='sealed'?'manifest-test.json':phase==='training'?'manifest-training-expansion.json':'manifest.json');
+ const manifestFile=path.join(out,nativePilot?'manifest-native-source-pilot.json':phase==='adult-refresh'?'manifest-adult-refresh-v5.json':freshIsolation?'manifest-test-native-fresh2.json':phase==='sealed'?'manifest-test.json':phase==='training'?'manifest-training-expansion.json':'manifest.json');
  let newAttempts=0;let done=fs.existsSync(manifestFile)?JSON.parse(fs.readFileSync(manifestFile)):[];
  const selected=['training','adult-refresh'].includes(phase)?planned:phase==='pilot'?planned.filter(x=>x.split==='train').slice(0,200):planned.filter(x=>x.split===(phase==='development'?'validation':'test'));
  for(const row of selected){
@@ -225,5 +251,5 @@ async function main(){
  write(path.join(out,'status.json'),{phase:phase+'-generated-awaiting-independent-review',completed:selected.filter(x=>done.some(y=>y.id===x.id)).length,total:selected.length,total_retained_files:done.length,updated_at:new Date().toISOString(),next:'independent content and pronunciation review; no training admission yet'});
  }finally{fs.closeSync(fd);fs.unlinkSync(lock);}
 }
-module.exports={cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,validateFrozen,generationCount,freshTestPlan,assertNativeTestPlanCoverage,NATIVE_TEST_COHORTS,RESERVATION,tunnel};
+module.exports={cost,reserve,plan,targetPlan,expansionPlan,adultRefreshPlan,nativeSourcePilotPlan,validateFrozen,generationCount,freshTestPlan,assertNativeTestPlanCoverage,NATIVE_TEST_COHORTS,RESERVATION,tunnel};
 if(require.main===module)main().catch(err=>{console.error(JSON.stringify({status:'stopped',error:String(err.message).replace(/sk-[A-Za-z0-9_-]+/g,'[REDACTED]')}));process.exitCode=1;});
