@@ -396,3 +396,17 @@ A bounded two-seed comparison now tests AdamW weight decay .01 while retaining
 R10's data, model, learning rate, auxiliary loss and both gates. Regularization
 is a generalization hypothesis, not proof of the failure's cause. It adds no
 inference layer or API request; hardware resource validation remains required.
+
+
+A metadata-only child-source coverage audit found 245 admitted synthetic
+childlike TRAIN originals: 164 targets and 81 competitors, concentrated in two
+prompt families. DEV has 24 targets and 14 competitors from one other family.
+Declared families do not overlap across TRAIN/DEV, but these are not verified
+fixed voice identities or independent real speakers. The four recently added
+catalog piko originals add adult coverage only. These counts exclude quarantined
+sources and augmentation descendants. This is a coverage limitation, not proof
+of the model failure's cause. If the regularization comparison fails, prioritize
+stable, provenance-backed childlike voice diversity and matched negatives over
+further same-family repeats. No household recordings, TEST audio, scoring or
+new API request was used. See the
+[child-source coverage audit](reports/wake-child-source-coverage-2026-11-03.json).

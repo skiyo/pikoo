@@ -1,0 +1,74 @@
+{
+  "date": "2026-11-03",
+  "scope": "Metadata-only child target-source coverage in the current independently admitted TRAIN and retained synthetic DEV. No audio, model scores or household data read.",
+  "training": {
+    "unique_originals": 245,
+    "positive_originals": 164,
+    "negative_originals": 81,
+    "declared_prompt_families": 2,
+    "per_family": [
+      {
+        "family_number": 1,
+        "positive_originals": 80,
+        "negative_originals": 39,
+        "identity_scope_values": [
+          "prompt family; neither verified fixed voice nor real child"
+        ]
+      },
+      {
+        "family_number": 2,
+        "positive_originals": 84,
+        "negative_originals": 42,
+        "identity_scope_values": [
+          "prompt family; neither verified fixed voice nor real child"
+        ]
+      }
+    ],
+    "source_style_gender_metadata": {
+      "girl-like": 126,
+      "boy-like": 119
+    },
+    "actual_child_positives": 0,
+    "age_verified_positive_originals": 0
+  },
+  "development": {
+    "unique_originals": 38,
+    "positive_originals": 24,
+    "negative_originals": 14,
+    "declared_prompt_families": 1,
+    "per_family": [
+      {
+        "family_number": 1,
+        "positive_originals": 24,
+        "negative_originals": 14,
+        "identity_scope_values": [
+          "prompt family; neither verified fixed voice nor real child"
+        ]
+      }
+    ],
+    "source_style_gender_metadata": {
+      "girl-like": 38
+    },
+    "actual_child_positives": 0,
+    "age_verified_positive_originals": 0
+  },
+  "new_catalog_addition": {
+    "originals": 4,
+    "childlike_originals": 0
+  },
+  "no_prompt_family_overlap_between_TRAIN_and_DEV": true,
+  "independence_limit": "Declared prompt-family separation, not verified stable voice identity or real-speaker independence. Changing a seed or prompt does not prove a new person.",
+  "finding": "Current child positive diversity is concentrated in two TRAIN prompt families and one DEV prompt family. Many utterances/augmentations do not establish many independent speakers. Four recent human-reviewed piko additions are adult catalog sources, not child coverage.",
+  "causal_failure_diagnosis_proven": false,
+  "next_if_current_regularization_fails": "Prioritize a provenance-backed stable synthetic child source bank and matched ordinary/near-word controls, with independent age/word listening. Do not create more same-family repeats and call them new speakers. Fresh TEST source reservation stays metadata-only until a qualified frozen candidate.",
+  "source_manifests_sha256": {
+    "original_admitted": "e5664680838fe7cf621fc11bf215fe21fbf0cf4a2cca6e00065c5321a9395129",
+    "TRAIN_content_admission": "8474da23988ca3817fae30ee8ba32f6d546459f718d573e6a478ace5c6d3516f",
+    "extra_TRAIN": "f6b74e1d7084b873b39721bf1da854768981064ced67c1e5e4e5e973508b2606"
+  },
+  "training_or_DEV_data_changed": false,
+  "new_API_requests": 0,
+  "TEST_opened": false,
+  "device_changed": false,
+  "formal_goal_passed": false
+}
