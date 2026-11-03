@@ -1,16 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 """Conservative TRAIN-only quarantine; no relabeling or DEV filtering."""
 import numpy as np
+from wake_train_human_review import BASE_METHOD, HUMAN_METHOD, validate as validate_human
 
 SYNTHETIC_SOURCES = {'OpenAI-Realtime-synthetic', 'Qwen3-TTS-hi-piku-synthetic-local'}
 
 
 def retained_indices(admission, metadata, total):
-    if (admission.get('method') != 'complete-independent-blind-ASR-content-agreement' or
+    if (admission.get('method') not in (BASE_METHOD, HUMAN_METHOD) or
             admission.get('household_used') is not False or
             admission.get('DEV_used') is not False or admission.get('TEST_opened') is not False or
             admission.get('labels_changed') is not False or len(metadata) > total):
         raise ValueError('Independent TRAIN-only admission evidence required')
+    if admission['method'] == HUMAN_METHOD:
+        validate_human(admission, metadata)
     expected = {r['sha256'] for r in metadata if r['source'] in SYNTHETIC_SOURCES}
     accepted, quarantined = set(admission['accepted_sha256']), set(admission['quarantined_sha256'])
     if accepted & quarantined or accepted | quarantined != expected or not accepted:

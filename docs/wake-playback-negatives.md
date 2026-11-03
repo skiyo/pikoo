@@ -423,3 +423,13 @@ uses no family data. The current regularization comparison is unchanged;
 loader integration and a separate new-data comparison must follow its terminal
 audit if needed. Three focused admission tests passed. See the
 [human TRAIN review record](reports/wake-child-TRAIN-human-review-2026-11-03.json).
+
+
+The AdamW comparison is terminal: 41 checkpoints and all 328 policy cells
+produced zero qualified survivors. The human-restoration loader is now wired
+and rejects unreviewed promotions, label changes and protected review scopes;
+23 affected loader/training tests passed. A separate two-seed comparison uses
+the R10 Adam control and restores only the eight confirmed targets/96 cached
+feature descendants (10,840 TRAIN windows total). All 76 unconfirmed originals
+remain quarantined; both DEV grouping gates stay mandatory. No new waveform,
+voice identity, API request, TEST or board operation is introduced.

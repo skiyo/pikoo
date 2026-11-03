@@ -28,16 +28,36 @@
     "expected_effective_TRAIN_windows_with_same_extra_sources": 10840,
     "new_speaker_or_prompt_family_claim": false
   },
-  "status": "human-reviewed admission proposal prepared; current R11 inputs unchanged; loader integration and next comparison not started",
+  "status": "loader integrated and separate restored-child comparison predeclared; not yet a qualified model",
   "tool_validation": {
     "human_override_unit_tests": 3,
     "passed": true,
-    "privacy_holdout_duplicate_unreviewed_promotion_and_label_mismatch_rejections_covered": true
+    "privacy_holdout_duplicate_unreviewed_promotion_and_label_mismatch_rejections_covered": true,
+    "loader_and_related_training_tests": 23,
+    "loader_rejects_unreviewed_promotions_and_restores_all_approved_descendants": true
   },
   "current_model_qualified": false,
   "family_audio_used": false,
   "fresh_TEST_opened": false,
   "new_API_requests": 0,
   "device_changed": false,
-  "formal_goal_passed": false
+  "formal_goal_passed": false,
+  "comparison": {
+    "fresh_seeds": [
+      42,
+      43
+    ],
+    "max_epochs_each": 30,
+    "optimizer": "Adam as in R10 data-control baseline",
+    "channels": 96,
+    "context_steps": 72,
+    "auxiliary_phrase_weight": 0.2,
+    "expected_effective_TRAIN_windows": 10840,
+    "historical_and_reviewed_DEV_gates_both_required": true,
+    "policy": {
+      "rolling": 3,
+      "threshold": 0.9
+    },
+    "no_new_inference_layers": true
+  }
 }

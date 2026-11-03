@@ -495,7 +495,7 @@ def main():
              'wake_phrase_auxiliary.py', 'wake_train_events.py', 'hi_pikoo_contrast.py',
              'hi_pikoo_timing.py', 'acoustic_augment.py', 'wake_train_admission.py',
              'wake_phrase_boundaries.py', 'wake_extra_train.py', 'wake_catalog_train.py',
-             'hi_pikoo_review.py', 'wake_dev_content_review.py')
+             'hi_pikoo_review.py', 'wake_dev_content_review.py', 'wake_train_human_review.py')
     if snapshot.exists() and any((snapshot/name).exists() and
             sha(snapshot/name) != sha(Path(__file__).with_name(name)) for name in names):
         snapshot = a.output/f'source-continuation-{sha(Path(__file__))[:16]}'

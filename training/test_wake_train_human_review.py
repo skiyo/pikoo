@@ -46,5 +46,19 @@ class HumanTrainReview(unittest.TestCase):
         admission['accepted_sha256'].append('unknown')
         with self.assertRaises(ValueError): validate(admission, [{'sha256': 'yes', 'label': 1}])
 
+    def test_loader_restores_all_approved_descendants_and_keeps_unknown_excluded(self):
+        from wake_train_admission import retained_indices
+        base, feedback = self.inputs(); admission = merge(base, feedback)
+        metadata = [{'sha256': h, 'label': 1, 'source': 'Qwen3-TTS-hi-piku-synthetic-local'}
+                    for h in ['old', 'yes', 'yes', 'unknown']]
+        keep, _, summary = retained_indices(admission, metadata, 5)
+        self.assertEqual(keep.tolist(), [0, 1, 2, 4])  # ordinary cached background stays
+        self.assertEqual(summary['quarantined_recordings'], 1)
+        self.assertEqual(summary['retained_examples'], 4)
+        corrupted = copy.deepcopy(admission)
+        corrupted['accepted_sha256'].append('unknown'); corrupted['quarantined_sha256'] = []
+        with self.assertRaises(ValueError): retained_indices(corrupted, metadata, 5)
+        with self.assertRaises(ValueError): retained_indices({**admission, 'household_used': True}, metadata, 5)
+
 
 if __name__ == '__main__': unittest.main()
