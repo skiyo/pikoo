@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "conditional-control-prepared-not-trained",
+  "status": "checkpoint-encoder-frozen-control-started-not-qualified",
   "start_condition": "R18 actual terminal, no qualified/frozen checkpoint, old process exited",
   "hypothesis": "Preserve wake-trained R12 acoustic encoder while adapting ordered temporal/wake head to faster speech",
   "training_change_vs_R18": "freeze_checkpoint_encoder=true",
@@ -32,5 +32,25 @@
   "household_used": false,
   "TEST_opened": false,
   "USB_server_volume_changed": false,
-  "goal_completed": false
+  "goal_completed": false,
+  "start_condition_actually_verified": true,
+  "prior_R18_actual_terminal_returncode": 0,
+  "prior_R18_all24_epochs_failed": true,
+  "no_concurrent_training": true,
+  "source_commit": "4ec2d62",
+  "actual_frozen_encoder_layers": 13,
+  "actual_encoder_trainable_layers": 0,
+  "actual_encoder_weight_arrays": 10,
+  "actual_wake_trainable_weight_arrays": 6,
+  "serialized_actual96channel_first_epoch_audit": {
+    "all_encoder_arrays_identical_to_original_donor": true,
+    "encoder_arrays_compared": 10,
+    "changed_final_wake_head_arrays": 2,
+    "diagnostic_metadata_lookup_corrected_without_training_restart": true,
+    "not_model_acceptance": true
+  },
+  "first_export_bytes": 98064,
+  "first_export_host_arena_bytes": 37808,
+  "first_epoch_DEV_qualified": false,
+  "hardware_latency_and_concurrency_accepted": false
 }

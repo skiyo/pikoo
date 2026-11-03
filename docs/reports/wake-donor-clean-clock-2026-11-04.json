@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "corrected-original-donor-control-started-not-qualified",
+  "status": "two-seed-comparison-completed-no-qualification",
   "reference_arm": "R14 continuous tempo/acoustic donor control, defective post-acoustic TRAIN clocks",
   "predecessor": "R17 completed19+22 native-evaluated epochs under configured early stopping, no qualification",
   "training_change_against_reference_R14": "Clean stretched TRAIN crop/event timing before acoustics; retain original R14 architecture, R12 initialization, optimizer/loss/rate/seeds/max12. Mandatory current16secondaryDEV guard affects acceptance only.",
@@ -32,5 +32,22 @@
   "TEST_opened": false,
   "USB_server_volume_changed": false,
   "goal_completed": false,
-  "restricted_weights_and_audio_private": true
+  "restricted_weights_and_audio_private": true,
+  "validated_epochs_by_seed": {
+    "42": 12,
+    "43": 12
+  },
+  "all24configured_epochs_completed": true,
+  "qualified_checkpoints": 0,
+  "terminal_returncode": 0,
+  "DEV_retention_diagnostic": {
+    "complete_saved_checkpoints": 24,
+    "partial_run": false,
+    "new_false_families_vs_R12": [
+      "Tikoo",
+      "missing-final-syllable"
+    ],
+    "repeated_checkpoint_exposures_not_independent_trials": true,
+    "labels_model_threshold_unchanged": true
+  }
 }
