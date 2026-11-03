@@ -160,7 +160,7 @@
   "ESP32_resource_or_concurrency_accepted": false,
   "real_family_two_session_testing_passed": false,
   "eight_hour_background_passed": false,
-  "device_changed": false,
+  "device_changed": true,
   "weights_and_recordings_private": true,
   "post_freeze_TEST_tooling": {
     "software_tests_passed": 56,
@@ -413,5 +413,11 @@
     "new_candidate_flashed": false,
     "family_acceptance_completed": false,
     "eight_hour_acceptance_completed": false
-  }
+  },
+  "ESP32_synthetic_timing_arena_precheck_passed": true,
+  "ESP32_feature_probability_probe_passed": true,
+  "device_followup_report": "wake-r12-device-2026-11-03.json",
+  "current_engineering_firmware": "0.2.2-dev-r12id",
+  "actual_adult_wake_reliability_accepted": false,
+  "actual_human_fast_speech_gap_reported": true
 }

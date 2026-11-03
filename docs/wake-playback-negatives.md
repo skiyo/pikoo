@@ -733,3 +733,34 @@ Current material readiness is **150 slots,70 raw sources,4 human-accepted
 targets,66 recorded sources without human content labels,80 missing family
 captures**. This is not a ready or passed independent TEST. The existing frozen
 DEV-qualified candidate has not been newly trained or installed by this review.
+
+
+### R12 device engineering check (2026-11-03)
+
+The user connected the board and authorized device testing. The98,088-byte
+frozen model passed a synthetic ESP32-S3 precheck:600 iterations,10.390ms p99,
+10.437ms maximum,48,796-byte arena, no deadlines missed or inference errors;
+all16 feature/probability probe frames matched the pinned host backend. Display
+rate was14.3fps under this synthetic workload, below the20fps target. This does
+not establish full audio/network/display concurrency or wake acceptance.
+
+An exact installed16MiB backup was verified against device digests. The temporary
+silent benchmark was followed by a verified original16MiB restoration. A subsequent
+user-authorized engineering app-only install runs the same frozen model/policy
+as `0.2.2-dev-r12id`, with0dB and protected NVS retained. It is a trial, not a
+formally qualified release. The adult short test produced two human-confirmed
+hit windows; attempt3 was invalidated by a host-script error. One supplementary
+window had no hit despite microphone activity and no I/O/inference errors. The
+tool now waits for Enter before each attempt, gives explicit green-cue guidance,
+records failures, and verifies bounded cleanup even after interruption;33 tool
+checks pass. No family audio was saved and none of these results selects a model.
+
+Self-paced use required several calls; the user reports slower speech works
+better than fast speech. Existing cache provenance verifies0.9–1.1 speed
+resampling for augmented synthetic TRAIN views; it couples pitch to speed and
+does not establish fast connected-speech coverage. Model, thresholds and
+server/volume/memory settings were not tuned from family feedback. Formal new
+TEST, family two-session, eight-hour background and30-minute voice gates remain
+open. See the [device record](reports/wake-r12-device-2026-11-03.json).
+
+A fixed-policy TRAIN-only tempo diagnostic used nine previously admitted originals (six targets and three near negatives), each at original speed and 0.75×/1.5× with coupled resampling or pitch-preserving `atempo` (45 cases). At 1.5×, targets hit 5/6 with pitch preserved and 0/6 with coupled pitch; original speed hit 6/6. At 0.75×, coupled resampling also caused one near-negative hit. This small, already-seen TRAIN probe identifies sensitivity, not generalization or a qualified policy. No family/DEV/TEST audio, API requests, training, threshold changes or device changes were used for the probe. Natural fast connected speech remains unverified.

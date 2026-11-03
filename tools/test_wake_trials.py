@@ -97,6 +97,26 @@ class WakeTrialTest(unittest.TestCase):
             with module.trial_session(monitor):pass
         monitor.command.assert_not_called()
 
+    def test_human_ready_is_required_while_muted_before_each_unmute(self):
+        monitor=Mock();monitor.state.return_value={'wake_test':1}
+        ready=Mock(side_effect=RuntimeError('human not ready'))
+        with self.assertRaisesRegex(RuntimeError,'human not ready'):
+            module.arm_trial(monitor,{'runtime_identity_required':False},1,ready,Mock(),pause=Mock())
+        monitor.settle.assert_called_once_with(True)
+        ready.assert_called_once_with(1)
+
+    def test_cleanup_can_be_verified_even_when_an_attempt_is_interrupted(self):
+        monitor=Mock();cleaned=Mock()
+        with self.assertRaisesRegex(RuntimeError,'pre-cue activity'):
+            with module.trial_session(monitor,leave_muted=True,on_cleanup=cleaned):
+                raise RuntimeError('pre-cue activity')
+        cleaned.assert_called_once_with()
+        self.assertEqual(monitor.mock_calls,[call.settle(True),call.command('wake test off')])
+        monitor=Mock();monitor.settle.side_effect=OSError('USB lost');cleaned=Mock()
+        with self.assertRaises(OSError):
+            with module.trial_session(monitor,leave_muted=True,on_cleanup=cleaned):pass
+        cleaned.assert_not_called()
+
     def test_pre_cue_activity_or_wrong_model_cannot_count_as_target_hit(self):
         before={'state':0,'muted':0,'upload':0,'wake_test':1,'wake_hits':3,'uploaded_samples':0,'uptime_ms':1000}
         module.before_cue(before,{**before,'uptime_ms':2000})

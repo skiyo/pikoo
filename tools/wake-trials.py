@@ -159,8 +159,26 @@ def summarize(rows, expected, diagnostic=False, observer_confirmed=False):
             'met_target':not diagnostic and criterion and observer_confirmed is True}
 
 
+def arm_trial(monitor, config, number, ready, say, pause=time.sleep):
+    """Wait for the human while muted, then show a silent listening cue."""
+    monitor.settle(True)
+    monitor.command('wake test on')
+    if monitor.state().get('wake_test') != 1:
+        raise RuntimeError('固件未启用本地评测隔离；请先升级相应固件')
+    say(f'第{number}次。先不要说话，按回车准备，等绿色开始后再开口。')
+    ready(number)
+    pause(.8)
+    armed = monitor.state()
+    monitor.settle(False)
+    pause(1)
+    before = monitor.state()
+    runtime_identity(before, config)
+    before_cue(armed, before)
+    return before
+
+
 @contextmanager
-def trial_session(monitor, leave_muted=False):
+def trial_session(monitor, leave_muted=False, on_cleanup=None):
     """Restore the requested microphone state even if the trial is interrupted."""
     signals = [signal.SIGHUP, signal.SIGTERM, signal.SIGINT]
     previous = {number: signal.getsignal(number) for number in signals}
@@ -183,6 +201,8 @@ def trial_session(monitor, leave_muted=False):
             monitor.command('wake test off')
             if not leave_muted:
                 monitor.settle(False)
+            if on_cleanup:
+                on_cleanup()
         finally:
             for number, handler in previous.items():
                 signal.signal(number, handler)
@@ -334,29 +354,20 @@ def main():
     print('一轮请由同一位测试者完成；换人前先停止，再单独开始新一轮。')
     print('本工具开启本地评测，只统计唤醒，不连接语音服务器。不会保存录音或训练模型。')
     if a.diagnostic:print('本轮仅为工程短测，无论命中几次都不认定正式验收通过。')
-    if not a.ready:
-        input('准备好后按回车开始；现在不方便可直接关闭窗口。')
     runtime_identity(monitor.state(),config)
     report['started_at_unix']=time.time()
     report['runtime_identity_verified']=config['runtime_identity_required']
     try:
-        with trial_session(monitor, leave_muted=a.diagnostic):
+        with trial_session(monitor, leave_muted=a.diagnostic,
+                           on_cleanup=lambda: report.update(cleanup_verified=True)):
             monitor.settle(True)
             say('开始测试。看到绿色开始提示后，用平常音量读一次屏幕上的唤醒词，可以自然连读。')
             for number in range(1, a.trials + 1):
                 report['current_attempt']=number
-                monitor.settle(True)
-                monitor.command('wake test on')
-                if monitor.state().get('wake_test') != 1:
-                    raise RuntimeError('固件未启用本地评测隔离；请先升级相应固件')
-                say(f'第{number}次，准备。')
-                time.sleep(.8)  # Let computer speech/reverberation finish while still muted.
-                armed=monitor.state()
-                monitor.settle(False)
-                time.sleep(1)
-                before = monitor.state()
-                runtime_identity(before,config)
-                before_cue(armed,before)
+                def ready(number):
+                    if not a.ready:
+                        input(f'第{number}轮：按回车准备，随后等绿色“开始”再说（现在先别开口）：')
+                before = arm_trial(monitor, config, number, ready, say)
                 start = time.monotonic()
                 print(f'\033[42m 第{number}次：开始 \033[0m',flush=True)
                 peak = 0.
@@ -386,7 +397,12 @@ def main():
             report['status'] = 'real-person-trials-complete'
             report['cloud_sessions_disabled_during_trials']=True
             say('本轮测试结束。麦克风将保持关闭。' if a.diagnostic else '本轮测试结束。设备即将恢复正常待机。')
-        report['cleanup_verified']=True
+    except (Exception, KeyboardInterrupt) as error:
+        report['status']='interrupted-local-test'
+        report['failure']={'type':type(error).__name__,'message':str(error),
+                           'attempt':report.get('current_attempt'),
+                           'uncompleted_attempt_not_counted_as_model_failure':True}
+        raise
     finally:
         if not report['cleanup_verified']:
             report['status']='interrupted-or-cleanup-unverified'
@@ -405,3 +421,10 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print('\n测试已中止；已尝试清理测试状态。未完成的测试不计为通过。')
         sys.exit(130)
+    except (RuntimeError, ValueError, OSError) as error:
+        message=str(error)
+        if 'Pre-cue activity' in message:
+            message='绿色开始之前已经检测到活动，本轮未计分。下次请等绿色文字出现后再开口。'
+        print('\n测试已停止：'+message)
+        print('本轮未完成，不计为模型失败或通过；诊断细节已保存到私密结果。')
+        sys.exit(2)
