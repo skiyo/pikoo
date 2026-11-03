@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+umask 077
 root="$(cd "$(dirname "$0")/.." && pwd)"
 model="${1:-${PIKOO_WAKE_MODEL:-}}"
 if [ -z "$model" ] || [ ! -f "$model" ]; then
@@ -27,5 +28,11 @@ if [ -n "${PIKOO_WAKE_VETO_PACK:-}" ]; then
   veto_pack="$(cd "$(dirname "$PIKOO_WAKE_VETO_PACK")" && pwd)/$(basename "$PIKOO_WAKE_VETO_PACK")"
   veto_args=(-DPIKOO_WAKE_VETO=ON "-DPIKOO_WAKE_VETO_MODELS=$veto_pack" "-DPIKOO_WAKE_VETO_CUTOFF=${PIKOO_WAKE_VETO_CUTOFF:-0.5}")
 fi
+build_dir="${PIKOO_BUILD_DIR:-$root/firmware/build-dualeye}"
+case "$build_dir" in /*) ;; *) build_dir="$root/firmware/$build_dir" ;; esac
+mkdir -p "$build_dir"
+build_dir="$(cd "$build_dir" && pwd)"
 cd "$root/firmware"
-idf.py -B build-dualeye -DSDKCONFIG="$PWD/build-dualeye/sdkconfig" -DPIKOO_WAKE_MODEL="$model" -DPIKOO_WAKE_MAX_BYTES="${PIKOO_WAKE_MAX_BYTES:-524288}" -DPIKOO_AUDIO_CAPTURE_BENCHMARK=OFF -DPIKOO_WAKE_BENCHMARK=OFF -DPIKOO_COMMAND_BENCHMARK=OFF "${veto_args[@]}" "${policy_args[@]}" "${trial_args[@]}" build
+build_args=(-B "$build_dir" -DSDKCONFIG="$build_dir/sdkconfig" -DPIKOO_WAKE_MODEL="$model" -DPIKOO_WAKE_MAX_BYTES="${PIKOO_WAKE_MAX_BYTES:-524288}" -DPIKOO_AUDIO_CAPTURE_BENCHMARK=OFF -DPIKOO_WAKE_BENCHMARK=OFF -DPIKOO_COMMAND_BENCHMARK=OFF -DPIKOO_VOLUME_BOOT_UPGRADE=OFF "${veto_args[@]}" "${policy_args[@]}" "${trial_args[@]}")
+if [ -n "${PIKOO_FIRMWARE_VERSION:-}" ]; then build_args+=("-DPROJECT_VER=$PIKOO_FIRMWARE_VERSION"); fi
+idf.py "${build_args[@]}" build

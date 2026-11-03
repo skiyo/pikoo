@@ -8,6 +8,20 @@
 
 固定 ESP-IDF 5.5.5。激活环境后运行 `tools/build-device.sh /私密绝对路径/模型.tflite`。独立构建目录启用 240MHz CPU、8MB Octal PSRAM；固定依赖及 CLI 命令见[英文说明](firmware.md)。双眼构建默认使用 512 KiB 实验模型文件预算；静态检查未显式配置时仍默认 64 KiB。运行时还需分配推理 arena、AFE 和帧缓冲。受限模型和含模型的固件仅保留本机。
 
+候选版本使用单独私密目录，保留旧构建：
+
+```sh
+PIKOO_BUILD_DIR=/absolute/private/candidate-build \
+PIKOO_FIRMWARE_VERSION=0.2.2-dev-candidate \
+PIKOO_WAKE_POLICY=/absolute/private/wake-policy.json \
+bash tools/build-device.sh /absolute/private/hi_pikoo.tflite
+```
+
+工具按私密权限生成文件，将 `sdkconfig` 放在该目录，显式关闭缓存中的诊断、否决层、
+试用和音量迁移选项；原有试用／否决层选项仍需另外明确开启。普通构建一律关闭音量
+迁移，仅执行 `build`，没有 USB 或烧录操作。Hi Pikoo 仍须匹配冻结策略；编译通过
+不能代替部署条件、实机内存／耗时或全双工验收。
+
 ## 安装、升级和恢复
 
 Mac 双击 `tools/Pikoo-USB.command`，提供首次安装、升级、状态、恢复原厂和修改配置。找不到环境时提示设置 `PIKOO_IDF_PATH`；不结束其他进程。

@@ -552,3 +552,31 @@ QC1–4 is a new synthetic-content question, separate from the old TS1–12 pack
 The [official model pricing](https://developers.openai.com/api/docs/models/gpt-realtime-2.1-mini)
 was rechecked without changing the generator model or the$2 cap. Independent TEST,
 ESP32 resource/concurrency, family two-session and eight-hour gates remain open.
+
+
+Human QC1–4 feedback rejected every complete target: only Hi or other phrases
+were heard. All four original attempts remain intact and are recorded as invalid
+content in the TEST-only draft, with exact words, age and accent left unknown.
+They are not four qualified positive examples. The other66 sources remain
+unreviewed; the original150-slot protocol is not ready for scoring as-is. All
+four provider responses completed below512 output tokens (118/145/139/150), so
+raising the generation token limit is not justified by this evidence. A separate
+four-request source-quality pilot is predeclared but NOT run; any future
+benchmark source repair needs an explicit pre-score provenance amendment that
+retains the failed attempts and every actual coverage/quality threshold. No
+family recording or wake-model tuning follows this feedback.
+
+A separate private full ESP32-S3 build completed using IDF5.5.5 and the frozen
+98,088-byte model. Generated3/.90 policy was compiled; the exact model occurs once
+in both application image and ELF. All12 required operator names appear in the
+firmware resolver. The application is2,655,248 bytes, leaving3,636,208 bytes in its
+6MiB partition. Every SDK configuration value and the SR resource image match
+the saved0.2.1-live16 baseline. Original build, dependency lock, weights and policy
+hashes were preserved. All diagnostic/veto/trial/volume-migration flags were off.
+Four build-request safety tests passed. The helper now supports a private
+`PIKOO_BUILD_DIR` and optional `PIKOO_FIRMWARE_VERSION` and always disables cached
+volume migration in an ordinary build; no USB/flash command was executed.
+Linker RAM statistics are NOT runtime free-heap measurements. Tensor allocation,
+ESP-NN/device parity, timing, audio/display/network concurrency and all real-world
+acceptance remain unmeasured for this candidate. The private image is not release
+eligible and is not installed. See [firmware build options](firmware.md).

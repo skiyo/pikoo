@@ -15,6 +15,23 @@ Use ESP-IDF **5.5.5**. Dependencies are pinned: ESP-SR 2.5.3, ESP-TFLite-Micro 1
 
 The script uses an isolated configuration in `firmware/build-dualeye/`, 240 MHz CPU and 8 MB octal PSRAM. The DualEye build defaults to an experimental 512 KiB wake-file budget; the static checker still defaults to 64 KiB unless explicitly configured. Inference arena, AFE and frame buffers consume additional runtime RAM. Builds containing restricted weights remain local and ignored by Git.
 
+For a candidate, preserve the previous build with a separate private directory:
+
+```sh
+PIKOO_BUILD_DIR=/absolute/private/candidate-build \
+PIKOO_FIRMWARE_VERSION=0.2.2-dev-candidate \
+PIKOO_WAKE_POLICY=/absolute/private/wake-policy.json \
+bash tools/build-device.sh /absolute/private/hi_pikoo.tflite
+```
+
+The helper creates private artifacts, keeps `sdkconfig` inside that build
+directory and explicitly disables cached diagnostic, veto, trial and volume
+migration options unless a trial/veto was separately requested through their
+existing options. Ordinary builds always turn volume migration off. It executes
+only `build`, with no USB or flash operation. Hi Pikoo still requires its exact
+frozen policy; successful compilation does not authorize deployment or prove
+runtime allocation, timing or full-duplex performance.
+
 ## USB deployment
 
 On macOS double-click `tools/Pikoo-USB.command`. It finds an active IDF environment, `PIKOO_IDF_PATH`, a workspace toolchain, or `~/esp/esp-idf`. It does not terminate other processes. Connect one board only. The assistant offers first installation, upgrade, status, factory recovery and private configuration changes.
