@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "local-complete-independent-cloud-audit-running",
+  "status": "complete-independent-audit-human-content-review-pending",
   "scope": "Entire declared reused synthetic DEV, all144originals with guardedview controls and all432fixedtempo derivatives; no selection by keyword-model scores",
   "sources": 144,
   "views": 576,
@@ -42,15 +42,16 @@
   "independent_cloud_ASR": {
     "model": "gpt-transcribe",
     "planned_views": 576,
-    "completed_at_snapshot": 67,
+    "completed_at_snapshot": 576,
     "one_request_in_flight": true,
     "minimum_request_start_interval_seconds": 3,
     "automatic_retries": false,
     "phase_accounted_or_reserved_cap_USD": 0.15,
     "global_cap_USD": 2,
-    "accounted_or_reserved_global_USD_at_snapshot": 0.6790022,
+    "accounted_or_reserved_global_USD_at_snapshot": 0.7273022,
     "usage_estimate_not_verified_invoice": true,
-    "target_hints_given": false
+    "target_hints_given": false,
+    "phase_accounted_or_reserved_USD": 0.0681
   },
   "ongoing_R22_training_unmodified": true,
   "labels_or_admission_or_policy_changed": false,
@@ -59,5 +60,59 @@
   "TEST_opened": false,
   "USB_server_config_volume_changed": false,
   "all_audit_audio_remains_private_and_excluded_from_TRAIN_or_fresh_TEST": true,
-  "goal_completed": false
+  "goal_completed": false,
+  "all576_HTTP200_responses_verified": true,
+  "cloud_actual_process_exit_verified": true,
+  "all576_response_source_hashes_verified": true,
+  "two_backend_summary": [
+    {
+      "factor": 1.0,
+      "views": 144,
+      "local_rule_match": 138,
+      "cloud_rule_match": 135,
+      "both_rule_match": 130,
+      "both_rule_mismatch": 1
+    },
+    {
+      "factor": 1.15,
+      "views": 144,
+      "local_rule_match": 129,
+      "cloud_rule_match": 124,
+      "both_rule_match": 115,
+      "both_rule_mismatch": 6
+    },
+    {
+      "factor": 1.3,
+      "views": 144,
+      "local_rule_match": 127,
+      "cloud_rule_match": 117,
+      "both_rule_match": 108,
+      "both_rule_mismatch": 8
+    },
+    {
+      "factor": 1.5,
+      "views": 144,
+      "local_rule_match": 111,
+      "cloud_rule_match": 108,
+      "both_rule_match": 90,
+      "both_rule_mismatch": 15
+    }
+  ],
+  "both_original_match_then_both_tempo_mismatch_exposures": 21,
+  "both_original_match_then_both_tempo_mismatch_unique_sources": 13,
+  "concern_exposures_by_speed": {
+    "1.15": 3,
+    "1.3": 6,
+    "1.5": 12
+  },
+  "human_review": {
+    "status": "prepared-not-yet-answered",
+    "paired_files": 4,
+    "composition": "adult positive concern, childlike positive concern, negative concern and both-match control; neutral order",
+    "selection": "complete paired audit, no keyword scores; predeclared strata then stable source hashes; omit no failures",
+    "audio": "unchanged guardedoriginal then exacttempo waveform with800ms separator, no gain or pitch change",
+    "age_or_pronunciation_inferred_from_ASR": false,
+    "expected_labels_remain_private": true,
+    "family_recorded": false
+  }
 }
