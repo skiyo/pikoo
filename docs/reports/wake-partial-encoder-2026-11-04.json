@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "conditional-partial-encoder-control-prepared-not-trained",
+  "status": "partial-encoder-control-started-not-qualified",
   "start_condition": "R19 actual terminal no qualification and process exit",
   "training_change_vs_R19": "checkpoint_encoder_freeze_before=context_2 instead of default ordered_context",
   "hypothesis": "Preserve earlier acoustic features while final encoder block adapts; complete freeze left seenTRAIN rejection errors at same budget",
@@ -29,5 +29,19 @@
   "household_used": false,
   "TEST_opened": false,
   "USB_server_volume_changed": false,
-  "goal_completed": false
+  "goal_completed": false,
+  "source_commit": "1d160ce",
+  "start_condition_verified": true,
+  "prior_R19_all24_epochs_failed": true,
+  "prior_R19_terminal_returncode": 0,
+  "no_concurrent_training": true,
+  "actual_prefix_hook": "context_2.input",
+  "actual_frozen_prefix_Keras_layers": 10,
+  "actual_prefix_weight_arrays": 7,
+  "serialized_first_epoch_prefix_exact": true,
+  "released_final_pointwise_arrays_changed": 2,
+  "first_export_bytes": 98064,
+  "first_export_host_arena_bytes": 37808,
+  "first_epoch_DEV_qualified": false,
+  "hardware_timing_concurrency_not_accepted": true
 }
