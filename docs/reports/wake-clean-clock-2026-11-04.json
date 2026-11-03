@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "training-and-native-full-DEV-running-not-qualified",
+  "status": "first-seed-early-stopped-second-seed-running-not-qualified",
   "defect_introduced_in": "continuous acoustic wrapper R14",
   "affected_arms": [
     "R14",
@@ -61,6 +61,46 @@
   "TRAIN_event_label_examples_changed": 901,
   "TRAIN_weight_examples_changed": 908,
   "first_export_model_bytes": 98712,
-  "first_seed_native_epochs_observed": 4,
-  "all_observed_epochs_qualified": false
+  "first_seed_native_epochs_observed": 19,
+  "all_observed_epochs_qualified": false,
+  "first_seed_terminal": "automatic-predeclared-early-stop-19-epochs",
+  "first_seed_no_qualified_checkpoint": true,
+  "TRAIN_terminal_diagnostic": {
+    "checkpoint": "first-seed terminal epoch19, not selected by diagnostic results",
+    "cases": 2322,
+    "positive_cases": 1518,
+    "negative_cases": 804,
+    "native_positive_hits": 1513,
+    "native_negative_false_wakes": 0,
+    "native_early_wakes": 0,
+    "native_worst_group_recall_across_speed_bands": 0.9761904761904762,
+    "reference_Micro_byte_exact": true,
+    "diagnostic_fixtures": 8,
+    "scope": "seen TRAIN fit; not independent or candidate acceptance"
+  },
+  "DEV_history_diagnostic": {
+    "R13_completed_checkpoints": 24,
+    "R17_first_seed_completed_checkpoints": 19,
+    "R17_persistent_miss_original_sources": 3,
+    "R17_persistent_misses_all_same_childlike_DEV_prompt_family": true,
+    "negative_confusion_concentrated_in_Tikoo": true,
+    "checkpoint_frequencies_are_not_independent_test_trials": true,
+    "unequal_arm_budgets_no_causal_comparison": true,
+    "TRAIN_childlike_prompt_families": 2,
+    "source_audition_perceived_genders": [
+      "girl-like",
+      "boy-like"
+    ],
+    "prompt_names_do_not_establish_actual_gender": true,
+    "prompt_family_is_not_verified_fixed_speaker_identity": true
+  },
+  "new_local_source_auditions": {
+    "count": 2,
+    "age_content_review": "pending-human",
+    "TRAIN_raw_admitted": false,
+    "wake_model_scored": false,
+    "cloud_calls": 0,
+    "new_downloads": false,
+    "not_independent_TEST_sources": true
+  }
 }
