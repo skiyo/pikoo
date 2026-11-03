@@ -1,6 +1,6 @@
 {
   "date": "2026-11-03",
-  "status": "finite-comparison-running-not-qualified",
+  "status": "finite-comparison-completed-no-qualification",
   "change": "Append pitch-preserving faster TRAIN derivatives; hold network architecture and fixed decision policy unchanged",
   "factors": [
     1.15,
@@ -261,7 +261,7 @@
   "model_weights_or_audio_in_repository": false,
   "device_changed_this_experiment": false,
   "goal_completed": false,
-  "latest_completed_epoch_at_documentation": 4,
+  "latest_completed_epoch_at_documentation": 12,
   "software_tests_passed": 31,
   "software_tests_scope": "6 tempo,9 native-finalization,7 iteration,2 extra-TRAIN,3 admission,4 human-admission tests",
   "limitations": [
@@ -395,5 +395,708 @@
   "latest_completed_seed_at_documentation": 43,
   "seed42_terminal_epochs": 12,
   "seed42_any_qualified": false,
-  "evidence_interpretation": "Complete seen TRAIN tempo set is learned; current reused DEV errors indicate a generalization gap. This does not establish real-child, natural connected-speech, independent TEST or hardware acceptance."
+  "evidence_interpretation": "Complete seen TRAIN tempo set is learned; current reused DEV errors indicate a generalization gap. This does not establish real-child, natural connected-speech, independent TEST or hardware acceptance.",
+  "seed43_terminal_epochs": 12,
+  "seed43_any_qualified": false,
+  "terminal_returncode": 0,
+  "total_completed_epochs": 24,
+  "qualified_checkpoints": 0,
+  "complete_checkpoint_outcomes": [
+    {
+      "seed": 42,
+      "epoch": 1,
+      "qualified": false,
+      "old_recall_shortfall": 2,
+      "old_false_wakes": 2,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 2,
+          "false_wakes": 3,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 2,
+      "qualified": false,
+      "old_recall_shortfall": 2,
+      "old_false_wakes": 0,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 2,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 3,
+      "qualified": false,
+      "old_recall_shortfall": 1,
+      "old_false_wakes": 0,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 2,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 4,
+      "qualified": false,
+      "old_recall_shortfall": 1,
+      "old_false_wakes": 0,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 5,
+      "qualified": false,
+      "old_recall_shortfall": 1,
+      "old_false_wakes": 1,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 6,
+      "qualified": false,
+      "old_recall_shortfall": 1,
+      "old_false_wakes": 0,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 7,
+      "qualified": false,
+      "old_recall_shortfall": 1,
+      "old_false_wakes": 0,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 8,
+      "qualified": false,
+      "old_recall_shortfall": 1,
+      "old_false_wakes": 0,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 9,
+      "qualified": false,
+      "old_recall_shortfall": 1,
+      "old_false_wakes": 0,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 10,
+      "qualified": false,
+      "old_recall_shortfall": 1,
+      "old_false_wakes": 0,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 0,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 11,
+      "qualified": false,
+      "old_recall_shortfall": 1,
+      "old_false_wakes": 0,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 42,
+      "epoch": 12,
+      "qualified": false,
+      "old_recall_shortfall": 1,
+      "old_false_wakes": 0,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 1,
+      "qualified": false,
+      "old_recall_shortfall": 0,
+      "old_false_wakes": 0,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 0,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 2,
+      "qualified": false,
+      "old_recall_shortfall": 0,
+      "old_false_wakes": 2,
+      "old_early_wakes": 1,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 3,
+      "qualified": false,
+      "old_recall_shortfall": 0,
+      "old_false_wakes": 1,
+      "old_early_wakes": 1,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 4,
+      "qualified": false,
+      "old_recall_shortfall": 0,
+      "old_false_wakes": 1,
+      "old_early_wakes": 1,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 0,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 5,
+      "qualified": false,
+      "old_recall_shortfall": 0,
+      "old_false_wakes": 1,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 0,
+          "false_wakes": 2,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 0,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 6,
+      "qualified": false,
+      "old_recall_shortfall": 0,
+      "old_false_wakes": 1,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 0,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 7,
+      "qualified": false,
+      "old_recall_shortfall": 0,
+      "old_false_wakes": 1,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 0,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 8,
+      "qualified": false,
+      "old_recall_shortfall": 0,
+      "old_false_wakes": 1,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 9,
+      "qualified": false,
+      "old_recall_shortfall": 0,
+      "old_false_wakes": 1,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 10,
+      "qualified": false,
+      "old_recall_shortfall": 0,
+      "old_false_wakes": 1,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 11,
+      "qualified": false,
+      "old_recall_shortfall": 0,
+      "old_false_wakes": 1,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "epoch": 12,
+      "qualified": false,
+      "old_recall_shortfall": 0,
+      "old_false_wakes": 1,
+      "old_early_wakes": 0,
+      "ordinary_negative_false_clips": 0,
+      "tempo": [
+        {
+          "factor": 1.15,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 1
+        },
+        {
+          "factor": 1.3,
+          "recall_shortfall": 1,
+          "false_wakes": 1,
+          "early_wakes": 0
+        },
+        {
+          "factor": 1.5,
+          "recall_shortfall": 0,
+          "false_wakes": 1,
+          "early_wakes": 0
+        }
+      ]
+    }
+  ]
 }

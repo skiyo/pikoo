@@ -1,15 +1,47 @@
 # SPDX-License-Identifier: Apache-2.0
 import json
+import hashlib
 from pathlib import Path
 import shutil
 import tempfile
 import unittest
 
 import numpy as np
-from wake_tempo import stretch, source_rows, apply_gate, preservation_cases
+from wake_tempo import stretch, source_rows, apply_gate, preservation_cases, variants, verify_dev_reference
 
 
 class TempoTest(unittest.TestCase):
+    def test_fixed_DEV_reference_rejects_feature_or_clock_drift(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); x = np.zeros((1, 6, 40), np.float32)
+            meta = [{'sha256': 'dev', 'completion_ms': 400}]
+            np.savez_compressed(root/'dev-features.npz', x=x)
+            (root/'dev-metadata.json').write_text(json.dumps(meta))
+            digest = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+            (root/'provenance.json').write_text(json.dumps({'files_sha256': {
+                name: digest(root/name) for name in ('dev-features.npz', 'dev-metadata.json')}}))
+            provenance = digest(root/'provenance.json')
+            verify_dev_reference(x, [{**meta[0], 'acoustic_augmentation': False}], root, provenance)
+            with self.assertRaises(ValueError): verify_dev_reference(x+1, meta, root, provenance)
+            with self.assertRaises(ValueError):
+                verify_dev_reference(x, [{**meta[0], 'completion_ms': 300}], root, provenance)
+
+    def test_continuous_TRAIN_is_banded_seeded_and_does_not_change_DEV(self):
+        fixed = {'factors': [1.15, 1.3, 1.5]}
+        config = {**fixed, 'TRAIN_continuous_variants_per_source': 6, 'TRAIN_acoustic_augmentation': True}
+        train = {'sha256': 'train', 'split': 'train'}
+        first = variants(train, config)
+        self.assertEqual(first, variants(train, config))
+        self.assertEqual(len(first), 6)
+        for i, (rate, key, acoustic) in enumerate(first):
+            lo, hi = ((1, 1.15), (1.15, 1.3), (1.3, 1.5))[i % 3]
+            self.assertTrue(lo < rate < hi)
+            self.assertTrue(acoustic)
+        dev = {'sha256': 'dev', 'split': 'validation'}
+        self.assertEqual(variants(dev, fixed), variants(dev, config))
+        self.assertFalse(any(acoustic for _, _, acoustic in variants(dev, config)))
+        with self.assertRaises(ValueError): variants(train, {**config, 'TRAIN_acoustic_augmentation': False})
+
     @unittest.skipUnless(shutil.which('ffmpeg'), 'ffmpeg required for real pitch-preservation test')
     def test_acceleration_shortens_signal_without_transposing_fundamental(self):
         rate = 16000

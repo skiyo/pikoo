@@ -63,6 +63,40 @@ def source_rows(original, extra, retained, protected):
     return records
 
 
+def variants(row, config):
+    """Deterministic TRAIN-only continuous tempo; DEV stays exactly unchanged."""
+    count = config.get('TRAIN_continuous_variants_per_source')
+    if count is None or row['split'] != 'train':
+        return [(f, f'tempo-v1/{row["split"]}/{row["sha256"]}/{f}', False)
+                for f in config['factors']]
+    if count != 6 or config.get('TRAIN_acoustic_augmentation') is not True:
+        raise ValueError('Only predeclared six-view continuous TRAIN experiment is supported')
+    result = []
+    for i in range(count):
+        key = f'tempo-continuous-v1/train/{row["sha256"]}/{i}'
+        seed = hashlib.sha256(key.encode()).digest()
+        rng = np.random.default_rng(int.from_bytes(seed[:8], 'little'))
+        low, high = ((1.0, 1.15), (1.15, 1.3), (1.3, 1.5))[i % 3]
+        result.append((float(rng.uniform(low, high)), key, True))
+    return result
+
+
+def verify_dev_reference(features, metadata, reference, expected_provenance):
+    if sha(reference/'provenance.json') != expected_provenance:
+        raise ValueError('Declared DEV reference changed')
+    proof = json.loads((reference/'provenance.json').read_text())
+    for name in ('dev-features.npz', 'dev-metadata.json'):
+        if sha(reference/name) != proof['files_sha256'][name]:
+            raise ValueError('Reference DEV cache changed')
+    with np.load(reference/'dev-features.npz') as data:
+        same = np.array_equal(np.asarray(features), data['x'])
+    original = json.loads((reference/'dev-metadata.json').read_text())
+    # This added bookkeeping flag has no effect on the waveform, clock or label.
+    without_flag = lambda rows: [{k: v for k, v in r.items() if k != 'acoustic_augmentation'} for r in rows]
+    if not same or without_flag(metadata) != without_flag(original):
+        raise ValueError('Derived DEV features, source labels or timing changed')
+
+
 def prepare(x, y, w, metadata, events, groups, original, extra, protected_path, config_path, output, reuse=None):
     from hi_pikoo_review import validate
     from hi_pikoo_train import read_audio, example
@@ -71,6 +105,8 @@ def prepare(x, y, w, metadata, events, groups, original, extra, protected_path, 
     if (config.get('method') != 'ffmpeg-atempo-pitch-preserving' or
             config.get('factors') != [1.15, 1.3, 1.5] or config.get('TRAIN_only_augmentation') is not True):
         raise ValueError('Exact finite tempo experiment required')
+    if config.get('TRAIN_continuous_variants_per_source') is not None:
+        variants({'split': 'train', 'sha256': 'configuration-check'}, config)
     ffmpeg = Path(config['ffmpeg']).resolve()
     if sha(ffmpeg) != config['ffmpeg_sha256']:
         raise ValueError('Declared tempo backend changed')
@@ -86,7 +122,7 @@ def prepare(x, y, w, metadata, events, groups, original, extra, protected_path, 
         for name, digest in proof['files_sha256'].items():
             if Path(name).name != name or sha(reuse/name) != digest:
                 raise ValueError('Cached tempo output changed')
-        expected = [(r['sha256'], r['split'], f) for r, _ in sources for f in config['factors']]
+        expected = [(r['sha256'], r['split'], f) for r, _ in sources for f, _, _ in variants(r, config)]
         actual = [(r['source_sha256'], r['source_split'], r['factor'])
                   for r in json.loads((reuse/'lineage.json').read_text())]
         if actual != expected:
@@ -117,16 +153,23 @@ def prepare(x, y, w, metadata, events, groups, original, extra, protected_path, 
         path = validate(row, root, protected)
         # Only the existing exterior-padding view is removed; never cut words.
         base, _ = view(read_audio(path))
-        for factor in config['factors']:
+        for factor, seed_key, acoustic in variants(row, config):
             pcm = stretch(base, factor, ffmpeg)
-            seed = hashlib.sha256(f'tempo-v1/{row["split"]}/{row["sha256"]}/{factor}'.encode()).digest()
+            seed = hashlib.sha256(seed_key.encode()).digest()
             rng = np.random.default_rng(int.from_bytes(seed[:8], 'little'))
+            if acoustic:
+                # Room/filter/gain variation is independent of tempo. Never call
+                # example(augment=True), which couples historical speed/pitch.
+                from acoustic_augment import augment as room
+                pcm = room(pcm, rng)
+                pcm = pcm + rng.normal(0, rng.uniform(1, 30), len(pcm))
             a, b, c, meta = example(pcm, row, rng, augment=False)
             meta.update(tempo_factor=factor, tempo_method=config['method'],
                 source=row['source'], source_split=row['split'], source_speaker=row['speaker'],
-                sha256_domain='original-source-audio', tempo_derived=True)
+                sha256_domain='original-source-audio', tempo_derived=True, acoustic_augmentation=acoustic)
             lineage.append({'source_sha256': row['sha256'], 'source_split': row['split'],
-                'factor': factor, 'derived_PCM16_sha256': hashlib.sha256(np.asarray(pcm, '<i2').tobytes()).hexdigest()})
+                'factor': factor, 'derived_PCM16_sha256': hashlib.sha256(
+                    np.asarray(np.clip(pcm, -32768, 32767), '<i2').tobytes()).hexdigest()})
             if row['split'] == 'train':
                 additions.append((a, b, c)); train_meta.append(meta)
             else:
@@ -138,6 +181,9 @@ def prepare(x, y, w, metadata, events, groups, original, extra, protected_path, 
     for array, base in zip(arrays, (x, y, w)):
         if array.shape[1:] != base.shape[1:]:
             raise ValueError('Tempo frontend ABI differs')
+    if config.get('DEV_reference_preparation'):
+        verify_dev_reference(dev_features, dev_meta, Path(config['DEV_reference_preparation']),
+                             config['DEV_reference_provenance_sha256'])
     np.savez_compressed(folder/'train-features.npz', x=arrays[0], y=arrays[1], w=arrays[2])
     np.savez_compressed(folder/'dev-features.npz', x=np.asarray(dev_features))
     (folder/'train-metadata.json').write_text(json.dumps(train_meta)+'\n')
@@ -151,6 +197,13 @@ def prepare(x, y, w, metadata, events, groups, original, extra, protected_path, 
         'derived_DEV_is_independent_TEST': False, 'household_used': False, 'TEST_opened': False,
         'tempo_does_not_shift_pitch': True, 'no_acoustic_or_pitch_augmentation_on_new_derivatives': True,
         'files_sha256': {p.name: sha(p) for p in sorted(folder.iterdir()) if p.is_file()}}
+    if config.get('TRAIN_continuous_variants_per_source'):
+        proof.update(TRAIN_continuous_variants_per_source=6, TRAIN_acoustic_augmentation=True,
+            TRAIN_speed_range=[1.0, 1.5], DEV_speed_factors_unchanged=True,
+            pitch_augmentation=False, no_acoustic_or_pitch_augmentation_on_new_derivatives=False)
+    if config.get('DEV_reference_preparation'):
+        proof['DEV_reference_provenance_sha256'] = config['DEV_reference_provenance_sha256']
+        proof['all_derived_DEV_features_labels_timing_unchanged'] = True
     (folder/'provenance.json').write_text(json.dumps(proof, indent=2)+'\n')
     full_events = {**events, 'records': [*events['records'], *train_meta]}
     return (*(np.concatenate([base, extra]) for base, extra in zip((x, y, w), arrays)),
