@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "conditional-control-prepared-not-training",
+  "status": "R22-started-seed42-first-native-epoch-unqualified",
   "start_condition": "R21 actual terminal0, all24 evaluations unqualified, frozen absent and actual trainer exit; if any numerical candidate, finalize it first",
   "reference": "R21 full-trainable R12 donor with milder TRAIN tempo",
   "architectural_change": "Parallel ordered20 branch from shared encoder alongside ordered72; concatenate hidden features and retain scalar wake output",
@@ -48,5 +48,23 @@
   "household_used": false,
   "TEST_opened": false,
   "USB_server_volume_changed": false,
-  "goal_completed": false
+  "goal_completed": false,
+  "source_commit": "8ead9ce",
+  "start_condition_verified": true,
+  "prior_R21_terminal_returncode": 0,
+  "prior_R21_all24_unqualified": true,
+  "prior_trainer_actual_exit_verified": true,
+  "no_concurrent_training": true,
+  "all_TRAIN_tempo_features_labels_clocks_byte_identical_R21": true,
+  "all432_DEV_features_labels_clocks_byte_identical_R21_R13": true,
+  "same_base_preparation_provenance": true,
+  "actual_runtime_parameters": 63521,
+  "first_trained_export_bytes": 114512,
+  "first_trained_host_arena_bytes": 42464,
+  "first_native_epoch_qualified": false,
+  "first_native_original_DEV_false_clips": 1,
+  "first_native_ordinary_negative_false_clips": 0,
+  "actual_serialized_checkpoint_reconstructed": true,
+  "new_short_classifier_nonzero_weights": 64,
+  "actual_short_filter_and_hidden_and_shared_final_block_updated": true
 }
