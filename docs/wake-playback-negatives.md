@@ -665,3 +665,10 @@ generated fixture PCM/metadata, including one full 150-case sealed preflight.
 The actual bundle refused declaration because QP human review is still absent;
 model, original manifests, protocol and budget hashes were preserved. No paid
 request, independent-TEST inference, family recording or device operation occurred.
+
+
+Human QP1–4 follow-up confirms all four complete target phrases and adult, ordinary
+English accents. Exact ku/ko labels were not supplied; they remain unset rather
+than copied from synthesis prompts or ASR. The partial review correctly refuses
+source-repair declaration. No new API request, scoring, family recording or board
+operation was performed. Original QC failures remain unchanged.
