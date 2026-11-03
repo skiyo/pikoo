@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "first-seed-early-stopped-second-seed-running-not-qualified",
+  "status": "configured-two-seed-comparison-completed-no-qualification",
   "defect_introduced_in": "continuous acoustic wrapper R14",
   "affected_arms": [
     "R14",
@@ -102,5 +102,15 @@
     "cloud_calls": 0,
     "new_downloads": false,
     "not_independent_TEST_sources": true
-  }
+  },
+  "validated_epochs_by_seed": {
+    "42": 19,
+    "43": 22
+  },
+  "total_native_evaluated_checkpoints": 41,
+  "configured_comparison_completed": true,
+  "maximum_60_epochs_not_all_executed": true,
+  "normal_early_stopping": true,
+  "terminal_returncode": 0,
+  "qualified_checkpoints": 0
 }
