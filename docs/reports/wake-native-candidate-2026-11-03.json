@@ -362,7 +362,7 @@
     "RT3_initial_ASR_suspicion": "Local ASR returned Hi; measured active span380ms with3650ms quiet tail; not human-labelled."
   },
   "single_source_followup": {
-    "status": "one-new-source-generated-local-ASR-full-target-human-review-pending",
+    "status": "four-active-targets-human-accepted-pronunciation-subtypes-unassigned",
     "scope": "prospective content repair before KWS inference; not a model-score retry",
     "human_rejected_slot": "TEST-074",
     "first_repair_other_three_raw_sources_unchanged": true,
@@ -378,19 +378,40 @@
     "measured_quiet_tail_ms": 3310,
     "local_ASR_text": "Hi, Piku.",
     "local_ASR_is_not_human_content_or_phoneme_gold": true,
-    "new_human_review_namespace": "RX1; reel RT1,RT2,RX1,RT4",
+    "new_human_review_namespace": null,
     "three_prior_exact_vowels_still_unassigned": true,
     "amended_manifest_slots": 150,
     "amended_recorded": 70,
     "family_slots_still_missing": 80,
     "full150_fixture_preflight_with_followup_passed": true,
-    "Python_checks_passed": 28,
+    "Python_checks_passed": 30,
     "Node_checks_passed": 3,
     "incremental_estimated_USD": 0.0017496,
     "cumulative_accounted_or_reserved_USD": 0.6577772,
     "frozen_model_and_policy_unchanged": true,
     "model_scored": false,
     "family_recorded": false,
-    "USB_accessed": false
+    "USB_accessed": false,
+    "active_target_content_human_accepted": 4,
+    "raw_user_response_summary": "All four are acceptable.",
+    "new_RX1_target_human_accepted": true,
+    "exact_per_clip_vowels_not_supplied": true,
+    "no_repeated_same_clip_vowel_questions": true,
+    "partial_label_type": "hi-piku-or-piko; positive target, actual_variant null",
+    "full_cohort_gate_unchanged": true
+  },
+  "current_fresh_TEST_readiness": {
+    "fixed_slots": 150,
+    "recorded_raw_sources": 70,
+    "human_accepted_complete_targets": 4,
+    "recorded_sources_without_human_content_labels": 66,
+    "missing_family_captures": 80,
+    "accepted_targets_without_exact_vowels": 4,
+    "accepted_targets_without_endpoint_annotations": 4,
+    "full_TEST_ready": false,
+    "KWS_TEST_scored": false,
+    "new_candidate_flashed": false,
+    "family_acceptance_completed": false,
+    "eight_hour_acceptance_completed": false
   }
 }

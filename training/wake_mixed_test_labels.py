@@ -14,7 +14,7 @@ import tempfile
 
 from wake_mixed_test import ROOT, inside, protocol, sha, validate_bundle
 
-HEARD = ('hi-piku', 'hi-piko', 'hi-alone', 'name-alone', 'Tikoo', 'nihao-Pikoo',
+HEARD = ('hi-piku', 'hi-piko', 'hi-piku-or-piko', 'hi-alone', 'name-alone', 'Tikoo', 'nihao-Pikoo',
          'ordinary-English', 'ordinary-Chinese', 'invalid-or-unclear')
 
 
@@ -100,15 +100,21 @@ def record_label(draft, plan, protocol_sha256, row, heard, age, accent, valid,
     if row.get('status') != 'recorded':
         raise ValueError('Cannot invent a content label for a missing/failed capture')
     stamp = reviewed_at or datetime.now(timezone.utc).isoformat()
-    target = heard in ('hi-piku', 'hi-piko')
-    if target and (type(completion_ms) not in (int, float) or not 0 < completion_ms < float('inf')):
+    target = heard in ('hi-piku', 'hi-piko', 'hi-piku-or-piko')
+    unspecified_vowel = heard == 'hi-piku-or-piko'
+    if target and not (unspecified_vowel and completion_ms is None) and (
+            type(completion_ms) not in (int, float) or not 0 < completion_ms < float('inf')):
         raise ValueError('Full target needs a pre-score content endpoint')
     item = {'id': row['id'], 'sha256': row['sha256'], 'heard': heard,
-        'actual_label': int(target), 'actual_variant': heard.removeprefix('hi-') if target else 'non-target',
+        'actual_label': int(target), 'actual_variant': None if unspecified_vowel else (heard.removeprefix('hi-') if target else 'non-target'),
         'actual_age': age, 'actual_accent': accent, 'quality_valid': bool(valid),
         'complete_hi_and_name': target, 'no_repetition_or_extra_words': bool(no_extra),
         'completion_ms': completion_ms if target else None,
         'negative_category': None if target else heard, 'reviewed_at': stamp}
+    if unspecified_vowel:
+        # A valid complete target is not a negative merely because its vowel
+        # was not separately labelled. Full TEST validation still requires it.
+        item['pending_annotations'] = ['actual_variant'] + (['completion_ms'] if completion_ms is None else [])
     records = list(draft['records'])
     prior = next((r for r in records if r['id'] == row['id']), None)
     if prior and prior['sha256'] != row['sha256']:

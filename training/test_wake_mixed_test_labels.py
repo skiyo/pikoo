@@ -42,6 +42,24 @@ class HumanContentLabels(unittest.TestCase):
             record_label(draft, self.plan, 'another-protocol', self.row,
                 'hi-piku', 'adult', 'standard', True, True, 1100)
 
+    def test_accepting_either_pronunciation_stays_positive_without_inventing_a_vowel(self):
+        draft = record_label(None, self.plan, 'protocol-sha', self.row,
+            'hi-piku-or-piko', 'adult', 'standard', True, True)
+        label = draft['records'][0]
+        self.assertEqual(label['actual_label'], 1)
+        self.assertTrue(label['quality_valid'])
+        self.assertTrue(label['complete_hi_and_name'])
+        self.assertIsNone(label['actual_variant'])
+        self.assertIsNone(label['negative_category'])
+        self.assertEqual(label['pending_annotations'], ['actual_variant', 'completion_ms'])
+        updated = record_label(draft, self.plan, 'protocol-sha', self.row,
+            'hi-piku-or-piko', 'adult', 'standard', True, True, 1200)
+        self.assertEqual(updated['records'][0]['pending_annotations'], ['actual_variant'])
+        for invalid in (0, -1, float('nan'), float('inf')):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                record_label(None, self.plan, 'protocol-sha', self.row,
+                    'hi-piku-or-piko', 'adult', 'standard', True, True, invalid)
+
     def test_assemble_preserves_all_missing_and_failed_slots_without_recording(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); (root/'synthetic').mkdir()

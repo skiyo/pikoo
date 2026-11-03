@@ -101,6 +101,14 @@ class MixedTestIsolation(unittest.TestCase):
         self.assertEqual(sum(r['role'] == 'child' for r in verified), 40)
         self.assertEqual(sum(r['source_kind'] == 'family' for r in verified), 80)
 
+    def test_union_pronunciation_acceptance_cannot_fabricate_complete_cohort_coverage(self):
+        review = copy.deepcopy(self.review)
+        target = next(r for r in review['records'] if r['actual_label'] == 1)
+        target['actual_variant'] = None
+        target['pending_annotations'] = ['actual_variant']
+        with self.assertRaisesRegex(ValueError, 'Actual complete target and pre-score endpoint'):
+            self.validate(review=review)
+
     def test_missing_and_duplicate_attempts_cannot_be_silently_excluded(self):
         for rows in (self.rows[:-1], self.rows[:-1] + [self.rows[0]]):
             with self.assertRaisesRegex(ValueError, 'Complete fixed TEST'):

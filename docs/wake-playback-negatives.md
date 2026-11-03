@@ -718,3 +718,18 @@ previously accepted sources. The amended full-scope manifest still has70
 recorded sources and80 missing family captures; no KWS TEST was consumed.
 Incremental generation is estimated at$0.0017496, cumulative accounted/reserved
 $0.6577772 of$2. No family recording, device access or frozen-policy change occurred.
+
+
+The user accepted all four active targets in the RT1→RT2→RX1→RT4 reel. These
+are recorded as complete positive TEST targets, not TRAIN examples. The answer
+did not assign individual ku/ko labels; those fields remain unset, and the same
+clips will not be repeatedly queried. `hi-piku-or-piko` now represents this
+truthfully in an unsealed draft, with positive label1 and explicit pending vowel
+and endpoint annotations. It does not fabricate six-cohort coverage: the full
+TEST validator still refuses missing subtypes or endpoints. All30 affected
+Python checks pass. No new API call, model score, family capture or flash occurred.
+
+Current material readiness is **150 slots,70 raw sources,4 human-accepted
+targets,66 recorded sources without human content labels,80 missing family
+captures**. This is not a ready or passed independent TEST. The existing frozen
+DEV-qualified candidate has not been newly trained or installed by this review.
