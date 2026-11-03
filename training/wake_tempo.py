@@ -66,6 +66,9 @@ def source_rows(original, extra, retained, protected):
 def variants(row, config):
     """Deterministic TRAIN-only continuous tempo; DEV stays exactly unchanged."""
     count = config.get('TRAIN_continuous_variants_per_source')
+    ceiling = config.get('TRAIN_max_tempo', 1.5)
+    if ceiling not in (1.3, 1.5) or ('TRAIN_max_tempo' in config and count is None):
+        raise ValueError('Declared continuous TRAIN ceiling must be 1.3 or 1.5')
     if count is None or row['split'] != 'train':
         return [(f, f'tempo-v1/{row["split"]}/{row["sha256"]}/{f}', False)
                 for f in config['factors']]
@@ -76,7 +79,9 @@ def variants(row, config):
         key = f'tempo-continuous-v1/train/{row["sha256"]}/{i}'
         seed = hashlib.sha256(key.encode()).digest()
         rng = np.random.default_rng(int.from_bytes(seed[:8], 'little'))
-        low, high = ((1.0, 1.15), (1.15, 1.3), (1.3, 1.5))[i % 3]
+        bands = ((1.0, 1.15), (1.15, 1.3), (1.3, 1.5)) if ceiling == 1.5 else (
+                 (1.0, 1.1), (1.1, 1.2), (1.2, 1.3))
+        low, high = bands[i % 3]
         result.append((float(rng.uniform(low, high)), key, True))
     return result
 
@@ -202,7 +207,7 @@ def prepare(x, y, w, metadata, events, groups, original, extra, protected_path, 
         'files_sha256': {p.name: sha(p) for p in sorted(folder.iterdir()) if p.is_file()}}
     if config.get('TRAIN_continuous_variants_per_source'):
         proof.update(TRAIN_continuous_variants_per_source=6, TRAIN_acoustic_augmentation=True,
-            TRAIN_speed_range=[1.0, 1.5], DEV_speed_factors_unchanged=True,
+            TRAIN_speed_range=[1.0, config.get('TRAIN_max_tempo', 1.5)], DEV_speed_factors_unchanged=True,
             TRAIN_timing_reference='clean-stretched-before-acoustic-v2',
             pitch_augmentation=False, no_acoustic_or_pitch_augmentation_on_new_derivatives=False)
     if config.get('DEV_reference_preparation'):

@@ -1,0 +1,57 @@
+{
+  "date": "2026-11-04",
+  "status": "predeclared-not-started",
+  "experiment": "R21 milder TRAIN tempo",
+  "reference": "R18 full-trainable R12 donor; not immediate R20 partial freeze",
+  "training_change": "TRAIN continuous tempo ceiling 1.3 instead of 1.5; six seeded views/source, two in each of (1,1.1), (1.1,1.2), (1.2,1.3)",
+  "original_TRAIN_prefix_preserved": true,
+  "new_sources_or_labels": false,
+  "expected_TRAIN_examples": 13162,
+  "expected_appended_TRAIN_examples": 2322,
+  "all432_tempo_DEV_must_match_R13": true,
+  "DEV_speeds": [
+    1.15,
+    1.3,
+    1.5
+  ],
+  "mandatory_secondary_negative_DEV": 16,
+  "same_model_checkpoint_optimizer_loss_rate_and_budget_as_R18": true,
+  "seeds": [
+    42,
+    43
+  ],
+  "max_epochs_each": 12,
+  "policy": {
+    "rolling": 3,
+    "threshold": 0.9
+  },
+  "pitch_shift_added": false,
+  "cascaded_DSP_adopted": false,
+  "tempo_tests_passed": 11,
+  "legacy_default2322_rate_values_unchanged_verified": true,
+  "signal_probe": {
+    "artificial_cases": 432,
+    "rate1_5_cases": 144,
+    "rate1_5_normalized_brief_transient_energy_below_0_1": 4,
+    "rate1_5_below_0_5": 19,
+    "rate1_15_and1_3_below_0_5": 0,
+    "scope": "Artificial carrier and short noise bursts, not speech/phoneme truth; no invalid-label conclusion"
+  },
+  "TRAIN_only_content_audit": {
+    "originals": 12,
+    "selection": "duration/group, not wake scores",
+    "raw_and_guarded_views_local_ASR_rule_match": 12,
+    "atempo1_5_local_ASR_rule_mismatch": 5,
+    "interpretation": "Proper-name spelling, language detection and decoder disagreements prevent automatic relabeling; no source removed",
+    "new_cloud_requests": 18,
+    "usage_seconds": 19,
+    "estimated_incremental_USD": 0.001425,
+    "cumulative_accounted_or_reserved_USD": 0.6592022,
+    "cap_USD": 2,
+    "actual_invoice_not_verified": true
+  },
+  "household_used": false,
+  "TEST_opened": false,
+  "USB_server_volume_changed": false,
+  "goal_completed": false
+}

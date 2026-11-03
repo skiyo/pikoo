@@ -51,6 +51,31 @@ class TempoTest(unittest.TestCase):
         self.assertFalse(any(acoustic for _, _, acoustic in variants(dev, config)))
         with self.assertRaises(ValueError): variants(train, {**config, 'TRAIN_acoustic_augmentation': False})
 
+    def test_milder_TRAIN_ceiling_preserves_all_DEV_speeds_and_view_count(self):
+        config = {'factors': [1.15, 1.3, 1.5], 'TRAIN_continuous_variants_per_source': 6,
+                  'TRAIN_acoustic_augmentation': True}
+        capped = {**config, 'TRAIN_max_tempo': 1.3}
+        row = {'sha256': 'train-ceiling-control', 'split': 'train'}
+        original, limited = variants(row, config), variants(row, capped)
+        self.assertEqual(len(limited), 6)
+        self.assertEqual(limited, variants(row, capped))
+        for i, ((speed, key, acoustic), old) in enumerate(zip(limited, original)):
+            lo, hi = ((1, 1.1), (1.1, 1.2), (1.2, 1.3))[i % 3]
+            self.assertTrue(lo < speed < hi)
+            self.assertEqual((key, acoustic), old[1:])  # Keep source/view seeds and acoustics.
+        dev = {'sha256': 'heldout-dev', 'split': 'validation'}
+        self.assertEqual(variants(dev, config), variants(dev, capped))
+        self.assertEqual([x[0] for x in variants(dev, capped)], [1.15, 1.3, 1.5])
+
+    def test_TRAIN_ceiling_cannot_be_unsupported_or_silently_ignored(self):
+        row = {'sha256': 'train', 'split': 'train'}
+        config = {'factors': [1.15, 1.3, 1.5], 'TRAIN_continuous_variants_per_source': 6,
+                  'TRAIN_acoustic_augmentation': True}
+        for value in (None, True, 1, 1.4, 2, '1.3', float('nan')):
+            with self.assertRaises(ValueError): variants(row, {**config, 'TRAIN_max_tempo': value})
+        with self.assertRaises(ValueError):
+            variants(row, {'factors': [1.15, 1.3, 1.5], 'TRAIN_max_tempo': 1.3})
+
     @unittest.skipUnless(shutil.which('ffmpeg'), 'ffmpeg required for real pitch-preservation test')
     def test_acceleration_shortens_signal_without_transposing_fundamental(self):
         rate = 16000

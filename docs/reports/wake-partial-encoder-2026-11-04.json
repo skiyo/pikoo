@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "partial-encoder-control-started-not-qualified",
+  "status": "completed-no-qualified-checkpoint",
   "start_condition": "R19 actual terminal no qualification and process exit",
   "training_change_vs_R19": "checkpoint_encoder_freeze_before=context_2 instead of default ordered_context",
   "hypothesis": "Preserve earlier acoustic features while final encoder block adapts; complete freeze left seenTRAIN rejection errors at same budget",
@@ -43,5 +43,13 @@
   "first_export_bytes": 98064,
   "first_export_host_arena_bytes": 37808,
   "first_epoch_DEV_qualified": false,
-  "hardware_timing_concurrency_not_accepted": true
+  "hardware_timing_concurrency_not_accepted": true,
+  "terminal_returncode": 0,
+  "completed_epochs_per_seed": {
+    "42": 12,
+    "43": 12
+  },
+  "all24_frozen_prefix_checks_passed": true,
+  "qualified_checkpoints": 0,
+  "device_installed": false
 }
