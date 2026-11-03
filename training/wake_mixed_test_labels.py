@@ -34,7 +34,7 @@ def binding(plan, protocol_sha256):
             'policy_sha256': plan['policy_sha256']}
 
 
-def assemble(plan, root):
+def assemble(plan, root, repair_path=None, policy_path=None):
     """All 150 slots remain present, including empty/failed source attempts."""
     root = root.resolve()
     source = root / 'synthetic/manifest.json'
@@ -81,6 +81,10 @@ def assemble(plan, root):
                         real_child=slot['role']=='child', family_inputs_used=True,
                         reference_audio_used=False)
         result.append(row)
+    if repair_path:
+        from wake_mixed_test_repair import repaired_rows
+        replacements = repaired_rows(plan, root, policy_path, repair_path)
+        result = [replacements.get(row['id'], row) for row in result]
     return result
 
 
@@ -114,7 +118,7 @@ def record_label(draft, plan, protocol_sha256, row, heard, age, accent, valid,
 
 
 def seal(plan, rows, draft, root, policy, policy_sha256, protected, protected_sha256,
-         manifest_sha256, protocol_sha256):
+         manifest_sha256, protocol_sha256, repair_path=None, policy_path=None):
     wanted = binding(plan, protocol_sha256)
     if any(draft.get(k) != v for k, v in wanted.items()) or draft.get('model_scored') is not False:
         raise ValueError('Unscored candidate-bound content labels required')
@@ -122,8 +126,10 @@ def seal(plan, rows, draft, root, policy, policy_sha256, protected, protected_sh
         'labels_committed_before_model_scores': True, 'model_scored': False,
         'reviewed_by': 'human-content-only', 'reviewed_at': datetime.now(timezone.utc).isoformat(),
         'records': draft['records']}
+    if repair_path:
+        report['source_repair_plan_sha256'] = sha(repair_path)
     validate_bundle(plan, rows, report, root, policy, policy_sha256,
-        protected, protected_sha256, manifest_sha256, protocol_sha256)
+        protected, protected_sha256, manifest_sha256, protocol_sha256, repair_path, policy_path)
     return report
 
 
@@ -139,6 +145,7 @@ def main():
     parser.add_argument('--quality', choices=('valid', 'invalid'))
     parser.add_argument('--no-repetition-or-extra-words', action='store_true')
     parser.add_argument('--completion-ms', type=float)
+    parser.add_argument('--source-repair', type=Path, help='Explicit immutable pre-score source repair plan')
     args = parser.parse_args(); os.umask(0o077)
     from hi_pikoo_sealed_review import frozen
     policy = frozen(args.model, args.policy)
@@ -150,12 +157,13 @@ def main():
     if any((args.policy.parent / name).exists() for name in
            ('sealed-test-consumption.json', 'independent-TEST-consumption.json')):
         raise ValueError('TEST already consumed; labels cannot change after predictions')
-    manifest = root / 'manifest.json'; draft_path = root / 'human-review.draft.json'
-    sealed = root / 'human-review.json'
+    suffix = '.source-repair1' if args.source_repair else ''
+    manifest = root / ('manifest' + suffix + '.json'); draft_path = root / ('human-review' + suffix + '.draft.json')
+    sealed = root / ('human-review' + suffix + '.json')
     if sealed.exists() and json.loads(sealed.read_text()).get('labels_committed_before_model_scores'):
         raise ValueError('Content review already sealed; no silent replacement')
     if args.action == 'assemble':
-        rows = assemble(plan, root); write(manifest, rows)
+        rows = assemble(plan, root, args.source_repair, args.policy); write(manifest, rows)
         print(json.dumps({'slots': len(rows), 'recorded': sum(r['status']=='recorded' for r in rows),
             'missing_or_failed': sum(r['status']!='recorded' for r in rows), 'model_scored': False}))
         return
@@ -181,7 +189,8 @@ def main():
             raise ValueError('No human content labels; cannot seal TEST')
         protection = json.loads(args.protected_hashes.read_text())
         report = seal(plan, rows, draft, root, policy, sha(args.policy),
-            set(protection['audio_sha256'].values()), sha(args.protected_hashes), sha(manifest), sha(args.protocol))
+            set(protection['audio_sha256'].values()), sha(args.protected_hashes), sha(manifest), sha(args.protocol),
+            args.source_repair, args.policy)
         write(sealed, report)
         print(json.dumps({'content_review_sealed': True, 'cases': len(rows), 'model_scored': False}))
 

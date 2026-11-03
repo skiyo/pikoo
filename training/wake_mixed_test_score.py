@@ -32,7 +32,7 @@ def preflight(args):
     review = json.loads(args.review.read_text())
     cases = validate_bundle(plan, rows, review, args.manifest.parent, policy, sha(args.policy),
         set(protection['audio_sha256'].values()), sha(args.protected_hashes),
-        sha(args.manifest), sha(args.protocol))
+        sha(args.manifest), sha(args.protocol), getattr(args, 'source_repair', None), args.policy)
     return policy, protection, cases
 
 
@@ -50,6 +50,7 @@ def main():
     for name in ('protocol', 'manifest', 'review', 'model', 'policy', 'protected-hashes',
                  'native-proof', 'micro-check', 'output'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--source-repair', type=Path)
     args = parser.parse_args()
     if args.output.resolve().is_relative_to(ROOT) or args.output.exists():
         parser.error('Choose a new private output directory outside the source repository')
@@ -63,6 +64,8 @@ def main():
         'policy_sha256': sha(args.policy), 'protocol_sha256': sha(args.protocol),
         'manifest_sha256': sha(args.manifest), 'review_sha256': sha(args.review),
         'recording_sha256': {c['id']: c['sha256'] for c in cases}}
+    if args.source_repair:
+        consumption['source_repair_plan_sha256'] = sha(args.source_repair)
     # Exclusive marker comes first: an inference/import failure still consumes it.
     with marker.open('x') as file:
         json.dump(consumption, file, indent=2)
@@ -112,6 +115,14 @@ def main():
         'family_TEST_only': True, 'model_or_policy_selected_using_TEST': False,
         'hardware_resource_or_concurrency_passed': False, 'family_two_sessions_passed': False,
         'eight_hour_background_passed': False, 'formal_goal_completed': False}
+    if args.source_repair:
+        report['source_repair_plan_sha256'] = consumption['source_repair_plan_sha256']
+        report['source_quality_repair'] = {
+            'original_rejected_source_attempts_retained': 4,
+            'additional_predeclared_benchmark_attempts': 4,
+            'scored_slots_unchanged': 150,
+            'recipe_auditions_scored': False,
+            'not_a_retry_after_KWS_scores': True}
     (args.output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
     protection['audio_sha256'].update({'consumed-mixed-TEST/' + c['id']: c['sha256'] for c in cases})
     (args.output / 'protected-including-consumed-TEST.json').write_text(json.dumps(protection, indent=2) + '\n')

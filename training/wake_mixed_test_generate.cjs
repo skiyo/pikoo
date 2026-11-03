@@ -5,17 +5,20 @@ const {cost,reserve,generationCount,existingKeyClient,write,RESERVATION}=require
 function args(argv){const a={};for(let i=0;i<argv.length;i+=2){if(!argv[i].startsWith('--')||argv[i+1]===undefined)throw Error('Expected --name value');a[argv[i].slice(2)]=argv[i+1];}return a;}
 function sourcePreflight(a){
  for(const name of ['python','protocol','policy','model','protected-hashes','native-proof','isolation','output','budget-root','key-file'])if(!a[name])throw Error('Missing --'+name);
- const limit=Number(a['new-attempt-limit']||70);
- if(!Number.isInteger(limit)||limit<1||limit>70)throw Error('At most70 source attempts per invocation');
+ const repair=!!a['source-repair'],maximum=repair?4:70,limit=Number(a['new-attempt-limit']||maximum);
+ if(!Number.isInteger(limit)||limit<1||limit>maximum)throw Error('At most'+maximum+' source attempts per invocation');
  const result=spawnSync(a.python,[path.join(__dirname,'wake_mixed_test_source.py'),
-  ...['protocol','policy','model','protected-hashes','native-proof','isolation'].flatMap(k=>['--'+k,a[k]])],{encoding:'utf8',timeout:15000,maxBuffer:1024*1024});
+  ...['protocol','policy','model','protected-hashes','native-proof','isolation'].flatMap(k=>['--'+k,a[k]]),
+  ...(repair?['--source-repair',a['source-repair']]:[])],{encoding:'utf8',timeout:15000,maxBuffer:1024*1024});
  if(result.status!==0)throw Error('Mixed TEST source preflight failed before credentials: '+String(result.stderr||result.error?.message||'').slice(-1600));
  const plan=JSON.parse(result.stdout);
- if(plan.scope!=='synthetic-source-sub-bundle-not-full-TEST'||plan.full_TEST_complete!==false||plan.whole_TEST_slots!==150||plan.synthetic_slots!==70||plan.family_slots_still_required!==80||plan.rows.length!==70)throw Error('Full mixed TEST scope missing');
+ if(plan.scope!=='synthetic-source-sub-bundle-not-full-TEST'||plan.full_TEST_complete!==false||plan.whole_TEST_slots!==150||plan.synthetic_slots!==70||plan.family_slots_still_required!==80||plan.rows.length!==maximum)throw Error('Full mixed TEST scope missing');
+ if(repair&&(plan.source_repair_requests!==4||plan.original70_sources_retained!==true||plan.automatic_retry!==false||
+   plan.rows.some(r=>r.source_repair_plan_sha256!==plan.source_repair_plan_sha256||r.generation_request_policy!=='literal-target-response-v2')))throw Error('Source repair proof missing');
  const requested=path.resolve(a.output),root=fs.realpathSync(path.resolve(__dirname,'..'));
  const output=fs.existsSync(requested)?fs.realpathSync(requested):path.join(fs.realpathSync(path.dirname(requested)),path.basename(requested));
  if(output===root||output.startsWith(root+path.sep))throw Error('Audio must remain outside the source repository');
- if(output!==path.join(fs.realpathSync(path.dirname(a.protocol)),'synthetic'))throw Error('Use only this TEST protocol\'s private synthetic subdirectory');
+ if(output!==path.join(fs.realpathSync(path.dirname(a.protocol)),repair?'source-repair1':'synthetic'))throw Error('Use only this TEST protocol\'s private source subdirectory');
  if(fs.realpathSync(a['budget-root'])!==plan.shared_budget_root)throw Error('Must use the protected historical cumulative budget root');
  return {plan,output,limit};
 }
@@ -60,7 +63,8 @@ async function main(){
    reserve(ledger,{id:row.request_id,model:'gpt-realtime-2.1-mini',scope:plan.scope},.2);write(ledgerFile,ledger);
    attempts++;const started=Date.now(),entry=ledger.entries.find(e=>e.id===row.request_id);
    try{
-    const saved=await generate([row.request_id,row.voice,row.style,row.text]);
+    const saved=await generate([row.request_id,row.voice,row.style,row.text],
+     plan.source_repair_requests?{literalTargetOnly:true}:{});
     entry.actual_usd=cost(saved.usage);entry.status='completed';write(ledgerFile,ledger);
     records.push({...saved,...row,status:'recorded',path:saved.file,created_at:saved.created_at,content_review:'pending',admitted_to_training:false});
     write(manifestFile,records);saveStatus();

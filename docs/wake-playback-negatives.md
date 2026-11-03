@@ -624,3 +624,44 @@ Model/policy hashes and version are present in the image; previous artifacts
 are archived. This is compilation evidence, not a flashed or accepted device.
 QC1–4 remain rejected; QP1–4 are separate source auditions awaiting review.
 No additional generation charge or family recording was introduced.
+
+### Content-only source repair tooling (2026-11-03)
+
+`training/wake_mixed_test_repair.py` now implements the prospective repair route
+for the four human-rejected QC sources. It requires actual human QP1–4 recipe
+observations: full greeting/name, heard vowel, adult age impression, standard
+accent, and no repetition/extra words. Prompt text and local ASR cannot fill
+these fields. No real repair plan is active while those observations are missing.
+
+The declaration binds the unchanged full protocol, frozen model/policy, original
+70-source manifest, rejection, recipe audition manifest and human recipe review.
+It fixes four **new** requests, one attempt each, with the already checked
+literal-response policy. Generation reuses the historical $2 ledger/lock and
+1000-attempt limit, at most one request per five seconds, with no automatic retry.
+Output is separate (`source-repair1/`); original failed audio remains unchanged.
+Audition/raw-source reuse is rejected by both WAV and PCM hashes.
+
+Developer sequence, only after the pending recipe observations are available:
+
+1. Run `wake_mixed_test_repair.py --help`; create the separate immutable
+   `source-repair1-plan.json` using the actual rejection, audition manifest and
+   human recipe review. An absent/partial review refuses before writing a plan.
+2. Pass `--source-repair PATH` to `wake_mixed_test_generate.cjs`, with the existing
+   full-protocol, protected-source, backend, isolation and cumulative-budget
+   arguments. Use the bundle's `source-repair1` output directory, never `synthetic`.
+3. Pass that same plan to `wake_mixed_test_labels.py --source-repair PATH` for
+   assemble/label/seal. The amended manifest and review use separate
+   `.source-repair1` filenames. New sources still need their own content labels;
+   approval of a recipe does not approve future generated words automatically.
+4. Pass the plan and amended manifest/review explicitly to
+   `wake_mixed_test_score.py --source-repair PATH`. All 150 cases, six actual
+   20-target cohorts and 30 negatives remain mandatory. Other cases cannot be
+   rewritten through this amendment. The report discloses the four retained
+   invalid attempts and four additional requests separately from model scores.
+
+A sealed review cannot authorize more generation. A consumed KWS TEST cannot
+be amended or rerun as fresh. The 24 affected Python and 3 Node checks use only
+generated fixture PCM/metadata, including one full 150-case sealed preflight.
+The actual bundle refused declaration because QP human review is still absent;
+model, original manifests, protocol and budget hashes were preserved. No paid
+request, independent-TEST inference, family recording or device operation occurred.

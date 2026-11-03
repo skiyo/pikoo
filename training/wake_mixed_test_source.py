@@ -80,6 +80,14 @@ def preflight(args):
             plan['protected_registry_sha256'] != sha(args.protected_hashes)):
         raise ValueError('Protocol must bind the exact policy/protection snapshot')
     rows = source_plan(plan, policy, sha(args.protocol))
+    repair_path = getattr(args, 'source_repair', None)
+    if repair_path:
+        from wake_mixed_test_repair import validate_declaration, generation_rows, unconsumed
+        unconsumed(args.policy, args.protocol.resolve().parent)
+        if repair_path.resolve() != args.protocol.resolve().parent / 'source-repair1-plan.json':
+            raise ValueError('Use only the private bundle source repair plan')
+        repair = validate_declaration(json.loads(repair_path.read_text()), plan, args.policy, args.protocol.resolve().parent)
+        rows = generation_rows(repair, rows, sha(repair_path))
     # Anchor billing to the already protected historical corpus, never a new
     # output folder's ledger. Refuse ambiguity instead of selecting a cheaper one.
     budget_roots = set()
@@ -90,17 +98,22 @@ def preflight(args):
             budget_roots.add(str(parent))
     if len(budget_roots) != 1:
         raise ValueError('Exactly one protected historical cumulative $2 ledger required')
-    return {'scope': 'synthetic-source-sub-bundle-not-full-TEST',
+    result = {'scope': 'synthetic-source-sub-bundle-not-full-TEST',
         'protocol_sha256': sha(args.protocol), 'policy_sha256': sha(args.policy),
         'model_sha256': sha(args.model), 'whole_TEST_slots': 150, 'synthetic_slots': 70,
         'family_slots_still_required': 80, 'full_TEST_complete': False,
         'shared_budget_root': next(iter(budget_roots)), 'rows': rows}
+    if repair_path:
+        result.update(source_repair_plan_sha256=sha(repair_path), source_repair_requests=4,
+                      original70_sources_retained=True, automatic_retry=False)
+    return result
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     for name in ('protocol', 'policy', 'model', 'protected-hashes', 'native-proof', 'isolation'):
         p.add_argument('--' + name, type=Path, required=True)
+    p.add_argument('--source-repair', type=Path)
     print(json.dumps(preflight(p.parse_args())))
 
 

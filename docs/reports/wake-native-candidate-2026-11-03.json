@@ -279,5 +279,31 @@
     "family_trial_started": false,
     "raw_audio_saved": false,
     "formal_goal_completed": false
+  },
+  "pre_score_source_repair_tooling": {
+    "implemented": true,
+    "scope": "four human-rejected synthetic source attempts only, before any KWS TEST scores",
+    "requires_actual_QP1_4_human_recipe_observations": true,
+    "old70_source_attempts_and_rejections_immutable": true,
+    "new_benchmark_requests_predeclared": 4,
+    "maximum_attempts_each": 1,
+    "automatic_retry": false,
+    "same_cumulative_USD_cap": 2,
+    "separate_source_manifest_and_human_labels": true,
+    "WAV_and_PCM_audition_reuse_rejected": true,
+    "other_scoring_cases_cannot_be_rewritten": true,
+    "full150_and_six20_cohorts_unchanged": true,
+    "consumed_TEST_repair_rejected": true,
+    "affected_Python_checks_passed": 24,
+    "affected_Node_checks_passed": 3,
+    "checks_use_fixture_PCM_only": true,
+    "full150_fixture_preflight_passed_without_inference": true,
+    "actual_declaration_refused_missing_human_recipe_review": true,
+    "actual_repair_plan_activated": false,
+    "new_API_requests": 0,
+    "new_KWS_TEST_scores": 0,
+    "device_operations": 0,
+    "family_recordings": 0,
+    "frozen_model_and_policy_unchanged": true
   }
 }

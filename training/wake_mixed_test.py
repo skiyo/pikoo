@@ -134,7 +134,7 @@ def family_proof(root, row, slot, plan, pcm, protocol_sha256):
 
 
 def validate_bundle(plan, rows, review, root, policy, policy_sha256, protected, protected_sha256,
-                    manifest_sha256, protocol_sha256):
+                    manifest_sha256, protocol_sha256, repair_path=None, policy_path=None):
     """Validate all cases and human labels BEFORE opening the inference backend."""
     expected = protocol(policy, policy_sha256, protected_sha256, plan['declared_at'])
     if plan != expected:
@@ -142,6 +142,17 @@ def validate_bundle(plan, rows, review, root, policy, policy_sha256, protected, 
     slots = {slot['id']: slot for slot in plan['slots']}
     if len(rows) != len(slots) or {row['id'] for row in rows} != set(slots):
         raise ValueError('Complete fixed TEST required; missing/duplicate attempts cannot disappear')
+    amended = {row['id'] for row in rows if row.get('source_repair_plan_sha256')}
+    if repair_path:
+        from wake_mixed_test_repair import repaired_rows
+        from wake_mixed_test_labels import assemble
+        replacements = repaired_rows(plan, root, policy_path, repair_path)
+        original_rows = {row['id']: row for row in assemble(plan, root)}
+        if (amended != set(replacements) or review.get('source_repair_plan_sha256') != sha(repair_path) or
+                any(row != replacements.get(row['id'], original_rows[row['id']]) for row in rows)):
+            raise ValueError('Explicit source repair evidence and exact new original rows required')
+    elif amended or review.get('source_repair_plan_sha256'):
+        raise ValueError('Repaired sources require the explicit pre-score amendment')
     if (review.get('protocol_sha256') != protocol_sha256 or
             review.get('manifest_sha256') != manifest_sha256 or
             review.get('model_sha256') != plan['model_sha256'] or
