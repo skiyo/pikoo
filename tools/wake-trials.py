@@ -22,7 +22,7 @@ class Monitor:
         self.socket_path, self.status_path = socket_path, status_path
 
     def command(self, text):
-        if text not in {'status', 'mute', 'unmute', 'end', 'wake test on', 'wake test off'}:
+        if text not in {'status', 'mute', 'unmute', 'wake test on', 'wake test off'}:
             raise ValueError('Trial tooling must never simulate a wake')
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
             connection.settimeout(3)
@@ -43,7 +43,8 @@ class Monitor:
 
     def settle(self, muted):
         self.command('mute' if muted else 'unmute')
-        self.command('end')
+        # Mute/unmute already request a session stop. Explicit `end` also
+        # clears the persistent topic, which a wake trial must never do.
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
             state = self.state()

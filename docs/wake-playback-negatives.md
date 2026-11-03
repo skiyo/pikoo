@@ -480,3 +480,39 @@ packets, corrupt payloads, missing diagnostics, upload/state changes and crashes
 This proves bounded transport integrity only: consent, post-freeze collection
 time and human content labels must be recorded separately before TEST admission.
 The mixed-source capture/benchmark workflow is not yet ready for a family run.
+
+
+The follow-up TEST tooling is implemented but has not been exercised with the
+connected board or real household audio:
+
+- `tools/wake_test_session.py` records one explicitly requested four-second
+  clip through an existing, project-owned USB monitor. It refuses active calls,
+  checks private log/status ownership, arms local-only TEST mode while muted,
+  renews the gate after human readiness, and uses a visual start cue. It never
+  sends `end`, changes volume, flashes or selects a model. Exit/interrupt first
+  mutes the microphone, then disables TEST mode; if muting cannot be confirmed,
+  it preserves the isolation gate and reports failure. It leaves the microphone
+  muted; normal standby must be restored explicitly after the test session.
+- `training/wake_mixed_test.py` predeclares 150 slots: 20 targets for each of
+  six actual-content cohorts and five negatives in each of six categories.
+  This includes 80 fresh family TEST recordings and 70 held-out synthetic clips;
+  it does not claim the same family people are previously unseen speakers.
+  Child cases are actual, user-declared children, reported separately from
+  synthetic childlike DEV. A protocol file does not authorize recording.
+- `training/wake_mixed_test_score.py` checks complete source/content labels,
+  waveform hashes, post-declaration dates, raw family transport proofs and the
+  exact native backend before scoring. It uses full waveforms without training
+  crops, random lead-in or augmentation. A consumption marker is created before
+  inference; retries cannot claim a fresh TEST. No threshold search is available.
+  Formal hardware, two-session and eight-hour acceptance flags stay false.
+- The old no-recording trial helper no longer sends `end` while settling;
+  mute/unmute already stop the transient session and preserve its stored topic.
+
+The private prior-recording snapshot unions eight metadata sources and protects
+1,885 unique hashes, including TRAIN/DEV, old TEST and source auditions. The real
+empty bundle was correctly refused at preflight (0/150 rows), without inference
+or a consumption marker. Thirty-two relevant tooling/isolation tests passed on
+generated fixtures. No new synthesis request, family recording, device change or
+model/policy change occurred. The adult-synthesis sub-bundle generation and human
+content-label collection still need integration; this is not an end-to-end TEST
+pass. Family readiness remains deferred at the user's request.

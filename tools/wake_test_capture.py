@@ -47,7 +47,7 @@ def decode_capture(raw):
                 if phase == 'after' and after is None:
                     after = diagnostic
         if 'wake_pcm:' not in line:
-            if phase == 'capture' and any(tag in line for tag in
+            if phase in ('capture', 'after') and any(tag in line for tag in
                     ('Guru Meditation', 'Brownout', 'Backtrace:', 'ESP-ROM:')):
                 raise ValueError('Reset/crash during capture')
             continue

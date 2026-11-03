@@ -23,10 +23,18 @@ class WakeTrialTest(unittest.TestCase):
 
     def test_trial_tool_cannot_inject_manual_or_synthetic_wake(self):
         monitor = module.Monitor(Path('/unused'), Path('/unused'))
-        for command in ['wake', 'takeover', 'wake capture', 'tone']:
+        for command in ['wake', 'takeover', 'wake capture', 'tone', 'end']:
             with self.subTest(command=command):
                 with self.assertRaisesRegex(ValueError, 'never simulate a wake'):
                     monitor.command(command)
+
+    def test_settle_preserves_context_by_never_sending_end(self):
+        for muted in (False, True):
+            monitor = module.Monitor(Path('/unused'), Path('/unused'))
+            monitor.command = Mock()
+            monitor.state = Mock(return_value={'muted': int(muted), 'state': 5 if muted else 0})
+            monitor.settle(muted)
+            monitor.command.assert_called_once_with('mute' if muted else 'unmute')
 
     def test_diagnostic_short_trial_never_claims_acceptance(self):
         for count in [3,20]:

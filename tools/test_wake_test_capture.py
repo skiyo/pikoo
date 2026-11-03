@@ -58,7 +58,8 @@ class CaptureIntegrity(unittest.TestCase):
                 self.decode(lines)
 
     def test_multiple_captures_and_crashes_rejected(self):
-        for lines in (log() + log(), log()[:20] + ['ESP-ROM: esp32s3'] + log()[20:]):
+        for lines in (log() + log(), log()[:20] + ['ESP-ROM: esp32s3'] + log()[20:],
+                      log()[:-1] + ['ESP-ROM: esp32s3', diagnostic(uptime_ms=16000)]):
             with self.assertRaises(ValueError):
                 self.decode(lines)
 

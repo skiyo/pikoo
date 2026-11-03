@@ -138,5 +138,24 @@
   "real_family_two_session_testing_passed": false,
   "eight_hour_background_passed": false,
   "device_changed": false,
-  "weights_and_recordings_private": true
+  "weights_and_recordings_private": true,
+  "post_freeze_TEST_tooling": {
+    "software_tests_passed": 32,
+    "fixture_audio_only": true,
+    "private_protocol_slots": 150,
+    "prior_protected_unique_hashes": 1885,
+    "prior_metadata_sources": 8,
+    "actual_empty_bundle_preflight_rejected": true,
+    "actual_TEST_rows": 0,
+    "fresh_TEST_inference_started": false,
+    "consumption_marker_created": false,
+    "bounded_single_capture_implemented": true,
+    "connected_board_capture_validated": false,
+    "family_recorded": false,
+    "adult_synthetic_sub_bundle_generation_integrated": false,
+    "human_label_workflow_integrated": false,
+    "old_trial_context_clear_bug_fixed": true,
+    "new_API_requests": 0,
+    "user_family_availability": "arrange-later"
+  }
 }
