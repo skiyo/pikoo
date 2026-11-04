@@ -55,7 +55,7 @@ def main():
             if p.is_file():copy(p,model/p.name)
         copy(a.model,model/'hi_pikoo.tflite');copy(a.checkpoint,model/'checkpoint.weights.h5')
         copy(ROOT/'LICENSE',model/'SOURCE-CODE-LICENSE');copy(ROOT/'NOTICE',model/'SOURCE-CODE-NOTICE')
-        manifest={'version':version,'board':'waveshare-dualeye-1.28','idf':'5.5.5','model_sha256':sha(a.model),'policy_sha256':sha(policy),'nvs_included':False,'source_license':'Apache-2.0','model_terms':'models/hi-pikoo/LICENSE.md','firmware_sha256':sha(dest/'pikoo.bin')}
+        manifest={'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),'version':version,'board':'waveshare-dualeye-1.28','idf':'5.5.5','model_sha256':sha(a.model),'policy_sha256':sha(policy),'nvs_included':False,'source_license':'Apache-2.0','model_terms':'models/hi-pikoo/LICENSE.md','firmware_sha256':sha(dest/'pikoo.bin')}
         (firmware/'release-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
         for tree in (firmware,model):checksums(tree)
         zip_tree(firmware,a.output/f'hi-pikoo-firmware-{version}.zip');zip_tree(model,a.output/f'hi-pikoo-model-{version}.zip')
