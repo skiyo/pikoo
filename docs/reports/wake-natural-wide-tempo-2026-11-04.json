@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-04",
+  "status": "launched-feature-preparation",
+  "reference": "Terminal failed R25, same approved24new synthetic originals plus previous TRAIN corpus",
+  "only_training_change": "TRAIN continuous tempo ceiling1.3 to1.5, keeping pitch; six views per source in bands1.0-1.15,1.15-1.3,1.3-1.5",
+  "TRAIN_examples_expected": 13558,
+  "same_R12_checkpoint_and_single72architecture": true,
+  "same_432_tempo_DEV_and_original_R12_floors": true,
+  "required_secondary_DEV": 16,
+  "seeds": [
+    42,
+    43
+  ],
+  "maximum_epochs_each": 12,
+  "threshold": 0.9,
+  "rolling": 3,
+  "new_raw_recordings_or_API_calls": 0,
+  "candidate_frozen": false,
+  "TEST_opened": false,
+  "household_used": false,
+  "device_server_volume_changed": false,
+  "goal_completed": false
+}

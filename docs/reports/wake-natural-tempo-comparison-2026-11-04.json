@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-04",
+  "scope": "All12 completed first-seed epochs, same fixed432reusedDEV traces; diagnostic not independent TEST or causal source-isolation experiment",
+  "shared_persistent_positive_misses": 9,
+  "runs": {
+    "R21": {
+      "epochs": 12,
+      "positive_miss_exposures": 127,
+      "false_wake_exposures": 40,
+      "early_wake_exposures": 11,
+      "persistently_missed_case_speed_pairs": 10,
+      "persistently_false_case_speed_pairs": 3
+    },
+    "R25": {
+      "epochs": 12,
+      "positive_miss_exposures": 137,
+      "false_wake_exposures": 37,
+      "early_wake_exposures": 5,
+      "persistently_missed_case_speed_pairs": 9,
+      "persistently_false_case_speed_pairs": 3
+    }
+  },
+  "repeated_DEV_exposures_not_independent_samples": true,
+  "TEST_opened": false,
+  "household_used": false
+}
