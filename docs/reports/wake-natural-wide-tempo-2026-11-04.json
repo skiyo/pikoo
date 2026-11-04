@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "launched-feature-preparation",
+  "status": "seed42-completed12-failed-seed43-running",
   "reference": "Terminal failed R25, same approved24new synthetic originals plus previous TRAIN corpus",
   "only_training_change": "TRAIN continuous tempo ceiling1.3 to1.5, keeping pitch; six views per source in bands1.0-1.15,1.15-1.3,1.3-1.5",
   "TRAIN_examples_expected": 13558,
@@ -19,5 +19,10 @@
   "TEST_opened": false,
   "household_used": false,
   "device_server_volume_changed": false,
-  "goal_completed": false
+  "goal_completed": false,
+  "completed_first_seed_epochs": 12,
+  "first_seed_qualified": false,
+  "actual_serialized_weight_arrays_changed": 16,
+  "parameter_arrays_compared": 16,
+  "first_seed_speed_recall_improvement_has_false_wake_regression": true
 }
