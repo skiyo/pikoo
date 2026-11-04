@@ -71,6 +71,10 @@ def append(x, y, w, metadata, events, groups, manifest, review_path,
         raise ValueError('Bounded unique extra TRAIN originals required')
     if natural_only and any(r.get('source') != 'Qwen3-TTS-hi-piku-synthetic-local' for r in rows):
         raise ValueError('Post-tempo append accepts only human-reviewed natural originals')
+    row_hashes = {r['sha256'] for r in rows}
+    if natural and any(partner not in row_hashes for digest, partner in
+                       natural.get('matched_pairs', {}).items() if digest in row_hashes):
+        raise ValueError('Matched TRAIN pairs must be admitted together')
     paths = []
     for row in rows:
         path = validate(row, manifest.parent, protected)

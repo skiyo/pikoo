@@ -29,6 +29,27 @@ class NaturalTrainAdmission(unittest.TestCase):
                    'sources': {'TRAIN-family'}, 'never_train': set()}
         return row, context
 
+    def test_unknown_rejected_or_protected_partner_prevents_single_original_admission(self):
+        row, context = self.fixture()
+        partner = {**context['originals']['original'], 'sha256': 'partner', 'label': 0, 'text': 'Hi Tikoo'}
+        context['originals']['partner'] = partner
+        context['matched_pairs'] = {'original': 'partner', 'partner': 'original'}
+        verdict = {**context['feedback']['original'], 'source_sha256': 'partner',
+                   'original_binary_label': 0, 'expected_text': 'Hi Tikoo'}
+        with self.assertRaisesRegex(ValueError, 'Both matched'):
+            validate_natural_row(row, context, set())
+        context['feedback']['partner'] = verdict
+        validate_natural_row(row, context, set())
+        for field, value in [('approved_for_TRAIN', False), ('human_content_correct', None),
+                             ('human_actual_perceived_style', 'unverified'),
+                             ('expected_text', 'Hi Pikoo'), ('source_family', 'different')]:
+            changed = copy.deepcopy(context); changed['feedback']['partner'][field] = value
+            with self.assertRaisesRegex(ValueError, 'Both matched'):
+                validate_natural_row(row, changed, set())
+        context['never_train'].add('partner')
+        with self.assertRaisesRegex(ValueError, 'Both matched'):
+            validate_natural_row(row, context, set())
+
     def test_explicit_positive_and_T_negative_can_pass_without_ASR_agreement(self):
         for label in (0, 1):
             row, context = self.fixture(label)
@@ -85,6 +106,25 @@ class NaturalTrainAdmission(unittest.TestCase):
             review = {'human_natural_admission': declaration}
             self.assertIsNone(load_context({}, root/'review.json', 'base'))
             self.assertEqual(load_context(review, root/'review.json', 'base')['never_train'], {'excluded'})
+            files['source_reservation']['matched_pair_review_required'] = True; write('source_reservation')
+            with self.assertRaisesRegex(ValueError, 'requires hashed pair'):
+                load_context(review, root/'review.json', 'base')
+            partner = {**files['raw_manifest'][0], 'sha256': 'partner', 'label': 0, 'text': 'Hi Tikoo'}
+            files['raw_manifest'].append(partner); write('raw_manifest')
+            files['matched_pairs'] = [{'positive_sha256': 'original', 'negative_sha256': 'partner'}]
+            write('matched_pairs')
+            self.assertEqual(load_context(review, root/'review.json', 'base')['matched_pairs'],
+                             {'original': 'partner', 'partner': 'original'})
+            for pairs in ([], files['matched_pairs']*2,
+                          [{'positive_sha256': 'original', 'negative_sha256': 'missing'}],
+                          [{'positive_sha256': 'partner', 'negative_sha256': 'original'}]):
+                saved = files['matched_pairs']; files['matched_pairs'] = pairs; write('matched_pairs')
+                with self.assertRaises(ValueError): load_context(review, root/'review.json', 'base')
+                files['matched_pairs'] = saved
+            write('matched_pairs')
+            (root/'matched_pairs.json').write_text('tampered')
+            with self.assertRaises(ValueError): load_context(review, root/'review.json', 'base')
+            write('matched_pairs')
             with self.assertRaises(ValueError): load_context(review, root/'review.json', 'other')
             for field in ('household_used', 'DEV_used', 'TEST_opened', 'wake_scores_used_for_selection', 'labels_changed'):
                 feedback[field] = True; write('human_feedback')

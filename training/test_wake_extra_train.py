@@ -23,7 +23,7 @@ class ExtraTrainMetadata(unittest.TestCase):
             manifest = write('extra.json', [row])
             mocks.enter_context(patch('wake_extra_train.validate', return_value=root/'fixture.wav'))
             mocks.enter_context(patch('wake_extra_train.load_context', return_value=None))
-            mocks.enter_context(patch('wake_extra_train.load_natural_context', return_value=None))
+            context_loader = mocks.enter_context(patch('wake_extra_train.load_natural_context', return_value=None))
             mocks.enter_context(patch('wake_extra_train.validate_natural_row'))
             mocks.enter_context(patch('wake_extra_train.read_audio', return_value=np.zeros(16000)))
             x = np.zeros((1, 6, 40), np.float32)
@@ -45,6 +45,10 @@ class ExtraTrainMetadata(unittest.TestCase):
             self.assertEqual(result[4]['proof']['tempo'], 'fixed')
             self.assertEqual(events['records'], [old])
             self.assertEqual(events['proof']['extra_audited_TRAIN'], prior)
+            context_loader.return_value = {'matched_pairs': {'new': 'missing-partner'}}
+            with self.assertRaisesRegex(ValueError, 'admitted together'):
+                append(*args, natural_only=True)
+            context_loader.return_value = None
             manifest.write_text(json.dumps([{**row, 'sha256': 'earlier'}]))
             with self.assertRaisesRegex(ValueError, 'earlier extra'):
                 append(*args, natural_only=True)

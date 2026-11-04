@@ -19,7 +19,10 @@ def load_context(review, review_path, original_manifest_sha256):
     if declaration.get('original_manifest_sha256') != original_manifest_sha256:
         raise ValueError('Natural TRAIN evidence belongs to another baseline')
     files = {}
-    for name in ('raw_manifest', 'human_feedback', 'source_reservation', 'never_train'):
+    names = ['raw_manifest', 'human_feedback', 'source_reservation', 'never_train']
+    if 'matched_pairs_file' in declaration:
+        names.append('matched_pairs')
+    for name in names:
         path = (review_path.parent/declaration[name+'_file']).resolve()
         if (not path.is_relative_to(review_path.parent.resolve()) or
                 sha(path) != declaration[name+'_sha256']):
@@ -37,16 +40,45 @@ def load_context(review, review_path, original_manifest_sha256):
     if (len({r['sha256'] for r in originals}) != len(originals) or
             len({r['source_sha256'] for r in verdicts}) != len(verdicts)):
         raise ValueError('Duplicate original or human verdict')
+    original_by_hash = {r['sha256']: r for r in originals}
+    pairs = {}
+    if reservation.get('matched_pair_review_required') is True and 'matched_pairs' not in files:
+        raise ValueError('Matched TRAIN reservation requires hashed pair evidence')
+    if 'matched_pairs' in files:
+        for pair in files['matched_pairs']:
+            positive, negative = pair['positive_sha256'], pair['negative_sha256']
+            p, n = original_by_hash.get(positive, {}), original_by_hash.get(negative, {})
+            if (positive == negative or positive in pairs or negative in pairs or
+                    not p or not n or type(p.get('label')) is not int or p['label'] != 1 or
+                    type(n.get('label')) is not int or n['label'] != 0 or
+                    p.get('speaker') != n.get('speaker')):
+                raise ValueError('Matched TRAIN pairs need unique same-family P/T originals')
+            pairs[positive], pairs[negative] = negative, positive
+        if set(pairs) != set(original_by_hash):
+            raise ValueError('Matched TRAIN pairs must cover every raw original exactly once')
     return {'declaration': declaration, 'originals': {r['sha256']: r for r in originals},
             'feedback': {r['source_sha256']: r for r in verdicts},
             'sources': set(reservation['source_families']),
-            'never_train': set(files['never_train']['audio_sha256'].values())}
+            'never_train': set(files['never_train']['audio_sha256'].values()),
+            'matched_pairs': pairs}
 
 
 def validate_natural_row(row, context, source_dev):
     if context is None:
         raise ValueError('Natural TRAIN source and human evidence required')
     digest = row['sha256']
+    partner_digest = context.get('matched_pairs', {}).get(digest)
+    if partner_digest:
+        partner = context['originals'][partner_digest]
+        verdict = context['feedback'].get(partner_digest, {})
+        if (partner_digest in context['never_train'] or
+                verdict.get('approved_for_TRAIN') is not True or
+                verdict.get('human_content_correct') is not True or
+                verdict.get('human_actual_perceived_style') not in {'adult', 'childlike'} or
+                verdict.get('original_binary_label') != partner['label'] or
+                verdict.get('expected_text') != partner['text'] or
+                verdict.get('source_family') != partner['speaker']):
+            raise ValueError('Both matched TRAIN originals need explicit content/style approval')
     original = context['originals'].get(digest, {})
     feedback = context['feedback'].get(digest, {})
     identity = ('sha256', 'speaker', 'text', 'label', 'split', 'source', 'path')
