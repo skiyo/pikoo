@@ -601,7 +601,7 @@ def main():
              'wake_negative_finetune.py', 'wake_playback_negatives.py', 'streaming_runtime.py',
              'wake_phrase_auxiliary.py', 'wake_train_events.py', 'hi_pikoo_contrast.py',
              'hi_pikoo_timing.py', 'acoustic_augment.py', 'wake_train_admission.py',
-             'wake_phrase_boundaries.py', 'wake_extra_train.py', 'wake_catalog_train.py',
+             'wake_phrase_boundaries.py', 'wake_extra_train.py', 'wake_catalog_train.py', 'wake_natural_train.py',
              'hi_pikoo_review.py', 'wake_dev_content_review.py', 'wake_train_human_review.py', 'wake_tempo.py',
              'wake_secondary_dev.py', 'wake_dual_context.py', 'wake_head_dropout.py')
     if snapshot.exists() and any((snapshot/name).exists() and

@@ -8,10 +8,25 @@ import numpy as np
 from hi_pikoo_review import content_match, normalized, validate
 from hi_pikoo_train import read_audio, example
 from wake_catalog_train import load_context, validate_catalog_row
+from wake_natural_train import load_context as load_natural_context, validate_natural_row
 
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def natural_example(pcm, row, rng, repeat):
+    """New natural originals keep their pitch; tempo is handled by wake_tempo.
+
+    Legacy example(augment=True) includes resampling. Do not use it for these
+    newly reviewed natural utterances. Keep the event clock on clean audio.
+    """
+    clean = np.asarray(pcm, np.float32).copy()
+    if repeat == 0:
+        return example(clean, row, rng, augment=False)
+    from acoustic_augment import augment as room
+    acoustic = room(clean, rng)
+    return example(acoustic, row, rng, augment=False, timing_reference=clean)
 
 
 def complete_base_metadata(x, y, w, metadata, events, groups):
@@ -46,6 +61,7 @@ def append(x, y, w, metadata, events, groups, manifest, review_path,
     review = json.loads(review_path.read_text())
     reviews = {r['source_sha256']: r for r in review['records']}
     catalog = load_context(review, review_path, original_manifest_sha256)
+    natural = load_natural_context(review, review_path, original_manifest_sha256)
     protected = set(json.loads(protected_path.read_text())['audio_sha256'].values())
     if not 1 <= len(rows) <= 200 or len({r['sha256'] for r in rows}) != len(rows):
         raise ValueError('Bounded unique extra TRAIN originals required')
@@ -54,6 +70,10 @@ def append(x, y, w, metadata, events, groups, manifest, review_path,
         path = validate(row, manifest.parent, protected)
         if row['sha256'] in source_hashes:
             raise ValueError('Extra TRAIN cannot reuse an original TRAIN/DEV waveform')
+        if row.get('source') == 'Qwen3-TTS-hi-piku-synthetic-local':
+            validate_natural_row(row, natural, source_dev)
+            paths.append(path)
+            continue
         if row.get('source') == 'Google-Gemini-TTS-prebuilt':
             validate_catalog_row(row, catalog, source_train, source_dev)
             paths.append(path)
@@ -82,7 +102,10 @@ def append(x, y, w, metadata, events, groups, manifest, review_path,
         for repeat in range(12 if row['label'] else 6):
             seed = f'audited-extra-v1/{row["sha256"]}/{repeat}'.encode()
             rng = np.random.default_rng(int.from_bytes(hashlib.sha256(seed).digest()[:8], 'little'))
-            a, b, c, meta = example(pcm, row, rng, augment=repeat > 0)
+            if row['source'] == 'Qwen3-TTS-hi-piku-synthetic-local':
+                a, b, c, meta = natural_example(pcm, row, rng, repeat)
+            else:
+                a, b, c, meta = example(pcm, row, rng, augment=repeat > 0)
             if (a.dtype != x.dtype or b.dtype != y.dtype or c.dtype != w.dtype or
                     a.shape != x.shape[1:] or b.shape != y.shape[1:] or c.shape != w.shape[1:]):
                 raise ValueError('Extra TRAIN frontend/interface differs from retained data')
@@ -106,6 +129,9 @@ def append(x, y, w, metadata, events, groups, manifest, review_path,
         'new_catalog_voice_ids': sorted({r['provider_voice_id'] for r in rows if r['source'] == 'Google-Gemini-TTS-prebuilt'}),
         'catalog_age_is_provider_metadata_not_human_age_review': True,
         'real_speaker_independence_proven': False}
+    proof['natural_human_reviewed_originals'] = sum(
+        r['source'] == 'Qwen3-TTS-hi-piku-synthetic-local' for r in rows)
+    proof['natural_augmentation'] = 'same-length acoustic-only; clean timing; no interpolation or pitch shift; separate pitch-preserving tempo stage'
     full_events['proof'] = {**events['proof'], 'extra_audited_TRAIN': proof}
     (output/'extra-train-metadata.json').write_text(json.dumps(full_metadata)+'\n')
     (output/'extra-train-events.json').write_text(json.dumps(full_events)+'\n')

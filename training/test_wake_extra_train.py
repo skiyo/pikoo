@@ -1,10 +1,30 @@
 # SPDX-License-Identifier: Apache-2.0
 import unittest
+from unittest.mock import patch
 import numpy as np
-from wake_extra_train import complete_base_metadata
+from wake_extra_train import complete_base_metadata, natural_example
 
 
 class ExtraTrainMetadata(unittest.TestCase):
+    def test_natural_new_original_never_uses_legacy_resampling_and_keeps_clean_clock(self):
+        pcm = 5000*np.sin(2*np.pi*440*np.arange(32000)/16000).astype(np.float32)
+        original = pcm.copy()
+        with patch('wake_extra_train.example', return_value='fixture') as builder:
+            self.assertEqual(natural_example(pcm, {}, np.random.default_rng(42), 0), 'fixture')
+            args, kwargs = builder.call_args
+            np.testing.assert_array_equal(args[0], pcm)
+            self.assertEqual(kwargs, {'augment': False})
+            self.assertEqual(natural_example(pcm, {}, np.random.default_rng(42), 1), 'fixture')
+            args, kwargs = builder.call_args
+            self.assertIs(kwargs['augment'], False)
+            np.testing.assert_array_equal(kwargs['timing_reference'], pcm)
+            self.assertEqual(args[0].shape, pcm.shape)
+            middle = args[0][1600:-1600]
+            frequencies = np.fft.rfftfreq(len(middle), 1/16000)
+            peak = frequencies[np.argmax(abs(np.fft.rfft(middle*np.hanning(len(middle)))))]
+            self.assertLess(abs(peak-440), 3)
+        np.testing.assert_array_equal(pcm, original)
+
     def test_preserves_original_metadata_and_types_ordinary_feature_digests(self):
         x = np.zeros((3, 6, 40), np.float32)
         y = np.zeros((3, 2), np.float32); y[0, 1] = 1

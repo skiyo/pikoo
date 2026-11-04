@@ -1,0 +1,19 @@
+{
+  "scope": "actual quarantined raw metadata admission rejection; no waveform read, no model training",
+  "raw_originals": 48,
+  "rejected_without_approval": 48,
+  "admitted": 0,
+  "unit_tests_passed": 23,
+  "new_natural_route": "strict per-record original identity and human content/style evidence; auditions, DEV, household, derivatives rejected",
+  "new_natural_acoustics": "same-length room/gain only with clean event clock; no legacy interpolated speed/pitch change",
+  "tempo_route": "existing separate ffmpeg-atempo with fixed held-out DEV unchanged",
+  "code_sha256": {
+    "wake_natural_train.py": "6995422eba883256b42bb6b8030b5e594376734a1a670f16683605df03586028",
+    "wake_extra_train.py": "f0d8e26b3305206c0449ddac9c91168386a876932712226a57957d058000fe8b",
+    "wake_int8_iterate.py": "7f104fc0b0982ee2813dc4d69b55af5dbe03f37325454c93705ca22098ad2ea9"
+  },
+  "household_used": false,
+  "TEST_opened": false,
+  "device_changed": false,
+  "goal_completed": false
+}
