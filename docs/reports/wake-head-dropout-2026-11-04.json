@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "R23-started-seed42-first-native-epoch-unqualified",
+  "status": "completed-all24-no-qualified-checkpoint",
   "reference": "R21 singlecontext72/fulltrainableR12/mildtempo route, not immediate R22dualbranch",
   "only_training_change": "Hidden classifier-channel dropout .2, same mask over time per utterance, shared by binary and auxiliary loss heads",
   "hypothesis": "Improve cross-source generalization after near-complete TRAIN fit and failedDEV, without new voices or audio transforms",
@@ -53,5 +53,48 @@
   "first_native_epoch_qualified": false,
   "first_native_original_negative_false_clips": 3,
   "first_native_ordinary_negative_false_clips": 0,
-  "comparison_is_not_a_multiple_seed_causal_estimate": true
+  "comparison_is_not_a_multiple_seed_causal_estimate": true,
+  "terminal_returncode": 0,
+  "actual_trainer_exit_verified": true,
+  "all24_model_evaluation_hashes_match": true,
+  "completed_epochs_per_seed": {
+    "42": 12,
+    "43": 12
+  },
+  "qualified_checkpoints": 0,
+  "original_floor_preserved_epochs_per_seed": {
+    "42": 4,
+    "43": 6
+  },
+  "ordinary_negative_false_exposures_per_seed": {
+    "42": 0,
+    "43": 1
+  },
+  "new_model_frozen": false,
+  "new_model_installed": false,
+  "fixed_terminal_quantization_diagnostic": {
+    "selection": "configuredterminal seed42epoch12, not best diagnostic checkpoint",
+    "scope": "144original+432tempo synthetic reusedDEV; 261ordinarynativecases not repeated",
+    "modes": [
+      "float-raw",
+      "float-input-QDQ",
+      "saved-native-Micro-INT8"
+    ],
+    "per_case_categorical_disagreements_vs_native": {
+      "float_raw": 0,
+      "float_input_QDQ": 0
+    },
+    "native_positive_miss_cases": 15,
+    "native_misses_recovered_by_float_or_input_QDQ": 0,
+    "native_misses_despite_full_peak_above_threshold_outside_event": 0,
+    "input_clipped_cases": 0,
+    "input_real_range": [
+      0.0,
+      25.78124988824129
+    ],
+    "interpretation": "Quantization or event-window placement alone does not explain these15misses in this checkpoint; sourcegeneralization remains a hypothesis, not an all-model/device conclusion",
+    "no_model_data_policy_calibration_changes": true,
+    "household_used": false,
+    "TEST_opened": false
+  }
 }
