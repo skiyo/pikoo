@@ -184,7 +184,7 @@ def balance_train_weights(labels, weights, negative_to_positive=3.):
         'scope': 'TRAIN temporal loss weights only; no threshold or DEV calibration change'}
 
 
-def balance_positive_cohorts(labels, weights, metadata):
+def balance_positive_cohorts(labels, weights, metadata, supplemental_source_sha256=()):
     """Equalize TRAIN positive-event cohorts; do not read DEV performance."""
     if len(metadata) > len(labels):
         raise ValueError('TRAIN metadata length mismatch')
@@ -193,8 +193,16 @@ def balance_positive_cohorts(labels, weights, metadata):
     if np.any(labels[len(metadata):] > .5):
         raise ValueError('Unmapped positive TRAIN example')
     indexes = defaultdict(list)
+    supplemental = []
+    supplemental_sources = set(supplemental_source_sha256)
     for i, row in enumerate(metadata):
         if row['label']:
+            if row['cohort'] == 'childlike:unverified:piku-or-piko-human-accepted':
+                if (row.get('sha256') not in supplemental_sources or
+                        row.get('source') != 'Qwen3-TTS-hi-piku-synthetic-local'):
+                    raise ValueError('Unresolved TRAIN cohort needs exact admitted natural-source identity')
+                supplemental.append(i)
+                continue
             indexes[row['cohort']].append(i)
     if len(indexes) != 6:
         raise ValueError('All six declared positive TRAIN cohorts required')
@@ -211,7 +219,12 @@ def balance_positive_cohorts(labels, weights, metadata):
         for i in part:
             balanced[i, labels[i] > .5] *= factor
     return balanced, {'cohort_event_mass_before': masses, 'factors': factors,
-        'scope': 'TRAIN original source metadata and event mass only; no DEV weighting'}
+        'scope': 'TRAIN original source metadata and event mass only; no DEV weighting',
+        'supplemental_unresolved_cohort_positive_examples': len(supplemental),
+        'supplemental_unresolved_cohort_event_mass': sum(
+            float(weights[i][labels[i] > .5].sum()) for i in supplemental),
+        'supplemental_cohort_weights_unchanged': True,
+        'supplemental_sources_do_not_replace_six_required_cohorts': True}
 
 
 def load_profiles(path):
@@ -524,7 +537,8 @@ def main():
         w, boundary_summary = emphasize(events, y, w)
     balance, cohort_balance = None, None
     if a.cohort_meta:
-        w, cohort_balance = balance_positive_cohorts(y, w, metadata)
+        w, cohort_balance = balance_positive_cohorts(y, w, metadata,
+            extra_summary.get('natural_human_reviewed_source_sha256', ()) if extra_summary else ())
     if a.balanced:
         w, balance = balance_train_weights(y, w)
     auxiliary = None

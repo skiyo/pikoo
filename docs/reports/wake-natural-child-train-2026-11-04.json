@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "admitted-feature-preparation-running",
+  "status": "preparation-complete-baseline-native-validation-running",
   "new_synthetic_TRAIN_originals": 24,
   "full_Hi_Pikoo_positives": 18,
   "Hi_Tikoo_negatives": 6,
@@ -30,12 +30,23 @@
       "threshold": 0.9
     },
     "all_original_R12_DEV_group_floors_required": true,
-    "secondary_DEV_required": 16
+    "secondary_DEV_required": 16,
+    "TRAIN_supplemental_cohort": "Only exact admitted-source hashes may use childlike:unverified:piku-or-piko-human-accepted. Supplemental positive event weights are not six-way cohort-equalized; all six original TRAIN cohorts remain mandatory. No formal DEV cohort added or relabeled."
   },
   "full_DEV_qualified": false,
   "new_TEST_opened": false,
   "new_paid_requests": 0,
   "household_used": false,
   "device_or_server_changed": false,
-  "goal_completed": false
+  "goal_completed": false,
+  "training_examples": 13558,
+  "old_tempo_TRAIN_prefix_equal": {
+    "x": true,
+    "y": true,
+    "w": true
+  },
+  "tempo_TRAIN_views": 2466,
+  "new_tempo_TRAIN_views": 144,
+  "all432_tempo_DEV_features_unchanged": true,
+  "focused_software_tests_passed": 33
 }

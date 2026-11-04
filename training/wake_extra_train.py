@@ -131,6 +131,8 @@ def append(x, y, w, metadata, events, groups, manifest, review_path,
         'real_speaker_independence_proven': False}
     proof['natural_human_reviewed_originals'] = sum(
         r['source'] == 'Qwen3-TTS-hi-piku-synthetic-local' for r in rows)
+    proof['natural_human_reviewed_source_sha256'] = sorted(
+        r['sha256'] for r in rows if r['source'] == 'Qwen3-TTS-hi-piku-synthetic-local')
     proof['natural_augmentation'] = 'same-length acoustic-only; clean timing; no interpolation or pitch shift; separate pitch-preserving tempo stage'
     full_events['proof'] = {**events['proof'], 'extra_audited_TRAIN': proof}
     (output/'extra-train-metadata.json').write_text(json.dumps(full_metadata)+'\n')

@@ -74,6 +74,28 @@ class Int8Qualification(unittest.TestCase):
         self.assertEqual(len(proof['factors']), 6)
         with self.assertRaises(ValueError):
             balance_positive_cohorts(labels, weights, metadata[:2])
+    def test_reviewed_union_vowel_sources_do_not_invent_or_replace_known_cohorts(self):
+        labels = np.tile([[1., 0., 0.]], (7, 1))
+        weights = np.asarray([[w, 2., 3.] for w in (2, 3, 4, 5, 6, 7, 9)], np.float32)
+        metadata = [{'label': 1, 'cohort': str(i)} for i in range(6)]
+        metadata.append({'label': 1, 'cohort': 'childlike:unverified:piku-or-piko-human-accepted',
+                         'sha256': 'approved-original', 'source': 'Qwen3-TTS-hi-piku-synthetic-local'})
+        result, proof = balance_positive_cohorts(labels, weights, metadata, ['approved-original'])
+        np.testing.assert_allclose(result[:6, 0], np.full(6, 4.5))
+        np.testing.assert_array_equal(result[6], weights[6])
+        np.testing.assert_array_equal(result[:, 1:], weights[:, 1:])
+        self.assertEqual(proof['supplemental_unresolved_cohort_positive_examples'], 1)
+        self.assertEqual(proof['supplemental_unresolved_cohort_event_mass'], 9.)
+        self.assertEqual(len(proof['factors']), 6)
+        with self.assertRaises(ValueError): balance_positive_cohorts(labels, weights, metadata)
+        with self.assertRaises(ValueError):
+            balance_positive_cohorts(labels, weights, metadata, ['different-original'])
+        with self.assertRaisesRegex(ValueError, 'six declared'):
+            balance_positive_cohorts(labels[1:], weights[1:], metadata[1:], ['approved-original'])
+        changed = [*metadata[:-1], {**metadata[-1], 'source': 'unknown'}]
+        with self.assertRaises(ValueError):
+            balance_positive_cohorts(labels, weights, changed, ['approved-original'])
+
     def test_train_balance_does_not_mutate_original_cache_or_use_dev(self):
         labels = np.asarray([[1., 0., 0., 0.]])
         weights = np.asarray([[1., 4., 4., 4.]], np.float32)
