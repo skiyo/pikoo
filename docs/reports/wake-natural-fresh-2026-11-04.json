@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "seed42-early-stopped26-failed-seed43-running",
+  "status": "terminal-both-seeds-51native-failures",
   "source_weights": null,
   "initialization": "fresh random seeds42/43, not continuing the R12checkpoint",
   "recipe_reference": "Original R12fresh96 recipe; learning rate.0005,max30epochs per seed, auxiliary phrase weight.2",
@@ -65,6 +65,51 @@
     "goal_completed": false
   },
   "actual_seed43_initialization_matches_preflight": true,
-  "whole_trial_terminal": false,
-  "full_DEV_qualified": false
+  "whole_trial_terminal": true,
+  "full_DEV_qualified": false,
+  "terminal_audit": {
+    "date": "2026-11-04",
+    "actual_terminal_verified": true,
+    "terminal": {
+      "returncode": 0,
+      "ended_at_unix": 1793777498.013674,
+      "frozen_exists": false,
+      "goal_completed": false
+    },
+    "maximum_epochs_each": 30,
+    "seeds": [
+      {
+        "seed": 42,
+        "epochs": 26,
+        "early_stopped": true,
+        "qualified": 0,
+        "ordinary_false_exposures": 16,
+        "original_false_exposures": 65,
+        "original_early_exposures": 5,
+        "epochs_preserving_original_R12_gates": 0,
+        "tempo_false_exposures": 133,
+        "tempo_early_exposures": 17
+      },
+      {
+        "seed": 43,
+        "epochs": 25,
+        "early_stopped": true,
+        "qualified": 0,
+        "ordinary_false_exposures": 18,
+        "original_false_exposures": 59,
+        "original_early_exposures": 8,
+        "epochs_preserving_original_R12_gates": 0,
+        "tempo_false_exposures": 98,
+        "tempo_early_exposures": 17
+      }
+    ],
+    "native_epochs_completed": 51,
+    "all_model_hashes_and_backend_verified": true,
+    "model_qualified": false,
+    "candidate_frozen": false,
+    "household_used": false,
+    "TEST_opened": false,
+    "device_changed": false,
+    "goal_completed": false
+  }
 }
