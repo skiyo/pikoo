@@ -235,6 +235,11 @@ def load_profiles(path):
              (type(profile['short_context_steps']) is not int or profile['short_context_steps'] != 20 or
               profile.get('context_steps') != 72 or profile['initialization'] != 'checkpoint' or
               profile.get('batch_normalization', False) or profile.get('freeze_checkpoint_encoder', False))) or
+            ('classifier_dropout' in profile and
+             (type(profile['classifier_dropout']) is not float or profile['classifier_dropout'] != .2 or
+              profile.get('context_steps') != 72 or profile['initialization'] != 'checkpoint' or
+              profile.get('batch_normalization', False) or profile.get('freeze_checkpoint_encoder', False) or
+              'short_context_steps' in profile)) or
             profile['initialization'] not in ('fresh', 'baseline', 'checkpoint', 'phone-encoder') or
             not .00001 <= profile['learning_rate'] <= .001 or
             not 1 <= profile['max_epochs'] <= 30 or sorted(profile['seeds']) != [42, 43]):
@@ -598,7 +603,7 @@ def main():
              'hi_pikoo_timing.py', 'acoustic_augment.py', 'wake_train_admission.py',
              'wake_phrase_boundaries.py', 'wake_extra_train.py', 'wake_catalog_train.py',
              'hi_pikoo_review.py', 'wake_dev_content_review.py', 'wake_train_human_review.py', 'wake_tempo.py',
-             'wake_secondary_dev.py', 'wake_dual_context.py')
+             'wake_secondary_dev.py', 'wake_dual_context.py', 'wake_head_dropout.py')
     if snapshot.exists() and any((snapshot/name).exists() and
             sha(snapshot/name) != sha(Path(__file__).with_name(name)) for name in names):
         snapshot = a.output/f'source-continuation-{sha(Path(__file__))[:16]}'
@@ -642,6 +647,9 @@ def main():
                 if profile.get('short_context_steps'):
                     from wake_dual_context import add_short_context
                     model, branch = add_short_context(model, profile['short_context_steps'])
+                if profile.get('classifier_dropout'):
+                    from wake_head_dropout import add_head_dropout
+                    model, branch = add_head_dropout(model, profile['classifier_dropout'], seed)
                 freeze_before = profile.get('checkpoint_encoder_freeze_before', 'ordered_context')
                 trainability = checkpoint_encoder_policy(model, profile.get('freeze_checkpoint_encoder', False),
                                                          before=freeze_before)

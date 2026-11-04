@@ -1,0 +1,47 @@
+{
+  "date": "2026-11-04",
+  "status": "preflight-passed-not-started",
+  "reference": "R21 singlecontext72/fulltrainableR12/mildtempo route, not immediate R22dualbranch",
+  "only_training_change": "Hidden classifier-channel dropout .2, same mask over time per utterance, shared by binary and auxiliary loss heads",
+  "hypothesis": "Improve cross-source generalization after near-complete TRAIN fit and failedDEV, without new voices or audio transforms",
+  "inference_parameters_before": 55329,
+  "inference_parameters_after": 55329,
+  "inference_loaded_donor_max_float_error": 0.0,
+  "TRAIN_examples": 13162,
+  "tempo_TRAIN_views": 2322,
+  "tempo_DEV_cases": 432,
+  "mandatory_secondary_negative_DEV_cases": 16,
+  "same_all_TRAIN_DEV_bytes_labels_and_gates_as_R21": true,
+  "seeds": [
+    42,
+    43
+  ],
+  "max_epochs_each": 12,
+  "learning_rate": 0.0001,
+  "auxiliary_phrase_weight": 0.2,
+  "policy": {
+    "rolling": 3,
+    "threshold": 0.9
+  },
+  "no_new_source_admission": true,
+  "new_child_auditions_remain_unadmitted": true,
+  "new_runtime_tests_passed": 3,
+  "existing_training_control_tests_passed": 9,
+  "mask_active_during_training_and_constant_over_utterance_time_tested": true,
+  "auxiliary_gradient_through_dropped_features_tested": true,
+  "mechanism_preflight": {
+    "seen_TRAIN_windows": 8,
+    "float_batch_stream_max_error": 5.960464477539063e-08,
+    "native_BUILTIN_REF_Micro_byte_exact_all3resets": true,
+    "model_bytes": 98064,
+    "host_arena_bytes": 37808,
+    "keyword_accuracy_or_hardware_acceptance": false
+  },
+  "selected_human_content_reviews_original_labels_confirmed": true,
+  "no_whole_corpus_phonetic_gold_claim": true,
+  "household_used": false,
+  "TEST_opened": false,
+  "new_API_calls": 0,
+  "USB_server_config_volume_changed": false,
+  "goal_completed": false
+}

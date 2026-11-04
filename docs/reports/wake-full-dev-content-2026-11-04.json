@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "complete-independent-audit-human-review-partial",
+  "status": "complete-independent-audit-selected-human-review-resolved",
   "scope": "Entire declared reused synthetic DEV, all144originals with guardedview controls and all432fixedtempo derivatives; no selection by keyword-model scores",
   "sources": 144,
   "views": 576,
@@ -106,7 +106,7 @@
     "1.5": 12
   },
   "human_review": {
-    "status": "three-positive-pairs-accepted-near-word-pair-content-clarification-pending",
+    "status": "all-four-selected-pair-original-classes-confirmed",
     "paired_files": 4,
     "composition": "adult positive concern, childlike positive concern, negative concern and both-match control; neutral order",
     "selection": "complete paired audit, no keyword scores; predeclared strata then stable source hashes; omit no failures",
@@ -117,6 +117,9 @@
     "positive_pairs_target_content_accepted": 3,
     "acceptance_scope": "Only the reviewed original/accelerated pairs; no vowel/age or whole-corpus validity inference",
     "near_word_pair_original_negative_preserved": true,
-    "remaining_clarification": "Actual p/t content in the near-word pair; general acceptability does not establish its class"
+    "remaining_clarification": null,
+    "near_word_pair_both_actual_phrases": "Hi Tikoo",
+    "near_word_pair_negative_confirmed": true,
+    "no_dataset_labels_changed": true
   }
 }
