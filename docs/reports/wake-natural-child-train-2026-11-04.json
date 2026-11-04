@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-04",
+  "status": "admitted-feature-preparation-running",
+  "new_synthetic_TRAIN_originals": 24,
+  "full_Hi_Pikoo_positives": 18,
+  "Hi_Tikoo_negatives": 6,
+  "source_prompt_families": 3,
+  "actual_style_evidence": "User confirmed per-pack expected6positive+2negative utterance order and overall childlike impression",
+  "actual_gender_accent_exact_ku_ko": "unverified; not inferred from generation prompt",
+  "real_child_recordings": 0,
+  "permanent_source_auditions_excluded": 6,
+  "other_raw_TRAIN_candidates_still_quarantined": 18,
+  "audio_labels_changed": false,
+  "previous_extra_TRAIN_originals_retained": 56,
+  "combined_extra_TRAIN_originals": 80,
+  "next_experiment": {
+    "reference": "R21 single72-step full-trainable R12 donor",
+    "classifier_dropout": false,
+    "learning_rate": 0.0001,
+    "auxiliary_phrase_weight": 0.2,
+    "seeds": [
+      42,
+      43
+    ],
+    "maximum_epochs_each": 12,
+    "new_natural_acoustics": "same-length room/gain only, clean timing, no legacy resampling",
+    "tempo": "separate pitch-preserving atempo, existing fixed full DEV speeds",
+    "policy": {
+      "rolling": 3,
+      "threshold": 0.9
+    },
+    "all_original_R12_DEV_group_floors_required": true,
+    "secondary_DEV_required": 16
+  },
+  "full_DEV_qualified": false,
+  "new_TEST_opened": false,
+  "new_paid_requests": 0,
+  "household_used": false,
+  "device_or_server_changed": false,
+  "goal_completed": false
+}
