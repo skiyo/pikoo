@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "seed42-fresh-training-started",
+  "status": "seed42-early-stopped26-failed-seed43-running",
   "source_weights": null,
   "initialization": "fresh random seeds42/43, not continuing the R12checkpoint",
   "recipe_reference": "Original R12fresh96 recipe; learning rate.0005,max30epochs per seed, auxiliary phrase weight.2",
@@ -40,5 +40,31 @@
   "actual_source_weights": null,
   "actual_trainable_weight_arrays": 16,
   "actual_TRAIN_examples": 13558,
-  "new_candidate_frozen": false
+  "new_candidate_frozen": false,
+  "first_seed_terminal_audit": {
+    "date": "2026-11-04",
+    "seed": 42,
+    "actual_completed_marker_verified": true,
+    "epochs": 26,
+    "maximum_epochs": 30,
+    "stopped_by_existing_early_stopping": true,
+    "all26model_hashes_and_native_backend_verified": true,
+    "qualified_epochs": 0,
+    "ordinary_negative_false_exposures": 16,
+    "original_false_exposures": 65,
+    "original_early_exposures": 5,
+    "epochs_preserving_original_R12_gates": 0,
+    "tempo_false_exposures": 133,
+    "tempo_early_exposures": 17,
+    "scope": "All completed first-seed checkpoints, repeated fixedDEV exposures not independent TEST",
+    "whole_trial_terminal": false,
+    "candidate_frozen": false,
+    "household_used": false,
+    "TEST_opened": false,
+    "device_changed": false,
+    "goal_completed": false
+  },
+  "actual_seed43_initialization_matches_preflight": true,
+  "whole_trial_terminal": false,
+  "full_DEV_qualified": false
 }

@@ -1,0 +1,20 @@
+{
+  "scope": "Fixed chronological R27first-seed terminalepoch26,already rejected;8authorizedTRAINexamples only,nocandidate/thresholdselection",
+  "trained_checkpoint_qualified": false,
+  "float_batch_vs_original_saved_stream_max_error": 5.960464477539063e-08,
+  "all_Micro_BUILTIN_REF_bytes_equal": true,
+  "TRAIN_fixture_correct": 8,
+  "not_complete_TRAIN_fit_proof": true,
+  "new_DEV_scoring": false,
+  "household_used": false,
+  "TEST_opened": false,
+  "new_API_calls": 0,
+  "device_changed": false,
+  "goal_completed": false,
+  "date": "2026-11-04",
+  "fixture_cases": 8,
+  "positive_fixtures": 4,
+  "negative_fixtures": 4,
+  "native_resets_per_case": 3,
+  "complete_TRAIN_accuracy_established": false
+}
