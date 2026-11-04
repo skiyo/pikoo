@@ -197,7 +197,8 @@ def balance_positive_cohorts(labels, weights, metadata, supplemental_source_sha2
     supplemental_sources = set(supplemental_source_sha256)
     for i, row in enumerate(metadata):
         if row['label']:
-            if row['cohort'] == 'childlike:unverified:piku-or-piko-human-accepted':
+            if row['cohort'] in {f'{style}:unverified:piku-or-piko-human-accepted'
+                                 for style in ('adult', 'childlike')}:
                 if (row.get('sha256') not in supplemental_sources or
                         row.get('source') != 'Qwen3-TTS-hi-piku-synthetic-local'):
                     raise ValueError('Unresolved TRAIN cohort needs exact admitted natural-source identity')
@@ -225,6 +226,15 @@ def balance_positive_cohorts(labels, weights, metadata, supplemental_source_sha2
             float(weights[i][labels[i] > .5].sum()) for i in supplemental),
         'supplemental_cohort_weights_unchanged': True,
         'supplemental_sources_do_not_replace_six_required_cohorts': True}
+
+
+def validate_natural_append_options(a):
+    """Late natural originals are not re-stretched by the existing tempo stage."""
+    if bool(a.natural_train_manifest) != bool(a.natural_train_review):
+        raise ValueError('Natural TRAIN manifest and review must be supplied together')
+    if a.natural_train_manifest and not all((a.tempo_config, a.base_admitted_manifest,
+                                            a.train_admission, a.cohort_meta, a.phrase_events)):
+        raise ValueError('Post-tempo natural TRAIN needs complete retained lineage and timing')
 
 
 def load_profiles(path):
@@ -453,6 +463,9 @@ def main():
                         help='Fixed 4x TRAIN loss on incomplete target prefixes and competitor endings')
     parser.add_argument('--extra-train-manifest', type=Path)
     parser.add_argument('--extra-train-review', type=Path)
+    parser.add_argument('--natural-train-manifest', type=Path,
+                        help='Human-reviewed natural originals appended after tempo; no further time stretch')
+    parser.add_argument('--natural-train-review', type=Path)
     parser.add_argument('--base-admitted-manifest', type=Path)
     parser.add_argument('--dev-content-review', type=Path,
                         help='Independent human-heard vowels add a second gate without replacing historical DEV')
@@ -462,6 +475,7 @@ def main():
     parser.add_argument('--preserve-dev-cases', type=Path, help='Current-candidate native DEV trace preservation floor')
     parser.add_argument('--preserve-dev-evaluation', type=Path)
     a = parser.parse_args()
+    validate_natural_append_options(a)
     os.umask(0o077)
     a.output.mkdir(parents=True, exist_ok=True)
     lock = (a.output/'job.lock').open('w')
@@ -531,14 +545,25 @@ def main():
         x, y, w, metadata, events, groups, tempo_summary, tempo_data = prepare_tempo(
             x, y, w, metadata, events, groups, a.base_admitted_manifest,
             a.extra_train_manifest, a.protected, a.tempo_config, a.output, reuse=a.reuse_tempo)
+    natural_summary = None
+    if a.natural_train_manifest:
+        from wake_extra_train import append
+        natural_output = a.output/'natural-extra-train'
+        natural_output.mkdir(exist_ok=True)
+        original_manifest_sha = json.loads((a.baseline/'provenance.json').read_text())['manifest_sha256']
+        x, y, w, metadata, events, groups, natural_summary = append(
+            x, y, w, metadata, events, groups, a.natural_train_manifest, a.natural_train_review,
+            a.base_admitted_manifest, original_manifest_sha, a.protected, natural_output,
+            natural_only=True)
     boundary_summary = None
     if a.phrase_boundaries:
         from wake_phrase_boundaries import emphasize
         w, boundary_summary = emphasize(events, y, w)
     balance, cohort_balance = None, None
     if a.cohort_meta:
-        w, cohort_balance = balance_positive_cohorts(y, w, metadata,
-            extra_summary.get('natural_human_reviewed_source_sha256', ()) if extra_summary else ())
+        supplemental_sources = {digest for summary in (extra_summary, natural_summary) if summary
+                                for digest in summary.get('natural_human_reviewed_source_sha256', ())}
+        w, cohort_balance = balance_positive_cohorts(y, w, metadata, supplemental_sources)
     if a.balanced:
         w, balance = balance_train_weights(y, w)
     auxiliary = None
@@ -595,6 +620,7 @@ def main():
         'TRAIN_auxiliary_phrase': auxiliary_summary,
         'TRAIN_phrase_boundaries': boundary_summary,
         'TRAIN_extra_sources': extra_summary,
+        'TRAIN_post_tempo_natural_sources': natural_summary,
         'pitch_preserving_tempo': tempo_summary,
         'current_candidate_DEV_preservation': preservation,
         'TRAIN_effective_examples': len(x),

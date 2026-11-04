@@ -49,13 +49,17 @@ def complete_base_metadata(x, y, w, metadata, events, groups):
 
 
 def append(x, y, w, metadata, events, groups, manifest, review_path,
-           original_manifest, original_manifest_sha256, protected_path, output):
+           original_manifest, original_manifest_sha256, protected_path, output,
+           *, natural_only=False):
     if sha(original_manifest) != original_manifest_sha256:
         raise ValueError('Extra TRAIN source review belongs to another baseline')
     originals = json.loads(original_manifest.read_text())
     source_train = {r['speaker'] for r in originals if r['split'] == 'train'}
     source_dev = {r['speaker'] for r in originals if r['split'] != 'train'}
     source_hashes = {r['sha256'] for r in originals}
+    # A second append must also reject earlier extra originals and their views.
+    source_hashes.update(r['sha256'] for r in metadata
+                         if r.get('sha256_domain') != 'prepared-TRAIN-feature-example')
     originals_by_hash = {r['sha256']: r for r in originals}
     rows = json.loads(manifest.read_text())
     review = json.loads(review_path.read_text())
@@ -65,11 +69,13 @@ def append(x, y, w, metadata, events, groups, manifest, review_path,
     protected = set(json.loads(protected_path.read_text())['audio_sha256'].values())
     if not 1 <= len(rows) <= 200 or len({r['sha256'] for r in rows}) != len(rows):
         raise ValueError('Bounded unique extra TRAIN originals required')
+    if natural_only and any(r.get('source') != 'Qwen3-TTS-hi-piku-synthetic-local' for r in rows):
+        raise ValueError('Post-tempo append accepts only human-reviewed natural originals')
     paths = []
     for row in rows:
         path = validate(row, manifest.parent, protected)
         if row['sha256'] in source_hashes:
-            raise ValueError('Extra TRAIN cannot reuse an original TRAIN/DEV waveform')
+            raise ValueError('Extra TRAIN cannot reuse a base or earlier extra TRAIN/DEV waveform')
         if row.get('source') == 'Qwen3-TTS-hi-piku-synthetic-local':
             validate_natural_row(row, natural, source_dev)
             paths.append(path)
@@ -134,6 +140,10 @@ def append(x, y, w, metadata, events, groups, manifest, review_path,
     proof['natural_human_reviewed_source_sha256'] = sorted(
         r['sha256'] for r in rows if r['source'] == 'Qwen3-TTS-hi-piku-synthetic-local')
     proof['natural_augmentation'] = 'same-length acoustic-only; clean timing; no interpolation or pitch shift; separate pitch-preserving tempo stage'
+    proof['natural_only'] = natural_only
+    proof['prior_extra_stages'] = [*events['proof'].get('prior_extra_stages', [])]
+    if 'extra_audited_TRAIN' in events['proof']:
+        proof['prior_extra_stages'].append(events['proof']['extra_audited_TRAIN'])
     full_events['proof'] = {**events['proof'], 'extra_audited_TRAIN': proof}
     (output/'extra-train-metadata.json').write_text(json.dumps(full_metadata)+'\n')
     (output/'extra-train-events.json').write_text(json.dumps(full_events)+'\n')

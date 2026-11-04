@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 try:
-    from wake_int8_iterate import qualification, balance_train_weights, balance_positive_cohorts, load_profiles, optimizer_spec, set_encoder_trainability
+    from wake_int8_iterate import qualification, balance_train_weights, balance_positive_cohorts, load_profiles, optimizer_spec, set_encoder_trainability, validate_natural_append_options
     import numpy as np
 except ImportError:
     qualification = None
@@ -105,6 +105,34 @@ class Int8Qualification(unittest.TestCase):
         self.assertAlmostEqual(float(balanced[labels < .5].sum()/balanced[labels > .5].sum()), 3.)
         with self.assertRaises(ValueError):
             balance_train_weights(np.zeros_like(labels), weights)
+
+    def test_adult_union_sources_remain_separate_from_the_six_required_cohorts(self):
+        labels = np.tile([[1., 0.]], (7, 1))
+        weights = np.ones_like(labels)
+        metadata = [{'label': 1, 'cohort': str(i)} for i in range(6)]
+        extra = {'label': 1, 'cohort': 'adult:unverified:piku-or-piko-human-accepted',
+                 'sha256': 'reviewed', 'source': 'Qwen3-TTS-hi-piku-synthetic-local'}
+        _, proof = balance_positive_cohorts(labels, weights, [*metadata, extra], ['reviewed'])
+        self.assertEqual(proof['supplemental_unresolved_cohort_positive_examples'], 1)
+        with self.assertRaises(ValueError):
+            balance_positive_cohorts(labels, weights, [*metadata, extra])
+        with self.assertRaisesRegex(ValueError, 'six declared'):
+            balance_positive_cohorts(labels, weights, [*metadata, {**extra,
+                'cohort': 'unverified:unverified:piku-or-piko-human-accepted'}], ['reviewed'])
+
+    def test_late_natural_append_options_fail_before_preparation_when_incomplete(self):
+        from types import SimpleNamespace
+        config = dict(natural_train_manifest=None, natural_train_review=None, tempo_config='tempo',
+                      base_admitted_manifest='base', train_admission='admission', cohort_meta='meta',
+                      phrase_events='events')
+        validate_natural_append_options(SimpleNamespace(**config))
+        with self.assertRaises(ValueError):
+            validate_natural_append_options(SimpleNamespace(**{**config, 'natural_train_review': 'review'}))
+        complete = {**config, 'natural_train_manifest': 'natural', 'natural_train_review': 'review'}
+        validate_natural_append_options(SimpleNamespace(**complete))
+        for key in ('tempo_config', 'base_admitted_manifest', 'train_admission', 'cohort_meta', 'phrase_events'):
+            with self.assertRaises(ValueError):
+                validate_natural_append_options(SimpleNamespace(**{**complete, key: None}))
     @staticmethod
     def metrics(hits, passed):
         return {'groups': {'adult': {'targets': 20, 'hits': 19},

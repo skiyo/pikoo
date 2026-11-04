@@ -1,0 +1,46 @@
+{
+  "date": "2026-11-04",
+  "status": "generation-and-local-audit-terminal-human-review-pending",
+  "generated_originals": 48,
+  "matched_pairs": 24,
+  "requested_positive": 24,
+  "requested_T_negative": 24,
+  "existing_TRAIN_prompt_families": 3,
+  "new_speaker_independence_claimed": false,
+  "raw_seconds_range": [
+    0.72,
+    2.32
+  ],
+  "energy_active_ms_range": [
+    580.0,
+    2160.0
+  ],
+  "energy_active_ms_median": 950.0,
+  "energy_timing_is_not_word_completion_proof": true,
+  "local_audit": {
+    "generated": 48,
+    "local_blind_content_audit_complete": 48,
+    "local_rule_matches": 34,
+    "requested_positive_matches": 17,
+    "requested_T_negative_matches": 17,
+    "no_automatic_labels_or_age_from_ASR": true,
+    "TRAIN_admitted": 0,
+    "new_API_calls": 0,
+    "current_or_future_test_used": false
+  },
+  "all_originals_preassigned_TRAIN": true,
+  "all_originals_quarantined": true,
+  "per_pair_admission": "Both original contents and perceived styles must be explicitly reviewed; unknown/rejected pair members and their counterpart stay quarantined",
+  "perceived_age_gender_accent_and_vowels_not_inferred_from_prompt": true,
+  "human_preview_originals": 48,
+  "presentation_packs_never_TRAIN_or_fresh_TEST": true,
+  "no_pitch_tempo_gain_or_cropping_edits": true,
+  "TRAIN_admitted": 0,
+  "training_started": false,
+  "new_API_calls": 0,
+  "new_model_downloads": 0,
+  "household_used": false,
+  "TEST_opened": false,
+  "device_changed": false,
+  "goal_completed": false
+}

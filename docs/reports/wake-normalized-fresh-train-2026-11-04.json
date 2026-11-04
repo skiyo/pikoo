@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "actual-seed42-training-running",
+  "status": "terminal-no-qualified-candidate",
   "reference": "Terminal rejected R27,26+25epochs,51native evaluations;allhash/backendchecked",
   "only_effective_profile_change": "batch_normalization=True;namealsochanged",
   "same_recipe": {
@@ -38,5 +38,31 @@
   "TEST_opened": false,
   "device_server_volume_changed": false,
   "full_DEV_qualified": false,
-  "goal_completed": false
+  "goal_completed": false,
+  "actual_terminal_verified": true,
+  "native_epochs_completed": 42,
+  "seeds_completed": [
+    {
+      "seed": 42,
+      "epochs": 19,
+      "qualified": 0,
+      "ordinary_false_exposures": 7,
+      "original_false_exposures": 82,
+      "original_early_exposures": 16,
+      "epochs_preserving_original_R12_gates": 0
+    },
+    {
+      "seed": 43,
+      "epochs": 23,
+      "qualified": 0,
+      "ordinary_false_exposures": 54,
+      "original_false_exposures": 115,
+      "original_early_exposures": 11,
+      "epochs_preserving_original_R12_gates": 0
+    }
+  ],
+  "all_model_hashes_and_backend_verified": true,
+  "training_live": false,
+  "new_candidate_frozen": false,
+  "exposure_caveat": "Repeated fixed-DEV checkpoint exposures, not distinct independent trials or physical false-wake rates"
 }
