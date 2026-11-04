@@ -20,6 +20,18 @@ COHORTS = sorted(f'{age}:{accent}:{vowel}' for age, accent in
 NEGATIVES = ('hi-alone', 'name-alone', 'Tikoo', 'nihao-Pikoo', 'ordinary-English', 'ordinary-Chinese')
 
 
+def negative_categories(policy):
+    revision = policy.get('tolerance_policy_revision')
+    if revision is None:
+        return NEGATIVES
+    from wake_tolerated_confusables import POLICY
+    if (revision != POLICY or policy.get('tolerated_full_phrases') != ['Hi Tikoo', 'Hi Tiko'] or
+            policy.get('guaranteed_recall_for_tolerated_phrases') is not False or
+            len(policy.get('tolerance_policy_sha256', '')) != 64):
+        raise ValueError('Bounded full-T tolerance declaration required for revised TEST')
+    return tuple('missing-last-syllable' if name == 'Tikoo' else name for name in NEGATIVES)
+
+
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -76,12 +88,12 @@ def protocol(policy, policy_sha256, protected_sha256, declared_at):
                     'source_kind': 'synthetic' if synthetic else 'family',
                     'role': 'child' if age == 'childlike' else 'adult',
                     'accent': accent, 'prompt': 'Hi ' + vowel})
-    for category in NEGATIVES:
+    for category in negative_categories(policy):
         for i in range(5):
             slots.append({'id': f'TEST-{len(slots)+1:03}', 'expected_label': 0,
                 'negative_category': category, 'speaker': voices[i % 2],
                 'source_kind': 'synthetic', 'role': 'adult', 'accent': 'standard'})
-    return {'schema_version': 1, 'scope': 'post-freeze-mixed-independent-TEST-v1',
+    result = {'schema_version': 1, 'scope': 'post-freeze-mixed-independent-TEST-v1',
         'target': policy['target'], 'model_sha256': policy['model_sha256'],
         'policy_sha256': policy_sha256, 'protected_registry_sha256': protected_sha256,
         'candidate_frozen_at': policy['candidate_frozen_at'], 'declared_at': declared_at,
@@ -92,6 +104,12 @@ def protocol(policy, policy_sha256, protected_sha256, declared_at):
         'protocol_does_not_authorize_recording': True,
         'family_two_sessions_and_eight_hour_acceptance_are_separate': True,
         'source_auditions_are_not_benchmark_cases': True}
+    if policy.get('tolerance_policy_revision'):
+        result.update(scope='post-freeze-mixed-independent-TEST-tolerant-t-v1',
+                      tolerance_policy_revision=policy['tolerance_policy_revision'],
+                      tolerance_policy_sha256=policy['tolerance_policy_sha256'],
+                      no_special_T_synthesis=True)
+    return result
 
 
 def inside(root, value):
@@ -227,6 +245,6 @@ def validate_bundle(plan, rows, review, root, policy, policy_sha256, protected, 
         verified.append({'id': row['id'], 'path': path, 'label': slot['expected_label'],
             'cohort': group, 'completion_ms': label.get('completion_ms'),
             'source_kind': slot['source_kind'], 'role': slot['role'], 'sha256': digest})
-    if dict(groups) != {group: 20 for group in COHORTS} or dict(categories) != {cat: 5 for cat in NEGATIVES}:
+    if dict(groups) != {group: 20 for group in COHORTS} or dict(categories) != {cat: 5 for cat in negative_categories(policy)}:
         raise ValueError('Actual six-cohort and negative coverage incomplete; no partial TEST pass')
     return verified

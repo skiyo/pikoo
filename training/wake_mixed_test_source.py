@@ -18,6 +18,7 @@ def source_plan(plan, policy, protocol_sha256):
         'hi-alone': ['Hi!'] * 5,
         'name-alone': ['Pikoo!', 'Pico!', 'Pikoo!', 'Pico!', 'Pikoo!'],
         'Tikoo': ['Hi, Tee Koo!'] * 5,
+        'missing-last-syllable': ['Hi, Pee!'] * 5,
         'nihao-Pikoo': ['你好，Pikoo。'] * 5,
         'ordinary-English': ['Please close the door.', 'The puppy is sleeping.',
             'What would you like to eat?', 'We can play after lunch.', 'Put the blue cup here.'],

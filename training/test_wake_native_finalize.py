@@ -50,6 +50,15 @@ class NativeFinalize(unittest.TestCase):
         frozen, review = self.inputs()
         self.assertIs(validate_gate(frozen, review, 'manifest'), frozen['evaluation'])
 
+    def test_revised_scope_requires_bound_policy_and_never_silently_passes_legacy_gate(self):
+        frozen, review = self.inputs()
+        context = {'revision': 'explicit-tolerance', 'policy_sha256': 'policy'}
+        frozen['evaluation']['tolerance_policy'] = context.copy()
+        with self.assertRaises(ValueError): validate_gate(frozen, review, 'manifest')
+        self.assertIs(validate_gate(frozen, review, 'manifest', context), frozen['evaluation'])
+        with self.assertRaises(ValueError):
+            validate_gate(frozen, review, 'manifest', {**context, 'policy_sha256': 'different'})
+
     def test_stronger_current_candidate_floor_is_allowed_but_weaker_floor_is_not(self):
         frozen, review = self.inputs()
         frozen['evaluation']['required_group_hits']['adult:standard:piku'] = 28
@@ -76,6 +85,21 @@ class NativeFinalize(unittest.TestCase):
         with self.assertRaises(ValueError): verify_tempo(cases[:-1], metadata[:-1], result, review)
         changed = copy.deepcopy(cases); changed[0]['probabilities'] = [1.]*40
         with self.assertRaises(ValueError): verify_tempo(changed, metadata, result, review)
+        from wake_tolerated_confusables import score
+        tolerance = {'originals': {'0': {}}, 'policy_sha256': 'policy'}
+        revised = copy.deepcopy(cases)
+        for case in revised:
+            if case['sha256'] == '0': case['probabilities'] = [1.]*40
+        revised_result = {'qualified': True, 'fixed_policy': result['fixed_policy'], 'factors': []}
+        for factor in (1.15, 1.3, 1.5):
+            metrics, audit = score([c for c in revised if c['tempo_factor'] == factor], tolerance)
+            revised_result['factors'].append({'factor':factor, 'historical_groups':metrics,
+                'reviewed_groups':metrics, 'tolerance_audit':audit, 'positive_shortfall':0, 'qualified':True})
+        verify_tempo(revised, metadata, revised_result, review, tolerance)
+        with self.assertRaises(ValueError): verify_tempo(revised, metadata, revised_result, review)
+        # Ordinary speech remains a hard failure under the revised policy.
+        bad = copy.deepcopy(revised); bad[3]['probabilities'] = [1.]*40
+        with self.assertRaises(ValueError): verify_tempo(bad, metadata, revised_result, review, tolerance)
 
     def test_original_grid_requires_matching_policy_evidence(self):
         for rolling, threshold in GRID:

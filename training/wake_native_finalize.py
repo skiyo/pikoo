@@ -22,8 +22,10 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def validate_gate(frozen, review, original_manifest_sha256):
+def validate_gate(frozen, review, original_manifest_sha256, tolerance=None):
     result = frozen['evaluation']
+    from wake_tolerated_confusables import verify_revision
+    verify_revision(result, tolerance)
     old = result['old_DEV']
     expected = {'adult:standard:piku': 28, 'adult:standard:piko': 3,
                 'adult:Chinese-accent:piku': 27, 'adult:Chinese-accent:piko': 10,
@@ -62,14 +64,20 @@ def validate_gate(frozen, review, original_manifest_sha256):
     return result
 
 
-def verify_saved_dev(cases, negatives, result, policy, plan):
+def verify_saved_dev(cases, negatives, result, policy, plan, tolerance=None):
     """Never reuse another smoothing/threshold's negative peak summaries."""
     if any(plan.get(k) != v or result.get(k) != v for k, v in policy.items()):
         raise ValueError('Frozen policy differs from evaluated and declared policy')
     if (len(cases) != 144 or sum(not c['label'] for c in cases) != 52 or
             len(negatives) != 261):
         raise ValueError('Complete DEV trace evidence required')
-    if policy_metrics(cases, **policy) != result['old_DEV']:
+    actual = policy_metrics(cases, **policy)
+    if tolerance:
+        from wake_tolerated_confusables import score
+        actual, audit = score(cases, tolerance, **policy)
+        if audit != result.get('raw_tolerance_audit'):
+            raise ValueError('Raw tolerance accounting differs from complete saved traces')
+    if actual != result['old_DEV']:
         raise ValueError('Frozen original DEV metrics do not match saved traces')
     false_clips = 0
     for case in negatives:
@@ -120,7 +128,7 @@ def base_representatives(plan, cached_count):
     return [retained[i] for i in selected if i < len(retained)]
 
 
-def verify_tempo(cases, metadata, result, review):
+def verify_tempo(cases, metadata, result, review, tolerance=None):
     """Recompute each new tempo gate from its complete saved native trace set."""
     from wake_dev_content_review import reviewed_cohorts
     keys = ('sha256', 'label', 'cohort', 'valid_steps', 'completion_ms', 'times_ms', 'tempo_factor')
@@ -133,6 +141,12 @@ def verify_tempo(cases, metadata, result, review):
         part = [c for c in cases if c['tempo_factor'] == factor]
         historical = policy_metrics(part, 3, .9)
         heard = policy_metrics(reviewed_cohorts(part, review), 3, .9)
+        if tolerance:
+            from wake_tolerated_confusables import score
+            historical, audit = score(part, tolerance)
+            heard, _ = score(reviewed_cohorts(part, review), tolerance)
+            if audit != saved.get('tolerance_audit'):
+                raise ValueError('Tempo tolerance accounting differs from complete saved traces')
         if (len(part) != 144 or historical != saved['historical_groups'] or
                 heard != saved['reviewed_groups'] or not historical['passed'] or not heard['passed'] or
                 saved.get('positive_shortfall') != 0 or saved.get('qualified') is not True):
@@ -151,7 +165,17 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
     frozen_path = experiment/'frozen.json'
     frozen = json.loads(frozen_path.read_text())
     baseline_proof = json.loads((baseline/'provenance.json').read_text())
-    result = validate_gate(frozen, json.loads(review_path.read_text()), baseline_proof['manifest_sha256'])
+    plan = json.loads((experiment/'plan.json').read_text())
+    tolerance = None
+    if plan.get('tolerance_policy'):
+        spec = plan['tolerance_policy']
+        from wake_tolerated_confusables import load
+        tolerance_path = experiment/'target-policy.json'
+        if (sha(tolerance_path) != spec['policy_sha256'] or
+                spec['source_manifest_sha256'] != baseline_proof['manifest_sha256']):
+            raise ValueError('Declared tolerance policy differs from original corpus')
+        tolerance = load(tolerance_path, Path(spec['source_manifest']), Path(spec['protected_registry']))
+    result = validate_gate(frozen, json.loads(review_path.read_text()), baseline_proof['manifest_sha256'], tolerance)
     from wake_test_isolation import validate as validate_isolation
     isolation = json.loads(isolation_path.read_text())
     validate_isolation(isolation, [Path(p) for p in isolation['source_manifests_sha256']])
@@ -175,8 +199,7 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
             raise ValueError('Reviewed DEV evidence differs from source checkpoint')
     cases = json.loads((checkpoint/'old-dev-cases.json').read_text())
     negatives = json.loads((checkpoint/'negative-dev-scores.json').read_text())
-    plan = json.loads((experiment/'plan.json').read_text())
-    verify_saved_dev(cases, negatives, result, frozen['policy'], plan)
+    verify_saved_dev(cases, negatives, result, frozen['policy'], plan, tolerance)
     preservation_base = json.loads((prepared/'old-dev-cases.json').read_text())
     if plan.get('current_candidate_DEV_preservation'):
         preservation = plan['current_candidate_DEV_preservation']
@@ -199,7 +222,7 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
             raise ValueError('Declared human content review differs')
         from wake_dev_content_review import verify_reviewed_gate
         verify_reviewed_gate(cases, preservation_base,
-                             json.loads(review_path.read_text()), result, frozen['policy'])
+                             json.loads(review_path.read_text()), result, frozen['policy'], tolerance=tolerance)
     if plan.get('pitch_preserving_tempo'):
         tempo = experiment/'tempo'
         proof = json.loads((tempo/'provenance.json').read_text())
@@ -211,7 +234,7 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
         if result.get('tempo_DEV') != evaluation.get('tempo_DEV'):
             raise ValueError('Frozen tempo evaluation differs from source')
         verify_tempo(json.loads((checkpoint/'tempo-dev-cases.json').read_text()),
-            json.loads((tempo/'dev-metadata.json').read_text()), result['tempo_DEV'], json.loads(review_path.read_text()))
+            json.loads((tempo/'dev-metadata.json').read_text()), result['tempo_DEV'], json.loads(review_path.read_text()), tolerance)
     secondary = None
     spec = secondary_spec(plan, result)
     if spec is not None:
@@ -279,6 +302,12 @@ def finalize(experiment, baseline, prepared, micro, review_path, isolation_path,
     if secondary is not None:
         policy['secondary_negative_DEV_passed'] = True
         policy['secondary_negative_DEV_report_sha256'] = sha(checkpoint/'secondary-negative-dev-report.json')
+    if tolerance:
+        policy['tolerance_policy_revision'] = tolerance['revision']
+        policy['tolerance_policy_sha256'] = tolerance['policy_sha256']
+        policy['tolerated_full_phrases'] = ['Hi Tikoo', 'Hi Tiko']
+        policy['guaranteed_recall_for_tolerated_phrases'] = False
+        shutil.copyfile(experiment/'target-policy.json', output/'target-policy.json')
     validate(output/'hi_pikoo.tflite', policy)
     (output/'wake-policy.json').write_text(json.dumps(policy, indent=2)+'\n')
     return policy

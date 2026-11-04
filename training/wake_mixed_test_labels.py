@@ -15,7 +15,7 @@ import tempfile
 from wake_mixed_test import ROOT, inside, protocol, sha, validate_bundle
 
 HEARD = ('hi-piku', 'hi-piko', 'hi-piku-or-piko', 'hi-alone', 'name-alone', 'Tikoo', 'nihao-Pikoo',
-         'ordinary-English', 'ordinary-Chinese', 'invalid-or-unclear')
+         'missing-last-syllable', 'ordinary-English', 'ordinary-Chinese', 'invalid-or-unclear')
 
 
 def write(path, value):

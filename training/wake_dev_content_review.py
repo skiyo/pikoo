@@ -32,11 +32,15 @@ def reviewed_cohorts(cases, review):
     return result
 
 
-def verify_reviewed_gate(cases, baseline_cases, review, result, policy):
+def verify_reviewed_gate(cases, baseline_cases, review, result, policy, tolerance=None):
     import math
     from hi_pikoo_model import policy_metrics
     actual = policy_metrics(reviewed_cohorts(cases, review), **policy)
     baseline = policy_metrics(reviewed_cohorts(baseline_cases, review), 3, .9)
+    if tolerance:
+        from wake_tolerated_confusables import score
+        actual = score(reviewed_cohorts(cases, review), tolerance, **policy)[0]
+        baseline = score(reviewed_cohorts(baseline_cases, review), tolerance)[0]
     required = {g: max(v['hits'], math.ceil(.9*v['targets'])) for g, v in baseline['groups'].items()}
     if (actual != result.get('reviewed_DEV') or not actual['passed'] or
             result.get('reviewed_DEV_gate_passed') is not True or

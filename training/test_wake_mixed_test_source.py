@@ -51,5 +51,21 @@ class MixedSourcePlan(unittest.TestCase):
             self.assertEqual(r['content_review'], 'pending')
         self.assertTrue(any(r['text']=='Hi, Tee Koo!' for r in negatives))
 
+    def test_tolerated_T_does_not_add_T_sources_or_remove_incomplete_phrase_guard(self):
+        from wake_tolerated_confusables import POLICY
+        policy = {**self.policy, 'tolerance_policy_revision': POLICY,
+                  'tolerance_policy_sha256': 'a'*64, 'tolerated_full_phrases': ['Hi Tikoo','Hi Tiko'],
+                  'guaranteed_recall_for_tolerated_phrases': False}
+        plan = protocol(policy, 'policy-sha', 'protected-sha', '2026-11-03T02:00:00+00:00')
+        self.assertEqual(len(plan['slots']),150)
+        rows = source_plan(plan, policy, 'b'*64)
+        self.assertEqual(len(rows),70)
+        self.assertEqual(sum(r['label'] for r in rows),40)
+        self.assertFalse(any(r['negative_category']=='Tikoo' for r in rows))
+        self.assertEqual(sum(r['negative_category']=='missing-last-syllable' for r in rows),5)
+        self.assertTrue(plan['no_special_T_synthesis'])
+        with self.assertRaises(ValueError):
+            protocol({**policy,'guaranteed_recall_for_tolerated_phrases':True}, 'p','h','2026-11-03T02:00:00+00:00')
+
 
 if __name__ == '__main__': unittest.main()
