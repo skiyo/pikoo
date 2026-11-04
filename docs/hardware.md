@@ -1,31 +1,22 @@
 # Hardware
 
-**English** | [简体中文](hardware.zh-CN.md) · [Home](../README.md)
+**English** | [简体中文](hardware.zh-CN.md)
 
-The prototype target is **Waveshare ESP32-S3-DualEye-LCD-1.28**, selected for two expressive round eyes in a DIY enclosure. The three original cat-enclosure STLs and illustrated instructions are available in the [enclosure directory](../hardware/enclosure/README.md). On 2026-10-27 the project family reported successful printing, assembly verification and use at home.
+Target: [Waveshare ESP32-S3-DualEye-LCD-1.28](https://docs.waveshare.net/ESP32-S3-DualEye-LCD-1.28/), non-touch, ESP32-S3, 16 MiB Flash, 8 MiB PSRAM, two GC9A01A 240 × 240 round displays, ES8311 output codec and ES7210 ADC.
 
-| Part | Target specification |
+Prepare a compatible speaker and matching speaker cable, data-capable USB-C cable, stable 5 V USB supply, 2.4 GHz Wi-Fi and optional [printed enclosure](../hardware/enclosure/README.md). This release needs no battery, SD card or external microphone.
+
+Connect the speaker only to the documented **speaker connector**, never a same-looking power connector. Confirm connector labels and speaker impedance with the board documentation/vendor before powering it. Low-volume playback comes first.
+
+| Interface | Pins |
 |---|---|
-| Controller | ESP32-S3R8, dual-core Xtensa LX7, up to 240 MHz |
-| Memory | 16 MB Flash, 8 MB PSRAM |
-| Displays | Two 1.28-inch, 240 × 240 color LCDs |
-| Network/power | 2.4 GHz Wi-Fi; USB-C power/data for the first prototype |
-| Audio resources | ES8311 codec, ES7210 ADC, onboard microphone and amplifier, speaker connector |
+| Display SPI | MOSI42 / SCLK41 / DC45 |
+| Left screen | CS47 / RST48 / BL46 |
+| Right screen | CS38 / RST8 / BL39 |
+| I2C | SDA11 / SCL10 |
+| I2S | MCLK12 / BCLK13 / WS14 / ADC15 / DAC16 |
+| Amplifier / BOOT | GPIO9 / GPIO0 |
 
-Specifications and board revision details: [Waveshare official documentation](https://docs.waveshare.net/ESP32-S3-DualEye-LCD-1.28/). Check the exact supplied SKU, PCB revision and schematic before wiring; touch variants and connector assignments must not be inferred from similar product names.
+The schematic maps the microphone to ES7210 MIC1 and attenuated output reference to MIC3. Firmware unpacks the configured ADC1/ADC3/ADC2/ADC4 order as mic/reference. ESP-SR processes the reference for AEC; the presence of a codec alone does not prove successful echo cancellation. Test with the final enclosure, normal volume and natural interruption.
 
-## Accessories
-
-Prepare one matching speaker and cable, a USB-C **data** cable and stable 5 V USB supply. Confirm speaker impedance, connector and included accessories with the supplier. The first prototype does not require a battery, camera, motors or microSD card. The enclosure retains the original backplate and screws; use its three-part assembly guide for wiring, support removal and mechanical retention.
-
-## Audio and AEC
-
-Having an ADC and codec does not establish working echo cancellation. Bring-up must verify microphone/reference channels, clocks, sample packing, playback reference delay and gain against the actual board schematic and recordings. Then test whether a person can interrupt while Pikoo speaks without its own speaker triggering speech detection. The enclosure and playback volume affect the result.
-
-Connect the speaker only to the socket marked **SPK / speaker**, using the correct matching lead. The battery socket is a different connection. The prototype uses USB power; do not connect a speaker to the battery socket.
-
-## Firmware compatibility
-
-The default firmware now targets non-touch DualEye, with two GC9A01 displays, ES8311/ES7210 audio and BOOT controls. Display and short speaker bring-up are checked; full voice/AEC acceptance is ongoing. See the [firmware guide](firmware.md) and [actual validation](device-validation.md). The old 1.83-EN BSP remains a separate [historical target](firmware-legacy183.md); never flash those images to DualEye.
-
-Acceptance still requires real-board display timing, audio quality, AEC, wake-word accuracy, natural interruption, resource measurements, network/power recovery and long-duration operation.
+[USB installation](firmware.md) · [Enclosure and STLs](../hardware/enclosure/README.md)

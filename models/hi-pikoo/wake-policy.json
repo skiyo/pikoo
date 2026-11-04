@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "target": "hi-piku-piko-v2",
+  "accepted_names": [
+    "piku",
+    "piko"
+  ],
+  "model_sha256": "5efc03a7bbe992eb66ccefb1e1d14a81e071fceb45df3c2d6c2caa3df251ca50",
+  "rolling": 3,
+  "threshold": 0.9,
+  "candidate_frozen_at": "2026-11-04T09:14:22.100983+00:00",
+  "development_passed": true,
+  "frontend_fingerprint": "48cd477fa760f4e835e52d8b5f61849825cfe8252311184332692621a2d5018a",
+  "frontend": {
+    "sample_rate": 16000,
+    "feature_bins": 40,
+    "window_ms": 30,
+    "feature_step_ms": 10,
+    "inference_step_ms": 30
+  },
+  "formal_goal_passed": false,
+  "sealed_test_passed": false,
+  "real_child_accepted": false,
+  "tolerated_full_phrases": [
+    "Hi Tikoo",
+    "Hi Tiko"
+  ],
+  "guaranteed_recall_for_tolerated_phrases": false,
+  "version": "1.0.0",
+  "status": "published-current-model; physical acceptance incomplete",
+  "release_eligible": false
+}

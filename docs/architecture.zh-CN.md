@@ -1,45 +1,41 @@
 # 整体架构
 
-[English](architecture.md) | **简体中文** · [首页](../README.zh-CN.md)
+[English](architecture.md) | **简体中文**
 
-Pikoo 的家庭实时语音 AI Agent 将设备、Agent 运行框架和外部实时大模型分开。离线训练属于开发流程，不参与每次在线对话。本机模拟器使用设备协议，与板卡复用同一套眼睛绘制核心。
+```mermaid
+flowchart LR
+    Device["ESP32-S3 / desktop simulator<br/>Wake · capture · playback · eyes"] <-->|"GCP / WSS · PCM audio"| Gateway["Pikoo Gateway<br/>Auth · sessions · audio · tools"]
+    Gateway <-->|"Native Live WebSocket"| Live["GPT-Live 1<br/>Listen · speak · interrupt"]
+    Live <-->|"Responses delegation"| Terra["GPT-6.1 Terra<br/>Reasoning · tool selection"]
+    Terra <-->|"Function calls / results"| Gateway
+    Gateway <--> Store[("Private text context<br/>Family memory · lists")]
+    Gateway --> Background["Terra<br/>Interaction classification · summaries"]
+    Training["Offline training / export"] -.->|"Model + frozen policy"| Device
+```
 
-## 模块边界
+## 音频与控制
 
-| 模块 | 输入 → 输出 | 职责 |
+ESP32 完成本地采音处理和唤醒推理，待机声音不上行。唤醒后使用可撤销设备凭证连接 `wss://YOUR_HOST/api/realtime`。音频采用 JSON/Base64 PCM16，会话使用 GCP 7 与 Pikoo 连续音频能力扩展。
+
+当前原生 Live 路径双向均为 **16kHz、单声道 PCM16**。Gateway 协商实际采样率；兼容输出可能为 24kHz，由设备流式重采样。连续音频没有逐回答的 `audio.done`，使用流标识、播放代次、序号和真实播放状态处理清空、表情与空闲。旧代次音频丢弃。
+
+## 在线模型
+
+`server/host.mjs` 组合 Qwen Audio Agent 2.0.1 和 Pikoo 原生 `gpt-live-1` Provider。Live 负责听说、中文回复、打断与选择性回应；Responses 委派给 `gpt-6.1-terra` 完成推理和工具选择。独立 Terra 请求做互动分类及记忆整理，分类标签不进入语音播报。`AGENT_PROTOCOL=none` 不会禁用这些适配能力。
+
+## 持久化与隔离
+
+| 状态 | 用途 | 保存位置 |
 |---|---|---|
-| `firmware/components/pikoo_core` | PCM、GCP 事件和用户操作 → 有界音频/会话状态 | 协议、播放代次、取消和重采样 |
-| `firmware/components/pikoo_eyes` | 状态、时间、种子、视线和音量 → 两块 RGB565 像素帧 | 原创动画；不依赖 ESP-IDF，不动态分配内存 |
-| `firmware/main` | 板级外设和核心状态 → 采音、播放和显示 | 非触摸双眼板集成；实机验收单独记录 |
-| `firmware/simulator` | 浏览器主动操作 → 本地图形/唤醒和可选远程会话 | WebAudio/Canvas、Node 中转、C++ 绘制与 Python 唤醒进程 |
-| `server` | 鉴权后的 GCP 会话 → 实时 Provider 和记忆工具 | 固定上游服务组装与兼容适配 |
-| `training` | 本地授权音频 → INT8 模型和评估记录 | 离线准备、训练、流式评估与 Micro 检查 |
+| 近期文字 | 休眠、断线后的当前话题续接 | 服务端，按家庭 owner 隔离 |
+| 话题摘要 | 限制上下文大小并回顾过去话题 | 服务端，按家庭隔离 |
+| Markdown 记忆 | 长期事实、偏好、纠错与删除 | 服务端，按家庭隔离 |
+| 清单 | 显式购物、待办增删查 | 服务端，按家庭隔离 |
+| 设备会话标识 | 关联逻辑会话，有效期内恢复 | 设备 NVS |
+| 模型与策略 | 离线声音到唤醒的判定 | 设备及主机测试 |
 
-## 对话与音频流程
+模型密钥和私人资料留在服务端；设备只保存 Wi-Fi 与自己的凭证。长期保存依靠 Gateway 存储和工具，不是模型自动变成数据库。对话期间音频发送到所选模型服务，本项目不公开录音。
 
-1. 待机时音频仅进入本地唤醒模型，眼睛闭合。打开网页不自动采音。
-2. 用户主动唤醒后连接服务器，语音就绪才上传；浏览器麦克风权限另由用户主动授予。
-3. GCP 7 使用 JSON/Base64、单声道 PCM16；上行 16 kHz，下行 24 kHz。历史固件将下行重采样至 16 kHz，浏览器使用音频上下文播放。
-4. 硬件或软件缓冲耗尽才报告播放结束。取消、插话和断线清空播放，并丢弃旧回答的迟到音频。
-5. 静音停止采集/上传，交流空闲 30 秒回到待机，不根据声音判断家庭成员。
+## 离线组件
 
-模拟器只监听 `127.0.0.1`，校验 Host/Origin，远程 token 保留在 Node 进程。`/device` 承载音频/会话；`/eyes` 是独立本机画面通道，通过回执和最新帧策略限制队列。绘制故障不阻塞音频。浏览器 AEC 不代表 ESP32 AEC 已通过。参见 [GCP 协议](gcp7.md)及[双眼实现](dualeye.md)。
-
-## 状态与持久化
-
-- 设备：NVS 保存 Wi-Fi 和可撤销设备 token，不保存 Google Key 或家庭资料。开发版未启用 NVS/Flash 加密或安全启动。
-- 服务器：私密持久目录保存 Provider 凭证、人设、共享 Markdown 记忆、摘要和会话日志/历史。部署模板位于 `server/deploy/`。
-- 浏览器：标签页会话存储只保存不透明会话编号和时间，距最后连接 24 小时失效；不保存凭证或转写。
-- 训练电脑：授权语料、录音、权重和详细报告保持私密，不进入公开产物。
-
-保持会话编号时，服务器在新 Provider 连接就绪前注入已保存的近期文本。固定上游实现限制为近期消息，约 40 条/3,500 字符；不是 Gemini 原生音频会话恢复。未转写的话无法恢复，也不重播旧音频。主动结束清除编号；待机、静音和临时断线保留编号。
-
-## Provider 与记忆协作
-
-`qwen-audio-agent@2.0.1` 提供 Gateway、鉴权、记忆和会话机制。Pikoo 的 `host.mjs` 组装 Gemini Live 兼容与文本超时适配，不直接改写安装的上游文件。Gemini Live 负责实时对话，配置的文本模型负责记忆提取/摘要；外部服务有独立地区限制和条款。
-
-`context-runtime.mjs` 将自动记忆和话题摘要接入私密持久队列，两种文本调用统一为 45 秒超时，串行执行、有限速退避和明确修改后的失效保护。自然提到的稳定家庭事实无需说“记住”；家庭共用设备仍关闭推断式个人画像学习。连接时使用北京时间，问当前时间时调用官方 `get_current_time` 工具。保留期限、边界和验证见[上下文、记忆与时间](context-memory.zh-CN.md)。
-
-服务端模板保持 `AGENT_PROTOCOL=none`。产品中的 AI Agent 指对话、记忆和工具共同形成的行为，不要求另开一个后台 Agent 进程。已配置的原生工具见[家庭工具](family-tools.zh-CN.md)。MCP 接入需主动配置并复核兼容及安全边界；天气、智能家居属于扩展方向，不是默认服务。
-
-在线对话不需要启动训练工程。训练和静态检查默认预算为 64 KiB，当前双眼固件另有最多 512 KiB 的显式实验预算，见[训练](../training/README.zh-CN.md)及[固件说明](firmware.zh-CN.md)。内存、耗时、识别与来源授权分别验收；当前公开源码包含训练流程，不包含权重。
+`pikoo_eyes` 根据状态、时间、随机种子、视线和音量生成两块 RGB565 画面。模拟器把原生绘制进程与语音链路分开。训练工程使用相同 16kHz microfrontend，负责训练、量化和导出模型绑定策略，不参与在线对话。

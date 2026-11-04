@@ -1,45 +1,38 @@
 # Development
 
-**English** | [简体中文](development.zh-CN.md) · [Home](../README.md)
+**English** | [简体中文](development.zh-CN.md)
 
-This guide covers code changes and checks. Use the [documentation index](README.md) to find setup, Agent behavior or historical validation without repeating the project introduction.
+## Environment and checks
 
-## Environment and boundaries
-
-Use Node.js 24+, a C++17 compiler, Bash and Python 3.11 for host development. Install Node dependencies with `(cd server && npm ci --ignore-scripts)`. Optional wake/training packages are pinned in `training/requirements.txt`; ESP-IDF 5.5.5 and components are pinned in `firmware/dependencies.lock`. Do not silently refresh lockfiles or upgrade upstream packages.
-
-The original eye renderer has no ESP-IDF dependency. The default firmware now targets non-touch DualEye; the 1.83-EN project is isolated under `firmware/boards/legacy183/`. Real voice and AEC acceptance are tracked separately. Changes to simulator protocol behavior should maintain parity with device cancellation, playback drain and privacy requirements.
-
-## Checks
+Node.js 24+, npm, Bash and C++17 are enough for the offline simulator. Python 3.11 is used for USB/training tooling. Install `training/requirements.txt` only when training/inference is needed. Firmware requires ESP-IDF 5.5.5. Keep upstream versions pinned.
 
 ```sh
+(cd server && npm ci --ignore-scripts)
 bash tools/check.sh
 ```
 
-This runs the C++ core and eye checks, simulator Node tests, server tests, and Python tool/training unit tests. It needs no credentials, dataset or model weights. Optional TensorFlow-dependent unit tests report skips when the optional runtime is absent; skipped tests are not passes. Use `PIKOO_CHECK_PYTHON=/path/to/python` to run with an installed training environment.
+The checks exercise native audio/session/eye cores, simulator/server behavior and Python tooling. Optional runtimes may skip checks when not installed; do not interpret a skip as success. No tests should open a family microphone or call a paid API implicitly.
 
-For targeted work use `bash tools/test-eyes.sh`, `bash tools/test-core.sh`, `node --test firmware/simulator/*.test.mjs` or `(cd server && npm test)`. See [actual validation summary](validation-summary.md) before making acceptance claims.
+## Change an expression
 
-`docs/ci-checks.yml.example` is an Actions example, not an active workflow. The current publishing credential lacks workflow-write scope; no CI-success badge is displayed. A maintainer with the needed access may install the reviewed example at `.github/workflows/checks.yml` and verify its actual run before advertising CI.
+Edit `firmware/components/pikoo_eyes/`, retain the platform-independent C++ API and 240 × 240 RGB565 output. Use `bash tools/test-eyes.sh`, then `bash tools/start-dualeye.sh`. Keep rendering lower priority than audio and drop stale frames.
 
-## Native and device builds
+## Add a board
 
-Build desktop graphics using `bash tools/build-eyes.sh`. Tests produce ignored artifacts under `firmware/build-host/`. For the default DualEye firmware, use ESP-IDF 5.5.5 and explicitly provide `-DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite`; see [firmware notes](firmware.md). Missing weights remain an error. The historical 1.83-inch build retains its 64 KiB limit; the DualEye experimental build now accepts an explicit 64–512 KiB flash budget. Training/static checks still default to 64 KiB unless `--max-model-bytes 524288` is supplied. Allocation, a 30 ms inference interval and concurrent-device tests remain separate gates. No public firmware binary is currently supplied.
+Introduce an explicit board adapter for display, audio, amplifier and controls. Start from `firmware/main/board_display.cpp` and `board_audio.cpp`; preserve the device state machine in `pikoo_core`. Verify microphone/reference order and DMA timing before enabling full duplex. Never reuse a different board's flash layout without migration and backup checks.
 
-`tools/Pikoo-USB.command` and `tools/device.py` provide partition-checked DualEye installation, upgrades, diagnostics and recovery. See [firmware](firmware.md). Do not use the old board mapping on DualEye. Configuration contains secrets; store it outside Git, revoke replaced tokens, and follow the board's official download-mode instructions.
+## Add a tool
 
-## USB volume control
+Start at `server/family-tools.mjs` and `deepseek-search.mjs`. Register tool schemas with the runtime, validate input, retain owner scope, enforce timeouts and return factual errors. Follow the durable call-ID handling in `openai-live.mjs`; late results must not speak into closed sessions. Extend `*.test.mjs` before making external calls.
 
-USB diagnostics support exact integer attenuation from −50 to 0 dB, for example
-`python tools/device.py diagnose --port /dev/cu.usbmodem1101 --command 'volume -2'`.
-The setting is saved in device NVS. Confirm a fresh `status` reports
-`volume_db=-2`; a queued command alone is not an acknowledgment. Older firmware
-supports only the named presets and requires an application upgrade for this command.
+## Replace a voice Provider
 
-## Documentation and releases
+Use the registry in `server/host.mjs` and the native Provider in `server/openai-live.mjs`. Preserve continuous-audio capability negotiation, rate metadata, cancellation generations, playback feedback, text history and authentication. Verify real provider access separately from offline tests. Do not change only a model-name string between incompatible APIs.
 
-English is the default for public entry and core docs; mirrored Chinese files end in `.zh-CN.md`. Keep language links, examples and acceptance boundaries consistent. Historical Chinese records remain intact with a dated English summary. Current UI language remains Chinese.
+## Train/export a wake model
 
-Before publishing, check licenses and attribution, sanitize documentation/logs, run host checks and verify offline startup from a clean tree. Never bundle credentials, household data, audio or restricted weights. Future model releases need a provenance record covering training and distribution; binary firmware releases also need the complete applicable third-party license bundle.
+See [training](../training/README.md). Keep family recordings outside training, augmentation, calibration and model selection. Bind every export to its policy hash and frontend fingerprint; keep host and firmware smoothing identical. Evaluate natural fast speech without shifting pitch and continuous speech negatives without resetting frontend state per clip.
 
-See [CONTRIBUTING](../CONTRIBUTING.md), [SECURITY](../SECURITY.md) and [THIRD_PARTY](../THIRD_PARTY.md).
+## Release changes
+
+Update `VERSION`, package metadata, firmware project version and the model card together. Use the [release checklist](release.md). Include third-party license texts for redistributed binaries. Do not commit NVS, generated audio, credentials or personal memory.

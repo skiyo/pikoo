@@ -1,44 +1,38 @@
-# 开发说明
+# 二次开发
 
-[English](development.md) | **简体中文** · [首页](../README.zh-CN.md)
+[English](development.md) | **简体中文**
 
-本文负责代码修改与检查。上手、Agent 行为和历史验证分别见[文档导航](README.zh-CN.md)，不在这里重复项目介绍。
+## 环境与检查
 
-## 环境与边界
-
-主机开发使用 Node.js 24+、C++17 编译器、Bash 和 Python 3.11。执行 `(cd server && npm ci --ignore-scripts)` 安装依赖。可选唤醒/训练依赖固定于 `training/requirements.txt`，ESP-IDF 5.5.5 和组件固定于 `firmware/dependencies.lock`；不要未经审核刷新锁文件或升级上游包。
-
-原创绘制核心不依赖 ESP-IDF。默认固件现面向非触摸双眼板，1.83-EN 工程隔离保留在 `firmware/boards/legacy183/`。真实语音和 AEC 单独验收。模拟器协议改动应保持取消、播放耗尽与隐私行为和设备一致。
-
-## 软件检查
+离线模拟器需要 Node.js 24+、npm、Bash、C++17。USB 与训练使用 Python 3.11，只有需要训练/推理时才安装 `training/requirements.txt`。固件固定 ESP-IDF 5.5.5，保持上游版本锁定。
 
 ```sh
+(cd server && npm ci --ignore-scripts)
 bash tools/check.sh
 ```
 
-统一执行 C++ 核心/眼睛检查、模拟器 Node 测试、服务器测试，以及 Python 工具/训练单元测试。不需要凭证、数据集或权重。未安装可选运行环境时，依赖 TensorFlow 的测试明确跳过，不算通过。通过 `PIKOO_CHECK_PYTHON=/path/to/python` 指定已有训练环境。
+检查包含原生音频、会话、双眼、模拟器、服务端与 Python 工具。缺少可选运行时可能跳过，跳过不能当通过。测试不得隐式开启家庭麦克风或调用收费 API。
 
-针对性执行可使用 `bash tools/test-eyes.sh`、`bash tools/test-core.sh`、`node --test firmware/simulator/*.test.mjs` 或 `(cd server && npm test)`。验收结论以[实际记录](validation-summary.zh-CN.md)为准。
+## 更换表情
 
-`docs/ci-checks.yml.example` 是示例，不是已启用的 Actions。本次发布凭证缺少工作流写权限，不展示 CI 成功徽章。有权限的维护者可将审核后的示例安装至 `.github/workflows/checks.yml`，确认真实运行后再展示 CI 状态。
+修改 `firmware/components/pikoo_eyes/`，保持独立于平台的 C++ 接口与 240 × 240 RGB565 输出。运行 `bash tools/test-eyes.sh`，再启动双眼模拟器。音频优先，绘制来不及时丢弃旧帧。
 
-## 主机与设备构建
+## 适配板卡
 
-使用 `bash tools/build-eyes.sh` 编译主机绘制程序。测试产物在忽略目录 `firmware/build-host/`。默认双眼固件使用 ESP-IDF 5.5.5，并显式传入 `-DPIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite`，见[固件说明](firmware.md)。缺模型仍会报错。历史 1.83 板构建保留 64 KiB 上限；双眼实验构建现允许显式设置 64–512 KiB Flash 预算。训练／静态检查默认仍为 64 KiB，扩大时需传 `--max-model-bytes 524288`。内存分配、30ms 推理间隔及设备并发检查仍需分别通过。暂不提供公开固件二进制。
+明确封装显示、音频、功放和按键，可从 `firmware/main/board_display.cpp` 与 `board_audio.cpp` 入手。保留 `pikoo_core` 状态机；启用全双工前核实麦克风、参考通道和 DMA 时序。更换分区布局必须设计备份与迁移。
 
-`tools/Pikoo-USB.command` 和 `tools/device.py` 提供核对分区的双眼安装、升级、诊断和恢复，见[固件说明](firmware.zh-CN.md)。不要把旧板映射用于双眼板。配置含凭证，应保存在 Git 外，替换时撤销旧 token，按板商资料进入下载模式。
+## 增加工具
 
-## USB 音量调节
+从 `server/family-tools.mjs`、`deepseek-search.mjs` 入手，注册工具参数、校验输入、保留家庭 owner 隔离和超时，并如实返回失败。遵循 `openai-live.mjs` 的持久调用 ID 去重，迟到结果不能进入已关闭会话。先扩展 `*.test.mjs`，再调用外部接口。
 
-USB 诊断支持 −50 到 0 dB 的整数音量，例如
-`python tools/device.py diagnose --port /dev/cu.usbmodem1101 --command 'volume -2'`。
-设置保存在设备 NVS。应核对新的 `status` 显示 `volume_db=-2`，不能把命令排队当作
-设备已执行。旧固件仅支持命名档位，使用此命令前需要升级应用程序。
+## 更换语音 Provider
 
-## 文档与发布
+参考 `server/host.mjs` 注册表与 `server/openai-live.mjs` 原生适配器。保留连续音频协商、采样率、取消代次、播放回报、文字历史和鉴权。真实模型权限与离线测试分开验证，不兼容的 API 不能只替换模型名。
 
-公开入口和核心文档以英文为默认；对应中文文件使用 `.zh-CN.md` 后缀。语言链接、示例和验证边界要保持一致。历史中文记录保留，并附带日期明确的英文摘要；模拟器界面暂维持中文。
+## 训练与导出
 
-发布前核对许可和引用、脱敏文档/日志、运行检查并验证干净目录离线启动。不打包凭证、家庭资料、音频或受限权重。后续模型必须记录训练与分发授权；固件二进制发布还需完整第三方许可证包。
+按[训练说明](../training/README.zh-CN.md)操作。家庭录音不得训练、增强、校准或选模。每个导出绑定策略摘要与前端指纹；主机和固件使用相同平滑判定。快读采用不改变音高的变速增强；连续负样本测试保持前端状态。
 
-另见[贡献指南](../CONTRIBUTING.zh-CN.md)、[安全说明](../SECURITY.zh-CN.md)和[来源说明](../THIRD_PARTY.zh-CN.md)。
+## 版本发布
+
+同步 `VERSION`、包元数据、固件版本与模型卡，按[发布检查](release.zh-CN.md)操作。二进制随附第三方许可正文，不提交 NVS、生成音频、凭证或私人记忆。

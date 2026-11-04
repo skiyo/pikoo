@@ -1,31 +1,22 @@
-# 设备与硬件
+# 硬件与接线
 
-[English](hardware.md) | **简体中文** · [首页](../README.zh-CN.md)
+[English](hardware.md) | **简体中文**
 
-首版目标板为 **微雪 ESP32-S3-DualEye-LCD-1.28**，两块圆眼屏适合自行制作宠物外壳。小猫外壳的三个原始 STL 和完整装配资料现已提供，见[外壳目录](../hardware/enclosure/README.zh-CN.md)；项目家庭已打印、装配验证并在家使用通过（2026-10-27，用户反馈）。
+目标为[微雪 ESP32-S3-DualEye-LCD-1.28](https://docs.waveshare.net/ESP32-S3-DualEye-LCD-1.28/) **非触摸版**：ESP32-S3、16MiB Flash、8MiB PSRAM、两块 GC9A01A 240 × 240 圆屏、ES8311 输出与 ES7210 采集。
 
-| 部分 | 目标规格 |
+准备匹配的喇叭及线材、可传数据的 USB-C 线、稳定 5V USB 电源、2.4GHz Wi-Fi，以及可选的[打印外壳](../hardware/enclosure/README.zh-CN.md)。无需电池、SD 卡或外接麦克风。
+
+喇叭只能接官方标明的 **扬声器接口**，不能因外观相似接到电源接口。通电前按官方资料或商家确认插座和阻抗，先低音量测试。
+
+| Interface | Pins |
 |---|---|
-| 主控 | ESP32-S3R8，双核 Xtensa LX7，最高 240 MHz |
-| 存储 | 16 MB Flash，8 MB PSRAM |
-| 屏幕 | 两块 1.28 英寸、240 × 240 彩色 LCD |
-| 网络/供电 | 2.4 GHz Wi-Fi；首版使用 USB-C 供电与数据传输 |
-| 音频资源 | ES8311 编解码、ES7210 ADC、板载麦克风和功放、扬声器接口 |
+| Display SPI | MOSI42 / SCLK41 / DC45 |
+| Left screen | CS47 / RST48 / BL46 |
+| Right screen | CS38 / RST8 / BL39 |
+| I2C | SDA11 / SCL10 |
+| I2S | MCLK12 / BCLK13 / WS14 / ADC15 / DAC16 |
+| Amplifier / BOOT | GPIO9 / GPIO0 |
 
-规格和版本信息见[微雪官方文档](https://docs.waveshare.net/ESP32-S3-DualEye-LCD-1.28/)。接线前核对实际 SKU、PCB 版本和原理图；不要从相似名称推断触摸功能或接口映射。
+原理图中麦克风为 ES7210 MIC1，衰减的播放参考为 MIC3；固件按已配置的 ADC1/ADC3/ADC2/ADC4 通道次序提取麦克风与参考。ESP-SR 使用参考做 AEC，板上有编解码芯片不等于已经完成回声验收；需要装壳、正常音量和自然插话实测。
 
-## 配件
-
-准备匹配的扬声器及连接线、支持数据的 USB-C 线、稳定 5V 电源和临时保护支架。扬声器阻抗、连接器及随板配件向商家确认。首版不需要电池、摄像头、电机或存储卡。外壳使用原背板、原螺丝及三件机械固定；走线、清理支撑和装配步骤见外壳目录。
-
-## 音频与 AEC
-
-有 ADC 和编解码器不代表回声消除已经可用。到板核实麦克风/参考通道、时钟、采样打包、播放参考延迟和增益，并用原理图与分通道录音确认。随后验证播放时能听见人的插话、不会将自身声音误判为用户。外壳和播放音量共同影响效果。
-
-扬声器只接标为 **SPK / 喇叭** 的接口，使用匹配连接线；电池接口用途不同。本原型使用 USB 供电，不要把喇叭接到电池口。
-
-## 固件兼容性
-
-默认固件现已适配非触摸双眼板，包含双 GC9A01 显示、ES8311/ES7210 音频和 BOOT 控制。双屏显示与短音已检查，完整语音和 AEC 仍在验收。见[固件说明](firmware.zh-CN.md)和[实际记录](device-validation.md)。旧 1.83-EN BSP 作为[历史工程](firmware-legacy183.md)独立保留，不能将其固件烧录到双眼板。
-
-实机仍需验证显示时序、音质、AEC、唤醒、自然插话、资源占用、断网/断电恢复和长期运行。
+[USB 安装](firmware.zh-CN.md) · [外壳与 STL](../hardware/enclosure/README.zh-CN.md)

@@ -1,45 +1,41 @@
 # Architecture
 
-**English** | [简体中文](architecture.zh-CN.md) · [Home](../README.md)
+**English** | [简体中文](architecture.zh-CN.md)
 
-Pikoo’s family realtime voice AI Agent separates the device, Agent runtime and external realtime model. Offline training is a development workflow, not part of an online conversation. The desktop simulator exercises the device protocol and shares the board’s eye renderer.
+```mermaid
+flowchart LR
+    Device["ESP32-S3 / desktop simulator<br/>Wake · capture · playback · eyes"] <-->|"GCP / WSS · PCM audio"| Gateway["Pikoo Gateway<br/>Auth · sessions · audio · tools"]
+    Gateway <-->|"Native Live WebSocket"| Live["GPT-Live 1<br/>Listen · speak · interrupt"]
+    Live <-->|"Responses delegation"| Terra["GPT-6.1 Terra<br/>Reasoning · tool selection"]
+    Terra <-->|"Function calls / results"| Gateway
+    Gateway <--> Store[("Private text context<br/>Family memory · lists")]
+    Gateway --> Background["Terra<br/>Interaction classification · summaries"]
+    Training["Offline training / export"] -.->|"Model + frozen policy"| Device
+```
 
-## Module boundaries
+## Audio and control
 
-| Module | Input → output | Responsibility |
+The ESP32 performs local microphone processing and wake inference. Standby audio stays local. After wake, the device authenticates to `wss://YOUR_HOST/api/realtime` using a revocable device token. JSON/Base64 PCM16 and lifecycle messages use GCP 7 with Pikoo continuous-audio capabilities.
+
+The current native Live path uses **16 kHz mono PCM16 in both directions**. The Gateway negotiates the actual rate; compatibility output may be 24 kHz and uses the device's streaming resampler. Continuous audio has no per-answer `audio.done`: stream identity, generation, sequence and actual playback telemetry govern cancellation, expressions and idle. Old generations are discarded.
+
+## Online models
+
+`server/host.mjs` composes Qwen Audio Agent 2.0.1 with Pikoo's native `gpt-live-1` Provider. Live handles hearing, Chinese speech, interruptions and selective replies. Responses delegation uses `gpt-6.1-terra` for reasoning and tool selection. Separate Terra requests classify interaction and organize memory; classification labels never become spoken replies. `AGENT_PROTOCOL=none` does not disable these original adapters.
+
+## Persistence and isolation
+
+| State | Purpose | Owner |
 |---|---|---|
-| `firmware/components/pikoo_core` | PCM, GCP events, user actions → bounded audio/session state | Shared protocol, playback generations, cancellation and resampling |
-| `firmware/components/pikoo_eyes` | State, time, seed, gaze, level → two RGB565 frames | Original animation; no ESP-IDF dependency or dynamic allocation |
-| `firmware/main` | Board peripherals and core state → capture/play/display | Non-touch DualEye board integration; physical acceptance tracked separately |
-| `firmware/simulator` | Explicit browser actions → local graphics/wake and optional remote session | WebAudio/canvas UI, Node relay, C++ process and Python wake worker |
-| `server` | Authenticated GCP session → realtime provider and memory tools | Fixed upstream composition plus compatibility adapters |
-| `training` | Authorized local audio → INT8 model and evaluation reports | Offline preparation, training, streaming evaluation and Micro compatibility |
+| Recent text context | Resume the current topic after sleep/reconnect | Server, family owner |
+| Topic digests | Bound context size and retrieve past topics | Server, family owner |
+| Markdown memory | Durable facts, preferences, corrections and deletions | Server, family owner |
+| Notes/lists | Explicit shopping and to-do operations | Server, family owner |
+| Device session identifier | Refer to a logical conversation | Device NVS; expires |
+| Wake model + policy | Offline sound-to-trigger decision | Device; shared with host tests |
 
-## Conversation and audio
+Provider keys and personal profiles stay on the server. The device stores Wi-Fi and its own credential. Models are not a database: persistence comes from Gateway storage and tools. Audio is streamed to the selected provider during a conversation; this project does not publish recordings.
 
-1. Standby keeps audio local to the wake model; the UI shows closed eyes. Opening a page does not start capture.
-2. Explicit wake connects to the server. Capture is uploaded only after voice readiness; microphone permission is a separate user action.
-3. GCP 7 uses JSON/Base64 mono PCM16: 16 kHz upstream, 24 kHz downstream. The firmware baseline resamples output to 16 kHz; browser playback uses its audio context.
-4. The player reports completion only after buffered audio drains. Cancellation, interruption and disconnection clear playback and reject late chunks for old responses.
-5. Muting stops capture/upload. Thirty seconds of idle conversation returns to standby. The device does not infer speaker identity.
+## Offline components
 
-The simulator binds only to `127.0.0.1`, checks Host/Origin and keeps remote tokens in its Node process. `/device` carries audio/session events; `/eyes` is a separate local frame channel with acknowledgement and latest-frame backpressure. A renderer failure does not stop the voice path. Browser AEC is not evidence of ESP32 AEC performance. See [GCP details](gcp7.md) and [eye implementation](dualeye.md).
-
-## State and persistence
-
-- Device: Wi-Fi and revocable device token in NVS; no Google key or household profile. The development firmware has not enabled encrypted NVS/Flash or secure boot.
-- Server: provider credentials, persona, shared Markdown memory, summaries and session journal/history in private persistent storage. Deployment templates are in `server/deploy/`.
-- Browser: only an opaque conversation ID and timestamp in tab-scoped session storage, expiring after 24 hours since the last connection; no credentials or transcripts are stored there.
-- Training computer: authorized datasets, recordings, model weights and detailed reports stay private and outside published artifacts.
-
-Reusing the conversation ID lets the server inject saved recent text into a new provider connection before voice readiness. The fixed upstream implementation limits this to recent messages (approximately 40 messages / 3,500 characters); it is not Gemini native audio-session resumption. Untranscribed speech cannot be recovered, and old audio is not replayed. Explicit End clears the ID; idle, mute and temporary disconnection preserve it.
-
-## Provider and memory integration
-
-`qwen-audio-agent@2.0.1` supplies the gateway, authentication and memory/session machinery. Pikoo's `host.mjs` composes it with Gemini Live compatibility and text-call timeout adapters without rewriting installed upstream files. Gemini Live handles conversation; a configured text model handles memory extraction and summaries. This is an external service with separate availability and terms.
-
-`context-runtime.mjs` composes automatic memory and topic summarisation through a private durable outbox. Both text calls use a 45-second deadline, serial execution, bounded retries and explicit-edit invalidation. Ordinary shared-family facts can be remembered without a “remember” command. Inferred individual profiles remain disabled on the shared device. Connection clocks use Beijing time; current-time questions use the official `get_current_time` tool. See [context, memory and time](context-memory.md) for retention, limits and verification.
-
-The committed server template keeps `AGENT_PROTOCOL=none`. The product term AI Agent describes the combined conversation, memory and tool behavior; it does not require an additional backend Agent process. Configured native tools are described in [Family tools](family-tools.md). MCP integrations require explicit configuration and compatibility/security review; weather and smart-home examples are extension directions, not default services.
-
-Training is not required to serve a conversation. Training/static checks default to 64 KiB, while the current DualEye firmware permits a separate explicit experimental budget up to 512 KiB; see [Training](../training/README.md) and [Firmware](firmware.md). Memory use, timing, accuracy and source rights remain separate release gates. Current public sources provide the pipeline but no weights.
+`pikoo_eyes` takes state, time, seed, gaze and volume and produces two RGB565 frames. The simulator launches its native renderer separately from the audio path. Training prepares the same 16 kHz microfrontend features, trains/quantizes the wake model and exports a model-bound decision policy. It is not part of live conversation.

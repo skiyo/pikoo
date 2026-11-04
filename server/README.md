@@ -1,69 +1,55 @@
-# Pikoo Agent server
+# Pikoo Gateway
 
-**English** | [简体中文](README.zh-CN.md) · [Project](../README.md)
+**English** | [简体中文](README.zh-CN.md)
 
-The server connects Pikoo’s device to a realtime voice model and manages sessions, family memory and configured tools. It composes the pinned `qwen-audio-agent@2.0.1` runtime with Pikoo adapters; it is separate from the model generating speech.
+## Requirements
 
-This guide is for server developers and operators. Start with the [offline simulator](../docs/getting-started.md) if you only want to see the eyes. Detailed host installation, certificate, pairing, backup and recovery procedures are retained in the [Chinese operations guide](operations.zh-CN.md).
-
-## Enclosure printing resources
-
-The three original cat-enclosure STLs, print order, illustrated assembly guide and checklist are in the [enclosure directory](../hardware/enclosure/README.md). The project family reports successful printing, assembly and home use (2026-10-27); that hardware feedback is separate from this module’s software/research checks.
-
-Native OpenAI Live + Terra preview: [English](../docs/openai-live.md) | [简体中文](../docs/openai-live.zh-CN.md). Follow that guide for the new environment file and continuous-audio clients; existing Gemini instructions remain for an explicitly selected deployment. There is no automatic provider fallback.
-
-## Components
-
-| File or directory | Responsibility |
-|---|---|
-| `openai-live.mjs`, `live-runtime.mjs`, `openai-terra.mjs` | Native Live transport, continuous playback, Terra delegation and text model calls |
-| `live-idle.mjs`, `live-usage.mjs` | Semantic idle, private usage accounting and local diagnostics |
-| `host.mjs` | Compose the runtime and Pikoo adapters |
-| `google-live-compat.mjs` | Gemini Live event/tool compatibility, activity-detection options and connection time context |
-| `context-runtime.mjs`, `context-learning.mjs`, `memory-timeout.mjs` | Recent context, durable background learning, summaries and bounded text-call deadlines |
-| `deepseek-search.mjs`, `family-tools.mjs` | Configured search, public-page reading and family-list tools |
-| `companion-runtime.mjs`, `silence-output.mjs` | Optional selective response and native silence-marker handling |
-| `provider-check.mjs`, `time-context.mjs` | Provider diagnostics and server-generated time context |
-| `deploy/`, `persona/` | Sanitized deployment and persona templates |
-| `reports/` | Dated verification evidence, distinct from current service health |
-
-## Install and check
-
-Use Node.js 24+ and run these commands from the repository root:
+Node.js 24+, a persistent private directory, an HTTPS/WSS reverse proxy, OpenAI API access to **gpt-live-1** and **gpt-6.1-terra**, and optional DeepSeek Search access. The runtime dependency is pinned to `qwen-audio-agent@2.0.1`. Model services are external and may charge; `npm ci` does not provide their credentials.
 
 ```sh
 (cd server && npm ci --ignore-scripts)
 (cd server && npm test)
+mkdir -p "$HOME/.config/pikoo/qwaudio"
+chmod 700 "$HOME/.config/pikoo/qwaudio"
+cp server/deploy/config.env.example "$HOME/.config/pikoo/qwaudio/config.env"
+chmod 600 "$HOME/.config/pikoo/qwaudio/config.env"
 ```
 
-The tests do not require provider credentials. `npm start` inside `server/` runs `host.mjs`; a live service additionally needs its own private runtime configuration, provider credentials and issued device tokens. Follow the operations guide before exposing a gateway.
+Edit that private file: OpenAI key, optional search key, allowed HTTPS origin and service settings. Put family-specific persona files under the configured runtime directory, starting from `server/persona/` templates; do not replace live family data during upgrades. Environment must be loaded **before** importing `host.mjs`:
 
-The recorded host setup uses Alibaba Cloud Linux 4 and a dedicated `pikoo` service user. Paths such as `/opt/pikoo/app/` and `/var/lib/pikoo/qwaudio/` are deployment conventions, not directories created by `npm ci`. Replace all example addresses, including `203.0.113.10`.
+```sh
+QWAUDIO_CONFIG_DIR="$HOME/.config/pikoo/qwaudio" \
+node --env-file="$HOME/.config/pikoo/qwaudio/config.env" server/host.mjs
+```
 
-## Configure a live service
+Use a service user and systemd for a hosted deployment. Adapt the templates in `server/deploy/` to your host; the shipped systemd path assumes server files live directly at `/opt/pikoo/app/`. Add an `EnvironmentFile` for the protected runtime file. Nginx forwards HTTPS and WebSocket Upgrade to 127.0.0.1:3101. Restrict allowed origins, expose no internal proxy or management listener, and verify TLS trust and egress as the actual service user. A domain certificate is simplest; IP certificates require operator-managed short-interval renewal.
 
-1. Prepare private configuration from [`deploy/config.env.example`](deploy/config.env.example), selected by `QWAUDIO_CONFIG_DIR`. Keep `config.env` owner-readable only and fill persona templates separately.
-2. Use a compatible realtime provider. Current Pikoo adapters target Gemini Live; text-model calls handle memory extraction and summaries. Review compatibility before changing the pinned runtime or provider.
-3. Install the systemd and Nginx templates for your host. Validate certificate trust, WebSocket forwarding and the actual service user’s egress before pairing a device.
-4. Issue a separately revocable credential per device, then connect the simulator or board using the resulting private configuration.
+## Pair a device
 
-Provider keys and household profiles stay on the server. Device/browser configuration must contain only its own endpoint and device credential. Keep proxy control ports and the internal gateway private. The [operations guide](operations.zh-CN.md) provides the exact host commands and recovery sequence.
+With the Gateway running and the same private config directory:
 
-## Memory, tools and response policy
+```sh
+QWAUDIO_CONFIG_DIR="$HOME/.config/pikoo/qwaudio" \
+server/node_modules/.bin/qwenaudio gateway pair --name living-room --endpoint https://YOUR_HOST --json
+```
 
-| Concern | Authoritative guide |
+The result contains a **secret device credential**. Save it privately. Use `gateway devices --json` and `gateway revoke DEVICE_ID` with the same runtime to list/revoke. Supply each device only its endpoint and token, never the provider API key. Management belongs behind SSH.
+
+## Modules
+
+| Module | Role |
 |---|---|
-| Current-topic restoration, long-term memory, past-topic recall and retry limits | [Context and memory](../docs/context-memory.md) |
-| Search, public-page reading, family lists and service configuration | [Family tools](../docs/family-tools.md) |
-| When to speak, expected silence and explicitly enabled companion mode | [Quiet companion mode](../docs/companion.md) |
-| End, sleep, reconnect and playback cancellation | [Conversation lifecycle](../docs/conversation-lifecycle.md) |
+| `host.mjs` | Runtime composition, lease and shutdown |
+| `openai-live.mjs`, `live-runtime.mjs` | Native Live transport, 16 kHz audio, delegation and continuous playback |
+| `openai-terra.mjs`, `live-idle.mjs` | Responses reasoning, interaction classification and idle |
+| `context-runtime.mjs`, `context-learning.mjs` | Text restoration, summaries, memory queue and retry |
+| `family-tools.mjs`, `deepseek-search.mjs` | Safe web reading, search and shared notes |
+| `live-usage.mjs` | Private usage ledger and local diagnostics |
 
-The committed deployment template keeps `AGENT_PROTOCOL=none`; describing Pikoo as an AI Agent does not require enabling a separate backend Agent. Search uses its configured adapter. MCP is an extension interface, not a claim that weather, smart-home or MCP OAuth services are enabled by default. Preserve the existing dependency/security review before enabling additional flows.
+[Live behavior](../docs/openai-live.md) · [Memory](../docs/context-memory.md) · [Tools](../docs/family-tools.md) · [Operations](operations.zh-CN.md)
 
-The current persona policy replies in Mandarin Chinese. The bilingual documentation does not promise bilingual spoken output.
+## Back up and recover
 
-## Operate and maintain
+Stop the Gateway, back up its complete private config/state tree plus the deployed source/version, then restart. Configuration, owner records, device credentials, recent history, topic digests, memory, lists, call-ID reservations, learning outbox and usage belong together. Test restore in an isolated directory. Software rollback must preserve newer family memory and list data.
 
-Back up private configuration, memory, history, topic digests and the learning outbox together. Restore in an isolated directory first; a rollback must not overwrite newer family data. Pairing output contains a credential and belongs in a protected file, not an issue or commit.
-
-Use the installed `pikoo-admin` helper through SSH for health, device revocation, restart and backup. A successful software test or model call does not establish real-device listening quality or long-duration acceptance. See [validation records](../docs/validation-summary.md) and [Security](../SECURITY.md).
+Do not expose `GET /api/pikoo/live-status` publicly; use SSH/local access. Diagnose provider auth, quota, proxy/TLS, device uplink and playback separately. A healthy HTTP endpoint does not prove speech quality.

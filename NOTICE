@@ -1,4 +1,4 @@
-Pikoo
+Hi Pikoo
 Copyright 2026 Pikoo contributors
 
 Pikoo-authored source code, original eye graphics and project documentation
@@ -19,6 +19,7 @@ headers and firmware/components/pikoo_features/kissfft/COPYING.
 Installed dependencies retain their upstream licenses and attribution.
 Binary distributors must include notices for the dependencies they bundle.
 No Muse code or Jollybot assets are incorporated.
-No wake-model weights are included in the current source tree.
+Wake-model release assets carry separate non-commercial terms and source
+attribution in models/hi-pikoo/. The source Apache license does not cover them.
 
 This NOTICE is informational and does not modify any license.

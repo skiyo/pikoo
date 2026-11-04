@@ -1,86 +1,45 @@
-# 双眼固件与 USB 烧录
+# 固件与 USB 安装
 
-[English](firmware.md) | 简体中文
+[English](firmware.md) | **简体中文**
 
-默认工程适配 **ESP32-S3-DualEye-LCD-1.28 非触摸版**。旧方屏工程保留在 `firmware/boards/legacy183/`，不能烧到双眼板。编译与软件测试通过，不代表实机验收通过。
+## 板型与构建
 
-## 编译
+微雪 ESP32-S3-DualEye-LCD-1.28 **非触摸版**，16MiB Flash / 8MiB PSRAM。固定 ESP-IDF **5.5.5**，依赖 ESP-SR 2.5.3、ESP-TFLite-Micro 1.4.1、esp_codec_dev 1.5.11、esp_lcd_gc9a01 2.0.4、esp_websocket_client 1.8.0；传递依赖由 `firmware/dependencies.lock` 固定。
 
-固定 ESP-IDF 5.5.5。激活环境后运行 `tools/build-device.sh /私密绝对路径/模型.tflite`。独立构建目录启用 240MHz CPU、8MB Octal PSRAM；固定依赖及 CLI 命令见[英文说明](firmware.md)。双眼构建默认使用 512 KiB 实验模型文件预算；静态检查未显式配置时仍默认 64 KiB。运行时还需分配推理 arena、AFE 和帧缓冲。受限模型和含模型的固件仅保留本机。
-
-候选版本使用单独私密目录，保留旧构建：
+从 [1.0.0 Release](https://github.com/skiyo/pikoo/releases/tag/v1.0.0) 下载模型包，校验摘要并阅读模型条款。
 
 ```sh
-PIKOO_BUILD_DIR=/absolute/private/candidate-build \
-PIKOO_FIRMWARE_VERSION=0.2.2-dev-candidate \
-PIKOO_WAKE_POLICY=/absolute/private/wake-policy.json \
-bash tools/build-device.sh /absolute/private/hi_pikoo.tflite
+. /path/to/esp-idf/export.sh
+PIKOO_FIRMWARE_VERSION=1.0.0 \
+PIKOO_WAKE_POLICY=/absolute/models/wake-policy.json \
+bash tools/build-device.sh /absolute/models/hi_pikoo.tflite
 ```
 
-工具按私密权限生成文件，将 `sdkconfig` 放在该目录，显式关闭缓存中的诊断、否决层、
-试用和音量迁移选项；原有试用／否决层选项仍需另外明确开启。普通构建一律关闭音量
-迁移，仅执行 `build`，没有 USB 或烧录操作。Hi Pikoo 仍须匹配冻结策略；编译通过
-不能代替部署条件、实机内存／耗时或全双工验收。
+上述命令只构建，不访问 USB。可用 `PIKOO_BUILD_DIR` 指定独立目录。模型须匹配策略摘要与固件前端；文件上限 512KiB，运行 arena 和耗时单独验证。当前模型 98,064 字节。正常构建关闭诊断、veto 与音量迁移选项。
 
-## 安装、升级和恢复
+## 安装下载的发布包
 
-Mac 双击 `tools/Pikoo-USB.command`，提供首次安装、升级、状态、恢复原厂和修改配置。找不到环境时提示设置 `PIKOO_IDF_PATH`；不结束其他进程。
+解压 `hi-pikoo-firmware-1.0.0.zip`，从解压根目录操作。工具位于 `tools/`，已校验镜像位于 `firmware/build-dualeye/`，无需编译即可运行相同 USB 命令。先激活 ESP-IDF 5.5.5 Python 环境；macOS 也可双击 `tools/Pikoo-USB.command`。
 
-配置包含 2.4GHz Wi-Fi、WSS 地址和独立设备凭证，通过本机无回显输入保存；文件权限 600、目录权限 700。Google Key 和家庭资料不写入设备。开发版未启用 Flash/NVS 加密，有物理读取条件的人可能取得设备凭证。
+首次安装前，用 `esptool read_flash 0x0 0x1000000 factory-full.bin` 备份完整 16MiB。私密目录内同时保存 `manifest.json`：`{"full_backup_sha256":"完整备份的SHA256"}`。安装器会先验证备份与实机一致，再迁移分区，不能用其他板子的备份。
 
-首次安装迁移分区，要求完整 16MiB 原厂备份与 SHA256 清单，并先与板内内容校验。提前生成私密 NVS，再一次写入引导程序、分区、应用和资源；不整片擦除，不改熔丝。Pikoo 分区为 64KiB NVS、6MiB 应用、4MiB SR 资源。升级核对实际分区后只写应用，保留配置；重新配置会替换 NVS、清除会话标识。恢复原厂必须写回并校验完整 16MiB。首版不提供 OTA。
+私密 JSON 包含 `ssid`、`password`、`endpoint`、`token`。地址为无查询参数的 `wss://YOUR_HOST/api/realtime`。可运行 `python tools/configure.py --output /private/config.nvs.bin` 隐藏输入密码和凭证，或使用 USB 助手。设备不需要模型服务 API Key。
 
-## 使用
+```sh
+python tools/device.py install --port PORT --build firmware/build-dualeye --backup /private/factory-backup --config /private/device.json --dry-run
+python tools/device.py install --port PORT --build firmware/build-dualeye --backup /private/factory-backup --config /private/device.json
+python tools/device.py upgrade --port PORT --build firmware/build-dualeye
+python tools/device.py diagnose --port PORT --command status
+python tools/device.py configure --port PORT --build firmware/build-dualeye --config /private/device.json
+python tools/device.py restore --port PORT --backup /private/factory-backup
+```
 
-| 操作 | 行为 |
-|---|---|
-| 单按 BOOT | 待机唤醒；回答或思考时立即停止 |
-| 双按 BOOT | 结束会话并闭眼 |
-| 按住 2 秒 | 切换静音；占用时改为明确接管 |
-| RESET | 重启，保留配置与有效会话标识 |
+首次安装在写入前准备全部镜像及私人 NVS。升级核对分区后只更新应用，保留 Wi-Fi、凭证、音量和会话状态。重新配置替换 NVS、清除会话；恢复使用完整 16MiB 原厂备份。不整片擦除、不改 eFuse、无 OTA；开发包未启用 Flash/NVS 加密。
 
-单按不等待双击判定。正常启动时松开 BOOT；恢复下载模式按官方 BOOT/RESET 步骤操作。
+## 按键与音频
 
-待机闭眼，音频仅用于本地唤醒。唤醒就绪后自动提交招呼作为首轮输入；重连时使用提示音，提示结束后才上传。静音停用输入 I2S 和 ADC，同时停止推理和上传。30 秒无人说话且无播放后关闭连接并待机。断线、静音、自动待机保留相同会话 ID，明确结束或告别后新开；ID 最长保留 24 小时。恢复近期文本语义，不续播旧回答。
+单击 BOOT 唤醒或停止回答，双击结束会话，长按 2 秒静音；占用状态下长按明确接管。RESET 保留配置重启。待机闭眼。原生 Live 使用双向单声道 PCM16 16kHz；协商为 24kHz 的下行经过重采样。连续播放使用有界预缓冲和播放代次，丢弃旧音频。
 
-## 音频、诊断与验收
+音量保存在 NVS，新设备默认 -24dB。推荐家庭初始设置：`python tools/device.py diagnose --port PORT --command 'volume -2'`；按实际外壳和喇叭调整，破音则降低。喇叭异常发热时停止播放并断电。
 
-板上实际麦克风接 ES7210 MIC1，功放输出回采接 MIC3；通过 `MR` 接 ESP-SR。实际通道顺序、参考幅度和 AEC 效果仍需实测。录放 16kHz、PCM16；下行 24kHz 经连续 FIR 重采样。两眼复用原创 C++ 核心，PSRAM 绘制、内部 DMA 传输，目标 20fps。完整引脚及来源见英文说明。
-
-使用 `tools/monitor.py` 保持一个 USB 连接观察运行。重新打开 USB 可能重启设备，不应混入连续运行验收。支持状态、唤醒、停止、结束、静音、接管、短音和分级音量。默认 DAC -24dB；先低音量测试，发热立即停止。
-
-指标包含运行时间、重启原因、内存、帧率、麦克风与参考幅度、音频错误、重连和唤醒推理耗时，不记录对话与家庭资料。实际结果及未通过项目见[实机验收记录](device-validation.md)。成人/儿童唤醒、自然插话、记忆、8 小时误唤醒和 72 小时运行分别记录，不能由编译结果替代。
-
-音频时钟适配：ES7210 的 TDM I²S 通道顺序为 ADC1/ADC3/ADC2/ADC4（[数据手册](https://files.waveshare.com/wiki/common/ES7210_DS.pdf)，图 2e 和寄存器 0x12）。采用两个 32 时钟立体声槽采集，解出麦克风与参考；DAC 的 PCM16 放在每槽高 16 位。实际电平、回声效果和自然插话仍需实测。
-
-音量：首次安装默认为 -24 dB；USB 预设为低 -36、正常 -24、提高 -12、较大 -6、`volume full` 为 0 dB。0 dB 比原上限提高 6 dB，不额外放大 PCM；允许范围 -50 至 0 dB。调节结果写入 NVS，重启保留。诊断同时显示选择值和 DAC 音量寄存器回读值；出现破音时降低音量。
-
-回答开头先积累约 900ms 音频，最长等待 1500ms；已完成的短回答不强制等满。功放先播放约 30ms 静音再送语音，减少启动时丢首字的可能；实际听感以设备测试为准。
-
-## 网络恢复与绘图负载
-
-发送时将每个带掩码的 WebSocket 消息头和内容合并成一次 TLS 写入。握手、证书验证、接收拆帧和发送锁仍由固定的 ESP-IDF 5.5.5 客户端负责。项目链接包装器只处理明确绑定的连接，支持当前 8192 字节发送分片及控制帧，不改 SDK 文件。该版本的 `esp_transport_get_payload_transport_handle()` 会重置接收状态，因此包装器直接使用绑定时传入的 TLS 句柄。
-
-独立发送任务优先处理控制事件，再发送麦克风数据，避免上传阻塞拖住会话处理和下行解码。两个生产任务使用原子事件计数器，避免编号竞争。应用发送超时设为 2.5 秒，上行队列最多容纳 3.2 秒，用于短暂丢包后的补传，不是固定播放延迟。持续丢包仍可能增加延迟或断开。队列存储显式分配到 PSRAM，避免 FreeRTOS 动态队列占用 Wi-Fi/TLS 所需的内部 RAM；取消操作继续通过 epoch 丢弃旧音频。
-
-退出连接先唤醒阻塞的 socket IO，再等待客户端停止，最后释放对象和合并缓冲，避开固定版本优雅关闭 API 中无期限等待发送 CLOSE 的路径。因此主动关闭也可能在服务器日志中显示非正常 WebSocket 关闭，不能单凭关闭码判断新故障。新增诊断字段：`frame_tx`、`frame_tx_errors`、`stop_max_us`、`upload_pending`、`session_steps`、`tx_holds`。仅 USB 明确发送的 `tx hold` 命令会单次暂停发送任务 1.5 秒，用于验证会话和播放隔离，正常交互不会启用。
-
-完整绘制闭眼状态后，待机只刷新新旧闭眼弧线范围的并集，正常待机约 30 行。状态、旋转变化及唤醒过渡仍重绘整屏。主机测试核对所有状态、左右眼的局部结果与全帧一致，并覆盖极端视线和倾斜的变化范围。连接光环每帧只计算一次相位，避免逐像素重复三角函数；帧率、音频并发仍以实机结果为准。软件命令触发的网络测试不计作真人语音唤醒成功。
-
-### 2026-10-19 工程验证
-
-本机私密 `0.2.0-bm17-net5` 固件完成两次各 25 秒、软件命令触发的设备会话：均收到音频，没有额外重连或播放供音间隙计数，主动结束后 274–279ms 回到待机。明确暂停发送任务 1.5 秒时，网络发送停止，会话处理继续运行，有界采音队列随后恢复。主动关闭时有一次在途写入被取消，诊断记录保留。待机图形约 18–19fps；过渡和通话期间仍有低于 20fps 的样本。以上不代表唤醒模型、真人听感、30 分钟通话、8 小时误唤醒或 72 小时稳定性通过。权重、固件镜像及原始日志不公开。
-
-### 重连招呼追加回归
-
-后续 NET5 真人试听未通过：第一轮顺畅，断开重连后第二轮开头听到两次卡顿；设备计数记录到一次约 244ms 的供音间隙。前六批音频包含单采样前缀，相邻两批到达间隔达 929ms。用独立的 24kHz 播放时钟重放这些时序，旧的 500ms / 600ms 启动策略出现 222ms 断粮；900ms / 1500ms 策略在这段实测开头避免断粮，保留全部采样。在该时序中开口延后 403ms；已经完整接收的短回答仍立即播放。此调整不能覆盖任意长的网络停顿，真人听感、重复实机测试必须与确定性回放分开记录。
-
-NET6 实机追加测试在失败前未计到供音间隙，但第二次会话因追加音频被拒绝而触发保护重连，保留为失败，当时未记录具体拒绝原因。NET7 沿用相同启动策略，新增 `audio append refused cause=...` 诊断：1 数据无效、2 回答已被拒绝、3 回答已完成、4 PCM 容量上限、5 回答元数据上限，不静默放宽队列限制。之后 NET7 三次各 24 秒的实机测试均收到音频，没有额外重连、会话内发送失败或供音间隙计数，主动结束后 138–244ms 回到待机。追加音频被拒绝的问题这三轮未复现，仍未解决。用户随后确认这些招呼开头完整、顺畅；这只代表本轮招呼开头试听通过，软件触发会话不计作语音唤醒或长时间通话成绩。
-
-### 上下文保留更新
-
-CTX1 修复自动空闲待机错误清除 NVS 会话编号的问题；静音、临时断线及自动闭眼待机保留编号，明确结束和告别才清除。日志只报告是否复用，不打印编号。默认 PCM 队列将突发音频限制为 30 秒 / 1.44 MB PSRAM，启动预缓冲仍为 900ms。此前 NET7 的一次普通回答已积压 7960ms，再来 80ms 时触及容量保护（cause=4），导致重连；新上限仍不保证覆盖任意长的上游突发。服务器恢复、自动记忆及北京时间见[上下文与记忆](context-memory.zh-CN.md)。
-
-明确开启陪伴模式时覆盖普通的 30 秒无活动规则，见[陪伴设置](companion.zh-CN.md)。
-
-用户明确要求调大、且 USB 指令无法确认时，可显式构建 `-DPIKOO_VOLUME_BOOT_UPGRADE=ON`。该可选版本仅在首次启动将音量保存为 0 dB，并写入 NVS 标记 `volume_v3`；之后手动调低不会被下次启动覆盖。普通构建默认 OFF。保存值校验与真人听感分开验收。
+[接线与引脚](hardware.zh-CN.md) · [协议](gcp7.md) · [模型卡](../models/hi-pikoo/MODEL_CARD.zh-CN.md)

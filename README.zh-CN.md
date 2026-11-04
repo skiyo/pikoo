@@ -1,54 +1,16 @@
-# Pikoo
+# 🐱Hi Pikoo🐱
 
 [English](README.md) | **简体中文**
 
-**面向家庭的实时语音 AI Agent。**
+**Pikoo 是一个基于 Live 模型的家庭 AI Agent 宠物。**
 
-Pikoo 绝不是市面上常见的智能音箱。它是一个可以亲手打造的开源 DIY 项目，陪孩子探索新发现，也参与一家人的日常。
+[官网](https://pikoo.lol/) · [下载 1.0.0](https://github.com/skiyo/pikoo/releases/tag/v1.0.0) · [项目文档](docs/README.zh-CN.md)
 
-[认识 Pikoo](https://pikoo.lol/) · [开始使用](docs/getting-started.zh-CN.md) · [开发指南](docs/development.zh-CN.md)
+![Pikoo 双眼小猫外壳——概念渲染](docs/images/pikoo-enclosure.webp)
 
-<p align="center">
-  <img src="docs/images/pikoo-enclosure.webp" width="520" alt="Pikoo 小猫外壳与琥珀色双眼">
-  <br>
-  <em>Pikoo 小猫外壳外观概念渲染。</em>
-</p>
+## Quick Start
 
-## 小猫外壳 STL 与装配
-
-[外壳打印文件与完整说明](hardware/enclosure/README.zh-CN.md)直接提供三个原始 STL、摆放与支撑设置、装配图解和验收表，不需要 ZIP。项目家庭已实际打印、装配验证并在家使用通过（2026-10-27，用户反馈）；专门抗摔测试未单独记录。按 **03 旋锁 → 01 一体猫脸底座内架 → 02 后盖** 打印，三个配套件一起完成机械固定。
-
-## 相处是什么体验
-
-- **自然地聊。** 实时语音结合上下文展开，设备提供停止播放和插话处理能力。
-- **接着上次聊。** 对话上下文、家庭共享记忆和历史话题回顾，让共同的小事延续到下一次交流。
-- **一起找办法。** Agent 可以调用你配置的工具；服务端已提供搜索、公开网页阅读和家庭清单适配，使用方式见[工具配置](docs/family-tools.zh-CN.md)。
-
-两块会动的眼睛让回应有了表情。可选的[安静陪伴模式](docs/companion.zh-CN.md)支持明确唤醒后持续连接，由模型判断何时回应。
-
-原生 **GPT-Live 1 + GPT-6.1 Terra** 接入已进入开发预览。最新实机短测反馈音量合适、连续回答顺畅，长期验收尚未完成。详见[接入说明](docs/openai-live.zh-CN.md)及[实际记录](docs/openai-live-validation.md)。
-
-## 它如何工作
-
-| 部分 | 职责 |
-|---|---|
-| [微雪 ESP32-S3 双目开发板](https://www.waveshare.net/shop/ESP32-S3-DualEye-LCD-1.28.htm) | 采集声音、播放回答，在两块圆屏上显示表情 |
-| [Qwen Audio Agent](https://github.com/QwenAudio/qwen-audio-agent) 与 Pikoo 服务端适配 | 组织会话、设备鉴权、记忆与工具协作 |
-| 实时语音大模型 | 理解语音并实时生成回答；当前适配面向 Gemini Live，以及原生 OpenAI Live 开发预览 |
-
-```mermaid
-flowchart LR
-    Device[双目设备或本机模拟器] <-->|语音与会话事件| Agent[Pikoo Agent 服务端]
-    Agent <-->|实时音频| Model[Realtime 大模型]
-    Agent <--> Memory[私密家庭记忆]
-    Agent <--> Tools[已配置的工具]
-```
-
-Qwen Audio Agent 是运行框架，与所连接的大模型分工不同。运行时可通过 MCP 等工具接口扩展；天气和智能家居属于可接入的方向，不是本仓库默认启用的服务。当前配置及兼容边界见[架构说明](docs/architecture.zh-CN.md)和[服务端指南](server/README.zh-CN.md)。
-
-## 先在电脑上开始
-
-离线模拟器是体验双眼和交互控制的最短路径。需要 Node.js 24+、npm、Bash 和 C++17 编译器。macOS 安装 Xcode Command Line Tools；Linux 使用相应编译工具链。
+**先在电脑上体验双眼。** 需要 Node.js 24+、npm、Bash 和 C++17 编译器。macOS 安装 Xcode Command Line Tools；Debian/Ubuntu 安装 `build-essential`。
 
 ```sh
 git clone https://github.com/skiyo/pikoo.git
@@ -57,34 +19,63 @@ cd pikoo
 bash tools/start-dualeye.sh
 ```
 
-打开 **http://127.0.0.1:8793/dualeye**。离线回答是测试音，不是 AI 对话。演示不需要模型权重、Provider Key、Python 或 ESP-IDF；打开页面不会自动采集麦克风。按 Ctrl+C 或执行 `bash tools/stop-dualeye.sh` 停止。
+打开 **http://127.0.0.1:8793/dualeye**。离线演示不需要 API Key、唤醒模型或板子；按钮用测试音模拟交互，不会自动开始 AI 对话或录音。按 Ctrl+C 或运行 `bash tools/stop-dualeye.sh` 停止。
 
-体验实时语音时，再连接自己的 Agent 服务端和单独签发的设备凭证。制作实物使用非触摸版 **ESP32-S3-DualEye-LCD-1.28**、USB 供电及合适的喇叭。先读[开始使用](docs/getting-started.zh-CN.md)，再按[硬件说明](docs/hardware.zh-CN.md)和[双眼固件指南](docs/firmware.zh-CN.md)操作。旧款 1.83 英寸板属于独立工程。
+**接入真实语音：** [部署自己的 Gateway](server/README.zh-CN.md)，签发设备凭证，再[配置模拟器](docs/getting-started.zh-CN.md#真实语音)。
 
-## 按想改的部分找到源码
+**安装实机：** 下载 [1.0.0 固件与模型](https://github.com/skiyo/pikoo/releases/tag/v1.0.0)，按 [USB 安装说明](docs/firmware.zh-CN.md)操作，在本机填写自己的 2.4GHz Wi-Fi 和设备凭证。
 
-| 源码 | 开发入口 |
-|---|---|
-| [`firmware/main/`](firmware/main/) | 板卡外设、采音、播放与双屏集成 |
-| [`firmware/components/pikoo_core/`](firmware/components/pikoo_core/) | 音频和会话状态、取消与重采样 |
-| [`firmware/components/pikoo_eyes/`](firmware/components/pikoo_eyes/) | 独立 C++ 眼睛绘制、视线、眨眼与表情 |
-| [`firmware/simulator/`](firmware/simulator/) | 电脑交互、本地图形、可选唤醒进程及服务端连接 |
-| [`server/`](server/README.zh-CN.md) | Agent 组装、Provider 适配、记忆及工具配置 |
-| [`training/`](training/README.zh-CN.md) | 授权唤醒语料、训练、导出和评估 |
-| [`tools/`](tools/) | 启停、构建、USB 配置与诊断 |
-| [`docs/`](docs/README.zh-CN.md) | 上手、架构、开发和带日期的验证记录 |
+## 当前功能
 
-环境和检查方式见[开发指南](docs/development.zh-CN.md)。协议细节、部署操作和实验结果分别由专项文档承接。
+- 本地 **“Hi, Pikoo”** 唤醒，接受 `piku`、`piko` 两种读音。
+- 连续中文对话、插话、停止回答、静音与重连。
+- 两块 240 × 240 表情眼屏，与桌面模拟器共用原创 C++ 绘制核心。
+- 服务端管理话题续接、自动家庭记忆、摘要和持久清单。
+- 通过配置的工具搜索互联网、阅读公开网页。
+- Gateway 自行部署；模型密钥和家庭资料留在服务器。
 
-## 动手之前
+闭眼表示待机。唤醒后连接语音服务，就绪后睁眼并主动问候；告别结束当前语音连接。空闲休眠释放计费语音连接，服务端文字上下文可供下次唤醒恢复。
 
-- **开发预览：** 软件检查和短时设备运行，不能证明持续通话、硬件 AEC、儿童唤醒和长期稳定性已经通过，参见[验证摘要](docs/validation-summary.zh-CN.md)。
-- **唤醒模型：** 目标词是“你好 Pikoo”（pī kū）。当前公开文件树不分发模型权重；使用授权私密模型，或按[训练流程](training/README.zh-CN.md)准备。历史权重未因代码开源而获得 Apache-2.0 模型许可。
-- **语言和服务：** 文档支持中英文；当前对话策略使用普通话回答。实时模型和在线工具需要联网并单独配置，费用取决于所选服务。
-- **家庭数据：** Provider Key、人设、记忆和会话状态由私密服务端管理。设备只持有自己的可撤销凭证，不根据声音识别家庭成员。数据流见[记忆说明](docs/context-memory.zh-CN.md)和[安全说明](SECURITY.zh-CN.md)。
+## 整体架构
 
-## 参与开发与复用
+```mermaid
+flowchart LR
+    Device["ESP32-S3 / desktop simulator<br/>Wake · capture · playback · eyes"] <-->|"GCP / WSS · PCM audio"| Gateway["Pikoo Gateway<br/>Auth · sessions · audio · tools"]
+    Gateway <-->|"Native Live WebSocket"| Live["GPT-Live 1<br/>Listen · speak · interrupt"]
+    Live <-->|"Responses delegation"| Terra["GPT-6.1 Terra<br/>Reasoning · tool selection"]
+    Terra <-->|"Function calls / results"| Gateway
+    Gateway <--> Store[("Private text context<br/>Family memory · lists")]
+    Gateway --> Background["Terra<br/>Interaction classification · summaries"]
+    Training["Offline training / export"] -.->|"Model + frozen policy"| Device
+```
 
-欢迎文档、原创表情、设备集成和可复现的缺陷报告。先读[贡献指南](CONTRIBUTING.zh-CN.md)；纯文档修改检查链接和示例，行为变化执行对应软件测试。
+设备负责声音和表情。Gateway 组合 **Qwen Audio Agent 2.0.1** 与 Pikoo 原生 Live Provider。Live 负责听说，Terra 负责委派推理、工具、互动分类和记忆整理。恢复的是保存的文字语义，不是未播完的声音。[架构设计](docs/architecture.zh-CN.md) · [上下文与记忆](docs/context-memory.zh-CN.md)
 
-Pikoo 原创代码、图形和文档采用 [Apache-2.0](LICENSE)。依赖和引用组件保留各自许可，见 [NOTICE](NOTICE) 和[第三方来源](THIRD_PARTY.zh-CN.md)。凭证、家庭录音、受限语料和没有公开授权的权重不进入公共提交。
+## 设备
+
+目标板为 **微雪 ESP32-S3-DualEye-LCD-1.28 非触摸版**：16MiB Flash、8MiB PSRAM，两块 240 × 240 圆屏。另需匹配的喇叭、USB 数据线、稳定 USB 供电和 2.4GHz Wi-Fi。板载音频编解码器与麦克风。
+
+[硬件与接线](docs/hardware.zh-CN.md) · [三件式小猫外壳与 STL](hardware/enclosure/README.zh-CN.md)
+
+## 部署与二次开发
+
+| 模块 | 职责 | 入口 |
+|---|---|---|
+| `firmware/` | 板级接口、唤醒推理、音频、按键与双眼 | [固件](docs/firmware.zh-CN.md) |
+| `firmware/simulator/` | 本机图形演示与可选真实语音 | [快速开始](docs/getting-started.zh-CN.md) |
+| `server/` | Live/Terra、鉴权、会话、工具与持久化 | [服务端](server/README.zh-CN.md) |
+| `training/` | 数据隔离、变速增强、训练、量化与评估 | [训练](training/README.zh-CN.md) |
+| `models/hi-pikoo/` | 当前模型卡、策略、来源与使用条款 | [模型卡](models/hi-pikoo/MODEL_CARD.zh-CN.md) |
+| `tools/` | 构建、USB 安装、诊断和检查 | [开发说明](docs/development.zh-CN.md) |
+
+使用 `bash tools/check.sh` 运行软件检查。[开发说明](docs/development.zh-CN.md)介绍如何替换表情、适配板卡、增加工具、更换 Provider 和导出模型；[文档目录](docs/README.zh-CN.md)提供全部当前入口。
+
+## 使用要求与限制
+
+联网对话需要自己的服务器、模型 API 权限和可用网络；模型和搜索服务可能单独收费。唤醒效果受读音、距离、噪声和外壳声学影响。本次版本不声称完成真实儿童召回、8 小时误唤醒和 72 小时稳定性认证。浏览器测试不能证明实机 AEC 效果。
+
+## 贡献与许可证
+
+[贡献](CONTRIBUTING.zh-CN.md) · [安全](SECURITY.zh-CN.md) · [第三方来源](THIRD_PARTY.zh-CN.md) · [发布检查](docs/release.zh-CN.md)
+
+原创代码、眼睛图形及文档采用 **Apache-2.0**。唤醒权重和包含权重的固件附有[独立非商业模型条款](models/hi-pikoo/LICENSE.md)。第三方组件和训练数据保留各自条款，Apache 许可不替代这些条款。不分发训练音频、家庭录音、私人资料或凭证。

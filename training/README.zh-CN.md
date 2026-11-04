@@ -1,82 +1,42 @@
-# 本地唤醒开发
+# 唤醒模型训练
 
-[English](README.md) | **简体中文** · [项目首页](../README.zh-CN.md)
+[English](README.md) | **简体中文**
 
-本模块开发 Pikoo 的本地完整 **Hi, Pikoo** 唤醒流水线，接受 piku 和 piko：准备授权语料、训练和导出候选，再评估是否适合设备。它不运行实时 Agent，也不识别家庭成员。早期“你好 Pikoo”实验保留为历史研究。
+目标为完整 **Hi + piku / piko**，接受自然连读和中国口音。完整 Hi Tikoo/Tiko 的偶发唤醒可以容忍，但不承诺召回。单独 Hi、单独名字和缺词仍为负样本。训练在本机离线进行，不参与在线通话。
 
-目标设计：[Hi Pikoo 三音节唤醒](../docs/wake-hi-piku.zh-CN.md)。2026-11-01 已安装私密试用版；用户反馈唤醒可用，但普通播放会误触发，[负样本补训](../docs/wake-playback-negatives.zh-CN.md)处理此问题。该反馈不替代正式成人／儿童或 8 小时误唤醒验收，旧的独立测试失败结果继续保留。
+## 当前模型
 
-体验[离线模拟器](../docs/getting-started.zh-CN.md)或用按钮开始语音会话，不需要先训练。**当前公开文件树不提供唤醒模型权重。** 历史模型和分发边界见[模型卡](models/MODEL_CARD.md)。
+[模型卡](../models/hi-pikoo/MODEL_CARD.zh-CN.md) · [权重及检查点](https://github.com/skiyo/pikoo/releases/tag/v1.0.0) · [条款及来源](../models/hi-pikoo/ATTRIBUTION.md)
 
-## 外壳打印资料
+包内包含 `hi_pikoo.tflite`、`checkpoint.weights.h5`、`model-config.json`、`wake-policy.json` 和摘要。推理权重 98,064 字节，不分发家庭录音和原始语料。网络配置：96 通道、64 单元分类头、72 步有序上下文、无 BatchNorm、种子 42。`hi_pikoo_model.build` 可重建结构；JSON 中的元数据不能全部直接当函数参数。
 
-三件小猫外壳的原始 STL、打印顺序、装配图解与验收表见[外壳目录](../hardware/enclosure/README.zh-CN.md)。项目家庭已打印、装配验证并在家使用通过（2026-10-27，用户反馈）；这份硬件反馈与本模块的软件/研究检查分别记录。
-
-## 按任务找到入口
-
-| 任务 | 工具或说明 |
-|---|---|
-| 准备有使用权的音频和清单 | `generate_synthetic.py`、`import_children.py`、`merge_manifests.py` |
-| 内容审核与不确定语料隔离 | `clean_corpus.py`、`review_local_corpus.py` |
-| 训练或导出候选 | `train.py` 与固定的上游代码 |
-| 对比流式验证或测试结果 | `evaluate_iteration.py`，显式选择集合 |
-| 检查静态设备兼容性 | `check_esp32_model.py`、`micro_check/` |
-| 排查连续讲话或设备容量 | [上下文诊断](../docs/wake-context.zh-CN.md)、[容量说明](../docs/wake-capacity.zh-CN.md) |
-| 查看发音覆盖工作 | [发音说明](../docs/wake-pronunciations.zh-CN.md) |
-| 排查播放声音误唤醒 | [播放负样本](../docs/wake-playback-negatives.zh-CN.md)、`wake_playback_negatives.py`、`wake_negative_finetune.py` |
-| 查阅旧实验、数据源操作及失败候选 | [完整保留的研究记录](research-notes.zh-CN.md) |
-
-研究记录保留原 README 的命令、日期和数字，属于历史证据，不表示旧候选仍是当前推荐模型。
-
-## 准备环境
-
-以下命令在仓库根目录执行。训练使用 Python 3.11；可选依赖包含 TensorFlow，体积明显大于仅运行图形演示所需的环境。
+## 环境
 
 ```sh
-python3.11 -m venv training/.venv
-training/.venv/bin/pip install -r training/requirements.txt
-mkdir -p training/vendor
+python3.11 -m venv .venv
+.venv/bin/pip install -r training/requirements.txt
 git clone https://github.com/OHF-Voice/micro-wake-word.git training/vendor/micro-wake-word
 git -C training/vendor/micro-wake-word checkout 4665173cd35f1cff9a61e06fc427f124766c488e
+.venv/bin/python training/hi_pikoo_train.py --help
+.venv/bin/python training/wake_int8_iterate.py --help
 ```
 
-使用授权的本地 WAV 或允许使用的合成来源。`generate_synthetic.py` 依赖 macOS 的 `say` / `afconvert`：
+固定 TensorFlow 2.18.1、NumPy 2.0.2、pymicro-features 2.0.2，使用上述 Apache-2.0 microWakeWord 提交的流式层与转换工具。需要保音高变速时单独安装 FFmpeg，不随项目打包其二进制。
 
-```sh
-training/.venv/bin/python training/generate_synthetic.py --output training/data/synthetic
-training/.venv/bin/python training/train.py \
-  --upstream training/vendor/micro-wake-word \
-  --manifest training/data/synthetic/manifest.json \
-  --output training/runs/my-model --defer-test
-```
+## 数据与流程
 
-这里生成的是研究候选，不是已验收的唤醒模型。先固定训练、验证和测试划分，再做增强；根据验证集选模，冻结模型和阈值后才评分封存的独立测试。`evaluate_iteration.py` 要求显式传入 `--split validation` 或 `--split test`。
+预先声明目标 JSON：`target=hi-piku-piko-v2`、`accepted_names=[piku,piko]`、`declared_before_corpus_training=true`。Manifest 记录本地相对路径、音频 SHA-256、split、标签、目标版本、来源/说话人和审核证据。完整字段校验以 `hi_pikoo_train.py:admit` 和 `--help` 为准；保护摘要登记禁止进入 TRAIN/DEV 的录音。
 
-## 数据和评估规则
+ChildMandarin 仅提供真实儿童普通讲话，并非目标词录音。合成童声只是风格，不能当真实儿童。标签依赖具体波形的发音、完整度审核，不能只相信提示词或 ASR。
 
-- 家庭录音仅供评估，不用于训练、增强、量化校准、清洗决策、阈值调整或选模；保留 `evaluation_only=true` 和保护摘要。
-- 说话人、原始录音在集合间互斥，派生音频继承父样本划分。儿童普通讲话是负样本来源，不能证明儿童目标词召回。
-- 虚构童声、变调和 ASR 核对不能代替真实童声发音与识别验收。已经看过的诊断录音不能重新称为全新盲测。
-- 保留语料访问授权、原始摘要、不确定内容隔离和失败成绩。数据卡上的许可标签不能代替完整分发授权。
+原音、声线身份及其全部增强后代不能跨 TRAIN/DEV/TEST。家庭录音只用于冻结后的 TEST，不训练、不增强、不校准、不选模。原始数据、审核资料和私人清单留在本机。普通软件检查不下载数据、不生成收费语音。
 
-数据下载和导入步骤保留在研究记录中，受限数据先取得访问许可。没有明确权利时，不发布家庭音频、受限录音或衍生权重；Git 历史中的研究权重不会因项目代码采用 Apache-2.0 而自动改换许可。
+1. `hi_pikoo_train.py` 根据显式审核清单准备 16kHz microfrontend 特征并训练、导出因果网络。
+2. `wake_int8_iterate.py` 做受控微调和原生 Micro DEV 评分，数据准入、变速等选项需要相应证据，不能伪造验收文件绕过。
+3. `wake_tempo.py` 对 TRAIN 用 `atempo` 做 1.15/1.30/1.50 倍变速，不改变音高；先转换时间标签再做声学增强，后代保持原 split。
+4. `sequence_export_check.py`、`streaming_runtime.py`、`micro_check/` 验证流式导出、状态重置和后端一致性，使用量化原生结果，不能只看浮点成绩。
+5. 冻结模型与策略后再打开独立 TEST。`wake_native_finalize.py` 保留严格来源和评估门槛；发布策略为脱敏运行子集，不伪造达标证明。
 
-## 导出与设备验收
+仓库提供源码与当前检查点，不分发私密原始训练清单。逐字节重训需完整合法数据和证据；重新构建固件只需发布的 TFLite/策略对。模型检查命令和详细字段见[英文说明](README.md)。
 
-特征流水线使用 16 kHz 单声道 PCM16 和 microfrontend 特征。流式模型接口、量化与注册算子必须和 worker、固件匹配。
-
-```sh
-training/.venv/bin/python training/check_esp32_model.py \
-  --model /absolute/private/authorized-model.tflite \
-  --output training/runs/esp32-static-check.json
-```
-
-训练和静态检查默认上限为 **64 KiB**。实验时显式传 `--max-model-bytes 524288`，允许最多 **512 KiB**；当前双眼固件使用较大的实验 Flash 预算，独立的旧款 1.83 英寸工程保留自身上限。文件能放下不代表 arena 内存、推理耗时、准确率或音频/显示并发达标。构建和烧录前读[固件指南](../docs/firmware.zh-CN.md)。
-
-静态检查、主机 Micro 一致性、板上资源测量、流式验证和真人唤醒分别报告。既有家庭验收计划要求每人在一米处至少 18/20 次成功、八小时误唤醒不超过一次；这是目标，不是已完成结果，参见[设备验收](../docs/device-validation.md)。
-
-## 检查与结果记录
-
-在仓库根目录运行 `bash tools/check.sh`，其中包含训练及工具单测，不需要私人音频或模型凭证。未安装可选运行环境时可能出现跳过，跳过不能写成通过。完整环境见[开发指南](../docs/development.zh-CN.md)。
-
-修改文档不需要启动训练、下载大型模型或评分测试录音。新候选结论写入带日期的报告，同时保留模型摘要、来源与划分，以及验收边界。
+设备耗时/arena、音频显示并发、真人自然快读和连续背景误唤醒分别验证。连续负样本不能逐条重置前端。真实儿童、8 小时与 72 小时目标尚未完成，见模型卡。

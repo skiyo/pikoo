@@ -1,12 +1,10 @@
-# Getting started
+# Quick Start
 
-**English** | [简体中文](getting-started.zh-CN.md) · [Home](../README.md)
+**English** | [简体中文](getting-started.zh-CN.md)
 
-This guide takes you from the offline desktop demonstration to your own live voice service and, optionally, the physical DualEye device. For product positioning, use the [project README](../README.md); for implementation details, use [Architecture](architecture.md).
+## Offline demo
 
-## Offline dual-eye demo
-
-Requirements: Node.js 24 or newer, npm, Bash and a C++17 compiler. macOS needs Xcode Command Line Tools; Debian/Ubuntu can use `build-essential`. Other platforms with equivalent tools may work but have not been validated. A browser with Canvas and WebAudio is required.
+Requirements: Node.js 24+, npm, Bash, C++17 compiler.
 
 ```sh
 git clone https://github.com/skiyo/pikoo.git
@@ -15,70 +13,36 @@ cd pikoo
 bash tools/start-dualeye.sh
 ```
 
-Open http://127.0.0.1:8793/dualeye. The script builds the renderer and starts an offline service by default. Try the expression buttons, pixel view, wake/session, stop and simulated disconnect. Offline replies are test tones. Microphone and remote connections require explicit actions/configuration; no model or Python is needed for this demo.
+Open http://127.0.0.1:8793/dualeye. Test tones simulate conversation. No credentials, model, Python or microphone are required. Stop with Ctrl+C or `bash tools/stop-dualeye.sh`. Use `PIKOO_SIM_PORT=8794` for another port; use `127.0.0.1` because Host/Origin checks are intentional.
 
-Keep the terminal open. Stop with Ctrl+C or `bash tools/stop-dualeye.sh`. macOS also has double-click start/stop files in `tools/`. A busy port is reported without terminating another process. Use `PIKOO_SIM_PORT=8794 bash tools/start-dualeye.sh` to select a different port; always open `127.0.0.1`, not `localhost`, because Host/Origin checks are intentional. `/` retains the older simulator and `/wake-test` is the separate local wake test page.
+## Real voice
 
-For direct foreground use:
-
-```sh
-bash tools/build-eyes.sh
-PIKOO_SIM_PORT=8793 node firmware/simulator/server.mjs
-```
-
-## Optional: your realtime server
-
-Deploy your own server following [server operations](../server/README.md). Obtain a separately issued device token. Create a JSON configuration **outside the repository**, for example `/absolute/private/simulator.json`:
+[Deploy the Gateway](../server/README.md) and issue a device token. Save this JSON **outside Git**, with file permissions 0600:
 
 ```json
-{
-  "endpoint": "wss://your-server.example/api/realtime",
-  "token": "REPLACE_WITH_YOUR_DEVICE_TOKEN"
-}
+{"endpoint":"wss://YOUR_HOST/api/realtime","token":"YOUR_DEVICE_TOKEN"}
 ```
 
 ```sh
-chmod 600 /absolute/private/simulator.json
 PIKOO_SIM_CONFIG=/absolute/private/simulator.json bash tools/start-dualeye.sh
 ```
 
-The token stays in the local Node process. The page connects only after explicit wake; allow microphone access only when you want to speak. No model is needed for button-initiated conversation. To force offline mode while retaining environment settings, use `PIKOO_SIM_MOCK=1`. Stop an already running launcher-managed service before changing configuration: the launcher reuses an existing instance rather than silently replacing it.
+The Node process holds the token. Explicitly wake and grant microphone access to start. No wake model is needed for button-initiated conversation. Stop a running launcher instance before changing its configuration.
 
-## Optional: your authorized wake model
+## Local wake
 
-Current sources do not include weights. Use a privately retained model or train one with documented source rights. The old experimental weights in Git history are not granted an Apache-2.0 model license. See [training](../training/README.md) and the [model card](../training/models/MODEL_CARD.md).
-
-Python 3.11 is the training baseline. This optional installation downloads TensorFlow and is much larger than the graph-only demo:
+Download `hi-pikoo-model-1.0.0.zip` from the [release](https://github.com/skiyo/pikoo/releases/tag/v1.0.0), verify `SHA256SUMS`, and read its model terms. Install Python 3.11 dependencies in an isolated environment:
 
 ```sh
-python3.11 -m venv /absolute/private/pikoo-wake-env
-/absolute/private/pikoo-wake-env/bin/pip install -r training/requirements.txt
-export PIKOO_WAKE_PYTHON=/absolute/private/pikoo-wake-env/bin/python
-export PIKOO_WAKE_MODEL=/absolute/private/authorized-model.tflite
-export PIKOO_WAKE_LABEL='My local wake model'
-bash tools/start-dualeye.sh
+python3.11 -m venv .venv
+.venv/bin/pip install -r training/requirements.txt
+PIKOO_WAKE_PYTHON="$PWD/.venv/bin/python" \
+PIKOO_WAKE_MODEL=/absolute/models/hi_pikoo.tflite \
+PIKOO_SIM_CONFIG=/absolute/private/simulator.json bash tools/start-dualeye.sh
 ```
 
-You can combine wake settings with `PIKOO_SIM_CONFIG`. Standby microphone audio goes only to the local worker; conversation audio is uploaded after server readiness. `/wake-test` tests local wake without connecting a remote session. Missing model settings produce an actionable error, not an implicit download. Weights must fit the trained streaming architecture used by the worker; arbitrary TFLite models are not interchangeable.
+Use a deliberate page action to enable local wake listening. Standby audio is processed locally; microphone permission is explicit. Missing models produce a configuration error, not a silent remote fallback.
 
-## Firmware build
+## Hardware
 
-The default board integration is the non-touch **ESP32-S3-DualEye-LCD-1.28**. The old 1.83-inch project is isolated under `firmware/boards/legacy183/`; do not flash that project onto DualEye. Use ESP-IDF 5.5.5 and an authorized private model, following the [firmware guide](firmware.md):
-
-```sh
-. /path/to/esp-idf/export.sh
-./tools/build-device.sh /absolute/private/authorized-model.tflite
-```
-
-The DualEye build rejects missing weights and files larger than its explicit experimental budget (512 KiB by default). This budget was raised on 2026-10-18 to investigate larger networks; successful compilation does not establish acceptable RAM use, inference latency or wake accuracy. The historical 1.83-inch build retains its 64 KiB limit. Use [Development](development.md) for checks and the existing USB tooling. Binary releases embedding restricted weights must not be published.
-
-## Troubleshooting
-
-| Symptom | What to check |
-|---|---|
-| Missing runtime/compiler | Node 24+, C++ compiler and installed `server/` dependencies; `PIKOO_NODE` may select an executable |
-| Port busy | Stop your previous instance or select another `PIKOO_SIM_PORT` |
-| Eyes unavailable | Run `bash tools/build-eyes.sh`; graphics failures are separate from voice |
-| Wake unavailable | Configure both executable Python and readable model, with optional packages installed |
-| Remote authentication failure | Endpoint and separately revocable token; never paste token into an issue |
-| Remote timeout | Provider network/egress, region, key and quota are separate causes; model rotation does not fix region restrictions |
+Use the [DualEye USB guide](firmware.md). The release does not contain personal Wi-Fi, NVS or server credentials. Model API access and an HTTPS Gateway are required for real conversation.

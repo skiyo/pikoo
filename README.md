@@ -1,54 +1,16 @@
-# Pikoo
+# 🐱Hi Pikoo🐱
 
 **English** | [简体中文](README.zh-CN.md)
 
-**A realtime voice AI Agent for your family.**
+**Pikoo is a family AI Agent pet powered by Live models.**
 
-Pikoo is not a typical smart speaker. It is an open-source DIY project you can build yourself: a small companion for children’s discoveries and everyday family life.
+[Website](https://pikoo.lol/en/) · [Download 1.0.0](https://github.com/skiyo/pikoo/releases/tag/v1.0.0) · [Documentation](docs/README.md)
 
-[Explore Pikoo](https://pikoo.lol/) · [Get started](docs/getting-started.md) · [Development guide](docs/development.md)
+![Pikoo dual-eye cat enclosure — concept render](docs/images/pikoo-enclosure.webp)
 
-<p align="center">
-  <img src="docs/images/pikoo-enclosure.webp" width="520" alt="Pikoo cat enclosure with amber dual eyes">
-  <br>
-  <em>Pikoo cat-enclosure appearance concept render.</em>
-</p>
+## Quick Start
 
-## Cat enclosure STLs and assembly
-
-[Enclosure files and complete instructions](hardware/enclosure/README.md) provide three original STLs, orientation/support settings, an illustrated guide and an acceptance checklist directly, without a ZIP. The project family reports successful printing, assembly and home use (2026-10-27); a dedicated drop test was not separately reported. Print **03 lock → 01 integrated face/base/carrier → 02 cover**; all three parts provide mechanical retention together.
-
-## What it is like to spend time with Pikoo
-
-- **Let the conversation flow.** Realtime voice follows the context, with local controls for stopping playback and handling interruptions.
-- **Pick up where you left off.** Conversation context, shared family memory and past-topic recall help carry meaningful details into the next conversation.
-- **Work things out together.** The Agent can use the tools you configure. The server includes adapters for search, public-page reading and family lists; see [tool setup](docs/family-tools.md).
-
-Its two animated eyes give responses a visible expression. The optional [quiet companion mode](docs/companion.md) lets an explicitly awakened device stay connected and decide when to respond.
-
-Native **GPT-Live 1 + GPT-6.1 Terra** is also available as a development preview. The latest physical short test reported suitable volume and smooth replies; extended hardware acceptance is pending. See the [integration guide](docs/openai-live.md) and [actual results](docs/openai-live-validation.md).
-
-## How it works
-
-| Part | Role |
-|---|---|
-| [Waveshare ESP32-S3 DualEye board](https://www.waveshare.net/shop/ESP32-S3-DualEye-LCD-1.28.htm) | Capture audio, play responses and display two expressive eyes |
-| [Qwen Audio Agent](https://github.com/QwenAudio/qwen-audio-agent) + Pikoo server adapters | Coordinate sessions, device authentication, memory and tools |
-| Realtime voice model | Understand speech and generate live responses; adapters support Gemini Live and the native OpenAI Live development preview |
-
-```mermaid
-flowchart LR
-    Device[Dual-eye device or desktop simulator] <-->|Voice and session events| Agent[Pikoo Agent server]
-    Agent <-->|Live audio| Model[Realtime model]
-    Agent <--> Memory[Private family memory]
-    Agent <--> Tools[Configured tools]
-```
-
-Qwen Audio Agent is the runtime framework, separate from the model it connects to. The runtime can be extended through tool interfaces such as MCP; weather and smart-home services are possible integrations, not services enabled by default in this repository. Current server configuration and compatibility limits are documented in [Architecture](docs/architecture.md) and [server setup](server/README.md).
-
-## Start on your computer
-
-The offline simulator is the shortest path to the eyes and interaction controls. It needs Node.js 24+, npm, Bash and a C++17 compiler. On macOS, install Xcode Command Line Tools; on Linux, use an equivalent compiler toolchain.
+**Try the eyes on your computer.** Install Node.js 24+, npm, Bash and a C++17 compiler (Xcode Command Line Tools on macOS, `build-essential` on Debian/Ubuntu).
 
 ```sh
 git clone https://github.com/skiyo/pikoo.git
@@ -57,34 +19,63 @@ cd pikoo
 bash tools/start-dualeye.sh
 ```
 
-Open **http://127.0.0.1:8793/dualeye**. Offline responses are test tones, not AI conversation. The demo needs no model weights, provider key, Python or ESP-IDF; opening it does not start the microphone. Stop with Ctrl+C or `bash tools/stop-dualeye.sh`.
+Open **http://127.0.0.1:8793/dualeye**. This offline demo needs no API key, wake model or board. Buttons simulate sessions using test tones; they do not start an AI conversation or microphone recording. Stop with Ctrl+C or `bash tools/stop-dualeye.sh`.
 
-For live voice, connect your own Agent server and a separately issued device token. For the physical build, use the non-touch **ESP32-S3-DualEye-LCD-1.28**, USB power and a suitable speaker. Follow [Getting started](docs/getting-started.md), then the [hardware](docs/hardware.md) and [DualEye firmware](docs/firmware.md) guides. The older 1.83-inch target is a separate project.
+**Connect real voice:** [deploy your Gateway](server/README.md), issue a device credential, then [configure the simulator](docs/getting-started.md#real-voice).
 
-## Choose what to develop
+**Install a device:** download the [1.0.0 firmware and model](https://github.com/skiyo/pikoo/releases/tag/v1.0.0), follow the [USB installation guide](docs/firmware.md), and enter your own 2.4 GHz Wi-Fi and device credential locally.
 
-| Source | Starting point |
-|---|---|
-| [`firmware/main/`](firmware/main/) | Board peripherals, capture, playback and dual-display integration |
-| [`firmware/components/pikoo_core/`](firmware/components/pikoo_core/) | Audio/session state, cancellation and resampling |
-| [`firmware/components/pikoo_eyes/`](firmware/components/pikoo_eyes/) | Portable C++ eye rendering, gaze, blinking and expressions |
-| [`firmware/simulator/`](firmware/simulator/) | Desktop interaction, local graphics, optional wake worker and server connection |
-| [`server/`](server/README.md) | Agent composition, provider adapters, memory and tool configuration |
-| [`training/`](training/README.md) | Authorized wake-word data, training, export and evaluation |
-| [`tools/`](tools/) | Launch, build, USB provisioning and diagnosis |
-| [`docs/`](docs/README.md) | Setup, architecture, development and dated validation records |
+## What Pikoo does
 
-The [development guide](docs/development.md) explains environments and checks. Low-level protocol and deployment details live in their own guides rather than in this introduction.
+- Local **“Hi, Pikoo”** wake word; `piku` and `piko` pronunciations are accepted.
+- Continuous Chinese conversation, interruption, local stop, mute and reconnect.
+- Two expressive 240 × 240 eyes, sharing an original C++ renderer with the desktop simulator.
+- Server-managed topic restoration, automatic family memory, summaries and persistent lists.
+- Search and public-page reading through configured tools.
+- Self-hosted Gateway; provider keys and family profiles stay on your server.
 
-## Before you build
+Closed eyes mean standby. Waking connects the voice service, opens the eyes when ready and starts a greeting. Saying goodbye ends the active voice connection. Idle sleep releases the paid voice session while keeping server-side text context available for the next wake.
 
-- **Development preview:** software checks and short device runs do not establish sustained voice, hardware AEC, child wake-word accuracy or long-term reliability. See the [validation summary](docs/validation-summary.md).
-- **Wake models:** the target phrase is “你好 Pikoo” (pī kū). No model weights are distributed in the current tree. Use an authorized private model or the [training workflow](training/README.md); historical weights are not granted an Apache-2.0 model license.
-- **Language and services:** documentation is bilingual; the current conversation policy uses Mandarin Chinese replies. Live models and online tools require network access and separately configured services. Costs depend on those services.
-- **Family data:** provider keys, persona, memory and conversation state are managed on the private server. The device holds its own revocable credential and does not infer which family member is speaking. Read [memory and data flow](docs/context-memory.md) and [Security](SECURITY.md).
+## Architecture
 
-## Contribute and reuse
+```mermaid
+flowchart LR
+    Device["ESP32-S3 / desktop simulator<br/>Wake · capture · playback · eyes"] <-->|"GCP / WSS · PCM audio"| Gateway["Pikoo Gateway<br/>Auth · sessions · audio · tools"]
+    Gateway <-->|"Native Live WebSocket"| Live["GPT-Live 1<br/>Listen · speak · interrupt"]
+    Live <-->|"Responses delegation"| Terra["GPT-6.1 Terra<br/>Reasoning · tool selection"]
+    Terra <-->|"Function calls / results"| Gateway
+    Gateway <--> Store[("Private text context<br/>Family memory · lists")]
+    Gateway --> Background["Terra<br/>Interaction classification · summaries"]
+    Training["Offline training / export"] -.->|"Model + frozen policy"| Device
+```
 
-Documentation, original expressions, device integration and reproducible bug reports are welcome. Read [Contributing](CONTRIBUTING.md); documentation-only changes need link and example checks, while behavior changes need the relevant software tests.
+The device handles sound and expressions. The Gateway composes **Qwen Audio Agent 2.0.1** with Pikoo's native Live Provider. Live handles speech; Terra handles delegated reasoning, tools, interaction classification and memory work. Context resumes from saved text, not from an interrupted audio stream. [Architecture](docs/architecture.md) · [Context and memory](docs/context-memory.md)
 
-Pikoo-authored code, graphics and documentation use [Apache-2.0](LICENSE). Dependencies and vendored components retain their own licenses; see [NOTICE](NOTICE) and [Third-party attribution](THIRD_PARTY.md). Credentials, household recordings, restricted datasets and unlicensed model weights must stay outside public commits.
+## Hardware
+
+The target is **Waveshare ESP32-S3-DualEye-LCD-1.28, non-touch**, with 16 MiB Flash, 8 MiB PSRAM and two 240 × 240 round screens. Add a compatible speaker, a USB data cable, stable USB power and 2.4 GHz Wi-Fi. Audio codecs and microphone are on the board.
+
+[Hardware and wiring](docs/hardware.md) · [Three-part printable cat enclosure and STLs](hardware/enclosure/README.md)
+
+## Deploy and develop
+
+| Module | Purpose | Start here |
+|---|---|---|
+| `firmware/` | Board I/O, wake inference, audio, controls and shared eye renderer | [Firmware](docs/firmware.md) |
+| `firmware/simulator/` | Local visual demo and optional real voice | [Quick Start](docs/getting-started.md) |
+| `server/` | Live/Terra integration, authentication, sessions, tools and persistence | [Server setup](server/README.md) |
+| `training/` | Corpus isolation, tempo augmentation, training, quantization and evaluation | [Training](training/README.md) |
+| `models/hi-pikoo/` | Current model card, runtime policy, attribution and model terms | [Model card](models/hi-pikoo/MODEL_CARD.md) |
+| `tools/` | Build, USB installation, diagnostics and checks | [Development](docs/development.md) |
+
+Run software checks with `bash tools/check.sh`. See [Development](docs/development.md) for changing eyes, boards, tools, Providers and models. The [documentation index](docs/README.md) links current interfaces and operations.
+
+## Requirements and limitations
+
+Online speech requires your own server, model API access and network egress; model and search providers may charge separately. This is a DIY system, not an offline language model. Wake accuracy depends on pronunciation, distance, noise and enclosure acoustics. Real-child recall, 8-hour false-wake and 72-hour endurance targets are not certified by this release. Browser tests do not validate physical AEC.
+
+## Contribute and license
+
+[Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Third-party sources](THIRD_PARTY.md) · [Release verification](docs/release.md)
+
+Original source, eye artwork and documentation: **Apache-2.0**. Wake weights and firmware containing them have [separate non-commercial model terms](models/hi-pikoo/LICENSE.md). Third-party components and training datasets retain their terms; the Apache license does not replace them. No training audio, family recordings, personal profiles or credentials are distributed.

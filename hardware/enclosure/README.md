@@ -2,9 +2,9 @@
 
 **English** | [简体中文](README.zh-CN.md) · [Project](../../README.md) · [Website](https://pikoo.lol/)
 
-Three printed parts house the Waveshare ESP32-S3-DualEye-LCD-1.28 with its original transparent backplate and screws intact. Part 01 integrates the cat face, base and carrier; no separate spring latch or muzzle panel is needed. The STL bytes are identical to the original household delivery.
+Three printed parts house the Waveshare ESP32-S3-DualEye-LCD-1.28 with its original transparent backplate and screws intact. Part 01 integrates the cat face, base and carrier; no separate spring latch or muzzle panel is needed. The release contains the three original printable parts.
 
-**Physical feedback, 2026-10-27: the project family reports successful printing, assembly verification and use at home.** This is owner-reported evidence. Dedicated drop tests, 20 opening cycles, 60-minute operation and slicer statistics were not individually reported. Use the checklist for each new printer/hardware combination.
+**Physical fit: the project family reports successful printing, assembly verification and use at home.** This is owner-reported evidence. Dedicated drop tests, 20 opening cycles, 60-minute operation and slicer statistics were not individually reported. Use the checklist for each new printer/hardware combination.
 
 ## The three original STLs
 

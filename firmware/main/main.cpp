@@ -385,7 +385,7 @@ void hello() {
   cJSON_AddStringToObject(protocol, "max", "7.0.0");
   auto client = cJSON_AddObjectToObject(o, "client");
   cJSON_AddStringToObject(client, "type", "esp32");
-  cJSON_AddStringToObject(client, "version", "0.1.0");
+  cJSON_AddStringToObject(client, "version", esp_app_get_description()->version);
   cJSON_AddStringToObject(client, "instance_id", device_id.c_str());
   auto caps = cJSON_AddArrayToObject(o, "capabilities");
   for (auto c : {"input.audio", "input.text", "playback.receipts", "session.heartbeat",

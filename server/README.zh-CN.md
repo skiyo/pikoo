@@ -1,69 +1,48 @@
-# Pikoo Agent 服务端
+# Pikoo Gateway
 
-[English](README.md) | **简体中文** · [项目首页](../README.zh-CN.md)
+[English](README.md) | **简体中文**
 
-服务端连接 Pikoo 设备与实时语音大模型，管理会话、家庭记忆和已配置的工具。它在固定的 `qwen-audio-agent@2.0.1` 运行框架上组装 Pikoo 适配，与负责生成语音的大模型分工不同。
+## 环境与启动
 
-本文面向服务端开发和运维。只想看双眼效果，先运行[离线模拟器](../docs/getting-started.zh-CN.md)。主机安装、证书、配对、备份和恢复的详细命令集中在[主机运维指南](operations.zh-CN.md)。
-
-## 外壳打印资料
-
-三件小猫外壳的原始 STL、打印顺序、装配图解与验收表见[外壳目录](../hardware/enclosure/README.zh-CN.md)。项目家庭已打印、装配验证并在家使用通过（2026-10-27，用户反馈）；这份硬件反馈与本模块的软件/研究检查分别记录。
-
-新增原生 OpenAI Live + Terra 开发预览：[English](../docs/openai-live.md) | [简体中文](../docs/openai-live.zh-CN.md)。按新指南加载环境文件、部署连续音频客户端；原有 Gemini 说明供明确选择的部署使用，不自动切换供应商。
-
-## 模块分工
-
-| 文件或目录 | 职责 |
-|---|---|
-| `openai-live.mjs`、`live-runtime.mjs`、`openai-terra.mjs` | 原生 Live、连续播放、Terra 委派和文字模型调用 |
-| `live-idle.mjs`、`live-usage.mjs` | 语义空闲、私密用量记录与本机诊断 |
-| `host.mjs` | 组装运行框架和 Pikoo 适配 |
-| `google-live-compat.mjs` | Gemini Live 事件和工具兼容、活动检测选项与连接时间信息 |
-| `context-runtime.mjs`、`context-learning.mjs`、`memory-timeout.mjs` | 近期上下文、持久后台整理、摘要及文本调用期限 |
-| `deepseek-search.mjs`、`family-tools.mjs` | 已配置的搜索、公开网页阅读和家庭清单 |
-| `companion-runtime.mjs`、`silence-output.mjs` | 可选的选择性回应与原生静默标记处理 |
-| `provider-check.mjs`、`time-context.mjs` | Provider 诊断与服务端生成的时间信息 |
-| `deploy/`、`persona/` | 脱敏部署和人设模板 |
-| `reports/` | 带日期的验证证据，不代表服务当前健康状态 |
-
-## 安装与检查
-
-需要 Node.js 24+，在仓库根目录执行：
+需要 Node.js 24+、私密持久目录、HTTPS/WSS 反向代理，以及 `gpt-live-1`、`gpt-6.1-terra` 的 OpenAI API 权限。搜索可配置 DeepSeek Key。运行时固定 `qwen-audio-agent@2.0.1`。外部模型可能收费，安装依赖不会自动提供密钥。
 
 ```sh
 (cd server && npm ci --ignore-scripts)
 (cd server && npm test)
+mkdir -p "$HOME/.config/pikoo/qwaudio"
+chmod 700 "$HOME/.config/pikoo/qwaudio"
+cp server/deploy/config.env.example "$HOME/.config/pikoo/qwaudio/config.env"
+chmod 600 "$HOME/.config/pikoo/qwaudio/config.env"
 ```
 
-测试不需要 Provider 凭证。在 `server/` 内执行 `npm start` 会运行 `host.mjs`；真实服务还需要独立的私密运行配置、模型服务凭证和设备 token。对外开放网关前先按运维指南部署。
+编辑仓库外的私密配置：OpenAI Key、可选搜索 Key、HTTPS 来源及服务设置。家庭资料从 `server/persona/` 模板单独填写，升级不得覆盖真实家庭资料。环境变量必须在加载 `host.mjs` **之前**生效：
 
-历史主机环境使用 Alibaba Cloud Linux 4 和独立 `pikoo` 用户。`/opt/pikoo/app/`、`/var/lib/pikoo/qwaudio/` 属于部署约定，不是 `npm ci` 自动创建的目录。`203.0.113.10` 等示例地址必须替换。
+```sh
+QWAUDIO_CONFIG_DIR="$HOME/.config/pikoo/qwaudio" \
+node --env-file="$HOME/.config/pikoo/qwaudio/config.env" server/host.mjs
+```
 
-## 配置真实服务
+服务器部署使用独立用户和 systemd。按自己的路径修改 `server/deploy/` 模板；示例假定 server 文件直接安装在 `/opt/pikoo/app/`，并需加上指向私密配置的 `EnvironmentFile`。Nginx 把 HTTPS/WSS 转到 127.0.0.1:3101，保留 WebSocket Upgrade。限制来源，代理及管理接口不对公网开放；以实际服务用户验证 TLS 与模型出口。优先域名证书；IP 证书需维护短周期自动续签。
 
-1. 以 [`deploy/config.env.example`](deploy/config.env.example) 准备私密配置，通过 `QWAUDIO_CONFIG_DIR` 选择目录。`config.env` 仅允许所有者读取，家庭人设另行填写。
-2. 选择兼容的实时 Provider。当前适配面向 Gemini Live，记忆提取和摘要使用文本模型。更换固定运行框架或 Provider 前先检查兼容性。
-3. 按实际主机安装 systemd 和 Nginx 模板，验证证书信任、WebSocket 转发及服务用户的网络出口，再签发设备凭证。
-4. 每台设备使用可单独撤销的 token，将得到的私密配置交给模拟器或板卡。
+## 设备配对
 
-模型 Key 和家庭资料留在服务端；设备或浏览器配置只包含自身连接地址与设备凭证。代理控制端口和内部网关不向公网开放。[主机运维指南](operations.zh-CN.md)保留具体命令及恢复顺序。
+Gateway 运行时，使用相同私密配置目录：
 
-## 记忆、工具与回应策略
+```sh
+QWAUDIO_CONFIG_DIR="$HOME/.config/pikoo/qwaudio" \
+server/node_modules/.bin/qwenaudio gateway pair --name living-room --endpoint https://YOUR_HOST --json
+```
 
-| 问题 | 对应说明 |
-|---|---|
-| 当前话题恢复、长期记忆、历史回顾和重试边界 | [上下文与记忆](../docs/context-memory.zh-CN.md) |
-| 搜索、公开网页阅读、家庭清单及服务配置 | [家庭工具](../docs/family-tools.zh-CN.md) |
-| 何时说话、预期静默和主动开启的陪伴模式 | [安静陪伴模式](../docs/companion.zh-CN.md) |
-| 结束、休眠、重连与播放取消 | [会话生命周期](../docs/conversation-lifecycle.zh-CN.md) |
+输出包含**私密设备凭证**，只能保存在受保护文件。相同运行环境下用 `gateway devices --json`、`gateway revoke DEVICE_ID` 列出和撤销。设备只填自己的 endpoint、token，不填模型 Key；管理通过 SSH。
 
-部署模板保持 `AGENT_PROTOCOL=none`；Pikoo 的 AI Agent 定位不要求再开启一个独立后台 Agent。搜索使用已配置的适配器。MCP 是扩展接口，不表示天气、智能家居或 MCP OAuth 服务默认启用；新增流程前仍需复核依赖和安全边界。
+## 模块配合
 
-当前人设策略使用普通话回答。文档中英文切换不代表语音输出也支持双语。
+`host.mjs` 组合运行时；`openai-live.mjs`、`live-runtime.mjs` 处理原生 Live、16kHz 音频、委派和播放；`openai-terra.mjs`、`live-idle.mjs` 处理推理、互动分类和空闲；`context-runtime.mjs`、`context-learning.mjs` 负责文字续接、摘要和记忆队列；`family-tools.mjs`、`deepseek-search.mjs` 负责网页、搜索与清单；`live-usage.mjs` 保存私密用量记录。
 
-## 运维与验收
+[Live](../docs/openai-live.zh-CN.md) · [记忆](../docs/context-memory.zh-CN.md) · [工具](../docs/family-tools.zh-CN.md) · [运维](operations.zh-CN.md)
 
-私密配置、记忆、历史、话题摘要和后台整理队列一起备份。先在隔离目录演练恢复，回退代码时不能覆盖更新的家庭数据。配对输出包含凭证，应保存到受保护的文件，不能贴进 Issue 或提交。
+## 备份与诊断
 
-安装后的 `pikoo-admin` 通过 SSH 提供健康检查、撤销设备、重启和备份。软件测试或模型调用成功不能代替设备听感和长期运行验收，参见[验证记录](../docs/validation-summary.zh-CN.md)及[安全说明](../SECURITY.zh-CN.md)。
+停止 Gateway，备份完整私密配置/状态目录及部署版本，再启动。owner、设备凭证、近期文字、摘要、记忆、清单、调用去重记录、学习队列和用量应一起保存。在隔离目录演练恢复；程序回滚不得覆盖新家庭数据。
+
+`GET /api/pikoo/live-status` 只经 SSH/本机查看，不额外对公网开放。分别检查鉴权、额度、代理/TLS、设备上行与播放缓冲；HTTP 健康不等于声音质量通过。

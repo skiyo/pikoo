@@ -35,3 +35,8 @@ training/vendor/
 firmware/build-host/
 firmware/build-*/
 firmware/boards/legacy183/build*/
+
+# Reviewed binaries are distributed as versioned Release assets.
+*.weights.h5
+*.nvs.bin
+releases/
