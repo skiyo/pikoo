@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "preflight-passed-not-started",
+  "status": "R23-started-seed42-first-native-epoch-unqualified",
   "reference": "R21 singlecontext72/fulltrainableR12/mildtempo route, not immediate R22dualbranch",
   "only_training_change": "Hidden classifier-channel dropout .2, same mask over time per utterance, shared by binary and auxiliary loss heads",
   "hypothesis": "Improve cross-source generalization after near-complete TRAIN fit and failedDEV, without new voices or audio transforms",
@@ -43,5 +43,15 @@
   "TEST_opened": false,
   "new_API_calls": 0,
   "USB_server_config_volume_changed": false,
-  "goal_completed": false
+  "goal_completed": false,
+  "source_commit": "c8f2e61",
+  "prior_workers_actual_exit_verified": true,
+  "all_TRAIN_DEV_bytes_and_event_cohort_auxiliary_weights_and_calibration_indices_equal_R21": true,
+  "actual_initialization_classifier_dropout": 0.2,
+  "actual_initialization_dropout_seed": 42,
+  "actual_parameters": 55329,
+  "first_native_epoch_qualified": false,
+  "first_native_original_negative_false_clips": 3,
+  "first_native_ordinary_negative_false_clips": 0,
+  "comparison_is_not_a_multiple_seed_causal_estimate": true
 }
