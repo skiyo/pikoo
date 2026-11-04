@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "ready-after-verified-R26-terminal-failure",
+  "status": "seed42-fresh-training-started",
   "source_weights": null,
   "initialization": "fresh random seeds42/43, not continuing the R12checkpoint",
   "recipe_reference": "Original R12fresh96 recipe; learning rate.0005,max30epochs per seed, auxiliary phrase weight.2",
@@ -35,5 +35,10 @@
   "household_used": false,
   "TEST_opened": false,
   "device_server_volume_changed": false,
-  "goal_completed": false
+  "goal_completed": false,
+  "actual_seed42_initialization_matches_preflight": true,
+  "actual_source_weights": null,
+  "actual_trainable_weight_arrays": 16,
+  "actual_TRAIN_examples": 13558,
+  "new_candidate_frozen": false
 }
