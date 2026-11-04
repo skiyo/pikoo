@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-04",
+  "status": "ready-after-verified-R26-terminal-failure",
+  "source_weights": null,
+  "initialization": "fresh random seeds42/43, not continuing the R12checkpoint",
+  "recipe_reference": "Original R12fresh96 recipe; learning rate.0005,max30epochs per seed, auxiliary phrase weight.2",
+  "recipe_changes_from_R26": [
+    "fresh initialization",
+    "learning rate.0001->.0005",
+    "maximum epochs12->30"
+  ],
+  "not_causal_isolation_of_initialization_alone": true,
+  "same_13558TRAIN_examples_and432tempoDEV": true,
+  "same_R12_group_preservation_floors": true,
+  "required_secondary_DEV": 16,
+  "same_architecture": {
+    "channels": 96,
+    "head": 64,
+    "context_steps": 72,
+    "parameters": 55329
+  },
+  "fixed_policy": {
+    "rolling": 3,
+    "threshold": 0.9
+  },
+  "initialization_preflight": {
+    "two_distinct_seed_fingerprints": true,
+    "each_differs_from_R12donor": true,
+    "trainable_weight_arrays": 16,
+    "total_weight_arrays": 16,
+    "no_audio_scoring_or_training": true
+  },
+  "actual_initialization_fingerprint_logged_before_first_optimizer_step": true,
+  "new_API_calls": 0,
+  "household_used": false,
+  "TEST_opened": false,
+  "device_server_volume_changed": false,
+  "goal_completed": false
+}

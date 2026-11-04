@@ -1,6 +1,6 @@
 {
   "date": "2026-11-04",
-  "status": "seed42-completed12-failed-seed43-running",
+  "status": "terminal24native-evaluations-no-qualification",
   "reference": "Terminal failed R25, same approved24new synthetic originals plus previous TRAIN corpus",
   "only_training_change": "TRAIN continuous tempo ceiling1.3 to1.5, keeping pitch; six views per source in bands1.0-1.15,1.15-1.3,1.3-1.5",
   "TRAIN_examples_expected": 13558,
@@ -24,5 +24,83 @@
   "first_seed_qualified": false,
   "actual_serialized_weight_arrays_changed": 16,
   "parameter_arrays_compared": 16,
-  "first_seed_speed_recall_improvement_has_false_wake_regression": true
+  "first_seed_speed_recall_improvement_has_false_wake_regression": true,
+  "terminal_audit": {
+    "date": "2026-11-04",
+    "actual_terminal_verified": true,
+    "terminal": {
+      "returncode": 0,
+      "ended_at_unix": 1793773830.5474072,
+      "frozen_exists": false,
+      "goal_completed": false
+    },
+    "native_epochs_completed": 24,
+    "all24_model_hashes_verified": true,
+    "model_qualified": false,
+    "seeds": [
+      {
+        "seed": 42,
+        "epochs": 12,
+        "qualified": 0,
+        "ordinary_false_exposures": 0,
+        "original_false_exposures": 6,
+        "original_early_exposures": 3,
+        "epochs_preserving_original_R12_gates": 2,
+        "terminal_tempo": [
+          {
+            "factor": 1.15,
+            "false": 1,
+            "early": 0,
+            "worst_recall": 0.9230769230769231
+          },
+          {
+            "factor": 1.3,
+            "false": 1,
+            "early": 0,
+            "worst_recall": 0.9230769230769231
+          },
+          {
+            "factor": 1.5,
+            "false": 1,
+            "early": 0,
+            "worst_recall": 0.9
+          }
+        ]
+      },
+      {
+        "seed": 43,
+        "epochs": 12,
+        "qualified": 0,
+        "ordinary_false_exposures": 0,
+        "original_false_exposures": 9,
+        "original_early_exposures": 0,
+        "epochs_preserving_original_R12_gates": 3,
+        "terminal_tempo": [
+          {
+            "factor": 1.15,
+            "false": 0,
+            "early": 0,
+            "worst_recall": 0.9
+          },
+          {
+            "factor": 1.3,
+            "false": 0,
+            "early": 0,
+            "worst_recall": 0.9
+          },
+          {
+            "factor": 1.5,
+            "false": 0,
+            "early": 0,
+            "worst_recall": 0.9
+          }
+        ]
+      }
+    ],
+    "TEST_opened": false,
+    "household_used": false,
+    "device_changed": false,
+    "goal_completed": false
+  },
+  "full_DEV_qualified": false
 }

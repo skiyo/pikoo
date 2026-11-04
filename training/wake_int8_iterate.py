@@ -649,7 +649,15 @@ def main():
             model = build(a.upstream, profile.get('context_steps', 20), seed,
                           profile['channels'], profile.get('batch_normalization', False), head_units=profile['head'])
             frozen_checkpoint_weights = None
-            if profile['initialization'] == 'baseline':
+            if profile['initialization'] == 'fresh':
+                write_json(folder/'initialization.json', {
+                    'kind': 'seeded-from-scratch-no-pretrained-weights',
+                    'seed': seed, 'source_weights': None,
+                    'model_parameters': model.count_params(),
+                    'initial_weights_sha256': weights_fingerprint(model.weights),
+                    'weight_arrays': len(model.weights),
+                    'trainable_weight_arrays': len(model.trainable_weights)})
+            elif profile['initialization'] == 'baseline':
                 model.load_weights(a.baseline/'context-20-seed-43/checkpoint.weights.h5')
             elif profile['initialization'] == 'checkpoint':
                 initial = Path(profile['checkpoint'])
