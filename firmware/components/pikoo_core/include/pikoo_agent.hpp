@@ -47,7 +47,7 @@ public:
   };
 
   LiveAgent(FamilyStore &store, Output output);
-  void start(uint64_t now, bool greet);
+  void start(uint64_t now, bool greet, unsigned rate = Rate);
   void receive(const std::string &message, uint64_t now);
   void tick(uint64_t now);
   bool sleep_due(uint64_t now, bool playing) const;
@@ -58,7 +58,7 @@ public:
 
 private:
   void send(Json event);
-  void record(const char *role, const std::string &fragment, uint64_t now);
+  void record_reply(const std::string &fragment, uint64_t now);
   void flush_turn();
   void delegated(const cJSON *message, uint64_t now);
   void classify(const cJSON *message, uint64_t now);
@@ -67,11 +67,22 @@ private:
   struct Call { std::string id, name, arguments; };
   struct Batch { std::string id, response; uint64_t since; std::vector<Call> calls; };
   std::vector<Batch> batches_;
-  std::string turn_, role_, input_event_;
-  bool accepted_input_ = false;
+  std::string reply_, input_event_, input_fragment_;
   uint64_t effective_ = 0, turn_at_ = 0, farewell_at_ = 0, audio_at_ = 0;
-  uint64_t serial_ = 0, expires_at_ = 0;
+  uint64_t serial_ = 0, expires_at_ = 0, input_at_ = 0;
+  unsigned rate_ = Rate;
   bool greeting_ = false, ready_ = false;
+};
+
+// Convert complete pairs of 16 kHz microphone samples to 24 kHz. Keep the
+// fractional position across packets without introducing an extra full packet.
+class LiveUpload24k {
+public:
+  void reset() { have_previous_ = false; }
+  size_t convert(const int16_t *input, size_t count, int16_t *out);
+private:
+  int16_t previous_ = 0;
+  bool have_previous_ = false;
 };
 
 bool safe_header(const std::string &value);

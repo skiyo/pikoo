@@ -221,10 +221,10 @@ void receipt(const char *type, const std::string &id) {
     fail_queue(1);
 }
 void clear_audio(bool notify) {
+  std::lock_guard<std::mutex> lock(play_mutex);
   board::silence();
   tone_request = false;
   tone_complete = false;
-  std::lock_guard<std::mutex> lock(play_mutex);
   for (auto &id : playback.cancel())
     if (notify)
       receipt("playback.cancelled", id);
@@ -401,7 +401,7 @@ void begin() {
   cfg.crt_bundle_attach = esp_crt_bundle_attach;
   cfg.disable_auto_reconnect = true;
   cfg.buffer_size = 8192;
-  cfg.task_stack = 8192;
+  cfg.task_stack = local_agent ? 12288 : 8192;
   cfg.task_core_id_set=true;cfg.task_core_id=1;cfg.task_prio=5;
   cfg.network_timeout_ms = 10000;
   cfg.ping_interval_sec = 20;
@@ -978,6 +978,9 @@ void controls_task(void *) {
   }
 }
 void sender_task(void *) {
+  pikoo::LiveUpload24k upsample;
+  uint32_t resample_epoch = UINT32_MAX;
+  std::vector<int16_t> upsampled(local_agent && agent_credentials.audio_rate == 24000 ? upload_samples * 3 / 2 : 0);
   while(true) {
     // Explicit USB-only fault injection. Never enabled by normal interaction.
     if(tx_hold_requested.exchange(false)&&tx_enabled) {
@@ -998,7 +1001,15 @@ void sender_task(void *) {
     if(tx_enabled&&uploading&&xQueueReceive(upload_queue,&u,0)==pdTRUE&&u.epoch==stream_epoch) {
       const auto connection=connection_epoch.load();
       auto o=event(local_agent ? "session.input_audio.append" : "input_audio_buffer.append");
-      auto audio=encode(u.pcm,u.count*2);
+      const int16_t *pcm = u.pcm;
+      size_t samples = u.count;
+      if (local_agent && agent_credentials.audio_rate == 24000) {
+        if (resample_epoch != u.epoch) { upsample.reset(); resample_epoch = u.epoch; }
+        samples = upsample.convert(u.pcm, u.count, upsampled.data());
+        if (!samples) { fail_queue(4); continue; }
+        pcm = upsampled.data();
+      }
+      auto audio=encode(pcm,samples*2);
       cJSON_AddStringToObject(o,"audio",audio.c_str());
       send_wire(stringify(o),connection,u.epoch,u.count);
     }
@@ -1048,7 +1059,7 @@ void session_task(void *) {
       connecting_at = now();
     }
     if (net_open.exchange(false)) {
-      if (local_agent) agent.start(now(), interaction.greeting_pending());
+      if (local_agent) agent.start(now(), interaction.greeting_pending(), agent_credentials.audio_rate);
       else hello();
     }
     if (overflow.exchange(false) && active) {

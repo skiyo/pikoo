@@ -156,6 +156,10 @@ def live_fixture(tls, seen):
             session = json.loads(payload)["session"]
             assert opcode == 0x81 and session["model"] == "gpt-live-1"
             frame(stream, STARTED)
+            if fields.get(b"X-Pikoo-Fixture") == b"partial":
+                # Force EOF halfway through a frame payload.
+                stream.sendall(b"\x81\x7e" + struct.pack("!H", len(AUDIO)) + AUDIO[:50])
+                return
             # Deliver one fragmented JSON event with fixture PCM.
             frame(stream, AUDIO[:50], opcode=0x01)
             frame(stream, AUDIO[50:], opcode=0x80)
@@ -184,6 +188,7 @@ def fixture_relay(port, names):
             names.append(name)
             with socket.create_connection(("127.0.0.1", port), timeout=5) as upstream:
                 client.sendall(b"\x05\x00\x00\x01\x7f\x00\x00\x01\x00\x00")
+                tail = b""
                 while True:
                     readable, _, _ = select.select([client, upstream], [], [], 5)
                     if not readable:
@@ -192,6 +197,10 @@ def fixture_relay(port, names):
                         data = src.recv(16384)
                         if not data:
                             return
+                        if src is client:
+                            plain = API.encode()
+                            assert plain not in tail + data
+                            tail = (tail + data)[-(len(plain) - 1):]
                         (upstream if src is client else client).sendall(data)
     return Socks
 
@@ -256,11 +265,12 @@ def tunnel(proxy_port, proxy_ca, upstream_ca, metrics=None, authority=f"{TARGET}
             yield status, inner
 
 
-def upgrade(stream, auth):
+def upgrade(stream, auth, partial=False):
     key = base64.b64encode(os.urandom(16))
     stream.sendall(f"GET /v1/live/sessions HTTP/1.1\r\nHost: {TARGET}\r\n"
                    f"Authorization: Bearer {auth}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
-                   "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: ".encode() + key + b"\r\n\r\n")
+                   "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: ".encode() + key + b"\r\n" +
+                   (b"X-Pikoo-Fixture: partial\r\n" if partial else b"") + b"\r\n")
     response = header(stream)
     if response.startswith(b"HTTP/1.1 101 "):
         expect = base64.b64encode(hashlib.sha1(key + b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11").digest())
@@ -322,6 +332,19 @@ def run(args):
                 for credential, expected in (("incorrect-fixture", 401), ("busy-fixture", 429)):
                     with tunnel(port, outer, inner) as (status, stream):
                         assert status == 200 and upgrade(stream, credential) == expected
+                with tunnel(port, outer, inner) as (status, stream):
+                    assert status == 200 and upgrade(stream, API, partial=True) == 101
+                    outgoing, = wire_call(wire, "connect")["send"]
+                    frame(stream, outgoing.encode(), masked=True)
+                    _, message = read_frame(stream)
+                    assert wire_call(wire, "receive", message=message.decode())["ready"]
+                    try:
+                        read_frame(stream)
+                    except (EOFError, ssl.SSLError, ConnectionError):
+                        pass
+                    else:
+                        raise AssertionError("incomplete frame was accepted")
+                    assert not wire_call(wire, "close")["queued"]
             # Verify a dead proxy refuses, then restart on the same listener.
             try:
                 with tunnel(port, outer, inner):
@@ -349,7 +372,7 @@ def run(args):
                     assert not wire_call(wire, "close")["queued"]
         wire.stdin.close()
         assert wire.wait(timeout=3) == 0
-    assert auths.count(f"Bearer {API}".encode()) == args.cycles and set(destinations) == {TARGET}
+    assert auths.count(f"Bearer {API}".encode()) == args.cycles + 1 and set(destinations) == {TARGET}
     def percentiles(values):
         values = sorted(values)
         return {str(p): round(values[(len(values) * p + 99) // 100 - 1], 3) for p in (50, 95)}

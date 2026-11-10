@@ -10,7 +10,7 @@
 
 1. 构建固件后备份原机 Flash。首次迁移要刷应用和更新后的分区表。表中新增加密凭证和家庭数据分区，原分区位置不变。不要用本地安装工具把密钥打包进任何 NVS 镜像。
 2. 专用凭证分区需要一个已有、已妥善保护的 HMAC_UP eFuse 密钥块。固件检查该条件，利用 HMAC 分别派生两个 NVS XTS 密钥。固件不会自动烧录 eFuse。USB 写入在设备处于静音待机时才开放。
-3. 用 ESP-IDF 环境运行 `python tools/local-agent-usb.py --port /dev/cu.usbmodem… provision`。凭证由终端提示输入，写入设备后重启。首次真机测试前保留旧网关作为回滚路径。
+3. 用 ESP-IDF 环境运行 `python tools/local-agent-usb.py --port /dev/cu.usbmodem… provision`。凭证由终端提示输入，写入设备后重启。PCM 默认 16 kHz，若目标项目只支持 24 kHz，可通过同一命令重新配置。采音与 AEC 仍保持 16 kHz。首次真机测试前保留旧网关作为回滚路径。
 4. `export 备份.json` 导出家庭数据到权限为 0600 的新文件。`import 备份.json` 载入数据，重启后生效。`legacy` 切回原模式并重启。导出包含家庭内容，凭证分区不参与导入导出。导入现有服务端数据时，将已确认的条目映射到下列格式，原始备份在验证条目数前保留。
 
 ```json
@@ -40,13 +40,13 @@ tools/test-local-agent.sh 28800 --realtime
 
 ## 静默测量记录
 
-Mihomo v1.19.33 与本机 OpenAI 夹具完成 100/100 次双 TLS、CONNECT 和 Live WebSocket 连接。测量覆盖外层及内层证书拒绝、代理 403/407、目的域名与端口拒绝、模拟 API 401/429、代理重启和 WebSocket 分片。
+Mihomo v1.19.33 与本机 OpenAI 夹具完成 100/100 次双 TLS、CONNECT 和 Live WebSocket 连接。测量覆盖外层及内层证书拒绝、代理 403/407、目的域名与端口拒绝、模拟 API 401/429、代理重启、WebSocket 分片及分片传输中途断线。现有服务端和模拟器 Node 回归为 93/93。
 
 | 回环指标 | P50 | P95 |
 | --- | ---: | ---: |
-| TCP + 代理 TLS | 2.54 ms | 4.95 ms |
-| CONNECT | 0.27 ms | 1.17 ms |
-| OpenAI 内层 TLS | 4.37 ms | 8.38 ms |
-| 连接开始到首个模拟 PCM | 10.07 ms | 18.51 ms |
+| TCP + 代理 TLS | 1.53 ms | 1.70 ms |
+| CONNECT | 0.14 ms | 0.18 ms |
+| OpenAI 内层 TLS | 2.61 ms | 2.95 ms |
+| 连接开始到首个模拟 PCM | 5.82 ms | 6.49 ms |
 
 加速回放处理 8 小时等量 PCM，执行 100 次本地会话重建，播放欠载为 0，队列峰值 14,720 样本（920 ms），虚拟唤醒到播放 P50/P95 均为 910 ms。新路径单包解析、解码和入队 P95 为 4 µs，同进程旧事件格式对照为 2 µs。整场测试约 4.59 CPU 秒，macOS 峰值 RSS 约 2.95 MiB。此组是桌面加速回放，墙钟浸泡和硬件测量独立验收。

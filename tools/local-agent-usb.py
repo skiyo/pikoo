@@ -28,12 +28,15 @@ def wait_for(port, prefix, seconds=15):
 def provision():
     host = input("Mihomo TLS hostname: ").strip()
     port = int(input("Mihomo TLS port [8443]: ").strip() or "8443")
+    audio_rate = int(input("GPT-Live PCM rate [16000]: ").strip() or "16000")
+    if audio_rate not in (16000, 24000):
+        raise SystemExit("PCM rate must be 16000 or 24000.")
     name = input("Mihomo username: ").strip()
     password = getpass.getpass("Mihomo password: ")
     key = getpass.getpass("OpenAI device project key: ")
     return json.dumps({"proxy_host": host, "proxy_port": port,
                        "proxy_basic": base64.b64encode(f"{name}:{password}".encode()).decode(),
-                       "api_key": key}, separators=(",", ":")).encode()
+                       "api_key": key, "audio_rate": audio_rate}, separators=(",", ":")).encode()
 
 
 def main():

@@ -8,6 +8,7 @@ namespace pikoo {
 struct AgentCredentials {
   std::string proxy_host, proxy_basic, api_key;
   uint16_t proxy_port = 0;
+  unsigned audio_rate = pikoo::LiveAgent::Rate;
   bool valid() const;
 };
 bool agent_enabled();

@@ -58,8 +58,12 @@ bool decode(const std::string &payload, AgentCredentials &credentials) {
   auto port = field(data.get(), "proxy_port");
   if (!cJSON_IsNumber(port) || port->valuedouble < 1 || port->valuedouble > 65535 ||
       port->valueint != port->valuedouble) return false;
+  const auto rate = field(data.get(), "audio_rate");
+  if (rate && (!cJSON_IsNumber(rate) || (rate->valuedouble != 16000 && rate->valuedouble != 24000)))
+    return false;
   credentials = {text(data.get(), "proxy_host"), text(data.get(), "proxy_basic"),
-                 text(data.get(), "api_key"), uint16_t(port->valueint)};
+                 text(data.get(), "api_key"), uint16_t(port->valueint),
+                 rate ? unsigned(rate->valueint) : LiveAgent::Rate};
   if (auto value = field(data.get(), "api_key"); cJSON_IsString(value))
     mbedtls_platform_zeroize(value->valuestring, credentials.api_key.size());
   if (auto value = field(data.get(), "proxy_basic"); cJSON_IsString(value))

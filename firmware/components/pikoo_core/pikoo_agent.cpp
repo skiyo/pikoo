@@ -231,8 +231,10 @@ void LiveAgent::send(Json message) {
   if (!output_.send(json(message.get()))) output_.failed(0);
 }
 
-void LiveAgent::start(uint64_t now, bool greet) {
+void LiveAgent::start(uint64_t now, bool greet, unsigned rate) {
   reset();
+  if (rate != 16000 && rate != 24000) { output_.failed(4003); return; }
+  rate_ = rate;
   effective_ = now;
   greeting_ = greet;
   auto message = event("session.start");
@@ -244,7 +246,7 @@ void LiveAgent::start(uint64_t now, bool greet) {
   auto audio = cJSON_AddObjectToObject(session, "audio");
   auto format = cJSON_AddObjectToObject(audio, "format");
   set_text(format, "type", "audio/pcm");
-  cJSON_AddNumberToObject(format, "rate", Rate);
+  cJSON_AddNumberToObject(format, "rate", rate_);
   set_text(cJSON_AddObjectToObject(audio, "output"), "voice", "marin");
   auto triggers = parse(R"([{"type":"decisions","event_type":"session.input_transcript.delta","decisions":{"questions":[{"type":"choice","name":"interaction","instructions":"根据当前上下文判断最新话语。只在用户明确叫 Pikoo 或承接与 Pikoo 的对话时选 addressed。仅在用户向 Pikoo 明确结束对话时选 farewell。家人互聊、电视、噪音或无法判断选 ignore。","choices":[{"value":"addressed"},{"value":"farewell"},{"value":"ignore"}]}]}}])");
   cJSON_AddItemToObject(session, "triggers", triggers.release());
@@ -273,7 +275,7 @@ void LiveAgent::receive(const std::string &message, uint64_t now) {
     auto format = field(field(session, "audio"), "format");
     auto rate = field(format, "rate");
     if (format && (text(format, "type") != "audio/pcm" ||
-                   !cJSON_IsNumber(rate) || rate->valuedouble != Rate)) {
+                   !cJSON_IsNumber(rate) || rate->valuedouble != rate_)) {
       output_.failed(4003);
       return;
     }
@@ -281,7 +283,7 @@ void LiveAgent::receive(const std::string &message, uint64_t now) {
     if (cJSON_IsNumber(expires) && expires->valuedouble > 0 && expires->valuedouble < 4102444800.0)
       expires_at_ = uint64_t(expires->valuedouble);
     ready_ = true;
-    output_.ready(Rate);
+    output_.ready(rate_);
     if (greeting_) {
       auto greeting = event("session.commentary.append");
       cJSON_AddNullToObject(greeting.get(), "delegation_id");
@@ -300,13 +302,18 @@ void LiveAgent::receive(const std::string &message, uint64_t now) {
     auto audio = text(o.get(), "delta");
     if (!audio.empty()) { audio_at_ = now; output_.audio(audio); }
   } else if (ready_ && type == "session.input_transcript.delta") {
-    record("user", text(o.get(), "delta"), now);
     input_event_ = text(o.get(), "event_id");
+    input_fragment_ = text(o.get(), "delta");
+    if (input_event_.size() > 256 || input_fragment_.size() > MaxText) {
+      input_event_.clear();
+      input_fragment_.clear();
+    }
+    input_at_ = now;
   } else if (ready_ && type == "decision.event") {
     classify(o.get(), now);
   } else if (ready_ && type == "session.output_transcript.delta") {
     effective_ = now;
-    record("assistant", text(o.get(), "delta"), now);
+    record_reply(text(o.get(), "delta"), now);
   } else if (ready_ && type == "response.event") {
     delegated(o.get(), now);
   }
@@ -358,7 +365,7 @@ void LiveAgent::delegated(const cJSON *message, uint64_t now) {
 }
 
 void LiveAgent::classify(const cJSON *message, uint64_t now) {
-  if (input_event_.empty() || input_event_ != text(message, "source_event_id") ||
+  if (input_event_.empty() || now - input_at_ > 5000 || input_event_ != text(message, "source_event_id") ||
       text(message, "source_event_type") != "session.input_transcript.delta") return;
   auto e = field(message, "event");
   if (text(e, "type") != "decision.completed") return;
@@ -368,27 +375,25 @@ void LiveAgent::classify(const cJSON *message, uint64_t now) {
     if (text(item, "name") != "interaction") continue;
     const auto choice = text(item, "choice");
     if (choice == "farewell") { farewell_at_ = now; effective_ = now; }
-    else if (choice == "addressed") { effective_ = now; accepted_input_ = role_ == "user"; }
-    else accepted_input_ = false;
+    else if (choice == "addressed") {
+      effective_ = now;
+      if (!input_fragment_.empty()) store_.remember_turn("user", input_fragment_);
+    }
     input_event_.clear();
+    input_fragment_.clear();
     break;
   }
 }
 
-void LiveAgent::record(const char *role, const std::string &fragment, uint64_t now) {
+void LiveAgent::record_reply(const std::string &fragment, uint64_t now) {
   if (fragment.empty()) return;
-  if (role_ != role || (turn_at_ && now - turn_at_ >= 900)) flush_turn();
-  role_ = role;
-  if (turn_.size() + fragment.size() <= MaxText) turn_ += fragment;
+  if (turn_at_ && now - turn_at_ >= 900) flush_turn();
+  if (reply_.size() + fragment.size() <= MaxText) reply_ += fragment;
   turn_at_ = now;
 }
 void LiveAgent::flush_turn() {
-  // Persist only accepted user turns and Pikoo’s own replies.
-  if (!turn_.empty() && (role_ == "assistant" || accepted_input_))
-    store_.remember_turn(role_, turn_);
-  accepted_input_ = false;
-  turn_.clear();
-  role_.clear();
+  if (!reply_.empty()) store_.remember_turn("assistant", reply_);
+  reply_.clear();
   turn_at_ = 0;
 }
 void LiveAgent::flush_context() {
@@ -396,7 +401,12 @@ void LiveAgent::flush_context() {
   store_.flush_history();
 }
 void LiveAgent::tick(uint64_t now) {
-  if (turn_at_ && now - turn_at_ >= (role_ == "user" && !accepted_input_ ? 5000u : 900u)) flush_turn();
+  if (turn_at_ && now - turn_at_ >= 900) flush_turn();
+  if (input_at_ && now - input_at_ > 5000) {
+    input_event_.clear();
+    input_fragment_.clear();
+    input_at_ = 0;
+  }
   batches_.erase(std::remove_if(batches_.begin(), batches_.end(), [now](const Batch &batch) {
     return now - batch.since >= 20000;
   }), batches_.end());
@@ -416,10 +426,24 @@ void LiveAgent::reset() {
   ready_ = false;
   batches_.clear();
   effective_ = farewell_at_ = audio_at_ = expires_at_ = turn_at_ = 0;
-  turn_.clear();
-  role_.clear();
+  reply_.clear();
   input_event_.clear();
-  accepted_input_ = false;
+  input_fragment_.clear();
+  input_at_ = 0;
+}
+
+size_t LiveUpload24k::convert(const int16_t *input, size_t count, int16_t *out) {
+  if (!count || count % 2) return 0;
+  if (!have_previous_) { previous_ = input[0]; have_previous_ = true; }
+  size_t size = 0;
+  for (size_t i = 0; i < count; i += 2) {
+    const int first = input[i], second = input[i + 1];
+    out[size++] = (2 * previous_ + first) / 3;
+    out[size++] = first;
+    out[size++] = (first + 2 * second) / 3;
+    previous_ = second;
+  }
+  return size;
 }
 
 bool safe_header(const std::string &value) {

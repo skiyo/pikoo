@@ -136,10 +136,12 @@ void run_regressions() {
   assert(device.store.history()->child == nullptr);
   assert(device.agent.sleep_due(61000, false));
   device.agent.receive(R"({"type":"session.input_transcript.delta","event_id":"user","delta":"问 Pikoo 的问题"})", 62000);
+  device.agent.receive(R"({"type":"session.output_transcript.delta","delta":"先回答"})", 62050);
   device.agent.receive(decision("tv", "farewell"), 62100);
   device.agent.receive(decision("user", "addressed"), 62200);
   device.agent.tick(63000);
-  assert(device.store.history()->child != nullptr);
+  assert(pikoo::json(device.store.history().get()).find("问 Pikoo 的问题") != std::string::npos);
+  assert(pikoo::json(device.store.history().get()).find("电视对白") == std::string::npos);
   assert(!device.agent.sleep_due(67000, false));
   device.agent.receive(R"({"type":"session.input_transcript.delta","event_id":"bye","delta":"Pikoo 再见"})", 69000);
   device.agent.receive(decision("bye", "farewell"), 69300);
@@ -185,6 +187,21 @@ void run_regressions() {
   reboot.agent.receive(R"({"type":"error","error":{"code":"rate_limit_exceeded"}})", 20042);
   assert(reboot.failure == 429);
 
+  reboot.stop();
+  reboot.sent.clear();
+  reboot.agent.start(100, false, 24000);
+  assert(reboot.sent.size() == 1 && reboot.sent[0].find("24000") != std::string::npos);
+  reboot.agent.receive(Started, 110);
+  assert(reboot.failure == 4003);
+  reboot.stop();
+  reboot.agent.start(120, false, 24000);
+  reboot.agent.receive(R"({"type":"session.started","session":{"audio":{"format":{"type":"audio/pcm","rate":24000}}}})", 130);
+  assert(reboot.ready && reboot.sink.queue.sample_rate() == 24000);
+  pikoo::LiveUpload24k converter;
+  int16_t samples[] = {0, 300, 600, 900}, up[6]{};
+  assert(converter.convert(samples, 2, up) == 3);
+  assert(converter.convert(samples + 2, 2, up + 3) == 3);
+  assert((std::vector<int16_t>(up, up + 6) == std::vector<int16_t>{0, 0, 200, 400, 600, 800}));
   assert(pikoo::connect_request("ZmFrZTp0ZXN0").find("CONNECT api.openai.com:443 ") == 0);
   assert(pikoo::connect_request("x\r\nheader: y").empty());
   assert(pikoo::connect_status("HTTP/1.1 200 Connection established\r\n\r\n") == 200);
