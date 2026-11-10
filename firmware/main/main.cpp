@@ -1,3 +1,5 @@
+#include "agent_storage.hpp"
+#include "agent_tunnel.hpp"
 #include "board_audio.hpp"
 #include "board.hpp"
 #include "pikoo_button.hpp"
@@ -26,6 +28,7 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "mbedtls/base64.h"
+#include "mbedtls/platform_util.h"
 #include "nvs_flash.h"
 #include "pikoo_core.hpp"
 #include "pikoo_interaction.hpp"
@@ -51,6 +54,11 @@ pikoo::Playback playback;
 pikoo::Session session;
 pikoo::Interaction interaction;
 pikoo::ContinuousStream live_stream;
+bool local_agent = false;
+bool local_agent_ready = false;
+uint64_t local_audio_at = 0;
+pikoo::AgentCredentials agent_credentials;
+pikoo::FamilyStore family(pikoo::write_family_snapshot);
 std::atomic<bool> continuous_audio{false};
 bool server_sleep_requested=false;
 uint64_t last_playback_report=0;
@@ -126,6 +134,24 @@ TaskHandle_t capture_handle=nullptr, process_handle=nullptr, playback_handle=nul
 const esp_afe_sr_iface_t *afe;
 esp_afe_sr_data_t *afe_data;
 uint64_t now() { return esp_timer_get_time() / 1000; }
+void receive(const std::string &raw);
+bool enqueue_control(std::string json);
+void play_local_audio(const std::string &b64);
+pikoo::LiveAgent agent(family, {
+  enqueue_control,
+  [](unsigned rate) {
+    auto o = pikoo::object();
+    cJSON_AddStringToObject(o.get(), "type", "voice.ready");
+    cJSON_AddBoolToObject(o.get(), "continuousAudio", true);
+    cJSON_AddStringToObject(o.get(), "streamId", "local");
+    cJSON_AddNumberToObject(o.get(), "generation", connection_epoch.load());
+    cJSON_AddNumberToObject(o.get(), "inputSampleRate", 16000);
+    cJSON_AddNumberToObject(o.get(), "outputSampleRate", rate);
+    receive(pikoo::json(o.get()));
+  },
+  play_local_audio,
+  [](int code) { close_code = code; net_down = true; }
+});
 bool local_wake_test() { return now()<wake_test_until_ms.load(); }
 std::string field(cJSON *o, const char *key) {
   auto x = cJSON_GetObjectItem(o, key);
@@ -157,13 +183,16 @@ cJSON *event(const char *type) {
   cJSON_AddStringToObject(o, "event_id", id);
   return o;
 }
-bool send(cJSON *o) {
-  auto s = stringify(o);
+bool enqueue_control(std::string s) {
   if(!tx_enabled)return false;
   std::lock_guard<std::mutex> lock(tx_mutex);
   if(control_queue.size()>=64){fail_queue(9);return false;}
   control_queue.push_back({connection_epoch.load(),std::move(s)});
   return true; // Accepted by the bounded TX queue, not a delivery receipt.
+}
+bool send(cJSON *o) {
+  auto s = stringify(o);
+  return !local_agent && enqueue_control(std::move(s));
 }
 bool send_wire(const std::string &s,uint32_t connection,uint32_t audio_epoch=UINT32_MAX,int samples=0) {
   std::lock_guard<std::mutex> lock(tx_io_mutex);
@@ -224,7 +253,8 @@ void end_socket() {
   if (ws) {
     // close(timeout) sends its CLOSE frame with portMAX_DELAY in the pinned
     // client. Wake blocked socket IO first, then join before freeing anything.
-    if(tls_transport) {
+    if (local_agent) pikoo::abort_tunnel(tls_transport);
+    else if(tls_transport) {
       const int fd=esp_transport_get_socket(tls_transport);
       if(fd>=0)shutdown(fd,SHUT_RDWR);
     }
@@ -237,6 +267,13 @@ void end_socket() {
   pikoo::release_frame_writer();
   if(websocket_transport){esp_transport_destroy(websocket_transport);websocket_transport=nullptr;}
   if(tls_transport){esp_transport_destroy(tls_transport);tls_transport=nullptr;}
+  if (local_agent) {
+    mbedtls_platform_zeroize(headers.data(), headers.size());
+    headers.clear();
+    local_audio_at = 0;
+    agent.flush_context();
+    agent.reset();
+  }
   net_open = false;
   net_down = false;
   {
@@ -275,7 +312,8 @@ void socket_event(void *, esp_event_base_t, int32_t id, void *data) {
     voice_connected=false;
     if (e) {
       int status = e->error_handle.esp_ws_handshake_status_code;
-      if (status == 401 || status == 403)
+      const int proxy_status = local_agent ? pikoo::tunnel_status(tls_transport) : 0;
+      if (status == 401 || status == 403 || proxy_status == 403 || proxy_status == 407)
         close_code = 4003;
       else if (status == 429)
         close_code = 429;
@@ -293,7 +331,7 @@ void socket_event(void *, esp_event_base_t, int32_t id, void *data) {
     return;
   if (e->op_code == 1 && e->payload_offset == 0)
     fragment.clear();
-  if (e->data_len < 0 || fragment.size() + e->data_len > 256 * 1024) {
+  if (e->data_len < 0 || fragment.size() + e->data_len > (local_agent ? pikoo::LiveAgent::MessageLimit : 256 * 1024)) {
     fail_queue(2);
     return;
   }
@@ -331,6 +369,7 @@ void begin() {
     return;
   }
   end_socket();
+  if (local_agent && !local_agent_ready) { session.state = State::AuthError; return; }
   close_code = 0;
   session.wake(now());
   active = true;
@@ -338,13 +377,14 @@ void begin() {
   connecting_at = now();
   ensure_conversation();
   ++reconnect_count;
-  ws_uri = endpoint + "?sessionId=" + conversation_id;
-  headers = "Authorization: Bearer " + token + "\r\n";
+  ws_uri = local_agent ? "wss://api.openai.com/v1/live/sessions" : endpoint + "?sessionId=" + conversation_id;
+  headers = "Authorization: Bearer " + (local_agent ? agent_credentials.api_key : token) + "\r\n";
   // The public external-transport API exposes the owned TLS socket, allowing
   // TCP_NODELAY. Otherwise split WS header/payload writes can stall on Nagle.
-  tls_transport=esp_transport_ssl_init();
+  tls_transport = local_agent ? pikoo::openai_tunnel(agent_credentials.proxy_host,
+    agent_credentials.proxy_port, agent_credentials.proxy_basic) : esp_transport_ssl_init();
   if(!tls_transport){net_down=true;return;}
-  esp_transport_ssl_crt_bundle_attach(tls_transport,esp_crt_bundle_attach);
+  if (!local_agent) esp_transport_ssl_crt_bundle_attach(tls_transport,esp_crt_bundle_attach);
   esp_transport_set_default_port(tls_transport,443);
   websocket_transport=esp_transport_ws_init(tls_transport);
   if(!websocket_transport){net_down=true;return;}
@@ -400,6 +440,22 @@ void hello() {
   cJSON_AddBoolToObject(connection, "takeover", takeover);
   takeover = false;
   send(o);
+}
+void play_local_audio(const std::string &b64) {
+  if (!session.ready || !active || muted || b64.size() > 60 * 1024) return;
+  std::vector<int16_t> pcm((b64.size() * 3 / 4 + 4) / 2);
+  size_t bytes = 0;
+  if (mbedtls_base64_decode(reinterpret_cast<unsigned char *>(pcm.data()), pcm.size() * 2,
+    &bytes, reinterpret_cast<const unsigned char *>(b64.data()), b64.size()) != 0 || bytes % 2) {
+    fail_queue(4);
+    return;
+  }
+  if (std::any_of(pcm.begin(), pcm.begin() + bytes / 2, [](int16_t sample) {
+        return sample > 100 || sample < -100;
+      })) local_audio_at = now();
+  ++received_audio_count;
+  std::lock_guard<std::mutex> lock(play_mutex);
+  if (!playback.append(live_stream.id, pcm.data(), bytes / 2)) fail_queue(5);
 }
 void receive(const std::string &raw) {
   auto o = cJSON_ParseWithLength(raw.data(), raw.size());
@@ -819,14 +875,58 @@ void controls_task(void *) {
   usb_serial_jtag_driver_config_t usb{};usb.tx_buffer_size=2048;usb.rx_buffer_size=256;
   ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb));
   uint64_t report=0,last_tone=0;
+  enum class Transfer { None, Credentials, Import };
+  Transfer transfer = Transfer::None;
+  std::string payload;
+  uint64_t transfer_deadline = 0;
+  bool too_long = false, command_overflow = false;
   while(true) {
     control_action(button.update(!gpio_get_level(board::Button),now()));
     uint8_t c;
-    while(usb_serial_jtag_read_bytes(&c,1,0)==1) {
+    for (unsigned read = 0; read < 256 && usb_serial_jtag_read_bytes(&c,1,0)==1; ++read) {
+      const bool usb_safe = muted && !awake && visual_state == State::Muted;
+      if (transfer != Transfer::None) {
+        if (c == '\r' && payload.empty()) continue;
+        if (c == '\n') {
+          bool ok = false;
+          if (usb_safe && !too_long && now() <= transfer_deadline) {
+            if (transfer == Transfer::Credentials) ok = pikoo::provision_agent(payload);
+            else {
+              pikoo::FamilyStore imported(pikoo::write_family_snapshot);
+              ok = pikoo::init_family_store(imported) && pikoo::import_family_snapshot(imported, payload);
+            }
+          }
+          mbedtls_platform_zeroize(payload.data(), payload.size());
+          payload.clear();
+          transfer = Transfer::None;
+          ESP_LOGI("pikoo", "agent usb result=%s", ok ? "ok_reboot" : "rejected");
+        } else if (c != '\r') {
+          const auto limit = transfer == Transfer::Credentials ? 4096 : pikoo::FamilyStore::Capacity;
+          if (payload.size() < limit && now() <= transfer_deadline && usb_safe) payload.push_back(char(c));
+          else too_long = true;
+        }
+        continue;
+      }
       if(c=='\r'||c=='\n') {
+        if (command_overflow) { command_overflow = false; used = 0; continue; }
         command[used]=0;
         int requested_db=0;
         if(!strcmp(command,"status")) diagnostics();
+        else if (usb_safe && (!strcmp(command, "agent provision") || !strcmp(command, "agent import"))) {
+          transfer = !strcmp(command, "agent provision") ? Transfer::Credentials : Transfer::Import;
+          too_long = false;
+          transfer_deadline = now() + 30000;
+          ESP_LOGI("pikoo", "agent usb ready");
+        } else if (usb_safe && !strcmp(command, "agent export")) {
+          pikoo::FamilyStore exported(pikoo::write_family_snapshot);
+          if (pikoo::init_family_store(exported)) {
+            auto snapshot = exported.snapshot();
+            printf("PIKOO_AGENT_SNAPSHOT %s\n", snapshot.c_str());
+          } else ESP_LOGI("pikoo", "agent usb result=rejected");
+        } else if (usb_safe && !strcmp(command, "agent legacy")) {
+          const bool ok = pikoo::set_agent_mode(false);
+          ESP_LOGI("pikoo", "agent usb result=%s", ok ? "ok_reboot" : "rejected");
+        }
         else if(!strcmp(command,"eyes freeze")){display_pause_until=now()+120000;ESP_LOGI("diag","eyes_frozen=1 duration_ms=120000");}
         else if(!strcmp(command,"eyes resume")){display_pause_until=0;ESP_LOGI("diag","eyes_frozen=0");}
         // Enter only after the session task has published a fully muted state,
@@ -870,8 +970,8 @@ void controls_task(void *) {
           if(nvs_open("pikoo",NVS_READWRITE,&n)==ESP_OK){nvs_set_i32(n,"rotation",angle);nvs_commit(n);nvs_close(n);}
         }
         used=0;
-      } else if(used<sizeof(command)-1)command[used++]=c;
-      else used=0;
+      } else if (used < sizeof(command)-1 && !command_overflow) command[used++]=c;
+      else command_overflow = true;
     }
     if(now()-report>=10000){report=now();diagnostics();}
     vTaskDelay(pdMS_TO_TICKS(5));
@@ -897,7 +997,7 @@ void sender_task(void *) {
     Upload u;
     if(tx_enabled&&uploading&&xQueueReceive(upload_queue,&u,0)==pdTRUE&&u.epoch==stream_epoch) {
       const auto connection=connection_epoch.load();
-      auto o=event("input_audio_buffer.append");
+      auto o=event(local_agent ? "session.input_audio.append" : "input_audio_buffer.append");
       auto audio=encode(u.pcm,u.count*2);
       cJSON_AddStringToObject(o,"audio",audio.c_str());
       send_wire(stringify(o),connection,u.epoch,u.count);
@@ -912,7 +1012,10 @@ void session_task(void *) {
     if (stop_request.exchange(false)) {
       end_socket();
       interaction.reset();
-      if(finish_request.exchange(false)) forget_conversation();
+      if(finish_request.exchange(false)) {
+        forget_conversation();
+        if (local_agent_ready) family.clear_context();
+      }
       muted ? session.mute() : session.stop();
       next_retry = 0;
     }
@@ -932,7 +1035,10 @@ void session_task(void *) {
       interaction.wake();
       begin();
     }
-    if (cancel_request.exchange(false) && active) {
+    const bool cancel = cancel_request.exchange(false);
+    if (cancel && active && local_agent) {
+      begin();
+    } else if (cancel && active) {
       clear_audio(true);
       gate_off();
       voice_connected=false;
@@ -941,8 +1047,10 @@ void session_task(void *) {
       session.state = State::Connecting;
       connecting_at = now();
     }
-    if (net_open.exchange(false))
-      hello();
+    if (net_open.exchange(false)) {
+      if (local_agent) agent.start(now(), interaction.greeting_pending());
+      else hello();
+    }
     if (overflow.exchange(false) && active) {
       net_down = true;
       ESP_LOGW("pikoo", "bounded queue overflow reason=%d send_us=%lu queue=%u",overflow_reason.load(),(unsigned long)send_last_us.load(),unsigned(uxQueueMessagesWaiting(upload_queue)));
@@ -985,7 +1093,7 @@ void session_task(void *) {
       std::lock_guard<std::mutex> lock(in_mutex);
       if(incoming.empty())return false;
       message=std::move(incoming.front());incoming.pop_front();return true;
-    },[&]{auto started=esp_timer_get_time();receive(message);receive_max_us=std::max(receive_max_us.load(),uint32_t(esp_timer_get_time()-started));});
+    },[&]{auto started=esp_timer_get_time();if(local_agent)agent.receive(message,now());else receive(message);receive_max_us=std::max(receive_max_us.load(),uint32_t(esp_timer_get_time()-started));});
     {
       std::deque<std::string> receipts;
       {
@@ -1010,7 +1118,9 @@ void session_task(void *) {
       server_sleep_requested=false;end_socket();interaction.reset();next_retry=0;session.stop();
       ESP_LOGI("pikoo","server sleep confirmed; context retained");
     }
-    if(continuous_audio&&session.ready&&now()-last_playback_report>=200) {
+    if (local_agent && session.ready) {
+      session.state = board::output_level() > .003f ? State::Speaking : State::Listening;
+    } else if(continuous_audio&&session.ready&&now()-last_playback_report>=200) {
       last_playback_report=now();size_t queued=0,inflight=0;unsigned rate=24000;
       {std::lock_guard<std::mutex> lock(play_mutex);queued=playback.queued();inflight=playback.in_flight();rate=playback.sample_rate();}
       const bool audible=board::output_level()>.003f&&inflight>0;
@@ -1026,10 +1136,20 @@ void session_task(void *) {
     bool playing;
     {
       std::lock_guard<std::mutex> l(play_mutex);
-      playing = playback.busy();
+      playing = local_agent ? (playback.in_flight() && ((local_audio_at && now() - local_audio_at < 2000) ||
+        board::output_level() > .003f)) : playback.busy();
     }
     if (!continuous_audio && session.ready && !playing && session.state == State::Speaking) {
       session.state = State::Listening;
+    }
+    if (local_agent && active) {
+      agent.tick(now());
+      if (agent.sleep_due(now(), playing)) {
+        end_socket();
+        interaction.reset();
+        next_retry = 0;
+        session.stop();
+      }
     }
     if (!continuous_audio&&(interaction.finish_due(now(),playing)||session.idle_due(now(), playing,companion_mode))) {
       bool farewell=interaction.closing();
@@ -1080,9 +1200,16 @@ extern "C" void app_main() {
   nvs_get_i64(nvs,"conv_at",&conversation_at);
   int32_t rotation=90;nvs_get_i32(nvs,"rotation",&rotation);board::display_rotation(rotation);
   nvs_close(nvs);
+  local_agent = pikoo::agent_enabled();
+  if (local_agent) {
+    // The pinned SDK can log a failed Upgrade request, including its headers.
+    esp_log_level_set("transport_ws", ESP_LOG_NONE);
+    esp_log_level_set("websocket_client", ESP_LOG_NONE);
+    local_agent_ready = pikoo::load_agent_credentials(agent_credentials) && pikoo::init_family_store(family);
+  }
   if (ssid.empty() || ssid.size() > 32 || password.size() > 63 ||
-      endpoint.rfind("wss://", 0) != 0 || token.empty() ||
-      token.find_first_of("\r\n") != std::string::npos) {
+      (!local_agent && (endpoint.rfind("wss://", 0) != 0 || token.empty() ||
+      token.find_first_of("\r\n") != std::string::npos))) {
     ESP_LOGW("pikoo","USB configuration required");
     return;
   }

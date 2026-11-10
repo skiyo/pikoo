@@ -8,6 +8,7 @@
 - [固件与 USB](firmware.zh-CN.md)
 - [二次开发](development.zh-CN.md)
 - [Live 与 Terra](openai-live.zh-CN.md)
+- [ESP32 本地 Agent 与 Mihomo](local-agent.zh-CN.md)
 - [上下文与记忆](context-memory.zh-CN.md)
 - [工具与清单](family-tools.zh-CN.md)
 - [会话与休眠](conversation-lifecycle.zh-CN.md)
