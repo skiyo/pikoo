@@ -15,7 +15,7 @@ from check_wake_policy import validate
 
 ROOT=Path(__file__).resolve().parents[1]
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
-def copy(a,b):b.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(a,b)
+def copy(a,b):b.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(a,b)
 def checksums(root):
     (root/'SHA256SUMS').write_text(''.join(f'{sha(p)}  {p.relative_to(root).as_posix()}\n' for p in sorted(root.rglob('*')) if p.is_file() and p.name!='SHA256SUMS'))
 def zip_tree(root,path):
