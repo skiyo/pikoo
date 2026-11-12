@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "status": "awaiting_final_human_voice_check",
+  "status": "accepted_with_documented_limits",
   "firmware": {
     "bytes": 2697696,
     "sha256": "1013fe0108827a0c494cfb7f40ac6935caf9fab8de860208ece122f7951d1159",
@@ -57,6 +57,12 @@
       ],
       "core": "initial 16 kHz streaming core",
       "underruns": 0
+    },
+    "final_silent_recheck": {
+      "asan_ubsan_core": "passed",
+      "playback_jitter_and_cancel": "passed",
+      "python_tool_tests_passed": 60,
+      "mihomo_network_cycles_passed": 100
     }
   },
   "device": {
@@ -73,13 +79,34 @@
     "interruption_followup_answer": "passed",
     "i2s_rx_errors_observed": 0,
     "i2s_tx_errors_observed": 0,
-    "formal_final_list_query": "awaiting human voice confirmation",
-    "credentials_storage": "replaceable ordinary NVS"
+    "formal_final_list_query": "passed; human confirmed original shopping list read correctly",
+    "credentials_storage": "replaceable ordinary NVS",
+    "final_muted_state": {
+      "state": 5,
+      "upload": false,
+      "output_level": 0
+    },
+    "final_snapshot_counts": {
+      "shopping": 2,
+      "memory": 5
+    }
   },
   "limitations": [
     "Real family acoustics and child wake recall require human acceptance.",
     "Final version has accelerated 8-hour PCM regression; earlier wall-clock soaks used the initial streaming core.",
     "Physical playback-gap counters include inter-burst gaps and are not certified as zero acoustic underruns.",
-    "Board CPU percentage and 24-hour physical endurance are not measured."
-  ]
+    "Board CPU percentage and 24-hour physical endurance are not measured.",
+    "Occasional speech discontinuity was reported; further audible testing was waived by the user. No claim of a confirmed acoustic fix is made."
+  ],
+  "deployment": {
+    "voice_path": "ESP32 -> Mihomo -> OpenAI",
+    "legacy_agent_service": "stopped and disabled",
+    "device_proxy_service": "active and enabled"
+  },
+  "release_acceptance": {
+    "human_voice_query": "passed",
+    "further_audible_tests": "stopped at user request",
+    "main_merge": "authorized by user after silent regression",
+    "speech_stutter": "User reported occasional speech discontinuity, then accepted audio and requested no further sound tests; acoustic cause remains unconfirmed."
+  }
 }
