@@ -9,7 +9,7 @@ from pathlib import Path
 import time
 
 import serial
-from usb_serial import preserve_lines
+from usb_serial import ConsoleSerial
 
 MAX_SNAPSHOT = 24 * 1024
 SNAPSHOT = b"PIKOO_AGENT_SNAPSHOT "
@@ -63,12 +63,11 @@ def main():
     else:
         payload = None
 
-    device = serial.Serial(port=None, baudrate=115200, timeout=1, write_timeout=10)
+    device = ConsoleSerial(port=None, baudrate=115200, timeout=1, write_timeout=10)
     device.dtr = False
     device.rts = False
     device.port = args.port
     with device:
-        preserve_lines(device)
         device.reset_input_buffer()
         deadline = time.monotonic() + 25
         next_request = 0.0

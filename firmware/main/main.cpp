@@ -8,6 +8,7 @@
 #include "driver/usb_serial_jtag_vfs.h"
 #include "esp_app_desc.h"
 #include "esp_heap_caps.h"
+#include "esp_private/periph_ctrl.h"
 #include "esp_system.h"
 #include "cJSON.h"
 #include "esp_afe_sr_models.h"
@@ -28,6 +29,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
+#include "hal/usb_serial_jtag_ll.h"
 #include "mbedtls/base64.h"
 #include "mbedtls/platform_util.h"
 #include "nvs_flash.h"
@@ -881,6 +883,14 @@ void diagnostics() {
 }
 void controls_task(void *) {
   pikoo::Button button;char command[32]{};size_t used=0;
+  // ESP32-S3 can boot normally after a USJ control-line reset while its USB
+  // peripheral stops responding (esp-idf#18996). Reattach once on startup,
+  // before installing its driver, so recovery does not require a power cycle.
+  // The host sees a brief disconnect; flash, NVS and the CPU are unchanged.
+  const usb_serial_jtag_pull_override_vals_t detached{};
+  usb_serial_jtag_ll_phy_enable_pull_override(&detached);
+  vTaskDelay(pdMS_TO_TICKS(500));
+  PERIPH_RCC_ATOMIC() { usb_serial_jtag_ll_reset_register(); }
   usb_serial_jtag_driver_config_t usb{};usb.tx_buffer_size=2048;usb.rx_buffer_size=256;
   ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb));
   // Share the installed driver's FIFO ownership with stdout. The default

@@ -16,7 +16,7 @@ import sys
 import time
 import serial
 from monitor_control import registry_path, ROOT
-from usb_serial import preserve_lines
+from usb_serial import ConsoleSerial
 
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--port')
@@ -55,9 +55,8 @@ log=None
 if a.private_log:
     a.private_log.parent.mkdir(parents=True,exist_ok=True)
     log=a.private_log.open('ab',buffering=0);a.private_log.chmod(0o600)
-s=serial.Serial(port=None,baudrate=115200,timeout=.05)
+s=ConsoleSerial(port=None,baudrate=115200,timeout=.05)
 s.dtr=False;s.rts=False;s.port=a.port;s.open()
-preserve_lines(s)
 print('USB monitor open. Commands: status / wake / stop / end / mute / unmute / tone. Ctrl-C closes it.',flush=True)
 pending=b''
 try:
