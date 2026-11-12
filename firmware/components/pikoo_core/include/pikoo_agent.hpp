@@ -46,6 +46,9 @@ public:
     std::function<void(const std::string &)> audio;
     std::function<void(int)> failed;
     std::function<void(const char *)> diagnostic = [](const char *) {};
+    std::function<void()> interrupt = [] {};
+    std::function<void()> interrupt_ack = [] {};
+    std::function<void()> interrupt_resume = [] {};
   };
 
   LiveAgent(FamilyStore &store, Output output);
@@ -59,7 +62,7 @@ public:
   static constexpr unsigned Rate = 16000;
 
 private:
-  void send(Json event);
+  std::string send(Json event);
   void record_reply(const cJSON *message, uint64_t now);
   void flush_turn();
   void delegated(const cJSON *message, uint64_t now);
@@ -70,14 +73,20 @@ private:
   struct Batch { std::string id, response; uint64_t since; std::vector<Call> calls; };
   std::vector<Batch> batches_;
   std::set<std::string> event_types_;
-  struct Input { std::string id, fragment; uint64_t at; };
+  struct Input { std::string id, fragment; uint64_t at; bool stop_phrase; };
   std::vector<Input> inputs_;
   std::string reply_;
+  std::string input_window_;
+  std::string interrupt_event_;
   uint64_t effective_ = 0, turn_at_ = 0, farewell_at_ = 0, audio_at_ = 0;
   uint64_t serial_ = 0, expires_at_ = 0, reply_end_ = 0;
+  uint64_t interrupt_at_ = 0;
+  uint64_t input_at_ = 0;
+  uint64_t interrupt_context_end_ = 0;
   unsigned rate_ = Rate;
   bool greeting_ = false, ready_ = false;
   bool reply_continuation_ = false;
+  bool awaiting_new_speech_ = false;
 };
 
 // Convert complete pairs of 16 kHz microphone samples to 24 kHz. Keep the

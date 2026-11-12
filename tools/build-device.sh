@@ -34,5 +34,6 @@ mkdir -p "$build_dir"
 build_dir="$(cd "$build_dir" && pwd)"
 cd "$root/firmware"
 build_args=(-B "$build_dir" -DSDKCONFIG="$build_dir/sdkconfig" -DPIKOO_WAKE_MODEL="$model" -DPIKOO_WAKE_MAX_BYTES="${PIKOO_WAKE_MAX_BYTES:-524288}" -DPIKOO_AUDIO_CAPTURE_BENCHMARK=OFF -DPIKOO_WAKE_BENCHMARK=OFF -DPIKOO_COMMAND_BENCHMARK=OFF -DPIKOO_VOLUME_BOOT_UPGRADE=OFF "${veto_args[@]}" "${policy_args[@]}" "${trial_args[@]}")
+build_args+=(-DPIKOO_AGENT_TRACE=OFF)
 if [ -n "${PIKOO_FIRMWARE_VERSION:-}" ]; then build_args+=("-DPROJECT_VER=$PIKOO_FIRMWARE_VERSION"); fi
 idf.py "${build_args[@]}" build

@@ -5,10 +5,16 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 def validate(c):
-    for key in ('ssid','password','endpoint','token'):
+    mode=c.get('mode','gateway')
+    if mode not in ('gateway','local'):raise ValueError('Unknown device mode')
+    if any(k in c for k in ('api_key','proxy_basic','proxy_password')):raise ValueError('Use local-agent-usb.py provision for agent secrets')
+    for key in ('ssid','password'):
         if not isinstance(c.get(key),str) or '\0' in c[key]:raise ValueError('Missing/invalid '+key)
     if not 1<=len(c['ssid'].encode())<=32:raise ValueError('SSID must fit 32 UTF-8 bytes')
     if c['password'] and not 8<=len(c['password'].encode())<=63:raise ValueError('Wi-Fi password must be 8..63 bytes, or empty for an open network')
+    if mode=='local' and not c.get('endpoint') and not c.get('token'):return c
+    for key in ('endpoint','token'):
+        if not isinstance(c.get(key),str) or '\0' in c[key]:raise ValueError('Missing/invalid '+key)
     u=urlsplit(c['endpoint'])
     if u.scheme!='wss' or not u.hostname or u.username or u.password or u.fragment or u.path!='/api/realtime':raise ValueError('Use wss://HOST/api/realtime without credentials or fragments')
     if u.query:raise ValueError('Device firmware generates the session ID; omit query parameters')
@@ -16,9 +22,12 @@ def validate(c):
     return c
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--config',type=Path);p.add_argument('--output',type=Path,default=Path('config.nvs.bin'));p.add_argument('--port');p.add_argument('--dry-run',action='store_true');a=p.parse_args();os.umask(0o077)
+    p=argparse.ArgumentParser();p.add_argument('--config',type=Path);p.add_argument('--output',type=Path,default=Path('config.nvs.bin'));p.add_argument('--port');p.add_argument('--dry-run',action='store_true');p.add_argument('--local-agent',action='store_true');a=p.parse_args();os.umask(0o077)
     if a.config:c=json.loads(a.config.read_text())
-    else:c={'ssid':input('2.4GHz Wi-Fi name: '),'password':getpass.getpass('Wi-Fi password: '),'endpoint':input('Device WSS endpoint: '),'token':getpass.getpass('Device token: ')}
+    else:
+        c={'ssid':input('2.4GHz Wi-Fi name: '),'password':getpass.getpass('Wi-Fi password: ')}
+        if not a.local_agent:c.update(endpoint=input('Device WSS endpoint: '),token=getpass.getpass('Device token: '))
+    if a.local_agent:c['mode']='local'
     validate(c)
     if a.dry_run:print('Configuration is valid; no credential values displayed or written.');return
     idf=Path(os.environ.get('IDF_PATH',''))
@@ -31,8 +40,10 @@ def main():
             w=csv.writer(f);w.writerow(['key','type','encoding','value']);w.writerow(['pikoo','namespace','',''])
             for key,value in c.items():
                 if key in ('ssid','password','endpoint','token'):w.writerow([key,'data','string',value])
+            if c.get('mode')=='local':
+                w.writerow(['edge','namespace','','']);w.writerow(['local_agent','data','u8','1'])
         subprocess.run([sys.executable,str(generator),'generate',str(source),str(a.output.resolve()),'0x10000'],check=True,stdout=subprocess.DEVNULL)
     a.output.chmod(0o600)
     if a.port:subprocess.run([sys.executable,'-m','esptool','--chip','esp32s3','--port',a.port,'write_flash','0x9000',str(a.output.resolve())],check=True)
-    print('Private NVS image created. Keep it out of GitHub; it contains Wi-Fi and device credentials.')
+    print('Private NVS image created. Keep it out of GitHub; it contains private Wi-Fi/device configuration.')
 if __name__=='__main__':main()

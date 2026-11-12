@@ -1,5 +1,7 @@
 # 快速开始
 
+ESP32 端侧模式请先读[本地 Agent](local-agent.zh-CN.md)和[固件安装](firmware.zh-CN.md)。下文图形演示不变，可选联网语音使用保留的 Gateway。
+
 [English](getting-started.md) | **简体中文**
 
 ## 离线体验

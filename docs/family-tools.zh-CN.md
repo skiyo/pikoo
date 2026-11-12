@@ -1,5 +1,7 @@
 # 家庭工具
 
+本页说明保留的 GCP 7 Gateway 模式。端侧 Agent 的当前行为、部署与限制见[本地 Agent](local-agent.zh-CN.md)。
+
 [English](family-tools.md) | **简体中文**
 
 DeepSeek 搜索使用 `DEEPSEEK_API_KEY`，校验 1–128 字符查询，默认 5 条、最多 8 条，8 秒超时，不循环重试。结果包含标题、链接、摘要和可用发布时间；鉴权、余额和限流失败如实返回。

@@ -1,5 +1,7 @@
 # Live and Terra
 
+This page describes the retained GCP 7 Gateway mode. See [local Agent deployment](local-agent.zh-CN.md) for current ESP behavior and limits.
+
 **English** | [简体中文](openai-live.zh-CN.md)
 
 The active path is native **gpt-live-1 + gpt-6.1-terra**, not a renamed Realtime adapter. `PIKOO_VOICE_PROVIDER=openai-live` selects it, `AGENT_PROTOCOL=none` remains in effect. Both models require account access. There is no automatic provider fallback.

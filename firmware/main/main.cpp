@@ -60,6 +60,9 @@ pikoo::ContinuousStream live_stream;
 bool local_agent = false;
 bool local_agent_ready = false;
 uint64_t local_audio_at = 0;
+bool local_interrupt_gate = false;
+bool local_interrupt_ack = false;
+size_t local_interrupt_quiet = 0;
 pikoo::AgentCredentials agent_credentials;
 pikoo::FamilyStore family(pikoo::write_family_snapshot);
 std::atomic<bool> continuous_audio{false};
@@ -140,6 +143,7 @@ uint64_t now() { return esp_timer_get_time() / 1000; }
 void receive(const std::string &raw);
 bool enqueue_control(std::string json);
 void play_local_audio(const std::string &b64);
+void clear_audio(bool notify);
 pikoo::LiveAgent agent(family, {
   enqueue_control,
   [](unsigned rate) {
@@ -158,9 +162,27 @@ pikoo::LiveAgent agent(family, {
 #ifdef PIKOO_AGENT_TRACE
     ESP_LOGI("pikoo", "edge event=%s", type);
 #else
-    if (!strcmp(type, "edge.tool.ok") || !strcmp(type, "edge.tool.error"))
+    if (!strcmp(type, "edge.tool.ok") || !strcmp(type, "edge.tool.error") || !strncmp(type, "edge.interrupt", 14))
       ESP_LOGI("pikoo", "edge event=%s", type);
 #endif
+  },
+  [] {
+    local_interrupt_gate = true;
+    local_interrupt_ack = false;
+    local_interrupt_quiet = 0;
+    local_audio_at = 0;
+    clear_audio(false);
+    // This is one continuous stream: reuse its ID after discarding the old
+    // generation. cancel() alone permanently rejects that ID.
+    std::lock_guard<std::mutex> lock(play_mutex);
+    playback.reset();
+  },
+  [] { local_interrupt_ack = true; },
+  [] {
+    // The first post-instruction speech on the session timeline can resume
+    // without waiting for a pause and swallowing its opening words.
+    local_interrupt_gate = false;
+    local_interrupt_quiet = 0;
   }
 });
 bool local_wake_test() { return now()<wake_test_until_ms.load(); }
@@ -282,6 +304,8 @@ void end_socket() {
     mbedtls_platform_zeroize(headers.data(), headers.size());
     headers.clear();
     local_audio_at = 0;
+    local_interrupt_gate = local_interrupt_ack = false;
+    local_interrupt_quiet = 0;
     agent.flush_context();
     agent.reset();
   }
@@ -461,9 +485,18 @@ void play_local_audio(const std::string &b64) {
     fail_queue(4);
     return;
   }
-  if (std::any_of(pcm.begin(), pcm.begin() + bytes / 2, [](int16_t sample) {
+  const bool voiced = std::any_of(pcm.begin(), pcm.begin() + bytes / 2, [](int16_t sample) {
         return sample > 100 || sample < -100;
-      })) local_audio_at = now();
+      });
+  if (local_interrupt_gate) {
+    // Acknowledgment alone does not delimit played audio. Drop the old tail
+    // until the continuous stream also has a short quiet interval.
+    local_interrupt_quiet = voiced ? 0 : local_interrupt_quiet + bytes / 2;
+    if (local_interrupt_ack && local_interrupt_quiet >= agent_credentials.audio_rate * 120 / 1000)
+      local_interrupt_gate = false;
+    return;
+  }
+  if (voiced) local_audio_at = now();
   ++received_audio_count;
   std::lock_guard<std::mutex> lock(play_mutex);
   if (!playback.append(live_stream.id, pcm.data(), bytes / 2)) fail_queue(5);

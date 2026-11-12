@@ -235,9 +235,11 @@ Json FamilyStore::history() const {
 
 LiveAgent::LiveAgent(FamilyStore &store, Output output) : store_(store), output_(std::move(output)) {}
 
-void LiveAgent::send(Json message) {
-  set_text(message.get(), "event_id", "pikoo-edge-" + std::to_string(++serial_));
+std::string LiveAgent::send(Json message) {
+  const auto id = "pikoo-edge-" + std::to_string(++serial_);
+  set_text(message.get(), "event_id", id);
   if (!output_.send(json(message.get()))) output_.failed(0);
+  return id;
 }
 
 void LiveAgent::start(uint64_t now, bool greet, unsigned rate) {
@@ -257,7 +259,7 @@ void LiveAgent::start(uint64_t now, bool greet, unsigned rate) {
   set_text(format, "type", "audio/pcm");
   cJSON_AddNumberToObject(format, "rate", rate_);
   set_text(cJSON_AddObjectToObject(audio, "output"), "voice", "marin");
-  auto triggers = parse(R"([{"type":"decisions","event_type":"session.input_transcript.delta","decisions":{"questions":[{"type":"choice","name":"interaction","instructions":"根据当前上下文判断最新话语。只在用户明确叫 Pikoo 或承接与 Pikoo 的对话时选 addressed。仅在用户向 Pikoo 明确结束对话时选 farewell。家人互聊、电视、噪音或无法判断选 ignore。","choices":[{"value":"addressed"},{"value":"farewell"},{"value":"ignore"}]}]}}])");
+  auto triggers = parse(R"([{"type":"decisions","event_type":"session.input_transcript.delta","decisions":{"questions":[{"type":"choice","name":"interaction","instructions":"根据当前上下文判断最新话语。用户在与 Pikoo 的互动中要求停一下、等一下、别讲了、不要继续或打断纠正当前回答时选 interrupt。仅向 Pikoo 明确结束对话选 farewell。其他明确叫 Pikoo 或承接对话选 addressed。家人互聊、电视、噪音、引用停止字样或无法判断选 ignore。","choices":[{"value":"addressed"},{"value":"interrupt"},{"value":"farewell"},{"value":"ignore"}]}]}}])");
   cJSON_AddItemToObject(session, "triggers", triggers.release());
   auto delegation = cJSON_AddObjectToObject(session, "delegation");
   set_text(delegation, "type", "responses");
@@ -311,19 +313,46 @@ void LiveAgent::receive(const std::string &message, uint64_t now) {
     output_.failed(0);
   } else if (ready_ && type == "session.output_audio.delta") {
     auto audio = text(o.get(), "delta");
-    if (!audio.empty()) { audio_at_ = now; output_.audio(audio); }
+    if (!audio.empty() && interrupt_event_.empty()) { audio_at_ = now; output_.audio(audio); }
+  } else if (ready_ && type == "session.instructions.appended" && !interrupt_event_.empty() &&
+             text(o.get(), "client_event_id") == interrupt_event_) {
+    interrupt_event_.clear();
+    const auto end = field(o.get(), "end_ms");
+    if (cJSON_IsNumber(end) && end->valuedouble >= 0 && end->valuedouble < 4102444800000.0) {
+      interrupt_context_end_ = uint64_t(end->valuedouble);
+      awaiting_new_speech_ = true;
+    }
+    output_.interrupt_ack();
   } else if (ready_ && type == "session.input_transcript.delta") {
     const auto id = text(o.get(), "event_id"), fragment = text(o.get(), "delta");
     if (!id.empty() && id.size() <= 256 && !fragment.empty() && fragment.size() <= MaxText &&
         std::none_of(inputs_.begin(), inputs_.end(), [&](const Input &i) { return i.id == id; })) {
       if (inputs_.size() >= 32) inputs_.erase(inputs_.begin());
-      inputs_.push_back({id, fragment, now});
+      if (!input_at_ || now - input_at_ > 2500) input_window_.clear();
+      input_at_ = now;
+      input_window_ += fragment;
+      if (input_window_.size() > 1024) input_window_.erase(0, input_window_.size() - 1024);
+      bool stop_phrase = false;
+      for (const auto phrase : {"停一下", "停下", "等一下", "等一等", "等等", "别讲", "别说", "别继续", "先别", "不要继续", "不要讲", "不要说", "不对", "说错了", "不是这样"})
+        stop_phrase = stop_phrase || input_window_.find(phrase) != std::string::npos;
+      if (input_window_.find("不要停") != std::string::npos || input_window_.find("别停") != std::string::npos)
+        stop_phrase = false;
+      inputs_.push_back({id, fragment, now, stop_phrase});
     }
   } else if (ready_ && type == "decision.event") {
     classify(o.get(), now);
   } else if (ready_ && type == "session.output_transcript.delta") {
     effective_ = now;
-    record_reply(o.get(), now);
+    if (interrupt_event_.empty()) {
+      const auto start = field(o.get(), "start_ms");
+      if (awaiting_new_speech_ && cJSON_IsNumber(start)) {
+        if (start->valuedouble < interrupt_context_end_) return;
+        awaiting_new_speech_ = false;
+        output_.interrupt_resume();
+        output_.diagnostic("edge.interrupt.resumed");
+      }
+      record_reply(o.get(), now);
+    }
   } else if (ready_ && type == "response.event") {
     delegated(o.get(), now);
   }
@@ -392,11 +421,28 @@ void LiveAgent::classify(const cJSON *message, uint64_t now) {
     if (text(item, "name") != "interaction") continue;
     const auto choice = text(item, "choice");
     if (choice == "farewell") { farewell_at_ = now; effective_ = now; }
-    else if (choice == "addressed") {
+    else if (choice == "addressed" || choice == "interrupt") {
       effective_ = now;
-      flush_turn();
+      // A partial "不要" is not a stop command: it may become "不要修改".
+      // Require both semantic authorization and a complete stop/correction
+      // phrase, including phrases split over several transcript deltas.
+      const bool interrupt = choice == "interrupt" && input->stop_phrase;
+      if (interrupt) reply_.clear();
+      else flush_turn();
       reply_continuation_ = false;
       store_.remember_turn("user", input->fragment, true);
+      if (interrupt && (!interrupt_at_ || now - interrupt_at_ >= 2000)) {
+        interrupt_at_ = now;
+        awaiting_new_speech_ = false;
+        input_window_.clear();
+        batches_.clear();
+        output_.interrupt();
+        output_.diagnostic("edge.interrupt");
+        auto instruction = event("session.instructions.append");
+        cJSON_AddNullToObject(instruction.get(), "delegation_id");
+        set_text(instruction.get(), "content", "用户正在打断当前回答。立即停止原回答，不要接着讲原内容。按用户最新指令简短回应；若只要求停止，安静等待。");
+        interrupt_event_ = send(std::move(instruction));
+      }
     }
     inputs_.erase(input);
     break;
@@ -443,6 +489,11 @@ void LiveAgent::flush_context() {
   store_.flush_history();
 }
 void LiveAgent::tick(uint64_t now) {
+  if (!interrupt_event_.empty() && now - interrupt_at_ >= 5000) {
+    interrupt_event_.clear();
+    ready_ = false;
+    output_.failed(0);
+  }
   if (turn_at_ && now - turn_at_ >= 900) flush_turn();
   inputs_.erase(std::remove_if(inputs_.begin(), inputs_.end(), [now](const Input &i) {
     return now - i.at > 5000;
@@ -459,7 +510,9 @@ bool LiveAgent::sleep_due(uint64_t now, bool playing) const {
   if (!ready_) return false;
   if (farewell_at_)
     return now - farewell_at_ >= 20000 ||
-      (!playing && (audio_at_ >= farewell_at_ ? now - audio_at_ >= 1500 : now - farewell_at_ >= 5000));
+      // Live sends continuous silence too. The board's playing signal tracks
+      // voiced samples and actual drain; packet arrival cannot mark speech.
+      (!playing && now - farewell_at_ >= 5000);
   return !playing && batches_.empty() && now - effective_ >= 60000;
 }
 void LiveAgent::reset() {
@@ -468,7 +521,13 @@ void LiveAgent::reset() {
   event_types_.clear();
   effective_ = farewell_at_ = audio_at_ = expires_at_ = turn_at_ = 0;
   reply_.clear();
+  interrupt_event_.clear();
+  interrupt_at_ = 0;
   inputs_.clear();
+  input_window_.clear();
+  input_at_ = 0;
+  awaiting_new_speech_ = false;
+  interrupt_context_end_ = 0;
   reply_end_ = 0;
   reply_continuation_ = false;
 }

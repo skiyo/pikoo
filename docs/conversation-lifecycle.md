@@ -1,5 +1,7 @@
 # Session lifecycle
 
+This page describes the retained GCP 7 Gateway mode. See [local Agent deployment](local-agent.zh-CN.md) for current ESP behavior and limits.
+
 **English** | [简体中文](conversation-lifecycle.zh-CN.md)
 
 Standby closes the eyes and keeps wake processing local. Wake connects/authenticates the Gateway and Live; readiness opens the eyes and submits the greeting as the first turn. CONNECTING is not a ready state. Authentication, quota or provider failures must remain visible.

@@ -1,5 +1,7 @@
 # Pikoo Gateway
 
+Local Agent devices require only Mihomo. This page retains compatibility Gateway setup and rollback. See [local Agent deployment](../docs/local-agent.zh-CN.md).
+
 **English** | [简体中文](README.zh-CN.md)
 
 ## Requirements

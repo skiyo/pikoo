@@ -1,5 +1,7 @@
 # Pikoo Gateway
 
+端侧 Agent 只需要 Mihomo。本页保留旧 Gateway 的部署与回滚说明，端侧配置见[本地 Agent](../docs/local-agent.zh-CN.md)。
+
 [English](README.md) | **简体中文**
 
 ## 环境与启动

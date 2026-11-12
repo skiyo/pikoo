@@ -21,6 +21,10 @@ Edit `firmware/components/pikoo_eyes/`, retain the platform-independent C++ API 
 
 Introduce an explicit board adapter for display, audio, amplifier and controls. Start from `firmware/main/board_display.cpp` and `board_audio.cpp`; preserve the device state machine in `pikoo_core`. Verify microphone/reference order and DMA timing before enabling full duplex. Never reuse a different board's flash layout without migration and backup checks.
 
+## ESP local Agent
+
+Sessions/tools live in `firmware/components/pikoo_core/pikoo_agent.cpp`; ESP storage and transport adapters are `firmware/main/agent_storage.cpp` and `agent_tunnel.cpp`. Update schemas, durable validation, call-ID deduplication and native regressions together. Run silent shared-core tests with `tools/test-local-agent.sh`. The Node tool/Provider sections below apply to the retained Gateway.
+
 ## Add a tool
 
 Start at `server/family-tools.mjs` and `deepseek-search.mjs`. Register tool schemas with the runtime, validate input, retain owner scope, enforce timeouts and return factual errors. Follow the durable call-ID handling in `openai-live.mjs`; late results must not speak into closed sessions. Extend `*.test.mjs` before making external calls.

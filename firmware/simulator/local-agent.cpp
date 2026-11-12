@@ -84,6 +84,7 @@ struct Device {
   Sink sink;
   bool ready = false, storage_failure = false;
   int failure = -1;
+  unsigned interruptions = 0, interruption_acks = 0, interruption_resumes = 0;
   pikoo::FamilyStore store{[&](const std::string &value) {
     if (storage_failure) return false;
     saved = value;
@@ -93,7 +94,11 @@ struct Device {
     [&](const std::string &s) { sent.push_back(s); return true; },
     [&](unsigned rate) { assert(sink.queue.set_sample_rate(rate)); ready = true; },
     [&](const std::string &audio) { if (ready) sink.write(audio); },
-    [&](int code) { failure = code; ready = false; }
+    [&](int code) { failure = code; ready = false; },
+    [](const char *) {},
+    [&] { ++interruptions; sink.clear(); },
+    [&] { ++interruption_acks; },
+    [&] { ++interruption_resumes; }
   }};
   void start(uint64_t now) {
     ready = false;
@@ -148,7 +153,10 @@ void run_regressions() {
   device.agent.receive(pcm, 70000);
   assert(!device.agent.sleep_due(71000, false));
   assert(!device.agent.sleep_due(72000, true));
-  assert(device.agent.sleep_due(72000, false));
+  assert(!device.agent.sleep_due(72000, false));
+  device.agent.receive(pcm, 74400); // Continuous packets must not postpone sleep.
+  assert(device.agent.sleep_due(74401, false));
+  assert(!device.agent.sleep_due(74401, true));
 
   // Delivery stalls must not turn a continuous spoken sentence into many
   // history entries, and outstanding Decisions may overlap later fragments.
@@ -188,6 +196,48 @@ void run_regressions() {
   }
   assert(recovered == long_text);
 
+  Device interrupted;
+  interrupted.start(100);
+  interrupted.agent.receive(Started, 101);
+  interrupted.agent.receive(pcm, 102);
+  interrupted.agent.receive(R"({"type":"session.input_transcript.delta","event_id":"stop","delta":"停一下"})", 200);
+  interrupted.agent.receive(decision("stop", "interrupt"), 300);
+  assert(interrupted.interruptions == 1 && interrupted.sink.queue.queued() == 0);
+  interrupted.agent.receive(pcm, 301);
+  assert(interrupted.sink.queue.queued() == 0);
+  interrupted.agent.receive(R"({"type":"session.instructions.appended","client_event_id":"unrelated"})", 302);
+  interrupted.agent.receive(pcm, 303);
+  assert(interrupted.sink.queue.queued() == 0 && interrupted.interruption_acks == 0);
+  auto instruction = pikoo::parse(interrupted.sent.back());
+  assert(pikoo::text(instruction.get(), "type") == "session.instructions.append");
+  const auto instruction_id = pikoo::text(instruction.get(), "event_id");
+  interrupted.agent.receive("{\"type\":\"session.instructions.appended\",\"end_ms\":1400,\"client_event_id\":\"" + instruction_id + "\"}", 304);
+  interrupted.agent.receive(pcm, 305);
+  assert(interrupted.sink.queue.queued() == FrameSamples && interrupted.interruption_acks == 1);
+  interrupted.agent.receive(R"({"type":"session.output_transcript.delta","delta":"旧内容","start_ms":1300,"end_ms":1400})", 306);
+  assert(interrupted.interruption_resumes == 0);
+  interrupted.agent.receive(R"({"type":"session.output_transcript.delta","delta":"收到。","start_ms":1500,"end_ms":1800})", 307);
+  assert(interrupted.interruption_resumes == 1);
+  interrupted.agent.receive(R"({"type":"session.input_transcript.delta","event_id":"stop-again","delta":"不要继续"})", 3000);
+  interrupted.agent.receive(decision("stop-again", "interrupt"), 3100);
+  interrupted.agent.tick(8100);
+  interrupted.agent.receive(pcm, 8101);
+  assert(interrupted.failure == 0 && interrupted.sink.queue.queued() == 0);
+  Device constrained;
+  constrained.start(100);
+  constrained.agent.receive(Started, 101);
+  constrained.agent.receive(R"({"type":"session.input_transcript.delta","event_id":"constraint1","delta":"不要"})", 200);
+  constrained.agent.receive(decision("constraint1", "interrupt"), 201);
+  constrained.agent.receive(R"({"type":"session.input_transcript.delta","event_id":"constraint2","delta":"修改"})", 300);
+  constrained.agent.receive(decision("constraint2", "addressed"), 301);
+  assert(constrained.interruptions == 0 && constrained.sent.size() == 1);
+  constrained.agent.receive(R"({"type":"session.input_transcript.delta","event_id":"split-stop1","delta":"停"})", 4000);
+  constrained.agent.receive(decision("split-stop1", "interrupt"), 4001);
+  assert(constrained.interruptions == 0);
+  constrained.agent.receive(R"({"type":"session.input_transcript.delta","event_id":"split-stop2","delta":"一下"})", 4100);
+  constrained.agent.receive(decision("split-stop2", "interrupt"), 4101);
+  assert(constrained.interruptions == 1);
+
   const char *add = R"({"group":"shopping","operation":"add","entry":"奶酪"})";
   const char *remove = R"({"group":"shopping","operation":"remove","entry":"奶酪"})";
   const char *list = R"({"group":"shopping","operation":"list"})";
@@ -207,6 +257,15 @@ void run_regressions() {
   const char *created = R"({"type":"response.event","delegation_id":"d","event":{"type":"response.created","response":{"id":"r"}}})";
   const char *call = R"({"type":"response.event","delegation_id":"d","event":{"type":"response.output_item.done","response_id":"r","item":{"type":"function_call","call_id":"fresh","name":"family_list","arguments":"{\"group\":\"todo\",\"operation\":\"add\",\"entry\":\"买书\"}"}}})";
   const char *done = R"({"type":"response.event","delegation_id":"d","event":{"type":"response.completed","response":{"id":"r"}}})";
+  Device cancelled_tool;
+  cancelled_tool.start(100);
+  cancelled_tool.agent.receive(Started, 101);
+  cancelled_tool.agent.receive(created, 102);
+  cancelled_tool.agent.receive(call, 103);
+  cancelled_tool.agent.receive(R"({"type":"session.input_transcript.delta","event_id":"cancel-tool","delta":"停一下"})", 104);
+  cancelled_tool.agent.receive(decision("cancel-tool", "interrupt"), 105);
+  cancelled_tool.agent.receive(done, 106);
+  assert(cancelled_tool.store.snapshot().find("买书") == std::string::npos);
   reboot.start(10);
   reboot.agent.receive(Started, 11);
   reboot.agent.receive(created, 20);

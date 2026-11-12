@@ -21,6 +21,10 @@ bash tools/check.sh
 
 明确封装显示、音频、功放和按键，可从 `firmware/main/board_display.cpp` 与 `board_audio.cpp` 入手。保留 `pikoo_core` 状态机；启用全双工前核实麦克风、参考通道和 DMA 时序。更换分区布局必须设计备份与迁移。
 
+## ESP 本地 Agent
+
+会话与工具逻辑位于 `firmware/components/pikoo_core/pikoo_agent.cpp`，ESP 适配在 `firmware/main/agent_storage.cpp` 和 `agent_tunnel.cpp`。增加端侧工具时同步修改 schema、持久化校验、调用 ID 去重和原生回归。通过 `tools/test-local-agent.sh` 运行共用核心的静默模拟测试。下面的 Node 工具与 Provider 说明适用于保留的 Gateway。
+
 ## 增加工具
 
 从 `server/family-tools.mjs`、`deepseek-search.mjs` 入手，注册工具参数、校验输入、保留家庭 owner 隔离和超时，并如实返回失败。遵循 `openai-live.mjs` 的持久调用 ID 去重，迟到结果不能进入已关闭会话。先扩展 `*.test.mjs`，再调用外部接口。

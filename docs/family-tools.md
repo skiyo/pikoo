@@ -1,5 +1,7 @@
 # Family tools
 
+This page describes the retained GCP 7 Gateway mode. See [local Agent deployment](local-agent.zh-CN.md) for current ESP behavior and limits.
+
 **English** | [简体中文](family-tools.zh-CN.md)
 
 DeepSeek Search uses the configured `DEEPSEEK_API_KEY`, validates a 1–128 character query, requests 5 results by default (maximum 8) and applies an 8-second deadline without retry loops. Search results include title, URL, snippet and available publication time. Auth, credit and rate errors are reported as failures.

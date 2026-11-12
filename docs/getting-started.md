@@ -1,5 +1,7 @@
 # Quick Start
 
+For the ESP local Agent, start with [local deployment](local-agent.zh-CN.md) and [firmware setup](firmware.md). The graphical demo below is unchanged; its optional voice mode uses the retained Gateway.
+
 **English** | [简体中文](getting-started.zh-CN.md)
 
 ## Offline demo

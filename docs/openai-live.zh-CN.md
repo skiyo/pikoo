@@ -1,5 +1,7 @@
 # Live 与 Terra
 
+本页说明保留的 GCP 7 Gateway 模式。端侧 Agent 的当前行为、部署与限制见[本地 Agent](local-agent.zh-CN.md)。
+
 [English](openai-live.md) | **简体中文**
 
 当前路径为原生 **gpt-live-1 + gpt-6.1-terra**。配置 `PIKOO_VOICE_PROVIDER=openai-live`、`AGENT_PROTOCOL=none`，两模型都需要账号权限，无自动供应商切换。

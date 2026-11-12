@@ -1,0 +1,85 @@
+{
+  "version": "2.0.0",
+  "status": "awaiting_final_human_voice_check",
+  "firmware": {
+    "bytes": 2697696,
+    "sha256": "1013fe0108827a0c494cfb7f40ac6935caf9fab8de860208ece122f7951d1159",
+    "static_diram_bytes": 167163,
+    "application_partition_bytes": 6291456,
+    "efuse_modified": false,
+    "credentials_in_image": false
+  },
+  "software": {
+    "node_tests_passed": 93,
+    "python_tool_tests_passed": 60,
+    "asan_ubsan_core": "passed",
+    "network_fixture": {
+      "cycles_passed": 100,
+      "proxy_restart": true,
+      "outer_tls_ms": {
+        "50": 1.545,
+        "95": 1.711
+      },
+      "connect_ms": {
+        "50": 0.126,
+        "95": 0.18
+      },
+      "inner_tls_ms": {
+        "50": 2.588,
+        "95": 2.819
+      },
+      "first_pcm_ms": {
+        "50": 5.798,
+        "95": 6.453
+      },
+      "credentials_separated": true
+    },
+    "accelerated_pcm": {
+      "reconnections": 100,
+      "stream_seconds": 28800,
+      "real_time": false,
+      "scripted_first_pcm_ms_p50": 30,
+      "scripted_first_pcm_ms_p95": 30,
+      "virtual_play_ms_p50": 910,
+      "virtual_play_ms_p95": 910,
+      "edge_processing_us_p95": 4,
+      "legacy_ingest_us_p95": 2,
+      "peak_samples": 14720,
+      "underruns": 0,
+      "cpu_seconds": 4.60447,
+      "maxrss_native_units": 3178496,
+      "eye_checksum": 1234787693
+    },
+    "earlier_wall_clock_soaks": {
+      "seconds": [
+        1800,
+        28800
+      ],
+      "core": "initial 16 kHz streaming core",
+      "underruns": 0
+    }
+  },
+  "device": {
+    "board": "ESP32-S3 DualEye 1.28 non-touch",
+    "usb_open_close_passed": 100,
+    "usb_control_resets_passed": 20,
+    "snapshot_bytes_tested": 22431,
+    "same_connection_snapshot_roundtrips": 3,
+    "invalid_api_key_then_replace": "passed",
+    "real_16_and_24khz_audio": "passed",
+    "list_and_explicit_memory_write_restart_readback": "passed on migration candidates",
+    "interruption_original_volume_db": -2,
+    "interruption_no_old_audio_window_seconds": 8,
+    "interruption_followup_answer": "passed",
+    "i2s_rx_errors_observed": 0,
+    "i2s_tx_errors_observed": 0,
+    "formal_final_list_query": "awaiting human voice confirmation",
+    "credentials_storage": "replaceable ordinary NVS"
+  },
+  "limitations": [
+    "Real family acoustics and child wake recall require human acceptance.",
+    "Final version has accelerated 8-hour PCM regression; earlier wall-clock soaks used the initial streaming core.",
+    "Physical playback-gap counters include inter-burst gaps and are not certified as zero acoustic underruns.",
+    "Board CPU percentage and 24-hour physical endurance are not measured."
+  ]
+}

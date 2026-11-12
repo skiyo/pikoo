@@ -1,45 +1,35 @@
-# Firmware and USB installation
+# Firmware and USB setup
 
 **English** | [简体中文](firmware.zh-CN.md)
 
-## Target and build
-
-Waveshare ESP32-S3-DualEye-LCD-1.28 **non-touch**, 16 MiB Flash / 8 MiB PSRAM. Use ESP-IDF **5.5.5**. Pinned components: ESP-SR 2.5.3, ESP-TFLite-Micro 1.4.1, esp_codec_dev 1.5.11, esp_lcd_gc9a01 2.0.4, esp_websocket_client 1.8.0; `firmware/dependencies.lock` fixes transitive versions.
-
-Download the model package from the [1.0.0 release](https://github.com/skiyo/pikoo/releases/tag/v1.0.0), verify its checksums and read its model terms.
+Target: non-touch Waveshare ESP32-S3-DualEye-LCD-1.28, 16 MiB Flash and 8 MiB PSRAM. Use ESP-IDF 5.5.5 and the locked dependencies. The existing [public model bundle](https://github.com/skiyo/pikoo/releases/tag/v1.0.0) remains compatible when its model hash matches the frozen policy.
 
 ```sh
 . /path/to/esp-idf/export.sh
-PIKOO_FIRMWARE_VERSION=1.0.0 \
-PIKOO_WAKE_POLICY=/absolute/models/wake-policy.json \
-bash tools/build-device.sh /absolute/models/hi_pikoo.tflite
+PIKOO_WAKE_POLICY=/absolute/path/wake-policy.json \
+bash tools/build-device.sh /absolute/path/hi_pikoo.tflite
 ```
 
-The command builds only; it never accesses USB. Set `PIKOO_BUILD_DIR` to use a separate directory. The model must match its policy SHA-256 and firmware frontend. The file cap is 512 KiB; runtime arena/timing are separate limits. The current model is 98,064 bytes. Diagnostic, veto and volume-migration options remain disabled for a normal build.
+The build does not access USB. Release builds disable detailed Agent tracing and benchmark options. Keep a verified full 16 MiB backup outside Git before flashing; that private backup includes any credentials already on the device.
 
-## Install a downloaded release
+First migration from an older partition layout writes the new partition table and application while preserving existing NVS/model offsets. Use the installer's backup verification and dry-run. Later upgrades on the same layout write only the application. No full-chip erase or eFuse changes are required.
 
-Extract `hi-pikoo-firmware-1.0.0.zip` and run commands from its root. It contains `tools/` and the validated images under `firmware/build-dualeye/`, so the same USB commands work without compiling. Activate ESP-IDF 5.5.5's Python environment first. macOS also supports `tools/Pikoo-USB.command`.
-
-Before first installation, back up all 16 MiB using `esptool read_flash 0x0 0x1000000 factory-full.bin`. Keep it in a private backup directory with `manifest.json` containing `{"full_backup_sha256":"SHA256_OF_FACTORY_FULL_BIN"}`. The install tool verifies the backup against the device before partition migration. Do not reuse another board's backup.
-
-Create private JSON with `ssid`, `password`, `endpoint` and `token`. Endpoint: `wss://YOUR_HOST/api/realtime`, without query parameters. Use `python tools/configure.py --output /private/config.nvs.bin` for hidden password/token entry, or the USB assistant. Provider API keys do not belong on the device.
+For a new device, save a private Wi-Fi JSON configuration outside Git and pass it to the installer below. `tools/configure.py --local-agent` can also generate its NVS image separately. This mode requires no Gateway endpoint/token and rejects API secrets in the generated image. The installer JSON is `{"mode":"local","ssid":"your network","password":"your password"}`. Pass its private path to `tools/device.py install --config`, with a verified backup and build directory.
 
 ```sh
 python tools/device.py install --port PORT --build firmware/build-dualeye --backup /private/factory-backup --config /private/device.json --dry-run
 python tools/device.py install --port PORT --build firmware/build-dualeye --backup /private/factory-backup --config /private/device.json
 python tools/device.py upgrade --port PORT --build firmware/build-dualeye
-python tools/device.py diagnose --port PORT --command status
-python tools/device.py configure --port PORT --build firmware/build-dualeye --config /private/device.json
-python tools/device.py restore --port PORT --backup /private/factory-backup
+python tools/local-agent-usb.py --port PORT provision
+python tools/local-agent-usb.py --port PORT reboot
+python tools/local-agent-usb.py --port PORT export /private/family.json
+python tools/local-agent-usb.py --port PORT import /private/family.json
 ```
 
-Install prepares all images and private NVS before writing. Upgrade compares device/build partition tables and updates only the app. It preserves Wi-Fi, device token, volume and session state. Reconfiguration replaces NVS and clears conversation state. Recovery restores the full 16 MiB backup. No full-chip erase, eFuse changes or OTA are used. Flash/NVS encryption is not enabled by this developer package.
+Existing devices retain Wi-Fi settings. USB provision writes Mihomo connection settings and the OpenAI project key into replaceable ordinary NVS. Credentials are excluded from firmware and family exports. Reboot after updates/imports. `forget` removes credentials and disables local mode; `legacy` selects the retained Gateway mode, which requires valid legacy connection settings. Writes are accepted only in fully muted standby.
 
-## Controls and audio
+The default audio rate is 16 kHz mono PCM16, with a selectable 24 kHz path. Single press wakes/stops, double press ends a session, and hold mutes. RESET retains configuration. Volume survives upgrades; new-device default is -24 dB. Adjust it for the actual enclosure and distance.
 
-BOOT press wakes or stops a response; double press ends a conversation; hold 2 seconds toggles mute, or explicitly takes over an occupied session. RESET restarts with saved configuration. Standby eyes are closed. Native Live audio uses mono PCM16 at 16 kHz; negotiated 24 kHz output is resampled. Continuous playback uses a bounded startup buffer and generation-based stale-audio rejection.
+The macOS console avoids reset-line changes when opening. Firmware briefly reattaches USB at startup; the host may see the port re-enumerate. Use one serial monitor at a time.
 
-Volume is retained in NVS. Fresh devices start quietly at -24 dB. `python tools/device.py diagnose --port PORT --command 'volume -2'` selects the recommended household starting level; adjust for your enclosure and speaker. If clipping occurs, reduce it. If the speaker heats unexpectedly, stop playback and disconnect power.
-
-[Hardware and pins](hardware.md) · [Protocol](gcp7.md) · [Model card](../models/hi-pikoo/MODEL_CARD.md)
+[Local Agent deployment and tests](local-agent.zh-CN.md) · [Hardware](hardware.md) · [Legacy GCP 7](gcp7.md)

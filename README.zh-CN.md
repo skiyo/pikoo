@@ -1,10 +1,10 @@
-# 🐱Hi Pikoo🐱
+# 🐱Hi Pikoo🐱 2.0.0
 
 [English](README.md) | **简体中文**
 
 **Pikoo 是一个基于 Live 模型的家庭 AI Agent 宠物。**
 
-[官网](https://pikoo.lol/) · [下载 1.0.0](https://github.com/skiyo/pikoo/releases/tag/v1.0.0) · [项目文档](docs/README.zh-CN.md)
+[官网](https://pikoo.lol/) · [固件与 USB](docs/firmware.zh-CN.md) · [项目文档](docs/README.zh-CN.md)
 
 ![Pikoo 双眼小猫外壳——概念渲染](docs/images/pikoo-enclosure.webp)
 
@@ -21,35 +21,36 @@ bash tools/start-dualeye.sh
 
 打开 **http://127.0.0.1:8793/dualeye**。离线演示不需要 API Key、唤醒模型或板子；按钮用测试音模拟交互，不会自动开始 AI 对话或录音。按 Ctrl+C 或运行 `bash tools/stop-dualeye.sh` 停止。
 
-**接入真实语音：** [部署自己的 Gateway](server/README.zh-CN.md)，签发设备凭证，再[配置模拟器](docs/getting-started.zh-CN.md#真实语音)。
+**ESP32 接入真实语音：** [部署 Mihomo 并配置本地 Agent](docs/local-agent.zh-CN.md)。OpenAI 项目密钥和代理凭证通过 USB 写入设备，远程入口只转发连接。
 
-**安装实机：** 下载 [1.0.0 固件与模型](https://github.com/skiyo/pikoo/releases/tag/v1.0.0)，按 [USB 安装说明](docs/firmware.zh-CN.md)操作，在本机填写自己的 2.4GHz Wi-Fi 和设备凭证。
+**安装或升级实机：** 按 [USB 安装说明](docs/firmware.zh-CN.md)备份、构建与刷写。新设备可用 `tools/configure.py --local-agent` 配置 Wi-Fi，随后用 `tools/local-agent-usb.py provision` 写入 API 与代理凭证。
+
+桌面图形模拟器的可选联网语音仍使用[兼容 Gateway](server/README.zh-CN.md)；[静默模拟器](docs/local-agent.zh-CN.md#无声回归)与 ESP 共用本地 Agent C++ 核心。
 
 ## 当前功能
 
 - 本地 **“Hi, Pikoo”** 唤醒，接受 `piku`、`piko` 两种读音。
 - 连续中文对话、插话、停止回答、静音与重连。
 - 两块 240 × 240 表情眼屏，与桌面模拟器共用原创 C++ 绘制核心。
-- 服务端管理话题续接、自动家庭记忆、摘要和持久清单。
+- ESP 本地管理会话、工具、购物清单、待办、显式家庭记忆与有限文字上下文。
 - 通过配置的工具搜索互联网、阅读公开网页。
-- Gateway 自行部署；模型密钥和家庭资料留在服务器。
+- 密钥保存在设备普通 NVS，可通过 USB 更新或删除；服务器只需运行 Mihomo。
 
-闭眼表示待机。唤醒后连接语音服务，就绪后睁眼并主动问候；告别结束当前语音连接。空闲休眠释放计费语音连接，服务端文字上下文可供下次唤醒恢复。
+闭眼表示待机。唤醒后连接语音服务，就绪后睁眼并主动问候；告别结束当前语音连接。空闲休眠释放计费语音连接，本地文字上下文可供下次唤醒恢复。后台自动记忆学习默认不启用。
 
 ## 整体架构
 
 ```mermaid
 flowchart LR
-    Device["ESP32-S3 / desktop simulator<br/>Wake · capture · playback · eyes"] <-->|"GCP / WSS · PCM audio"| Gateway["Pikoo Gateway<br/>Auth · sessions · audio · tools"]
-    Gateway <-->|"Native Live WebSocket"| Live["GPT-Live 1<br/>Listen · speak · interrupt"]
-    Live <-->|"Responses delegation"| Terra["GPT-6.1 Terra<br/>Reasoning · tool selection"]
-    Terra <-->|"Function calls / results"| Gateway
-    Gateway <--> Store[("Private text context<br/>Family memory · lists")]
-    Gateway --> Background["Terra<br/>Interaction classification · summaries"]
-    Training["Offline training / export"] -.->|"Model + frozen policy"| Device
+    Device["ESP32-S3 · C++ Agent<br/>Wake · audio · sessions · tools"] <-->|"TLS + HTTP CONNECT"| Proxy["Mihomo<br/>TCP forwarding"]
+    Proxy <-->|"End-to-end OpenAI TLS"| Live["GPT-Live 1<br/>Listen · speak · interrupt"]
+    Live <-->|"Responses delegation"| Terra["GPT-6.1 Terra<br/>Reasoning · web search"]
+    Terra <-->|"Function calls / results via Live"| Device
+    Device <--> Store[("Device NVS<br/>Keys · lists · explicit memory · context")]
+    Device --> Eyes["Shared C++ eyes renderer"]
 ```
 
-设备负责声音和表情。Gateway 组合 **Qwen Audio Agent 2.0.1** 与 Pikoo 原生 Live Provider。Live 负责听说，Terra 负责委派推理、工具、互动分类和记忆整理。恢复的是保存的文字语义，不是未播完的声音。[架构设计](docs/architecture.zh-CN.md) · [上下文与记忆](docs/context-memory.zh-CN.md)
+ESP 用 C++ 运行 Agent 会话、工具和持久化，通过两层 TLS 与 OpenAI 通信。Live 负责听说，Terra 负责委派推理与搜索；模型推理仍在 OpenAI。Mihomo 看不到内层 API 密钥和内容。原有 GCP 7 Gateway 模式保留作兼容与回滚。[架构设计](docs/architecture.zh-CN.md) · [本地部署与测试](docs/local-agent.zh-CN.md)
 
 ## 设备
 
@@ -63,7 +64,7 @@ flowchart LR
 |---|---|---|
 | `firmware/` | 板级接口、唤醒推理、音频、按键与双眼 | [固件](docs/firmware.zh-CN.md) |
 | `firmware/simulator/` | 本机图形演示与可选真实语音 | [快速开始](docs/getting-started.zh-CN.md) |
-| `server/` | Live/Terra、鉴权、会话、工具与持久化 | [服务端](server/README.zh-CN.md) |
+| `server/` | Mihomo 部署模板与保留的兼容 Gateway | [服务端](server/README.zh-CN.md) |
 | `training/` | 数据隔离、变速增强、训练、量化与评估 | [训练](training/README.zh-CN.md) |
 | `models/hi-pikoo/` | 当前模型卡、策略、来源与使用条款 | [模型卡](models/hi-pikoo/MODEL_CARD.zh-CN.md) |
 | `tools/` | 构建、USB 安装、诊断和检查 | [开发说明](docs/development.zh-CN.md) |

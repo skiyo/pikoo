@@ -1,5 +1,7 @@
 # Selective replies
 
+This page describes the retained GCP 7 Gateway mode. See [local Agent deployment](local-agent.zh-CN.md) for current ESP behavior and limits.
+
 **English** | [简体中文](companion.zh-CN.md)
 
 Pikoo uses the voice model's selective response behavior with quiet conversational instructions. It may listen without replying and should avoid talking over family-to-family conversation. The current policy does not require the name in every turn. Silence markers must not be spoken or saved as meaningful conversation.

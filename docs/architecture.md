@@ -4,38 +4,22 @@
 
 ```mermaid
 flowchart LR
-    Device["ESP32-S3 / desktop simulator<br/>Wake · capture · playback · eyes"] <-->|"GCP / WSS · PCM audio"| Gateway["Pikoo Gateway<br/>Auth · sessions · audio · tools"]
-    Gateway <-->|"Native Live WebSocket"| Live["GPT-Live 1<br/>Listen · speak · interrupt"]
-    Live <-->|"Responses delegation"| Terra["GPT-6.1 Terra<br/>Reasoning · tool selection"]
-    Terra <-->|"Function calls / results"| Gateway
-    Gateway <--> Store[("Private text context<br/>Family memory · lists")]
-    Gateway --> Background["Terra<br/>Interaction classification · summaries"]
-    Training["Offline training / export"] -.->|"Model + frozen policy"| Device
+    Device["ESP32-S3 · C++ Agent<br/>Wake · audio · sessions · tools"] <-->|"TLS + HTTP CONNECT"| Proxy["Mihomo<br/>TCP forwarding"]
+    Proxy <-->|"End-to-end OpenAI TLS"| Live["GPT-Live 1<br/>Listen · speak · interrupt"]
+    Live <-->|"Responses delegation"| Terra["GPT-6.1 Terra<br/>Reasoning · web search"]
+    Terra <-->|"Function calls / results via Live"| Device
+    Device <--> Store[("Device NVS<br/>Keys · lists · explicit memory · context")]
+    Device --> Eyes["Shared C++ eyes renderer"]
 ```
 
-## Audio and control
+The ESP32-S3 runs the C++ session, tool and storage core. Standby audio stays local. The ESP verifies Mihomo TLS, authenticates to the proxy, creates CONNECT to api.openai.com:443, then verifies OpenAI TLS inside that tunnel and sends its project key. The listener rejects other destinations.
 
-The ESP32 performs local microphone processing and wake inference. Standby audio stays local. After wake, the device authenticates to `wss://YOUR_HOST/api/realtime` using a revocable device token. JSON/Base64 PCM16 and lifecycle messages use GCP 7 with Pikoo continuous-audio capabilities.
+GPT-Live 1 handles speech. Native Responses delegation uses GPT-6.1 Terra for reasoning, tool selection and hosted search. Decisions classifies input fragments before they enter persistent context. Model inference runs on OpenAI.
 
-The current native Live path uses **16 kHz mono PCM16 in both directions**. The Gateway negotiates the actual rate; compatibility output may be 24 kHz and uses the device's streaming resampler. Continuous audio has no per-answer `audio.done`: stream identity, generation, sequence and actual playback telemetry govern cancellation, expressions and idle. Old generations are discarded.
+Capture, AEC, wake and I²S retain their board implementation. PCM defaults to 16 kHz mono, with a selectable 24 kHz path and streaming conversion. Playback retains a bounded 900 ms prebuffer and generation-based cancellation. Reconnection never replays queued old audio.
 
-## Online models
+Device NVS stores replaceable OpenAI and proxy credentials separately from family data. Credentials are excluded from firmware and family exports. Family snapshots are limited to 24 KiB, with 32 entries per group, 512 UTF-8 bytes per entry, 12 recent text entries and 32 durable tool receipts. Two slots provide interrupted-write recovery. Automatic learning is disabled; corrections/deletion invalidate old text context.
 
-`server/host.mjs` composes Qwen Audio Agent 2.0.1 with Pikoo's native `gpt-live-1` Provider. Live handles hearing, Chinese speech, interruptions and selective replies. Responses delegation uses `gpt-6.1-terra` for reasoning and tool selection. Separate Terra requests classify interaction and organize memory; classification labels never become spoken replies. `AGENT_PROTOCOL=none` does not disable these original adapters.
+The macOS console avoids control-line changes on open. Firmware reattaches USB once at startup to recover the observed native USB reset failure. Detailed Agent traces are disabled by default. Desktop measurements and board TLS/I²S measurements are reported separately.
 
-## Persistence and isolation
-
-| State | Purpose | Owner |
-|---|---|---|
-| Recent text context | Resume the current topic after sleep/reconnect | Server, family owner |
-| Topic digests | Bound context size and retrieve past topics | Server, family owner |
-| Markdown memory | Durable facts, preferences, corrections and deletions | Server, family owner |
-| Notes/lists | Explicit shopping and to-do operations | Server, family owner |
-| Device session identifier | Refer to a logical conversation | Device NVS; expires |
-| Wake model + policy | Offline sound-to-trigger decision | Device; shared with host tests |
-
-Provider keys and personal profiles stay on the server. The device stores Wi-Fi and its own credential. Models are not a database: persistence comes from Gateway storage and tools. Audio is streamed to the selected provider during a conversation; this project does not publish recordings.
-
-## Offline components
-
-`pikoo_eyes` takes state, time, seed, gaze and volume and produces two RGB565 frames. The simulator launches its native renderer separately from the audio path. Training prepares the same 16 kHz microfrontend features, trains/quantizes the wake model and exports a model-bound decision policy. It is not part of live conversation.
+The GCP 7 Gateway remains for older devices, graphical simulator voice and rollback. Its server-side memory and summarization are separate from local mode. See the [local deployment and verification record](local-agent.zh-CN.md).

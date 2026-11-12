@@ -1,5 +1,7 @@
 # 会话与休眠
 
+本页说明保留的 GCP 7 Gateway 模式。端侧 Agent 的当前行为、部署与限制见[本地 Agent](local-agent.zh-CN.md)。
+
 [English](conversation-lifecycle.md) | **简体中文**
 
 待机闭眼，只在本地检测唤醒。唤醒后连接并鉴权 Gateway、Live，就绪后睁眼并提交问候作为首轮。CONNECTING 不等于就绪，鉴权、额度和上游故障须可诊断。
