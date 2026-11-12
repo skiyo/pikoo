@@ -1,7 +1,5 @@
 // Copyright 2026 Pikoo contributors. SPDX-License-Identifier: Apache-2.0
 #include "agent_storage.hpp"
-#include "esp_efuse.h"
-#include "esp_hmac.h"
 #include "mbedtls/platform_util.h"
 #include "nvs_flash.h"
 #include <algorithm>
@@ -34,23 +32,7 @@ struct Handle {
 };
 
 bool init_secrets() {
-  static const bool available = [] {
-    esp_efuse_block_t block;
-    if (!esp_efuse_find_purpose(ESP_EFUSE_KEY_PURPOSE_HMAC_UP, &block) ||
-        block < EFUSE_BLK_KEY0 || block > EFUSE_BLK_KEY5) return false;
-    // Distinct fixed labels produce two NVS XTS keys on this device. Never
-    // provision or change eFuse from the application.
-    const auto key = hmac_key_id_t(block - EFUSE_BLK_KEY0);
-    constexpr char Encryption[] = "pikoo-agent-secret-xts-data-v1";
-    constexpr char Tweak[] = "pikoo-agent-secret-xts-tweak-v1";
-    nvs_sec_cfg_t config{};
-    const bool ok = esp_hmac_calculate(key, Encryption, sizeof(Encryption) - 1, config.eky) == ESP_OK &&
-      esp_hmac_calculate(key, Tweak, sizeof(Tweak) - 1, config.tky) == ESP_OK &&
-      nvs_flash_secure_init_partition(SecretPartition, &config) == ESP_OK;
-    mbedtls_platform_zeroize(&config, sizeof(config));
-    return ok;
-  }();
-  return available;
+  return nvs_flash_init_partition(SecretPartition) == ESP_OK;
 }
 
 bool decode(const std::string &payload, AgentCredentials &credentials) {
@@ -113,6 +95,14 @@ bool provision_agent(const std::string &payload) {
   Handle h;
   return valid && init_secrets() && h.open(SecretPartition, Write) &&
     h.save("credentials", payload) && set_agent_mode(true);
+}
+
+bool forget_agent_credentials() {
+  Handle h;
+  if (!init_secrets() || !h.open(SecretPartition, Write)) return false;
+  const auto result = nvs_erase_key(h.value, "credentials");
+  return (result == ESP_OK || result == ESP_ERR_NVS_NOT_FOUND) &&
+    nvs_commit(h.value) == ESP_OK && set_agent_mode(false);
 }
 
 bool init_family_store(FamilyStore &store) {

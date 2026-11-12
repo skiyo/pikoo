@@ -2,3 +2,7 @@
 set -e
 /usr/sbin/nginx -t
 /bin/systemctl reload nginx
+# Mihomo loads its TLS certificate at startup. Keep idle deployments untouched.
+if /bin/systemctl is-active --quiet pikoo-device-proxy.service; then
+  /bin/systemctl restart pikoo-device-proxy.service
+fi

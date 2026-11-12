@@ -6,7 +6,7 @@ table inet pikoo_guard {
   ct state established,related accept
   ct state invalid drop
   meta l4proto { icmp, ipv6-icmp } accept
-  tcp dport { 22, 80, 443 } accept
+  tcp dport { 22, 80, 443, 8443 } accept
   udp sport 67 udp dport 68 accept
  }
 }

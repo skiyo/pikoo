@@ -5,6 +5,7 @@
 #include "pikoo_button.hpp"
 #include "pikoo_volume.hpp"
 #include "driver/usb_serial_jtag.h"
+#include "driver/usb_serial_jtag_vfs.h"
 #include "esp_app_desc.h"
 #include "esp_heap_caps.h"
 #include "esp_system.h"
@@ -150,7 +151,15 @@ pikoo::LiveAgent agent(family, {
     receive(pikoo::json(o.get()));
   },
   play_local_audio,
-  [](int code) { close_code = code; net_down = true; }
+  [](int code) { ESP_LOGW("pikoo", "edge transport failed code=%d", code); close_code = code; net_down = true; },
+  [](const char *type) {
+#ifdef PIKOO_AGENT_TRACE
+    ESP_LOGI("pikoo", "edge event=%s", type);
+#else
+    if (!strcmp(type, "edge.tool.ok") || !strcmp(type, "edge.tool.error"))
+      ESP_LOGI("pikoo", "edge event=%s", type);
+#endif
+  }
 });
 bool local_wake_test() { return now()<wake_test_until_ms.load(); }
 std::string field(cJSON *o, const char *key) {
@@ -874,6 +883,9 @@ void controls_task(void *) {
   pikoo::Button button;char command[32]{};size_t used=0;
   usb_serial_jtag_driver_config_t usb{};usb.tx_buffer_size=2048;usb.rx_buffer_size=256;
   ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb));
+  // Share the installed driver's FIFO ownership with stdout. The default
+  // console writes directly to the hardware and busy-waits for large exports.
+  usb_serial_jtag_vfs_use_driver();
   uint64_t report=0,last_tone=0;
   enum class Transfer { None, Credentials, Import };
   Transfer transfer = Transfer::None;
@@ -917,12 +929,19 @@ void controls_task(void *) {
           too_long = false;
           transfer_deadline = now() + 30000;
           ESP_LOGI("pikoo", "agent usb ready");
+        } else if (usb_safe && !strcmp(command, "agent reboot")) {
+          ESP_LOGI("pikoo", "agent usb result=ok_reboot");
+          vTaskDelay(pdMS_TO_TICKS(200));
+          esp_restart();
         } else if (usb_safe && !strcmp(command, "agent export")) {
           pikoo::FamilyStore exported(pikoo::write_family_snapshot);
           if (pikoo::init_family_store(exported)) {
             auto snapshot = exported.snapshot();
             printf("PIKOO_AGENT_SNAPSHOT %s\n", snapshot.c_str());
           } else ESP_LOGI("pikoo", "agent usb result=rejected");
+        } else if (usb_safe && !strcmp(command, "agent forget")) {
+          const bool ok = pikoo::forget_agent_credentials();
+          ESP_LOGI("pikoo", "agent usb result=%s", ok ? "ok_reboot" : "rejected");
         } else if (usb_safe && !strcmp(command, "agent legacy")) {
           const bool ok = pikoo::set_agent_mode(false);
           ESP_LOGI("pikoo", "agent usb result=%s", ok ? "ok_reboot" : "rejected");

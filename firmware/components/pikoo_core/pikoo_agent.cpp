@@ -184,10 +184,19 @@ std::string FamilyStore::call(const std::string &id, const std::string &name, co
   return json(result.get());
 }
 
-bool FamilyStore::remember_turn(const std::string &role, const std::string &content) {
+bool FamilyStore::remember_turn(const std::string &role, const std::string &content, bool append) {
   if ((role != "user" && role != "assistant") || content.empty() || content.size() > MaxText) return false;
   auto next = copy(data_.get());
   auto items = get(next.get(), "history");
+  auto last = cJSON_GetArrayItem(items, cJSON_GetArraySize(items) - 1);
+  if (append && text(last, "role") == role && text(last, "text").size() + content.size() <= MaxText) {
+    const auto joined = text(last, "text") + content;
+    cJSON_ReplaceItemInObjectCaseSensitive(last, "text", cJSON_CreateString(joined.c_str()));
+    if (json(next.get()).size() > Capacity) return false;
+    data_ = std::move(next);
+    history_dirty_ = true;
+    return true;
+  }
   auto turn = object();
   set_text(turn.get(), "role", role);
   set_text(turn.get(), "text", content);
@@ -270,6 +279,8 @@ void LiveAgent::receive(const std::string &message, uint64_t now) {
   auto o = parse(message);
   if (!o) { output_.failed(0); return; }
   const auto type = text(o.get(), "type");
+  if (type.size() < 80 && event_types_.size() < 32 && event_types_.insert(type).second)
+    output_.diagnostic(type.c_str());
   if (type == "session.started" && !ready_) {
     auto session = field(o.get(), "session");
     auto format = field(field(session, "audio"), "format");
@@ -302,18 +313,17 @@ void LiveAgent::receive(const std::string &message, uint64_t now) {
     auto audio = text(o.get(), "delta");
     if (!audio.empty()) { audio_at_ = now; output_.audio(audio); }
   } else if (ready_ && type == "session.input_transcript.delta") {
-    input_event_ = text(o.get(), "event_id");
-    input_fragment_ = text(o.get(), "delta");
-    if (input_event_.size() > 256 || input_fragment_.size() > MaxText) {
-      input_event_.clear();
-      input_fragment_.clear();
+    const auto id = text(o.get(), "event_id"), fragment = text(o.get(), "delta");
+    if (!id.empty() && id.size() <= 256 && !fragment.empty() && fragment.size() <= MaxText &&
+        std::none_of(inputs_.begin(), inputs_.end(), [&](const Input &i) { return i.id == id; })) {
+      if (inputs_.size() >= 32) inputs_.erase(inputs_.begin());
+      inputs_.push_back({id, fragment, now});
     }
-    input_at_ = now;
   } else if (ready_ && type == "decision.event") {
     classify(o.get(), now);
   } else if (ready_ && type == "session.output_transcript.delta") {
     effective_ = now;
-    record_reply(text(o.get(), "delta"), now);
+    record_reply(o.get(), now);
   } else if (ready_ && type == "response.event") {
     delegated(o.get(), now);
   }
@@ -324,6 +334,8 @@ void LiveAgent::delegated(const cJSON *message, uint64_t now) {
   auto e = field(message, "event");
   auto item = field(e, "item");
   const auto type = text(e, "type");
+  if (type.size() < 80 && type.find(".delta") == std::string::npos)
+    output_.diagnostic(type.c_str());
   if (id.empty() || id.size() > 128) return;
   auto batch = std::find_if(batches_.begin(), batches_.end(), [&](const Batch &b) { return b.id == id; });
   if (type == "response.created") {
@@ -356,7 +368,9 @@ void LiveAgent::delegated(const cJSON *message, uint64_t now) {
       auto result = event("response.item.create");
       auto value = event("function_call_output");
       set_text(value.get(), "call_id", call.id);
-      set_text(value.get(), "output", store_.call(call.id, call.name, call.arguments));
+      const auto output = store_.call(call.id, call.name, call.arguments);
+      output_.diagnostic(output.find("\"error\":") == std::string::npos ? "edge.tool.ok" : "edge.tool.error");
+      set_text(value.get(), "output", output);
       cJSON_AddItemToObject(result.get(), "item", value.release());
       send(std::move(result));
     }
@@ -365,7 +379,10 @@ void LiveAgent::delegated(const cJSON *message, uint64_t now) {
 }
 
 void LiveAgent::classify(const cJSON *message, uint64_t now) {
-  if (input_event_.empty() || now - input_at_ > 5000 || input_event_ != text(message, "source_event_id") ||
+  output_.diagnostic("edge.decision.received");
+  const auto source = text(message, "source_event_id");
+  auto input = std::find_if(inputs_.begin(), inputs_.end(), [&](const Input &i) { return i.id == source; });
+  if (input == inputs_.end() || now - input->at > 5000 ||
       text(message, "source_event_type") != "session.input_transcript.delta") return;
   auto e = field(message, "event");
   if (text(e, "type") != "decision.completed") return;
@@ -377,22 +394,47 @@ void LiveAgent::classify(const cJSON *message, uint64_t now) {
     if (choice == "farewell") { farewell_at_ = now; effective_ = now; }
     else if (choice == "addressed") {
       effective_ = now;
-      if (!input_fragment_.empty()) store_.remember_turn("user", input_fragment_);
+      flush_turn();
+      reply_continuation_ = false;
+      store_.remember_turn("user", input->fragment, true);
     }
-    input_event_.clear();
-    input_fragment_.clear();
+    inputs_.erase(input);
     break;
   }
 }
 
-void LiveAgent::record_reply(const std::string &fragment, uint64_t now) {
+void LiveAgent::record_reply(const cJSON *message, uint64_t now) {
+  const auto fragment = text(message, "delta");
   if (fragment.empty()) return;
-  if (turn_at_ && now - turn_at_ >= 900) flush_turn();
-  if (reply_.size() + fragment.size() <= MaxText) reply_ += fragment;
+  const auto start = field(message, "start_ms"), end = field(message, "end_ms");
+  if (cJSON_IsNumber(start) && start->valuedouble >= 0 && reply_end_ && start->valuedouble > reply_end_ + 800) {
+    flush_turn();
+    reply_continuation_ = false;
+  }
+  if (cJSON_IsNumber(end) && end->valuedouble >= 0 && end->valuedouble < 4102444800000.0)
+    reply_end_ = uint64_t(end->valuedouble);
+  size_t offset = 0;
+  while (offset < fragment.size()) {
+    size_t count = std::min(MaxText - reply_.size(), fragment.size() - offset);
+    if (offset + count < fragment.size()) {
+      while (count && (static_cast<unsigned char>(fragment[offset + count]) & 0xc0) == 0x80) --count;
+    }
+    if (!count) {
+      if (reply_.empty()) break; // Reject an invalid UTF-8 fragment without looping.
+      flush_turn();
+      continue;
+    }
+    reply_.append(fragment, offset, count);
+    offset += count;
+    if (offset < fragment.size()) flush_turn();
+  }
   turn_at_ = now;
 }
 void LiveAgent::flush_turn() {
-  if (!reply_.empty()) store_.remember_turn("assistant", reply_);
+  if (!reply_.empty()) {
+    store_.remember_turn("assistant", reply_, reply_continuation_);
+    reply_continuation_ = true;
+  }
   reply_.clear();
   turn_at_ = 0;
 }
@@ -402,11 +444,9 @@ void LiveAgent::flush_context() {
 }
 void LiveAgent::tick(uint64_t now) {
   if (turn_at_ && now - turn_at_ >= 900) flush_turn();
-  if (input_at_ && now - input_at_ > 5000) {
-    input_event_.clear();
-    input_fragment_.clear();
-    input_at_ = 0;
-  }
+  inputs_.erase(std::remove_if(inputs_.begin(), inputs_.end(), [now](const Input &i) {
+    return now - i.at > 5000;
+  }), inputs_.end());
   batches_.erase(std::remove_if(batches_.begin(), batches_.end(), [now](const Batch &batch) {
     return now - batch.since >= 20000;
   }), batches_.end());
@@ -425,11 +465,12 @@ bool LiveAgent::sleep_due(uint64_t now, bool playing) const {
 void LiveAgent::reset() {
   ready_ = false;
   batches_.clear();
+  event_types_.clear();
   effective_ = farewell_at_ = audio_at_ = expires_at_ = turn_at_ = 0;
   reply_.clear();
-  input_event_.clear();
-  input_fragment_.clear();
-  input_at_ = 0;
+  inputs_.clear();
+  reply_end_ = 0;
+  reply_continuation_ = false;
 }
 
 size_t LiveUpload24k::convert(const int16_t *input, size_t count, int16_t *out) {

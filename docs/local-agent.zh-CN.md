@@ -6,11 +6,13 @@
 
 将 `server/deploy/mihomo-device.yaml.example` 的 listener 和两条规则合入 Mihomo。把专用规则放在宽泛的域名或 MATCH 规则前。使用设备可验证、与主机名匹配的 TLS 证书和专用代理凭证。现有只绑定回环的混合端口可以保留。先在目标版本用 `mihomo -t -f /path/to/config.yaml` 检查配置。设备以 TLS 连接 Mihomo，在 CONNECT 隧道上再次校验 OpenAI TLS，并只在内层发送 OpenAI Bearer。此路径需要 OpenAI 项目有 GPT‑Live 1、Terra、Decisions 和托管搜索权限。
 
+独立部署可以使用 `server/deploy/pikoo-device-proxy.service`，将配置写到 `/etc/mihomo/device.json`，权限设为 0600，然后启用服务的开机启动。示例的证书路径由 Let's Encrypt 管理，`SAFE_PATHS` 允许 Mihomo 读取该目录。配置防火墙 TCP 8443，并确保云防火墙和主机防火墙均持久保存。证书续期的 deploy hook `server/deploy/pikoo-nginx` 会在代理正在运行时重启它读取新证书；短期 IP 证书需要保留现有六小时续期定时器。服务重启会断开会话，设备必须重新连接。
+
 ## 设备
 
-1. 构建固件后备份原机 Flash。首次迁移要刷应用和更新后的分区表。表中新增加密凭证和家庭数据分区，原分区位置不变。不要用本地安装工具把密钥打包进任何 NVS 镜像。
-2. 专用凭证分区需要一个已有、已妥善保护的 HMAC_UP eFuse 密钥块。固件检查该条件，利用 HMAC 分别派生两个 NVS XTS 密钥。固件不会自动烧录 eFuse。USB 写入在设备处于静音待机时才开放。
-3. 用 ESP-IDF 环境运行 `python tools/local-agent-usb.py --port /dev/cu.usbmodem… provision`。凭证由终端提示输入，写入设备后重启。PCM 默认 16 kHz，若目标项目只支持 24 kHz，可通过同一命令重新配置。采音与 AEC 仍保持 16 kHz。首次真机测试前保留旧网关作为回滚路径。
+1. 构建固件后备份原机 Flash。首次迁移要刷应用和更新后的分区表。表中新增凭证和家庭数据分区，原分区位置不变。不要用本地安装工具把密钥打包进任何 NVS 镜像。
+2. 专用凭证分区使用普通 NVS，适用于当前家庭自用部署。OpenAI 密钥与代理凭证通过 USB 写入，后续运行 provision 可以覆盖更新，运行 forget 可以删除。家庭数据导出不包含凭证。
+3. 用 ESP-IDF 环境运行 `python tools/local-agent-usb.py --port /dev/cu.usbmodem… provision`。凭证由终端提示输入，写入设备后运行同一工具的 `reboot` 命令重启。重启命令只在已完全静音的待机状态接受。PCM 默认 16 kHz，若目标项目只支持 24 kHz，可通过同一命令重新配置。采音与 AEC 仍保持 16 kHz。首次真机测试前保留旧网关作为回滚路径。
 4. `export 备份.json` 导出家庭数据到权限为 0600 的新文件。`import 备份.json` 载入数据，重启后生效。`legacy` 切回原模式并重启。导出包含家庭内容，凭证分区不参与导入导出。导入现有服务端数据时，将已确认的条目映射到下列格式，原始备份在验证条目数前保留。
 
 ```json
@@ -59,3 +61,16 @@ Mihomo v1.19.33 与本机 OpenAI 夹具完成 100/100 次双 TLS、CONNECT 和 L
 | 8 小时 | 0 | 910 ms | 56.76 s | 2.63 MiB |
 
 8 小时进程每分钟采样一次，预热后峰值 RSS 未继续增长。最终 ESP-IDF 5.5.5 固件构建使用与仓库策略哈希匹配的唤醒模型，镜像为 2,691,040 字节，6 MiB 应用分区剩余 57%，静态 DIRAM 用量为 166,871 字节。代理延迟和墙钟回放都是桌面测量，真实 OpenAI 首声、板上堆低水位、I²S 与 AEC 仍须上板确认。
+
+
+## 2.0 候选实机验证进度
+
+2026-11-12 已备份并校验原机完整 16 MiB Flash，测试镜像为 2.0.0-rc.1。按当前家庭自用部署要求，凭证保存在可通过 USB 更新和删除的普通 NVS。云端新增独立 Mihomo TLS listener，轻量服务器云防火墙放行 TCP 8443，入口只允许代理到 api.openai.com:443。
+
+已观察到外放唤醒命中、原生 Live 听说、算术回答“7”、家庭清单工具及显式记忆工具返回成功、托管网页搜索完成、故事播放时接受外放插话，以及静音后 10 秒上传采样数不再增加。真实冷连接中 TCP 约 18 ms、代理 TLS 约 1.75 s、CONNECT 约 14 ms、OpenAI TLS 约 1.95–2.42 s。会话期间 I²S 收发错误计数为 0，握手内部堆低水位约 39–41 KiB。
+
+重新插拔后成功读回清单“一盒牛奶”和显式测试记忆，断电持久化已验证。22,431 字节测试快照连续 3 次导入导出一致；再次打开串口时重现无响应。已恢复写入原快照，但后续串口重开与 JTAG 设备通信仍异常。候选改用统一的 USB 驱动发送，macOS 工具关闭 HUPCL，尚不能认定这些改动修复了问题。需要继续验证连续 USB 使用和重启。
+
+实机长回答暴露了流式转写按收包间隔切碎上下文的问题。候选核心按事件时间线组织相邻输出，保留重叠等待分类的输入片段，超过单项容量时按 UTF-8 边界拆分。延迟片段、重叠分类和长中文回复回归通过 ASan/UBSan。协议依据：[OpenAI GPT-Live 会话文档](https://developers.openai.com/api/docs/guides/live-conversations)。
+
+代理已启用开机启动，8443 已写入主机防火墙配置，证书续期 hook 已加入活动代理重启。凭证替换、真实插话效果、最终 2.0.0 镜像与主干合并仍待验收。候选过程的这些观察不能代表完整实机验收通过。

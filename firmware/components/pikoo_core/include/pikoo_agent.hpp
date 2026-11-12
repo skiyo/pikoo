@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -25,7 +26,7 @@ public:
   bool load(const std::string &snapshot);
   std::string snapshot() const;
   std::string call(const std::string &id, const std::string &name, const std::string &arguments);
-  bool remember_turn(const std::string &role, const std::string &content);
+  bool remember_turn(const std::string &role, const std::string &content, bool append = false);
   bool clear_context();
   bool flush_history();
   Json history() const;
@@ -44,6 +45,7 @@ public:
     std::function<void(unsigned)> ready;
     std::function<void(const std::string &)> audio;
     std::function<void(int)> failed;
+    std::function<void(const char *)> diagnostic = [](const char *) {};
   };
 
   LiveAgent(FamilyStore &store, Output output);
@@ -58,7 +60,7 @@ public:
 
 private:
   void send(Json event);
-  void record_reply(const std::string &fragment, uint64_t now);
+  void record_reply(const cJSON *message, uint64_t now);
   void flush_turn();
   void delegated(const cJSON *message, uint64_t now);
   void classify(const cJSON *message, uint64_t now);
@@ -67,11 +69,15 @@ private:
   struct Call { std::string id, name, arguments; };
   struct Batch { std::string id, response; uint64_t since; std::vector<Call> calls; };
   std::vector<Batch> batches_;
-  std::string reply_, input_event_, input_fragment_;
+  std::set<std::string> event_types_;
+  struct Input { std::string id, fragment; uint64_t at; };
+  std::vector<Input> inputs_;
+  std::string reply_;
   uint64_t effective_ = 0, turn_at_ = 0, farewell_at_ = 0, audio_at_ = 0;
-  uint64_t serial_ = 0, expires_at_ = 0, input_at_ = 0;
+  uint64_t serial_ = 0, expires_at_ = 0, reply_end_ = 0;
   unsigned rate_ = Rate;
   bool greeting_ = false, ready_ = false;
+  bool reply_continuation_ = false;
 };
 
 // Convert complete pairs of 16 kHz microphone samples to 24 kHz. Keep the

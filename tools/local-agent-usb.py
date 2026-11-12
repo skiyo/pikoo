@@ -9,6 +9,7 @@ from pathlib import Path
 import time
 
 import serial
+from usb_serial import preserve_lines
 
 MAX_SNAPSHOT = 24 * 1024
 SNAPSHOT = b"PIKOO_AGENT_SNAPSHOT "
@@ -42,7 +43,7 @@ def provision():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", required=True, help="USB serial device")
-    parser.add_argument("operation", choices=("provision", "import", "export", "legacy"))
+    parser.add_argument("operation", choices=("provision", "import", "export", "legacy", "forget", "reboot"))
     parser.add_argument("file", type=Path, nargs="?")
     args = parser.parse_args()
     if (args.operation in ("import", "export")) != (args.file is not None):
@@ -62,10 +63,24 @@ def main():
     else:
         payload = None
 
-    with serial.Serial(args.port, baudrate=115200, timeout=1, write_timeout=10) as device:
+    device = serial.Serial(port=None, baudrate=115200, timeout=1, write_timeout=10)
+    device.dtr = False
+    device.rts = False
+    device.port = args.port
+    with device:
+        preserve_lines(device)
         device.reset_input_buffer()
-        device.write(b"\nmute\n")
-        time.sleep(.25)
+        deadline = time.monotonic() + 25
+        next_request = 0.0
+        while True:
+            if time.monotonic() >= next_request:
+                device.write(b"\nmute\nstatus\n")
+                next_request = time.monotonic() + .5
+            line = device.read_until(size=8192)
+            if b"diag: board=" in line and b"muted=1 " in line and b"upload=0 " in line and b"state=5 " in line:
+                break
+            if time.monotonic() >= deadline:
+                raise SystemExit("Device did not reach muted standby before USB transfer.")
         device.write(f"agent {args.operation}\n".encode())
         if payload is not None:
             wait_for(device, b"agent usb ready")
@@ -80,6 +95,9 @@ def main():
             with os.fdopen(fd, "wb") as output:
                 output.write(data + b"\n")
             print("Snapshot saved. The device is muted.")
+        elif args.operation == "reboot":
+            wait_for(device, b"agent usb result=ok_reboot")
+            print("Device reboot requested.")
         else:
             wait_for(device, b"agent usb result=ok_reboot")
             print("Saved. Reboot the device to apply the change.")

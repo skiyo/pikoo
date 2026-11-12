@@ -150,6 +150,44 @@ void run_regressions() {
   assert(!device.agent.sleep_due(72000, true));
   assert(device.agent.sleep_due(72000, false));
 
+  // Delivery stalls must not turn a continuous spoken sentence into many
+  // history entries, and outstanding Decisions may overlap later fragments.
+  Device transcripts;
+  transcripts.start(100);
+  transcripts.agent.receive(Started, 101);
+  transcripts.agent.receive(R"({"type":"session.input_transcript.delta","event_id":"u1","delta":"请记住"})", 200);
+  transcripts.agent.receive(R"({"type":"session.input_transcript.delta","event_id":"u2","delta":"蓝色"})", 300);
+  transcripts.agent.receive(decision("u1", "addressed"), 400);
+  transcripts.agent.receive(decision("u2", "addressed"), 500);
+  transcripts.agent.receive(R"({"type":"session.output_transcript.delta","delta":"好的，","start_ms":1000,"end_ms":1300})", 600);
+  transcripts.agent.tick(1600);
+  transcripts.agent.receive(R"({"type":"session.output_transcript.delta","delta":"已经记住。","start_ms":1300,"end_ms":1900})", 2700);
+  transcripts.agent.tick(3700);
+  auto history = pikoo::parse(transcripts.store.snapshot());
+  auto turns = pikoo::field(history.get(), "history");
+  assert(cJSON_GetArraySize(turns) == 2);
+  assert(pikoo::text(cJSON_GetArrayItem(turns, 0), "text") == "请记住蓝色");
+  assert(pikoo::text(cJSON_GetArrayItem(turns, 1), "text") == "好的，已经记住。");
+  transcripts.agent.receive(R"({"type":"session.output_transcript.delta","delta":"下一句。","start_ms":4000,"end_ms":4500})", 3800);
+  transcripts.agent.flush_context();
+  history = pikoo::parse(transcripts.store.snapshot());
+  assert(cJSON_GetArraySize(pikoo::field(history.get(), "history")) == 3);
+  Device long_reply;
+  long_reply.start(100);
+  long_reply.agent.receive(Started, 101);
+  std::string long_text;
+  for (unsigned i = 0; i < 400; ++i) long_text += "猫";
+  long_reply.agent.receive("{\"type\":\"session.output_transcript.delta\",\"delta\":\"" + long_text + "\"}", 200);
+  long_reply.agent.flush_context();
+  history = pikoo::parse(long_reply.store.snapshot());
+  std::string recovered;
+  for (auto turn = pikoo::field(history.get(), "history")->child; turn; turn = turn->next) {
+    auto fragment = pikoo::text(turn, "text");
+    assert(fragment.size() <= 512 && fragment.size() % 3 == 0);
+    recovered += fragment;
+  }
+  assert(recovered == long_text);
+
   const char *add = R"({"group":"shopping","operation":"add","entry":"奶酪"})";
   const char *remove = R"({"group":"shopping","operation":"remove","entry":"奶酪"})";
   const char *list = R"({"group":"shopping","operation":"list"})";
