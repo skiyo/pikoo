@@ -7,3 +7,5 @@ Idle audio stays on-device for wake detection. A wake opens the configured Live 
 Interruption clears queued playback and cancels backend work. Transcript classification requires a complete stop/correction phrase, so a constraint such as “do not modify” must not cancel a read query. Late task tokens are discarded. Farewell waits for audible playback to drain, then closes the voice connection; ordinary inactivity closes it after 60 seconds. Explicit End clears short-term context, while idle sleep retains it.
 
 Mute closes the session, clears playback and disables capture. Missing configuration never falls back to a different runtime. Authentication errors require fixing the corresponding service configuration; rate limits use backoff rather than repeated rapid retries.
+
+Farewell cancels backend work immediately while allowing the goodbye playback to drain. A clearly addressed new question cancels the farewell timer and resumes normal interaction.

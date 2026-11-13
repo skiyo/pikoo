@@ -486,6 +486,10 @@ void LiveAgent::receive(const std::string &message, uint64_t now) {
 }
 
 void LiveAgent::dispatch(uint64_t now) {
+  if (farewell_at_) {
+    delegation_.clear();
+    return;
+  }
   if (delegation_.empty() || !inputs_.empty())
     return;
   if (!addressed_at_ || now - addressed_at_ > 5000 ||
@@ -498,7 +502,7 @@ void LiveAgent::dispatch(uint64_t now) {
   output_.delegate(id, json(store_.history().get()), now);
 }
 void LiveAgent::result(const std::string &id, const std::string &content) {
-  if (!ready_)
+  if (!ready_ || farewell_at_)
     return;
   auto message = event("session.commentary.append");
   set_text(message.get(), "delegation_id", id);
@@ -526,8 +530,11 @@ void LiveAgent::classify(const cJSON *message, uint64_t now) {
     const auto choice = text(item, "choice");
     if (choice == "farewell") {
       farewell_at_ = now;
+      delegation_.clear();
+      output_.cancel();
       effective_ = now;
     } else if (choice == "addressed" || choice == "interrupt") {
+      farewell_at_ = 0;
       effective_ = now;
       addressed_at_ = now;
       ++addressed_serial_;

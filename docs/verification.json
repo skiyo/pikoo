@@ -4,7 +4,7 @@
   "status": "awaiting_board_acceptance",
   "checked_on": "2026-11-13",
   "software": {
-    "service_behaviors": 15,
+    "service_behaviors": 16,
     "python_tools": 61,
     "node_preview": 4,
     "node_training_planners": 19,
@@ -16,18 +16,18 @@
       "llm_protocols": 2,
       "search_protocols": 2,
       "certificate_auth_and_disconnect_faults": true,
-      "wall_seconds": 3.547,
+      "wall_seconds": 3.968,
       "outer_tls_ms": {
-        "p50": 2.19,
-        "p95": 2.48
+        "p50": 2.203,
+        "p95": 3.328
       },
       "connect_ms": {
         "p50": 0.0,
-        "p95": 0.521
+        "p95": 0.649
       },
       "inner_tls_ms": {
-        "p50": 0.001,
-        "p95": 2.578
+        "p50": 0.003,
+        "p95": 2.699
       }
     },
     "accelerated_pcm": {
@@ -38,14 +38,14 @@
       "scripted_first_pcm_ms_p95": 30,
       "virtual_play_ms_p50": 910,
       "virtual_play_ms_p95": 910,
-      "edge_processing_us_p95": 4,
+      "edge_processing_us_p95": 2,
       "peak_samples": 14720,
       "underruns": 0,
       "backend_jobs": 28800,
       "backend_results": 28800,
-      "maxrss_warm_native_units": 3096576,
-      "cpu_seconds": 3.55831,
-      "maxrss_native_units": 3260416,
+      "maxrss_warm_native_units": 3047424,
+      "cpu_seconds": 3.61131,
+      "maxrss_native_units": 3211264,
       "eye_checksum": 1234787693
     },
     "optional_training_python": {
@@ -58,7 +58,8 @@
     "github_actions": {
       "push": "passed",
       "pull_request": "passed",
-      "code_tree": "3dd50699c5bed07cd709e5fad51daa124c32c2e0"
+      "code_tree": "3dd50699c5bed07cd709e5fad51daa124c32c2e0",
+      "notes": "Source build/test commit passed; final lifecycle and evidence update reruns the same workflow."
     }
   },
   "hardware": {
@@ -79,8 +80,8 @@
     "idf": "5.5.5",
     "configuration": "clean sdkconfig.defaults; Agent trace disabled",
     "clean_source_build": "passed",
-    "bytes": 2736624,
-    "sha256": "225f3c757a3d8fe2962764425243ef710b57bf1340cee5c41de5be3f4a578259",
+    "bytes": 2736720,
+    "sha256": "2b954e4fdbc14ced7cd604f8b420442293136b809288309c63b993e854b87c0a",
     "static_diram_bytes": 168779,
     "app_partition_bytes": 6291456,
     "installer_dry_runs": [

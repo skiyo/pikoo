@@ -120,6 +120,20 @@ class Services(unittest.TestCase):
         self.core.call('receive',message=dict(type='decision.event',source_event_id='tv',source_event_type='session.input_transcript.delta',event=dict(type='decision.completed',decision=dict(answers=[dict(name='interaction',choice='ignore')]))),now=2301)
         out=self.core.call('receive',message=dict(type='session.delegation.created',delegation=dict(id='ignored-tv',target='client')),now=2302)
         self.assertFalse(out['requests']);self.assertNotIn('电视对白',out['snapshot'])
+    def test_farewell_cancels_pending_write_and_new_question_can_resume(self):
+        self.core.call('configure',config=config());self.core.call('live_start',now=100)
+        self.core.call('receive',message=dict(type='session.started',session=dict(audio=dict(format=dict(type='audio/pcm',rate=16000)))),now=101)
+        def speech(event,text,choice,now):
+            self.core.call('receive',message=dict(type='session.input_transcript.delta',event_id=event,delta=text),now=now)
+            return self.core.call('receive',message=dict(type='decision.event',source_event_id=event,source_event_type='session.input_transcript.delta',event=dict(type='decision.completed',decision=dict(answers=[dict(name='interaction',choice=choice)]))),now=now+1)
+        speech('first','保存测试内容','addressed',110)
+        r=self.core.call('receive',message=dict(type='session.delegation.created',delegation=dict(id='before-bye',target='client')),now=112)['requests'][0]
+        speech('bye','Pikoo 再见','farewell',120)
+        out=self.complete(r,response('openai_responses',[tool('openai_responses','family_memory',dict(group='memory',operation='add',entry='迟到写入'))]),now=123)
+        self.assertFalse(out['replies']);self.assertEqual(json.loads(out['snapshot'])['memory'],[])
+        speech('again','还有一个问题','addressed',130)
+        out=self.core.call('receive',message=dict(type='session.delegation.created',delegation=dict(id='after-bye',target='client')),now=132)
+        self.assertEqual(len(out['requests']),1)
     def test_http_fragmentation_chunking_bounds_and_truncation(self):
         for wire in ['HTTP/1.1 200 OK\r\nContent-Length: 7\r\n\r\n{"x":1}', 'HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n3\r\n{"x\r\n4\r\n":1}\r\n0\r\n\r\n']:
             self.core.call('http_begin')
