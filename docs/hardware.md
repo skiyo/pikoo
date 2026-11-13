@@ -21,8 +21,6 @@ The schematic maps the microphone to ES7210 MIC1 and attenuated output reference
 
 [USB installation](firmware.md) · [Enclosure and STLs](../hardware/enclosure/README.md)
 
-## Assembly and electrical checks
-
 ## Before connecting power
 
 Inspect the board revision and confirm it is the non-touch target. Connect the speaker only while unpowered, following the connector label and vendor requirements. Do not infer polarity or purpose from connector shape. Keep exposed electronics on a non-conductive surface and provide cable strain relief. A charge-only USB cable cannot perform setup.

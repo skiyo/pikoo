@@ -8,8 +8,6 @@ Only explicit user instructions should change long-term memory; automatic learni
 
 [Tools](family-tools.md) · [USB](firmware.md)
 
-## Data ownership and backup
-
 ## Distinguish the stores
 
 | Data | Written by | Lifetime |

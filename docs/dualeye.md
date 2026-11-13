@@ -6,8 +6,6 @@ Two circular 240 × 240 panels share the C++ renderer in `pikoo_eyes`. ESP and d
 
 Run the offline [eye preview](getting-started.md). It does not capture audio or contact providers. A slow browser receives the latest pose instead of an unbounded frame backlog. Hardware frame rate and transfer time must be measured on the target board.
 
-## Preview and board validation
-
 ## Run the preview
 
 ```sh

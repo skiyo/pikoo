@@ -8,8 +8,6 @@
 
 Register extensions through a schema and executor in the shared core, then add failure, cancellation and persistence tests. A tool schema is not evidence of an integrated external product.
 
-## Tool execution contract
-
 ## Local operations
 
 | Operation | Behavior to verify |

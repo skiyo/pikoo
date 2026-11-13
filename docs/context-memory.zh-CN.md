@@ -8,8 +8,6 @@
 
 [工具](family-tools.zh-CN.md) · [USB](firmware.zh-CN.md)
 
-## 数据归属与备份
-
 ## 区分不同存储
 
 | 数据 | 写入来源 | 生命周期 |

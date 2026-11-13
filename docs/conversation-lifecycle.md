@@ -10,8 +10,6 @@ Mute closes the session, clears playback and disables capture. Missing configura
 
 Farewell cancels backend work immediately while allowing the goodbye playback to drain. A clearly addressed new question cancels the farewell timer and resumes normal interaction.
 
-## Observable states
-
 ## State guide
 
 | State | Audio/network behavior | User action |
