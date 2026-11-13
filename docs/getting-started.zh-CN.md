@@ -4,7 +4,7 @@
 
 ## 安装设备
 
-准备[硬件](hardware.zh-CN.md)、ESP-IDF 5.5.5 和 Python 3.11。已审核权重与训练检查点随源码保存在 [models/hi-pikoo](../models/hi-pikoo/MODEL_CARD.zh-CN.md)，校验目录中的 SHA256SUMS 并阅读模型条款。构建会校验冻结策略与权重哈希。
+准备[硬件](hardware.zh-CN.md)、ESP-IDF 5.5.5 和 Python 3.11。权重与训练检查点随源码保存在 [models/hi-pikoo](../models/hi-pikoo/MODEL_CARD.zh-CN.md)，校验目录中的 SHA256SUMS 并阅读模型条款。构建会校验冻结策略与权重哈希。
 
 ```sh
 git clone https://github.com/skiyo/pikoo.git

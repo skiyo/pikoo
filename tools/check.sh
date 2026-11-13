@@ -15,6 +15,7 @@ bash tools/test-core.sh
 bash tools/test-eyes.sh
 echo 'Checking the offline eye preview'
 "$node_bin" --test firmware/simulator/*.test.mjs
+"$node_bin" --test hardware/enclosure/tests/guide.test.cjs
 "$node_bin" --test training/hi_pikoo_generate.test.cjs training/wake_mixed_test_generate.test.cjs
 PIKOO_SANITIZE=1 bash tools/test-local-agent.sh --services
 echo 'Checking Python tooling and training units (optional runtime tests may skip)'

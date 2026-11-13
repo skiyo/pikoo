@@ -21,7 +21,7 @@ struct NetworkConfig {
 struct AgentConfig {
   static constexpr size_t Limit = 16384;
   std::string ssid, password;
-  std::string name = "Pikoo", language = "zh-CN", instructions;
+  std::string name = "Pikoo", language = "en", instructions;
   ServiceConfig live, llm, search;
   std::string voice = "marin", extract_url;
   unsigned audio_rate = 16000;

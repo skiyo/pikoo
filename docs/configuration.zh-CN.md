@@ -14,7 +14,7 @@ python tools/device.py configure --port PORT --config /private/pikoo.json
 | 配置组 | 字段 |
 |---|---|
 | `wifi` | `ssid`、`password`；开放网络密码可为空 |
-| `agent` | `name`、`language`、`instructions`；省略时默认 Pikoo / zh-CN |
+| `agent` | `name`、`language`、`instructions`；省略时默认 Pikoo / en |
 | `live` | `protocol`、完整 `url`、`api_key`、`model`、`voice`（默认 marin）、`audio_rate`（16000 或 24000） |
 | `llm` | `protocol`、完整 `url`、`api_key`、`model` |
 | `search` | `enabled`；启用后填协议、完整地址、密钥；Responses 另填模型；Tavily 可填 `extract_url` |
@@ -33,3 +33,5 @@ python tools/device.py configure --port PORT --config /private/pikoo.json
 示例关闭搜索，无须配置搜索密钥。修改地址表示选择兼容部署，不会改变线上协议；未知协议直接拒绝。本版未实现自定义 CA 或其他鉴权头格式。
 
 [Live 委派协议](https://developers.openai.com/api/docs/guides/live-delegation) · [Responses 搜索](https://developers.openai.com/api/docs/guides/tools-web-search) · [Tavily API](https://docs.tavily.com/)
+
+默认对话语言为英文（`en`）。将 `agent.language` 改为 `zh-CN` 并经 USB 更新配置即可切换中文，无须重编固件。

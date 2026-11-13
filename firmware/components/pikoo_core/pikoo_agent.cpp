@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <cctype>
 #include <ctime>
 #include <utility>
 
@@ -358,7 +359,7 @@ void LiveAgent::start(uint64_t now, bool greet, unsigned rate) {
   cJSON_AddNumberToObject(format, "rate", rate_);
   set_text(cJSON_AddObjectToObject(audio, "output"), "voice", config_.voice);
   auto triggers = parse(
-      R"([{"type":"decisions","event_type":"session.input_transcript.delta","decisions":{"questions":[{"type":"choice","name":"interaction","instructions":"根据当前上下文判断最新话语。用户在与 Pikoo 的互动中要求停一下、等一下、别讲了、不要继续或打断纠正当前回答时选 interrupt。仅向 Pikoo 明确结束对话选 farewell。其他明确叫 Pikoo 或承接对话选 addressed。家人互聊、电视、噪音、引用停止字样或无法判断选 ignore。","choices":[{"value":"addressed"},{"value":"interrupt"},{"value":"farewell"},{"value":"ignore"}]}]}}])");
+      R"([{"type":"decisions","event_type":"session.input_transcript.delta","decisions":{"questions":[{"type":"choice","name":"interaction","instructions":"Classify the latest speech in its language and conversational context. Choose interrupt for a request to stop, pause, wait or correct the current reply. Choose farewell only when the user explicitly ends the conversation with Pikoo. Choose addressed for speech directed to Pikoo or continuing the conversation. Choose ignore for unrelated conversations, television, noise, quoted stop words or uncertainty.","choices":[{"value":"addressed"},{"value":"interrupt"},{"value":"farewell"},{"value":"ignore"}]}]}}])");
   cJSON_AddItemToObject(session, "triggers", triggers.release());
   auto delegation = cJSON_AddObjectToObject(session, "delegation");
   set_text(delegation, "type", "client");
@@ -447,6 +448,25 @@ void LiveAgent::receive(const std::string &message, uint64_t now) {
       if (input_window_.size() > 1024)
         input_window_.erase(0, input_window_.size() - 1024);
       bool stop_phrase = false;
+      std::string english = input_window_;
+      std::transform(english.begin(), english.end(), english.begin(),
+                     [](unsigned char c) { return std::tolower(c); });
+      for (const auto phrase : {"stop", "pause", "wait", "hold on", "don't continue",
+                                 "do not continue", "that's wrong"}) {
+        size_t pos = 0;
+        while ((pos = english.find(phrase, pos)) != std::string::npos) {
+          const auto end = pos + std::strlen(phrase);
+          if ((pos == 0 || !std::isalpha(static_cast<unsigned char>(english[pos-1]))) &&
+              (end == english.size() || !std::isalpha(static_cast<unsigned char>(english[end]))))
+            stop_phrase = true;
+          pos = end;
+        }
+      }
+      if (english.find("don't stop") != std::string::npos ||
+          english.find("do not stop") != std::string::npos ||
+          english.find("don't pause") != std::string::npos ||
+          english.find("do not pause") != std::string::npos)
+        stop_phrase = false;
       for (const auto phrase :
            {"停一下", "停下", "等一下", "等一等", "等等", "别讲", "别说",
             "别继续", "先别", "不要继续", "不要讲", "不要说", "不对", "说错了",
@@ -566,8 +586,9 @@ void LiveAgent::classify(const cJSON *message, uint64_t now) {
         auto instruction = event("session.instructions.append");
         cJSON_AddNullToObject(instruction.get(), "delegation_id");
         set_text(instruction.get(), "content",
-                 "用户正在打断当前回答。立即停止原回答，不要接着讲原内容。按用"
-                 "户最新指令简短回应；若只要求停止，安静等待。");
+                 "The user is interrupting. Stop the previous answer immediately. "
+                 "Follow the latest instruction briefly in the configured language. "
+                 "If asked only to stop, remain quiet.");
         interrupt_event_ = send(std::move(instruction));
       }
     }

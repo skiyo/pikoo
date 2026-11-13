@@ -37,7 +37,7 @@ def validate(c):
         return isinstance(value,str) and (not value or len(value)<=1024 and all(32<ord(ch)<127 for ch in value))
     wifi=c.get('wifi',{})
     if not bounded(wifi.get('ssid'),32) or not bounded(wifi.get('password'),63,False) or wifi['password'] and len(wifi['password'].encode())<8:raise ValueError('Invalid Wi-Fi settings')
-    agent=c.get('agent',dict(name='Pikoo',language='zh-CN',instructions=''))
+    agent=c.get('agent',dict(name='Pikoo',language='en',instructions=''))
     if not bounded(agent.get('name'),64) or not bounded(agent.get('language'),32) or not bounded(agent.get('instructions',''),2048,False):raise ValueError('Invalid agent settings')
     for name,protocols,scheme in [('live',['openai_live'],'wss'),('llm',['openai_responses','openai_chat_completions'],'https')]:
         s=c.get(name,{})
@@ -64,7 +64,7 @@ def validate(c):
     return c
 
 def prompt_config():
-    c=dict(version=1,wifi=dict(ssid=input('2.4 GHz Wi-Fi SSID: '),password=getpass.getpass('Wi-Fi password: ')),agent=dict(name='Pikoo',language='zh-CN',instructions=''))
+    c=dict(version=1,wifi=dict(ssid=input('2.4 GHz Wi-Fi SSID: '),password=getpass.getpass('Wi-Fi password: ')),agent=dict(name='Pikoo',language=input('Agent language [en; zh-CN for Chinese]: ').strip() or 'en',instructions=''))
     c['live']=dict(protocol='openai_live',url=input('Live WSS endpoint: ').strip(),api_key=getpass.getpass('Live API key: '),model=input('Live model: ').strip(),voice=input('Voice [marin]: ').strip() or 'marin',audio_rate=16000)
     protocol=input('LLM protocol: responses / chat [responses]: ').strip() or 'responses'
     c['llm']=dict(protocol={'responses':'openai_responses','chat':'openai_chat_completions'}.get(protocol,protocol),url=input('LLM HTTPS endpoint: ').strip(),api_key=getpass.getpass('LLM API key: '),model=input('LLM model: ').strip())

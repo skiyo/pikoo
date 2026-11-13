@@ -8,6 +8,8 @@ Pikoo 是一个运行在 ESP32-S3 上的硬件 AI Agent：在本地唤醒、管�
 
 ![Pikoo enclosure concept](docs/images/pikoo-enclosure.webp)
 
+默认使用英文；配置 `agent.language = "zh-CN"` 可切换中文。文档与离线指南均提供中英文。
+
 ## 能做什么
 
 - 本地完整英文 **“Hi, Pikoo”** 唤醒，支持 `piku`、`piko` 两种读音。

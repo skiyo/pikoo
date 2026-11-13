@@ -36,6 +36,20 @@ class Services(unittest.TestCase):
     def start(self,c=None):
         c=c or config();self.assertTrue(self.core.call('configure',config=c)['valid'])
         return self.core.call('start',id='delegation-one',history=history(),now=100)['requests'][0]
+    def test_english_default_chinese_configuration_and_stop_commands(self):
+        for language in (None,'en','zh-CN'):
+            c=config()
+            if language is None:c.pop('agent')
+            else:c['agent']['language']=language
+            validate(c);self.assertTrue(self.core.call('configure',config=c)['valid'])
+            out=self.core.call('live_start',now=100)
+            self.assertIn('Reply in '+(language or 'en'),json.loads(out['send'][0])['session']['instructions'])
+        for phrase,interrupt in [('Stop talking',True),('Please pause',True),('hold on',True),("don't stop",False),('do not pause',False),('stopwatch',False),('waitress',False),('停一下',True),('不要停',False)]:
+            self.core.call('configure',config=config());self.core.call('live_start',now=100)
+            self.core.call('receive',message=dict(type='session.started',session=dict(audio=dict(format=dict(type='audio/pcm',rate=16000)))),now=101)
+            self.core.call('receive',message=dict(type='session.input_transcript.delta',event_id='stop-test',delta=phrase),now=110)
+            out=self.core.call('receive',message=dict(type='decision.event',source_event_id='stop-test',source_event_type='session.input_transcript.delta',event=dict(type='decision.completed',decision=dict(answers=[dict(name='interaction',choice='interrupt')]))),now=111)
+            self.assertEqual(any(json.loads(x)['type']=='session.instructions.append' for x in out['send']),interrupt,phrase)
     def test_independent_providers_and_tool_loop(self):
         for protocol in ['openai_responses','openai_chat_completions']:
             for search in ['tavily','openai_responses']:

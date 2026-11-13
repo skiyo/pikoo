@@ -8,6 +8,8 @@ Pikoo is a hardware AI Agent on ESP32-S3. It wakes locally, manages sessions, ex
 
 ![Pikoo enclosure concept](docs/images/pikoo-enclosure.webp)
 
+English is the default. Set `agent.language` to `zh-CN` for Chinese; documentation and offline guides include both languages.
+
 ## Capabilities
 
 - Local **“Hi, Pikoo”** wake phrase, accepting both `piku` and `piko` pronunciations.

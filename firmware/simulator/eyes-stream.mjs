@@ -5,7 +5,7 @@ export const frameBytes=240*240*2*2;
 export function attachEyes(ws,{binary=fileURLToPath(new URL('../build-host/pikoo-eyes',import.meta.url))}={}) {
   const child=spawn(binary,[],{stdio:['pipe','pipe','ignore']});
   let closed=false,busy=false,awaitingAck=false,latest=null,parts=[],length=0,deadline;
-  const fail=()=>{if(closed)return;ws.close(1011,'绘制进程不可用');cleanup();};
+  const fail=()=>{if(closed)return;ws.close(1011,'Renderer unavailable');cleanup();};
   const cleanup=()=>{if(closed)return;closed=true;clearTimeout(deadline);child.stdin.destroy();child.kill();};
   const pump=()=>{
     if(closed||busy||awaitingAck||!latest||ws.readyState!==1)return;

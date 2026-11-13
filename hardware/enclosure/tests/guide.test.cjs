@@ -23,7 +23,7 @@ function fixture(options = {}) {
   const toggle = control();
   const status = control();
   const exportButton = control();
-  const text = ['三个打印件，全机械固定', '厚锁座：保留', '横向插入'].map(nodeValue => ({nodeValue, parentElement: {tagName: 'SPAN'}}));
+  const text = ['Three printed parts. Mechanical retention.', 'Keep the thick lock receiver', 'Insert horizontally'].map(nodeValue => ({nodeValue, parentElement: {tagName: 'SPAN'}}));
   // Script/style text must never become a translation binding.
   text.push({nodeValue: '三个打印件，全机械固定', parentElement: {tagName: 'SCRIPT'}});
   const root = {lang: 'zh-CN'};
@@ -50,10 +50,10 @@ function fixture(options = {}) {
   return Object.assign(result, {inputs, notes, toggle, status, exportButton, text, root});
 }
 
-test('first visit follows the first supported browser language, with Chinese fallback', () => {
+test('first visit defaults to English regardless of browser language', () => {
   assert.equal(fixture().root.lang, 'en');
-  assert.equal(fixture({languages: ['de-DE', 'zh-TW', 'en-US']}).root.lang, 'zh-CN');
-  assert.equal(fixture({languages: ['fr-FR']}).root.lang, 'zh-CN');
+  assert.equal(fixture({languages: ['de-DE', 'zh-TW', 'en-US']}).root.lang, 'en');
+  assert.equal(fixture({languages: ['fr-FR']}).root.lang, 'en');
   assert.equal(fixture().cookieWrites.length, 0, 'browser detection does not write a preference');
 });
 test('saved cookie then offline preference take priority over browser language', () => {

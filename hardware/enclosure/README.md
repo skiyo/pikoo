@@ -4,7 +4,7 @@
 
 Three printed parts house the Waveshare ESP32-S3-DualEye-LCD-1.28 with its original transparent backplate and screws intact. Part 01 integrates the cat face, base and carrier; no separate spring latch or muzzle panel is needed. The release contains the three original printable parts.
 
-**Physical fit: the project family reports successful printing, assembly verification and use at home.** This is owner-reported evidence. Dedicated drop tests, 20 opening cycles, 60-minute operation and slicer statistics were not individually reported. Use the checklist for each new printer/hardware combination.
+Each printed build requires fit and functional acceptance. Dedicated drop resistance and long-duration reliability are not certified.
 
 ## The three original STLs
 
@@ -19,10 +19,10 @@ Open a file for the GitHub preview, then use **Download raw file**. Cloning the 
 ## Instructions and records
 
 - [Illustrated printing, support removal, assembly and acceptance guide](guide.html): download the raw HTML and open it in a browser. English and Chinese text, diagram callouts and illustrations are embedded in this single offline file.
-- [Acceptance checklist CSV](acceptance-checklist.csv): a blank Chinese worksheet for each new build. Its initial “未验证” entries are unfilled checks, not a withdrawal of the family’s report above.
+- [Acceptance checklist CSV](acceptance-checklist.csv): a blank English worksheet for each new build. Use it to record acceptance for each build.
 - [Dimensions, SHA-256 and evidence scope](manifest.json), plus [file checksums](checksums.sha256).
 
-Use the **English / 中文** button at the top to switch in place. A saved choice takes priority over browser language; HTTP(S) uses the `pikoo_language` cookie and a local-storage fallback also supports offline files. If storage is blocked, switching still works for the current page. Switching preserves checklist entries and notes. Printing uses the current language; JSON keeps stable checklist IDs and your original notes, and records the selected language. Its filename is `pikoo-acceptance.json` in both languages. No translation service or network request is needed.
+Use the **English / 中文** button at the top to switch in place. English is the default; a saved explicit choice takes priority; HTTP(S) uses the `pikoo_language` cookie and a local-storage fallback also supports offline files. If storage is blocked, switching still works for the current page. Switching preserves checklist entries and notes. Printing uses the current language; JSON keeps stable checklist IDs and your original notes, and records the selected language. Its filename is `pikoo-acceptance.json` in both languages. No translation service or network request is needed.
 
 For changes to this guide, run `node --test hardware/enclosure/tests/guide.test.cjs` from the repository root. The checks cover language selection, blocked storage, legacy record recovery, diagram translation coverage and JSON export; they do not perform hardware acceptance.
 
@@ -44,6 +44,8 @@ Allow the bed and print to cool. Remove supports in small pieces as illustrated,
 
 With power off, support the assembly over a soft surface and verify that the cover cannot pull off, the module cannot rattle against glass, the four feet sit steadily and the cable is not pulling on USB. Target at least approximately 5 mm flexible-cable clearance above the table. Power up and check both displays, buttons, playback, capture, wake and supply stability. Use the illustrated guide/checklist for detailed stop criteria.
 
-To open, disconnect power, support the module/cover, reverse the lock approximately 90°, remove it and lift the cover along its guides without pulling the speaker wire. Inspect after impacts; household fit/use feedback is not a drop-resistance certification.
+To open, disconnect power, support the module/cover, reverse the lock approximately 90°, remove it and lift the cover along its guides without pulling the speaker wire. Inspect after impacts; fit checks are not a drop-resistance certification.
 
 Pikoo-authored enclosure files and instructions follow the repository’s [Apache-2.0 license](../../LICENSE). No supplier CAD or reference hardware meshes are included; obtain board references from [Waveshare](https://www.waveshare.net/shop/ESP32-S3-DualEye-LCD-1.28.htm).
+
+[English checklist](acceptance-checklist.csv) · [中文验收表](acceptance-checklist.zh-CN.csv)

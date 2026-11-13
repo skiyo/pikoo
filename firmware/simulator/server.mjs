@@ -8,7 +8,7 @@ import {attachEyes} from './eyes-stream.mjs';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const port=Number(process.env.PIKOO_SIM_PORT||8793),origin=`http://127.0.0.1:${port}`;
 if(!Number.isInteger(port)||port<1||port>65535)throw Error('Invalid simulator port');
-const assets={'/':'dualeye.html','/dualeye':'dualeye.html','/dualeye.css':'dualeye.css','/eyes.mjs':'eyes.mjs','/visual-state.mjs':'visual-state.mjs','/demo.mjs':'demo.mjs'};
+const assets={'/i18n.mjs':'i18n.mjs','/':'dualeye.html','/dualeye':'dualeye.html','/dualeye.css':'dualeye.css','/eyes.mjs':'eyes.mjs','/visual-state.mjs':'visual-state.mjs','/demo.mjs':'demo.mjs'};
 const server=http.createServer((req,res)=>{
  if(req.headers.host!==`127.0.0.1:${port}`){res.writeHead(403).end();return;}
  const name=assets[req.url];if(!name){res.writeHead(404).end();return;}

@@ -1,19 +1,19 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pikoo · 双眼小伙伴</title><link rel="stylesheet" href="/dualeye.css"></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pikoo · Eye preview</title><link rel="stylesheet" href="/dualeye.css"></head>
 <body><main>
-<header><a class="wordmark" href="/dualeye">pikoo<span>双眼预览</span></a><span>本机 C++ 绘制 · 无声演示</span></header>
-<section class="intro"><div class="eyebrow">一个会听、会回应的小伙伴</div><h1>先见面，再一起长大。</h1><p>温暖的琥珀眼睛，两块小小的圆屏。现在在电脑上试一试，板子到了再把它带到桌面。</p></section>
+<header><a class="wordmark" href="/dualeye">pikoo<span>Eye preview</span></a><span>Local C++ rendering · silent preview</span></header>
+<section class="intro"><div class="eyebrow">A hardware AI companion</div><h1>Meet Pikoo.</h1><p>Explore the shared eye renderer on your computer before installing firmware.</p></section>
 <div class="workspace">
-<section class="preview" aria-label="Pikoo 双眼预览"><div class="preview-top"><span class="badge">ESP32-S3 · DUAL EYE</span><button id="pixels" class="pill" aria-pressed="false">查看实际像素</button></div>
-<p id="graphics-warning" class="graphics-warning" role="status" hidden>眼睛画面暂不可用，本页不运行语音。正在重试画面…</p>
-<div class="pet-stage" id="stage"><div class="pet" id="screen" data-state="idle"><div class="ear left"></div><div class="ear right"></div><div class="body"><div class="visor"><div class="eye-frame"><canvas id="eye-left" width="240" height="240" aria-label="左眼，240乘240像素"></canvas></div><div class="eye-frame"><canvas id="eye-right" width="240" height="240" aria-label="右眼，240乘240像素"></canvas></div></div><div class="nose"></div><div class="pet-brand">pikoo</div></div><div class="feet"><i></i><i></i></div></div></div>
-<div class="state-line"><span class="state-dot"></span><strong id="status" aria-live="polite">休息中</strong><span id="hint">选择状态，查看固件共用的眼睛绘制效果</span></div>
-<p class="caption" id="view-caption">外壳为概念预览 · 两眼均由 C++ 核心绘制 · 240 × 240 / 眼</p>
-<div class="expression-row"><span>看看它的表情</span><button data-demo="happy">开心</button><button data-demo="drowsy">困倦</button><button data-demo="curious">疑惑</button><button id="demo-exit">恢复真实状态</button></div><p id="demo-note" class="caption">演示表情仅在休息时可用，通话状态优先。</p>
+<section class="preview" aria-label="Pikoo eye preview"><div class="preview-top"><span class="badge">ESP32-S3 · DUAL EYE</span><button id="pixels" class="pill" aria-pressed="false">Actual pixels</button></div>
+<p id="graphics-warning" class="graphics-warning" role="status" hidden>Renderer unavailable. Retrying the silent preview…</p>
+<div class="pet-stage" id="stage"><div class="pet" id="screen" data-state="idle"><div class="ear left"></div><div class="ear right"></div><div class="body"><div class="visor"><div class="eye-frame"><canvas id="eye-left" width="240" height="240" aria-label="Left eye, 240 by 240 pixels"></canvas></div><div class="eye-frame"><canvas id="eye-right" width="240" height="240" aria-label="Right eye, 240 by 240 pixels"></canvas></div></div><div class="nose"></div><div class="pet-brand">pikoo</div></div><div class="feet"><i></i><i></i></div></div></div>
+<div class="state-line"><span class="state-dot"></span><strong id="status" aria-live="polite">Idle</strong><span id="hint">Select a state to preview the shared firmware renderer</span></div>
+<p class="caption" id="view-caption">Concept enclosure · shared C++ renderer · 240 × 240 per eye</p>
+<div class="expression-row"><span>Expressions</span><button data-demo="happy">Happy</button><button data-demo="drowsy">Drowsy</button><button data-demo="curious">Curious</button><button id="demo-exit">Use current state</button></div><p id="demo-note" class="caption">Expression demos are available while idle; active states take priority.</p>
 </section>
-<aside class="controls"><div class="eyebrow">本机无声预览</div><h2>Hi, Pikoo.</h2><p class="helper">只预览硬件状态和表情，不打开麦克风、播放声音或连接模型服务。</p>
-<div class="expression-row"><button data-state="idle">待机</button><button data-state="connecting">连接</button><button data-state="listening">聆听</button><button data-state="thinking">思考</button><button data-state="speaking">说话</button><button data-state="muted">静音</button><button data-state="offline">离线</button><button data-state="auth_error">配置错误</button></div>
-<details open><summary>绘制信息</summary><p id="renderer">连接本机 C++ 绘制进程…</p><p id="model-info">Agent 的协议、工具与性能测试使用独立无界面 C++ 模拟器。</p></details></aside></div>
+<aside class="controls"><div class="eyebrow">Silent local preview</div><h2>Hi, Pikoo.</h2><p class="helper">Preview device states and expressions without audio capture, playback or model requests.</p>
+<div class="expression-row"><button data-state="idle">Idle</button><button data-state="connecting">Connect</button><button data-state="listening">Listening</button><button data-state="thinking">Thinking</button><button data-state="speaking">Speaking</button><button data-state="muted">Muted</button><button data-state="offline">Offline</button><button data-state="auth_error">Configuration error</button></div>
+<details open><summary>Renderer</summary><p id="renderer">Connecting to the local C++ renderer…</p><p id="model-info">Agent protocol, tool and performance tests use the separate native C++ simulator.</p></details></aside></div>
 
-<footer>原生像素 · 本地唤醒 · 家庭共享对话 <span>屏幕设计预览 / 非硬件验收</span></footer>
-</main><script type="module" src="/eyes.mjs"></script><script type="module" src="/demo.mjs"></script></body></html>
+<footer>Native pixels · local wake · shared conversation <span>Display preview / hardware acceptance is separate</span></footer>
+</main><script type="module" src="/i18n.mjs"></script><script type="module" src="/eyes.mjs"></script><script type="module" src="/demo.mjs"></script></body></html>

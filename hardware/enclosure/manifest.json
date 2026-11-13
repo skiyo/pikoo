@@ -48,23 +48,17 @@
     }
   ],
   "validation": {
-    "original_delivery_digital_checks_complete": true,
-    "user_reported_print_and_assembly_passed": true,
-    "user_reported_home_use_passed": true,
-    "reported_on": "2026-10-27",
-    "evidence": "Project owner confirmed in this conversation that this exact design was printed, verified and usable at home.",
-    "independent_physical_verification": false,
-    "dedicated_drop_test": "not separately reported",
-    "slicer_time_and_material": "not separately recorded"
+    "scope": "Dimensions and geometry checks; each printed build requires physical acceptance.",
+    "drop_and_endurance_tests": "not certified"
   },
-  "source_integrity": "STL bytes match the original delivered files. No geometry, scale or orientation changes in this publication.",
+  "source_integrity": "STL file identities are recorded by SHA-256; verify scale and orientation before printing.",
   "guide": {
     "languages": [
-      "zh-CN",
-      "en"
+      "en",
+      "zh-CN"
     ],
     "switching": "in-place",
-    "initial_language": "saved cookie, then offline local preference, then first supported browser language, then Chinese",
+    "initial_language": "English, unless the user explicitly saved Chinese",
     "embedded_CAD_images": 10,
     "embedded_translations": true,
     "translation_network_requests": false,

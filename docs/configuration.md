@@ -14,7 +14,7 @@ python tools/device.py configure --port PORT --config /private/pikoo.json
 | Section | Fields |
 |---|---|
 | `wifi` | `ssid`, `password` (empty for an open network) |
-| `agent` | `name`, `language`, `instructions`; defaults to Pikoo / zh-CN when omitted |
+| `agent` | `name`, `language`, `instructions`; defaults to Pikoo / en when omitted |
 | `live` | `protocol`, full `url`, `api_key`, `model`, `voice` (marin), `audio_rate` (16000 or 24000) |
 | `llm` | `protocol`, full `url`, `api_key`, `model` |
 | `search` | `enabled`; if enabled: `protocol`, full `url`, `api_key`, and `model` for Responses; optional Tavily `extract_url` |
@@ -33,3 +33,5 @@ No API paths are appended. Empty `api_key` omits Authorization for services that
 Search is off in the example and requires no key until enabled. URL changes select a compatible deployment, not a different wire protocol. Unknown protocol IDs are rejected. Custom CA and alternative authentication header schemes are not implemented.
 
 [Official Live delegation](https://developers.openai.com/api/docs/guides/live-delegation) · [Responses search](https://developers.openai.com/api/docs/guides/tools-web-search) · [Tavily API](https://docs.tavily.com/)
+
+The default conversation language is English (`en`). Set `agent.language` to `zh-CN` for Chinese, then update the configuration over USB; no firmware rebuild is required.

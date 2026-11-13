@@ -1,38 +1,17 @@
-# 公开仓库审核
+# 公开仓库检查
 
 [English](public-audit.md) | **简体中文**
 
-审核日期：2026-11-13。技术性公开检查通过；模型分发权限仍待确认。不能据此把 Git 或已有发布包中的全部内容判定为已获分发许可。
+原创源码与文档采用 Apache-2.0，模型权重及第三方组件另有条款。
 
-## 已检查与修正
+## 技术检查
 
-- 在内存中用项目已知凭证检查了 1,995 个历史文件对象，没有命中，也未输出凭证值。结合 13 个仅远端存在的提交树，覆盖四个公开分支的可达历史，未剩余未知文件对象。已删除远端对象、他人 fork 与缓存不在覆盖范围内。
-- 使用官方校验值验证的 Gitleaks 8.30.1 扫描历史。唯一命中为历史浏览器存储命名空间误报；`.gitleaksignore` 只豁免该精确指纹。复核扫描通过，输出全部脱敏。
-- 检查已跟踪文件中的私密配置、NVS、整片 Flash、录音、模型校验和及本地 Markdown 链接；文档图片没有 EXIF 元数据；公开配置示例使用占位值。
-- 训练下载器取消强制第三方镜像和覆盖用户代理的行为，默认 Hugging Face 官方源，尊重操作者网络配置。
-- 当前主干服务端依赖原有 7 项 npm 漏洞公告，其中 3 项高危。更新兼容依赖并固定 MCP SDK 1.32.2 后，审计为 0 项已知漏洞；Node 24.22.3 下，使用临时假配置和回环夹具的 68 项服务端回归全部通过，没有调用云 API 或音频设备。新 Agent 分支已删除该服务端，其独立模拟器依赖审计同为 0 项。
-- 增加 `tools/check-public-repo.py` 和 CI 历史凭证脱敏扫描。脚本仅给出技术检查结论，并单独输出模型许可状态；运行时回归数量独立记录于发布文档。
+`tools/check-public-repo.py` 检查已跟踪文件、示例占位值、本地 Markdown 链接与模型校验和。CI 使用 Gitleaks 脱敏扫描历史。禁止提交凭证、设备备份、录音或用户数据；扫描通过不等于保证能识别所有可能的秘密信息。
 
-## 模型分发权限待确认
+## 模型权限
 
-[ChildMandarin 官方访问条款](https://huggingface.co/datasets/BAAI/ChildMandarin)限定学术、教育和非商业研究用途，并要求研究衍生物向研究组外分发前取得书面许可。条款未明确单列训练权重。目前尚未取得当前权重公开发布的书面授权，因此不能确认检查点、推理权重及内嵌模型固件的公开分发权限已经满足。
+推理权重和训练检查点保存在 [models/hi-pikoo](../models/hi-pikoo/README.md)。[ChildMandarin 访问条款](https://huggingface.co/datasets/BAAI/ChildMandarin)要求研究衍生物向研究组外分发前取得书面许可，但未明确单列训练权重。目前模型分发书面许可待确认，Git 中可以下载不代表授权已满足。
 
-[distribution-status.json](../models/hi-pikoo/distribution-status.json)记录受影响的模型摘要。`tools/package-release.py` 在该摘要对应的许可依据补齐前拒绝打包公开模型与固件。源码 Apache-2.0 和项目自己的非商业模型声明都不能覆盖上游限制；非商业模型条款也不属于 [OSI 定义的开源许可证](https://opensource.org/osd)。
+[distribution-status.json](../models/hi-pikoo/distribution-status.json)将状态绑定至模型摘要。取得并记录许可依据前，公开模型与固件打包被阻止。源码 Apache-2.0 不覆盖上游限制；非商业模型条款也不属于 OSI 定义的开源许可证。保留[数据来源](../models/hi-pikoo/ATTRIBUTION.md)和依赖许可。
 
-解决方式是取得明确覆盖模型分发的书面许可，或用权利清晰且兼容的来源重新训练并验证替代模型。本次审核没有擅自删除已有二进制、发布资产或重写历史。只删当前文件不能清除早期 Git 对象与发布下载；如要撤下，需协调覆盖这些位置。
-
-## 固件验收单独处理
-
-可配置服务的新架构已完成[验证与发布](release.zh-CN.md)记录的 HTTPS CONNECT 实机场景。当前网络未建立 OpenAI 直连会话，因此不认证直连板上并发资源。合成外放测试后已恢复原始家庭数据；没有录制电脑麦克风，没有新增公开二进制资产或版本标签。实机验收不消除模型授权缺口。
-
-## 复跑技术检查
-
-```sh
-python3 tools/check-public-repo.py
-python3 -m unittest discover -s tools -p test_public_repo.py
-gitleaks git --redact=100 --log-opts=--all
-# 在每个含 package-lock.json 的目录中运行：
-npm audit --omit=dev --ignore-scripts
-```
-
-对外描述完整仓库的分发状态时，须同时查看本报告与模型许可状态；保留上游版权、源码与模型条款，以及发布包实际包含的依赖许可文本。
+[工程验证](release.zh-CN.md)与分发权限分开判断。
