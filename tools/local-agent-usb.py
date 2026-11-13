@@ -26,32 +26,25 @@ def wait_for(port, prefix, seconds=15):
     raise SystemExit("Timed out waiting for the device. Close other USB monitors and retry.")
 
 
-def provision():
-    host = input("Mihomo TLS hostname: ").strip()
-    port = int(input("Mihomo TLS port [8443]: ").strip() or "8443")
-    audio_rate = int(input("GPT-Live PCM rate [16000]: ").strip() or "16000")
-    if audio_rate not in (16000, 24000):
-        raise SystemExit("PCM rate must be 16000 or 24000.")
-    name = input("Mihomo username: ").strip()
-    password = getpass.getpass("Mihomo password: ")
-    key = getpass.getpass("OpenAI device project key: ")
-    return json.dumps({"proxy_host": host, "proxy_port": port,
-                       "proxy_basic": base64.b64encode(f"{name}:{password}".encode()).decode(),
-                       "api_key": key, "audio_rate": audio_rate}, separators=(",", ":")).encode()
+def provision(config):
+    from configure import validate,prompt_config
+    value=validate(json.loads(config.read_text())) if config else prompt_config()
+    return json.dumps(value,ensure_ascii=False,separators=(",",":")).encode()
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", required=True, help="USB serial device")
-    parser.add_argument("operation", choices=("provision", "import", "export", "legacy", "forget", "reboot"))
+    parser.add_argument("operation", choices=("provision", "import", "export", "forget", "reboot"))
     parser.add_argument("file", type=Path, nargs="?")
+    parser.add_argument("--config",type=Path,help="Private versioned configuration for provision")
     args = parser.parse_args()
     if (args.operation in ("import", "export")) != (args.file is not None):
         parser.error("provide a file for import or export")
     if args.operation == "export" and args.file.exists():
         parser.error("choose a new output file")
     if args.operation == "provision":
-        payload = provision()
+        payload = provision(args.config)
     elif args.operation == "import":
         with args.file.open("rb") as source:
             data = source.read(2 * MAX_SNAPSHOT + 1)

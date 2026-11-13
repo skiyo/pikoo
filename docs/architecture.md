@@ -4,22 +4,31 @@
 
 ```mermaid
 flowchart LR
-    Device["ESP32-S3 · C++ Agent<br/>Wake · audio · sessions · tools"] <-->|"TLS + HTTP CONNECT"| Proxy["Mihomo<br/>TCP forwarding"]
-    Proxy <-->|"End-to-end OpenAI TLS"| Live["GPT-Live 1<br/>Listen · speak · interrupt"]
-    Live <-->|"Responses delegation"| Terra["GPT-6.1 Terra<br/>Reasoning · web search"]
-    Terra <-->|"Function calls / results via Live"| Device
-    Device <--> Store[("Device NVS<br/>Keys · lists · explicit memory · context")]
-    Device --> Eyes["Shared C++ eyes renderer"]
+    Hardware[Microphone / Speaker / Eyes / Button] <--> Agent[ESP32 C++ Agent]
+    Agent <--> Live[Configured Live service]
+    Agent <--> LLM[Configured reasoning service]
+    Agent <--> Search[Optional search service]
+    Agent <--> Store[(Local lists / memory / context)]
 ```
 
-The ESP32-S3 runs the C++ session, tool and storage core. Standby audio stays local. The ESP verifies Mihomo TLS, authenticates to the proxy, creates CONNECT to api.openai.com:443, then verifies OpenAI TLS inside that tunnel and sends its project key. The listener rejects other destinations.
+## Ownership and flow
 
-GPT-Live 1 handles speech. Native Responses delegation uses GPT-6.1 Terra for reasoning, tool selection and hosted search. Decisions classifies input fragments before they enter persistent context. Model inference runs on OpenAI.
+The device owns its lifecycle, tool registry, task state, cancellation and persistence. The Live adapter establishes a configured WSS session and uses **client delegation**. Classified transcripts and bounded context form a backend task. The configured LLM selects tools; the ESP validates and executes them, feeds results back, and returns verified facts to Live with the same delegation ID.
 
-Capture, AEC, wake and I²S retain their board implementation. PCM defaults to 16 kHz mono, with a selectable 24 kHz path and streaming conversion. Playback retains a bounded 900 ms prebuffer and generation-based cancellation. Reconnection never replays queued old audio.
+`pikoo_core` is platform-neutral: configuration, Live protocol, reasoning/search adapters, HTTP parsing and family state. `firmware/main` supplies verified TLS, an asynchronous HTTP worker, NVS and hardware. Only the session task modifies family state; the network worker returns immutable results tagged with request tokens.
 
-Device NVS stores replaceable OpenAI and proxy credentials separately from family data. Credentials are excluded from firmware and family exports. Family snapshots are limited to 24 KiB, with 32 entries per group, 512 UTF-8 bytes per entry, 12 recent text entries and 32 durable tool receipts. Two slots provide interrupted-write recovery. Automatic learning is disabled; corrections/deletion invalidate old text context.
+## Concurrency and bounds
 
-The macOS console avoids control-line changes on open. Firmware reattaches USB once at startup to recover the observed native USB reset failure. Detailed Agent traces are disabled by default. Desktop measurements and board TLS/I²S measurements are reported separately.
+Realtime audio never waits for HTTP work. One backend HTTP request runs at a time, with four model rounds and a 30-second overall task deadline; search has an eight-second deadline. Cancellation invalidates tokens, clears pending work and discards late results. HTTP responses are bounded to 64 KiB; normalized search results to 16 KiB. API redirects are not followed.
 
-The GCP 7 Gateway remains for older devices, graphical simulator voice and rollback. Its server-side memory and summarization are separate from local mode. See the [local deployment and verification record](local-agent.zh-CN.md).
+Within one delegation, the worker may reuse one fully consumed HTTP connection to the same HTTPS origin and proxy configuration. Each round has a separate result token; the delegation scope stays stable across LLM/search rounds. A new task, cancellation, an incomplete response, `Connection: close` or 15 seconds of inactivity discards the connection. Every request constructs its own Authorization header; credentials are not inherited from an earlier request. Failed POSTs are not automatically replayed.
+
+On ESP32-S3, cJSON nodes and buffers prefer PSRAM, retaining internal memory for Wi-Fi, TLS and audio DMA. The USB status reports internal-heap low water, largest free block, backend stack headroom and observed audio-queue peaks. These are board measurements, separate from native simulator RSS and timings.
+
+Audio is PCM16 mono at 16 or 24 kHz, with a 900 ms prebuffer and bounded PSRAM queue. Epoch changes discard old playback. The microphone stays local while idle and is disabled while muted. Idle and farewell release the voice connection.
+
+## Persistence
+
+Service configuration lives in replaceable ordinary `agent_secret` NVS. Family data uses two slots in `agent_data`: shopping/todo/memory each have 32 entries of at most 512 UTF-8 bytes, context has 12 fragments and write receipts have 32 IDs, within a 24 KiB snapshot. USB family export excludes credentials. The existing volume and orientation settings are retained separately.
+
+[Agent behavior](agent.md) · [Service configuration](configuration.md) · [Development](development.md)

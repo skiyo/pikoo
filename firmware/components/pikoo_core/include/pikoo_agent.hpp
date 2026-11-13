@@ -2,6 +2,7 @@
 #pragma once
 
 #include "cJSON.h"
+#include "pikoo_config.hpp"
 
 #include <cstdint>
 #include <functional>
@@ -25,8 +26,10 @@ public:
   explicit FamilyStore(Commit commit);
   bool load(const std::string &snapshot);
   std::string snapshot() const;
-  std::string call(const std::string &id, const std::string &name, const std::string &arguments);
-  bool remember_turn(const std::string &role, const std::string &content, bool append = false);
+  std::string call(const std::string &id, const std::string &name,
+                   const std::string &arguments);
+  bool remember_turn(const std::string &role, const std::string &content,
+                     bool append = false);
   bool clear_context();
   bool flush_history();
   Json history() const;
@@ -49,10 +52,15 @@ public:
     std::function<void()> interrupt = [] {};
     std::function<void()> interrupt_ack = [] {};
     std::function<void()> interrupt_resume = [] {};
+    std::function<void(const std::string &, const std::string &, uint64_t)>
+        delegate = [](const std::string &, const std::string &, uint64_t) {};
+    std::function<void()> cancel = [] {};
   };
 
   LiveAgent(FamilyStore &store, Output output);
+  void configure(const AgentConfig &config) { config_ = config; }
   void start(uint64_t now, bool greet, unsigned rate = Rate);
+  void result(const std::string &id, const std::string &content);
   void receive(const std::string &message, uint64_t now);
   void tick(uint64_t now);
   bool sleep_due(uint64_t now, bool playing) const;
@@ -65,15 +73,22 @@ private:
   std::string send(Json event);
   void record_reply(const cJSON *message, uint64_t now);
   void flush_turn();
-  void delegated(const cJSON *message, uint64_t now);
+  void dispatch(uint64_t now);
   void classify(const cJSON *message, uint64_t now);
   FamilyStore &store_;
   Output output_;
-  struct Call { std::string id, name, arguments; };
-  struct Batch { std::string id, response; uint64_t since; std::vector<Call> calls; };
-  std::vector<Batch> batches_;
+  AgentConfig config_;
+  std::string delegation_;
+  std::set<std::string> seen_delegations_;
+  std::vector<std::string> delegation_order_;
+  uint64_t addressed_serial_ = 0, dispatched_serial_ = 0;
+  uint64_t delegation_at_ = 0, addressed_at_ = 0;
   std::set<std::string> event_types_;
-  struct Input { std::string id, fragment; uint64_t at; bool stop_phrase; };
+  struct Input {
+    std::string id, fragment;
+    uint64_t at;
+    bool stop_phrase;
+  };
   std::vector<Input> inputs_;
   std::string reply_;
   std::string input_window_;
@@ -95,12 +110,13 @@ class LiveUpload24k {
 public:
   void reset() { have_previous_ = false; }
   size_t convert(const int16_t *input, size_t count, int16_t *out);
+
 private:
   int16_t previous_ = 0;
   bool have_previous_ = false;
 };
 
 bool safe_header(const std::string &value);
-std::string connect_request(const std::string &proxy_basic);
+
 int connect_status(const std::string &headers);
-}
+} // namespace pikoo

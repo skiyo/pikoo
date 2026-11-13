@@ -1,0 +1,33 @@
+name: Software checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  silent-host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: DaveGamble/cJSON
+          ref: v1.7.19
+          path: .ci/cJSON
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: firmware/simulator/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: sudo apt-get update && sudo apt-get install -y libssl-dev
+      - run: npm ci --ignore-scripts
+        working-directory: firmware/simulator
+      - run: bash tools/check.sh
+        env:
+          IDF_PATH: .ci
+          CJSON_SRC_DIR: .ci/cJSON
+      - run: bash tools/test-local-agent.sh --network --cycles 100
+        env:
+          IDF_PATH: .ci
+          CJSON_SRC_DIR: .ci/cJSON

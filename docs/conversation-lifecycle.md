@@ -1,11 +1,11 @@
-# Session lifecycle
-
-This page describes the retained GCP 7 Gateway mode. See [local Agent deployment](local-agent.zh-CN.md) for current ESP behavior and limits.
+# Conversation lifecycle
 
 **English** | [简体中文](conversation-lifecycle.zh-CN.md)
 
-Standby closes the eyes and keeps wake processing local. Wake connects/authenticates the Gateway and Live; readiness opens the eyes and submits the greeting as the first turn. CONNECTING is not a ready state. Authentication, quota or provider failures must remain visible.
+Idle audio stays on-device for wake detection. A wake opens the configured Live service; readiness enables upload and a brief greeting. The microphone and playback run independently of backend HTTP work.
 
-During conversation, the device continuously uploads microphone audio unless muted. Stop immediately clears playback without sleeping. Generation changes reject late audio. Disconnect clears all queued sound and uses bounded backoff; reconnect preserves the logical topic where valid.
+Interruption clears queued playback and cancels backend work. Transcript classification requires a complete stop/correction phrase, so a constraint such as “do not modify” must not cancel a read query. Late task tokens are discarded. Farewell waits for audible playback to drain, then closes the voice connection; ordinary inactivity closes it after 60 seconds. Explicit End clears short-term context, while idle sleep retains it.
 
-Native Live semantic idle uses the 60-second/15-second rules in [Live](openai-live.md). Explicit contextual farewell drains its answer then sleeps. Standby uploads no ambient sound. A new wake creates a fresh voice transport with saved text context. Device end/reset/identifier expiration and server text history are distinct state boundaries.
+Mute closes the session, clears playback and disables capture. Missing configuration never falls back to a different runtime. Authentication errors require fixing the corresponding service configuration; rate limits use backoff rather than repeated rapid retries.
+
+Farewell cancels backend work immediately while allowing the goodbye playback to drain. A clearly addressed new question cancels the farewell timer and resumes normal interaction.

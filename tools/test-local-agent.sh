@@ -21,12 +21,19 @@ fi
 "${CC:-cc}" "${opts[@]}" -Wno-deprecated-declarations -I"$json" -c "$json/cJSON.c" -o "$out/cJSON.o"
 "${CXX:-c++}" -std=c++17 "${opts[@]}" -I"$json" \
   -Ifirmware/components/pikoo_core/include -Ifirmware/components/pikoo_eyes/include \
-  firmware/simulator/local-agent.cpp firmware/components/pikoo_core/pikoo_agent.cpp \
+  firmware/simulator/local-agent.cpp firmware/components/pikoo_core/pikoo_agent.cpp firmware/components/pikoo_core/pikoo_config.cpp \
+  firmware/components/pikoo_core/pikoo_backend.cpp firmware/components/pikoo_core/pikoo_http.cpp \
   firmware/components/pikoo_eyes/eyes.cpp firmware/components/pikoo_eyes/eyes_fast.cpp \
   "$out/cJSON.o" "${crypto[@]}" -lcrypto -o "$out/local-agent"
-if [[ "${1:-}" == --network ]]; then
-  shift
-  python3 tools/test-local-agent-network.py "$out/local-agent" "$@"
+if [[ "${1:-}" == --services || "${1:-}" == --network ]]; then
+  mode="$1"; shift
+  "$out/local-agent" 0
+  "${CXX:-c++}" -std=c++17 "${opts[@]}" -I"$json" -Ifirmware/components/pikoo_core/include \
+    firmware/simulator/services-host.cpp firmware/components/pikoo_core/pikoo_agent.cpp \
+    firmware/components/pikoo_core/pikoo_config.cpp firmware/components/pikoo_core/pikoo_backend.cpp \
+    firmware/components/pikoo_core/pikoo_http.cpp "$out/cJSON.o" -o "$out/services-host"
+  if [[ "$mode" == --network ]]; then python3 tools/test-local-agent-network.py "$out/services-host" "$@"
+  else python3 tools/test-agent-services.py "$out/services-host" "$@"; fi
 else
   "$out/local-agent" "$@"
 fi

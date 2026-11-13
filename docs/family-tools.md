@@ -1,13 +1,9 @@
-# Family tools
-
-This page describes the retained GCP 7 Gateway mode. See [local Agent deployment](local-agent.zh-CN.md) for current ESP behavior and limits.
+# Tools
 
 **English** | [简体中文](family-tools.zh-CN.md)
 
-DeepSeek Search uses the configured `DEEPSEEK_API_KEY`, validates a 1–128 character query, requests 5 results by default (maximum 8) and applies an 8-second deadline without retry loops. Search results include title, URL, snippet and available publication time. Auth, credit and rate errors are reported as failures.
+`family_list` manages `shopping` and `todo`; `family_memory` manages `memory`. Operations are `list`, `add`, `remove`, `replace`, `clear`. Changes use exact entry text; `replace` needs a replacement; `clear` requires `confirmed=true`. Arguments are bounded and validated before committing.
 
-Public-page reading uses the existing safe fetcher: internal destinations are blocked, redirects revalidated, size bounded to 1 MiB / 12,000 text characters and total time to 8 seconds. Retrieved pages are data, not instructions to override the Agent.
+`web_search(query)` uses the configured search adapter and returns bounded facts with sources. Tavily extraction additionally registers `read_webpage(url)` for HTTPS URLs. Retrieved text is untrusted reference material and cannot replace Agent instructions. Service failures return errors to reasoning, rather than fabricated results. API redirects are not followed.
 
-Family notes support explicit add/query/update/delete/clear operations and persist by owner, separately from inferred memory. Ambiguous changes need clarification. Existing tools are selected by Terra through the Gateway runtime. New MCP integrations are possible extension work; no calendar, map or smart-home integration is implied.
-
-Tool IDs are durably reserved to reduce replay. A crash after a reservation can leave an uncertain result requiring inspection, rather than blindly repeating a side effect. Different IDs for the same request are not guaranteed exactly-once.
+Register extensions through a schema and executor in the shared core, then add failure, cancellation and persistence tests. A tool schema is not evidence of an integrated external product.

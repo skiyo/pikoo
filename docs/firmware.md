@@ -1,35 +1,38 @@
-# Firmware and USB setup
+# Firmware and USB
 
 **English** | [简体中文](firmware.zh-CN.md)
 
-Target: non-touch Waveshare ESP32-S3-DualEye-LCD-1.28, 16 MiB Flash and 8 MiB PSRAM. Use ESP-IDF 5.5.5 and the locked dependencies. The existing [public model bundle](https://github.com/skiyo/pikoo/releases/tag/v1.0.0) remains compatible when its model hash matches the frozen policy.
+## Build
+
+Target: non-touch Waveshare DualEye ESP32-S3, 16 MiB Flash and 8 MiB PSRAM. Use ESP-IDF 5.5.5 and locked components. [Obtain the model and build](getting-started.md); the firmware version defaults to `VERSION`. The release build disables detailed Agent tracing and diagnostic images.
+
+## USB workflow
+
+Use the IDF Python environment, install pyserial/esptool, select one board and close competing serial monitors. [Create and verify a complete Flash backup](../tools/device.py) before installation. A backup includes private credentials and must stay outside Git. Keep it for recovery to the same board.
 
 ```sh
-. /path/to/esp-idf/export.sh
-PIKOO_WAKE_POLICY=/absolute/path/wake-policy.json \
-bash tools/build-device.sh /absolute/path/hi_pikoo.tflite
+python tools/device.py backup --port PORT --backup /private/factory-backup
+python tools/device.py install --port PORT --build firmware/build-dualeye \
+  --backup /private/factory-backup --config /private/pikoo.json --dry-run
+python tools/device.py install --port PORT --build firmware/build-dualeye \
+  --backup /private/factory-backup --config /private/pikoo.json
+python tools/device.py upgrade --port PORT --build firmware/build-dualeye
+python tools/device.py configure --port PORT --config /private/pikoo.json
 ```
 
-The build does not access USB. Release builds disable detailed Agent tracing and benchmark options. Keep a verified full 16 MiB backup outside Git before flashing; that private backup includes any credentials already on the device.
-
-First migration from an older partition layout writes the new partition table and application while preserving existing NVS/model offsets. Use the installer's backup verification and dry-run. Later upgrades on the same layout write only the application. No full-chip erase or eFuse changes are required.
-
-For a new device, save a private Wi-Fi JSON configuration outside Git and pass it to the installer below. `tools/configure.py --local-agent` can also generate its NVS image separately. This mode requires no Gateway endpoint/token and rejects API secrets in the generated image. The installer JSON is `{"mode":"local","ssid":"your network","password":"your password"}`. Pass its private path to `tools/device.py install --config`, with a verified backup and build directory.
+Installation writes checked build images, then sends the unified configuration over USB. Same-layout upgrades write only the application; configuration changes only update configuration. Existing family data, volume and orientation are retained. A device without valid configuration shows USB SETUP and does not open a voice session. Do not erase the whole chip or burn eFuses.
 
 ```sh
-python tools/device.py install --port PORT --build firmware/build-dualeye --backup /private/factory-backup --config /private/device.json --dry-run
-python tools/device.py install --port PORT --build firmware/build-dualeye --backup /private/factory-backup --config /private/device.json
-python tools/device.py upgrade --port PORT --build firmware/build-dualeye
-python tools/local-agent-usb.py --port PORT provision
-python tools/local-agent-usb.py --port PORT reboot
 python tools/local-agent-usb.py --port PORT export /private/family.json
 python tools/local-agent-usb.py --port PORT import /private/family.json
+python tools/local-agent-usb.py --port PORT forget
+python tools/local-agent-usb.py --port PORT reboot
 ```
 
-Existing devices retain Wi-Fi settings. USB provision writes Mihomo connection settings and the OpenAI project key into replaceable ordinary NVS. Credentials are excluded from firmware and family exports. Reboot after updates/imports. `forget` removes credentials and disables local mode; `legacy` selects the retained Gateway mode, which requires valid legacy connection settings. Writes are accepted only in fully muted standby.
+Writes require muted standby. Import and forget need a reboot. `forget` deletes service configuration, including Wi-Fi, and preserves family data. Exports never contain service credentials. Provisioning must be repeated when installing this configuration format on a device without it.
 
-The default audio rate is 16 kHz mono PCM16, with a selectable 24 kHz path. Single press wakes/stops, double press ends a session, and hold mutes. RESET retains configuration. Volume survives upgrades; new-device default is -24 dB. Adjust it for the actual enclosure and distance.
+## Controls
 
-The macOS console avoids reset-line changes when opening. Firmware briefly reattaches USB at startup; the host may see the port re-enumerate. Use one serial monitor at a time.
+Press BOOT to wake or stop an answer, double-press to end and clear short-term context, hold to mute/unmute. RESET keeps saved settings. The default new-device speaker volume is -24 dB; existing volume stays unchanged. The USB assistant also adjusts volume and screen orientation.
 
-[Local Agent deployment and tests](local-agent.zh-CN.md) · [Hardware](hardware.md) · [Legacy GCP 7](gcp7.md)
+macOS console opening avoids unsolicited control-line resets. Application startup briefly reconnects the USB peripheral; one re-enumeration is expected. Do not run two serial monitors simultaneously.

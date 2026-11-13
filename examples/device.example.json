@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "wifi": {"ssid": "YOUR_WIFI", "password": "YOUR_WIFI_PASSWORD"},
+  "agent": {"name": "Pikoo", "language": "zh-CN", "instructions": "Keep answers concise and natural."},
+  "live": {"protocol": "openai_live", "url": "wss://voice.example.com/v1/live/sessions", "api_key": "YOUR_LIVE_KEY", "model": "YOUR_LIVE_MODEL", "voice": "marin", "audio_rate": 16000},
+  "llm": {"protocol": "openai_responses", "url": "https://llm.example.com/v1/responses", "api_key": "YOUR_LLM_KEY", "model": "YOUR_LLM_MODEL"},
+  "search": {"enabled": false},
+  "network": {}
+}

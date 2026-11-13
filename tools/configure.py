@@ -1,49 +1,85 @@
 #!/usr/bin/env python3
-"""Create a private NVS image and optionally provision via USB. Run in ESP-IDF env."""
-import argparse,csv,getpass,json,os,subprocess,sys,tempfile
+"""Validate or create a private, versioned Pikoo configuration. Never print secrets."""
+import argparse
+import base64
+import getpass
+import json
+import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
+LIMIT = 16384
+
+def endpoint(value, scheme):
+    if not isinstance(value, str) or len(value)>2048 or any(ord(c)<=32 or ord(c)>=127 for c in value) or '\\' in value:
+        raise ValueError('Invalid service URL')
+    try:
+        u=urlsplit(value)
+        if u.scheme!=scheme or not u.hostname or u.username or u.password or u.fragment or (u.port is not None and not 1<=u.port<=65535):
+            raise ValueError('Invalid service URL')
+        host=u.hostname
+        if ':' not in host and (len(host)>253 or host.startswith('.') or host.endswith('.') or any(not(c.isascii() and (c.isalnum() or c in '.-')) for c in host)):
+            raise ValueError('Invalid service hostname')
+    except (ValueError,UnicodeError):
+        raise ValueError('Invalid service URL') from None
+    return u
+
 def validate(c):
-    mode=c.get('mode','gateway')
-    if mode not in ('gateway','local'):raise ValueError('Unknown device mode')
-    if any(k in c for k in ('api_key','proxy_basic','proxy_password')):raise ValueError('Use local-agent-usb.py provision for agent secrets')
-    for key in ('ssid','password'):
-        if not isinstance(c.get(key),str) or '\0' in c[key]:raise ValueError('Missing/invalid '+key)
-    if not 1<=len(c['ssid'].encode())<=32:raise ValueError('SSID must fit 32 UTF-8 bytes')
-    if c['password'] and not 8<=len(c['password'].encode())<=63:raise ValueError('Wi-Fi password must be 8..63 bytes, or empty for an open network')
-    if mode=='local' and not c.get('endpoint') and not c.get('token'):return c
-    for key in ('endpoint','token'):
-        if not isinstance(c.get(key),str) or '\0' in c[key]:raise ValueError('Missing/invalid '+key)
-    u=urlsplit(c['endpoint'])
-    if u.scheme!='wss' or not u.hostname or u.username or u.password or u.fragment or u.path!='/api/realtime':raise ValueError('Use wss://HOST/api/realtime without credentials or fragments')
-    if u.query:raise ValueError('Device firmware generates the session ID; omit query parameters')
-    if not 1<=len(c['token'])<=2048 or any(x.isspace() for x in c['token']):raise ValueError('Invalid device credential')
+    if not isinstance(c,dict) or c.get('version')!=1 or isinstance(c.get('version'),bool):raise ValueError('Expected configuration version 1')
+    if len(json.dumps(c,ensure_ascii=False,separators=(',',':')).encode())>LIMIT:raise ValueError('Configuration is too large')
+    for section in ('wifi','agent','live','llm','search','network'):
+        if section in c and not isinstance(c[section],dict):raise ValueError('Invalid configuration section')
+        for key in ('ssid','password','name','language','instructions','protocol','url','api_key','model','voice','extract_url','proxy_url','proxy_basic'):
+            if key in c.get(section,{}) and (not isinstance(c[section][key],str) or '\0' in c[section][key]):raise ValueError('Invalid configuration string')
+    def bounded(value,maximum,required=True):
+        return isinstance(value,str) and '\0' not in value and len(value.encode())<=maximum and (not required or bool(value))
+    def secret(value):
+        return isinstance(value,str) and (not value or len(value)<=1024 and all(32<ord(ch)<127 for ch in value))
+    wifi=c.get('wifi',{})
+    if not bounded(wifi.get('ssid'),32) or not bounded(wifi.get('password'),63,False) or wifi['password'] and len(wifi['password'].encode())<8:raise ValueError('Invalid Wi-Fi settings')
+    agent=c.get('agent',dict(name='Pikoo',language='zh-CN',instructions=''))
+    if not bounded(agent.get('name'),64) or not bounded(agent.get('language'),32) or not bounded(agent.get('instructions',''),2048,False):raise ValueError('Invalid agent settings')
+    for name,protocols,scheme in [('live',['openai_live'],'wss'),('llm',['openai_responses','openai_chat_completions'],'https')]:
+        s=c.get(name,{})
+        if s.get('protocol') not in protocols:raise ValueError('Unsupported '+name+' protocol')
+        endpoint(s.get('url'),scheme)
+        if not secret(s.get('api_key','')) or not bounded(s.get('model'),128):raise ValueError('Invalid '+name+' settings')
+    live=c['live']
+    if type(live.get('audio_rate',16000)) is not int or live.get('audio_rate',16000) not in (16000,24000):raise ValueError('Invalid PCM rate')
+    if not bounded(live.get('voice','marin'),64):raise ValueError('Invalid voice')
+    search=c.get('search',{})
+    if type(search.get('enabled',False)) is not bool:raise ValueError('Invalid search enabled flag')
+    if search.get('enabled',False):
+        if search.get('protocol') not in ('tavily','openai_responses'):raise ValueError('Unsupported search protocol')
+        u=endpoint(search.get('url'),'https')
+        if not secret(search.get('api_key','')) or search['protocol']=='openai_responses' and not bounded(search.get('model'),128):raise ValueError('Invalid search settings')
+        if search.get('extract_url'):
+            e=endpoint(search['extract_url'],'https')
+            if search['protocol']!='tavily' or (e.hostname,e.port or 443)!=(u.hostname,u.port or 443):raise ValueError('Extraction must use the search origin')
+    network=c.get('network',{})
+    if network.get('proxy_url'):
+        p=endpoint(network['proxy_url'],'https')
+        if p.path not in ('','/') or p.query:raise ValueError('Proxy URL must be an HTTPS origin')
+    if not secret(network.get('proxy_basic','')) or network.get('proxy_basic') and not network.get('proxy_url'):raise ValueError('Invalid proxy settings')
     return c
 
+def prompt_config():
+    c=dict(version=1,wifi=dict(ssid=input('2.4 GHz Wi-Fi SSID: '),password=getpass.getpass('Wi-Fi password: ')),agent=dict(name='Pikoo',language='zh-CN',instructions=''))
+    c['live']=dict(protocol='openai_live',url=input('Live WSS endpoint: ').strip(),api_key=getpass.getpass('Live API key: '),model=input('Live model: ').strip(),voice=input('Voice [marin]: ').strip() or 'marin',audio_rate=16000)
+    protocol=input('LLM protocol: responses / chat [responses]: ').strip() or 'responses'
+    c['llm']=dict(protocol={'responses':'openai_responses','chat':'openai_chat_completions'}.get(protocol,protocol),url=input('LLM HTTPS endpoint: ').strip(),api_key=getpass.getpass('LLM API key: '),model=input('LLM model: ').strip())
+    c['search']=dict(enabled=False);c['network']={}
+    validate(c);return c
+
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--config',type=Path);p.add_argument('--output',type=Path,default=Path('config.nvs.bin'));p.add_argument('--port');p.add_argument('--dry-run',action='store_true');p.add_argument('--local-agent',action='store_true');a=p.parse_args();os.umask(0o077)
-    if a.config:c=json.loads(a.config.read_text())
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--config',type=Path);p.add_argument('--init',type=Path);p.add_argument('--dry-run',action='store_true');a=p.parse_args();os.umask(0o077)
+    if bool(a.config)==bool(a.init):p.error('choose --config to validate or --init to create a private configuration')
+    if a.init:
+        c=prompt_config();fd=os.open(a.init,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'w') as f:json.dump(c,f,ensure_ascii=False,indent=2);f.write('\n')
+        print('Private configuration saved. No USB or provider calls were made.')
     else:
-        c={'ssid':input('2.4GHz Wi-Fi name: '),'password':getpass.getpass('Wi-Fi password: ')}
-        if not a.local_agent:c.update(endpoint=input('Device WSS endpoint: '),token=getpass.getpass('Device token: '))
-    if a.local_agent:c['mode']='local'
-    validate(c)
-    if a.dry_run:print('Configuration is valid; no credential values displayed or written.');return
-    idf=Path(os.environ.get('IDF_PATH',''))
-    generator=idf/'components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py'
-    if not generator.is_file():raise SystemExit('Activate ESP-IDF 5.5.5 before provisioning')
-    a.output.parent.mkdir(parents=True,exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix='pikoo-config-') as tmp:
-        source=Path(tmp)/'nvs.csv'
-        with source.open('w',newline='') as f:
-            w=csv.writer(f);w.writerow(['key','type','encoding','value']);w.writerow(['pikoo','namespace','',''])
-            for key,value in c.items():
-                if key in ('ssid','password','endpoint','token'):w.writerow([key,'data','string',value])
-            if c.get('mode')=='local':
-                w.writerow(['edge','namespace','','']);w.writerow(['local_agent','data','u8','1'])
-        subprocess.run([sys.executable,str(generator),'generate',str(source),str(a.output.resolve()),'0x10000'],check=True,stdout=subprocess.DEVNULL)
-    a.output.chmod(0o600)
-    if a.port:subprocess.run([sys.executable,'-m','esptool','--chip','esp32s3','--port',a.port,'write_flash','0x9000',str(a.output.resolve())],check=True)
-    print('Private NVS image created. Keep it out of GitHub; it contains private Wi-Fi/device configuration.')
-if __name__=='__main__':main()
+        validate(json.loads(a.config.read_text()));print('Configuration is valid. No values displayed; no USB or provider calls were made.')
+if __name__=='__main__':
+    try:main()
+    except (ValueError,OSError,TypeError) as e:raise SystemExit(str(e))

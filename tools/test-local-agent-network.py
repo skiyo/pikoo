@@ -1,32 +1,8 @@
 #!/usr/bin/env python3
-"""Run a loopback-only, silent HTTPS CONNECT / TLS / Live WebSocket check."""
-import argparse
-import base64
-import contextlib
-import hashlib
-import json
-import os
+"""Loopback-only silent service/TLS/CONNECT tests with fake credentials."""
+import argparse,base64,contextlib,hashlib,json,os,select,socket,socketserver,ssl,struct,subprocess,tempfile,threading,time
 from pathlib import Path
-import select
-import socket
-import socketserver
-import ssl
-import struct
-import subprocess
-import sys
-import tempfile
-import threading
-import time
-
-TARGET = "api.openai.com"
-API = "fake-pikoo-api"
-PROXY = b"Basic " + base64.b64encode(b"fixture:proxy-only")
-PCM = base64.b64encode(struct.pack("<640h", *([31] * 640))).decode()
-STARTED = json.dumps({"type": "session.started", "session": {
-    "audio": {"format": {"type": "audio/pcm", "rate": 16000}}
-}}).encode()
-AUDIO = json.dumps({"type": "session.output_audio.delta", "delta": PCM}).encode()
-
+from urllib.parse import urlsplit
 
 def read_exact(stream, n):
     data = bytearray()
@@ -70,7 +46,7 @@ def read_frame(stream, masked=False):
 def certificate(directory, name):
     key, cert = (directory / f"{name}.{ext}" for ext in ("key", "pem"))
     subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
-                    "-subj", f"/CN={name}", "-keyout", str(key), "-out", str(cert)],
+                    "-subj", f"/CN={name}", "-addext", f"subjectAltName=DNS:{name}", "-keyout", str(key), "-out", str(cert)],
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(cert, key)
@@ -128,265 +104,197 @@ def serve(handler):
             thread.join()
 
 
-def live_fixture(tls, seen):
-    class Live(socketserver.BaseRequestHandler):
+VOICE='voice.fixture.test'
+REASON='reason.fixture.test'
+SEARCH='search.fixture.test'
+PROXY='proxy.fixture.test'
+PROXY_AUTH=b'Basic '+base64.b64encode(b'fixture:proxy-only')
+KEYS={VOICE:b'Bearer fake-voice-key',REASON:b'Bearer fake-reason-key',SEARCH:b'Bearer fake-search-key'}
+PCM=base64.b64encode(struct.pack('<640h',*([31]*640))).decode()
+errors=[];seen={VOICE:[],REASON:[],SEARCH:[],PROXY:[]}
+
+class Core:
+    def __init__(self,binary):self.p=subprocess.Popen([binary],stdin=subprocess.PIPE,stdout=subprocess.PIPE,text=True)
+    def call(self,op,**kw):
+        self.p.stdin.write(json.dumps(dict(op=op,**kw))+'\n');self.p.stdin.flush()
+        line=self.p.stdout.readline()
+        if not line:raise AssertionError('native core exited')
+        return json.loads(line)
+    def close(self):
+        self.p.stdin.close();self.p.stdout.close();assert self.p.wait(timeout=10)==0
+
+def fields(raw):return {k.lower():v.strip() for k,v in (line.split(b':',1) for line in raw.split(b'\r\n')[1:] if b':' in line)}
+def send_response(stream,status,body,chunked=False):
+    data=json.dumps(body).encode()
+    if chunked:
+        chunks=b''.join(f'{len(data[i:i+31]):x}\r\n'.encode()+data[i:i+31]+b'\r\n' for i in range(0,len(data),31))+b'0\r\n\r\n'
+        raw=f'HTTP/1.1 {status} Fixture\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n'.encode()+chunks
+    else:raw=f'HTTP/1.1 {status} Fixture\r\nContent-Length: {len(data)}\r\nConnection: close\r\n\r\n'.encode()+data
+    stream.sendall(raw)
+
+def fixture(name,tls):
+    class Handler(socketserver.BaseRequestHandler):
         def handle(self):
             try:
-                with tls.wrap_socket(self.request, server_side=True) as stream:
-                    self.session(stream)
-            except (EOFError, ssl.SSLError, ConnectionError):
-                pass
-
-        def session(self, stream):
-            request = header(stream)
-            assert request.startswith(b"GET /v1/live/sessions HTTP/1.1\r\n")
-            assert b"proxy-authorization" not in request.lower()
-            fields = dict(line.split(b": ", 1) for line in request.split(b"\r\n")[1:] if b": " in line)
-            auth = fields.get(b"Authorization")
-            seen.append(auth)
-            if auth != f"Bearer {API}".encode():
-                code = 429 if auth == b"Bearer busy-fixture" else 401
-                stream.sendall(f"HTTP/1.1 {code} Fixture\r\nContent-Length: 0\r\n\r\n".encode())
+                self.request.settimeout(5);self.request.setsockopt(socket.IPPROTO_TCP,socket.TCP_NODELAY,1)
+                with tls.wrap_socket(self.request,server_side=True) as stream:self.session(stream)
+            except (EOFError,ssl.SSLError,ConnectionError,OSError):pass
+            except Exception as e:errors.append(type(e).__name__+': '+str(e))
+        def session(self,stream):
+            raw=header(stream);f=fields(raw);auth=f.get(b'authorization');seen[name].append(auth)
+            assert b'proxy-authorization' not in f
+            if auth!=KEYS[name]:send_response(stream,429 if auth==b'Bearer rate-fixture' else 401,{});return
+            line=raw.split(b'\r\n')[0]
+            if name==VOICE:
+                assert line==b'GET /custom/live HTTP/1.1'
+                accept=base64.b64encode(hashlib.sha1(f[b'sec-websocket-key']+b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest())
+                stream.sendall(b'HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: '+accept+b'\r\n\r\n')
+                _,payload=read_frame(stream,True);session=json.loads(payload)['session'];assert session['model']=='fixture-live' and session['delegation']['type']=='client'
+                events=[dict(type='session.started',session=dict(audio=dict(format=dict(type='audio/pcm',rate=16000)))),
+                        dict(type='session.output_audio.delta',delta=PCM),
+                        dict(type='session.input_transcript.delta',event_id='input',delta='加入测试条目，然后搜索天气'),
+                        dict(type='decision.event',source_event_id='input',source_event_type='session.input_transcript.delta',event=dict(type='decision.completed',decision=dict(answers=[dict(name='interaction',choice='addressed')]))),
+                        dict(type='session.delegation.created',delegation=dict(id='network-task',target='client'))]
+                for e in events:frame(stream,json.dumps(e).encode())
+                read_frame(stream,True) # Keep voice TLS alive during backend HTTP work.
                 return
-            accept = base64.b64encode(hashlib.sha1(fields[b"Sec-WebSocket-Key"] +
-                b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11").digest())
-            stream.sendall(b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
-                           b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n")
-            opcode, payload = read_frame(stream, masked=True)
-            session = json.loads(payload)["session"]
-            assert opcode == 0x81 and session["model"] == "gpt-live-1"
-            frame(stream, STARTED)
-            if fields.get(b"X-Pikoo-Fixture") == b"partial":
-                # Force EOF halfway through a frame payload.
-                stream.sendall(b"\x81\x7e" + struct.pack("!H", len(AUDIO)) + AUDIO[:50])
-                return
-            # Deliver one fragmented JSON event with fixture PCM.
-            frame(stream, AUDIO[:50], opcode=0x01)
-            frame(stream, AUDIO[50:], opcode=0x80)
-    return Live
-
-
-def fixture_relay(port, names):
-    # A loopback-only SOCKS5 egress makes the fixed OpenAI authority resolve to
-    # the local mock, without modifying system DNS or contacting OpenAI.
-    class Socks(socketserver.BaseRequestHandler):
-        def handle(self):
-            try:
-                self.relay(self.request)
-            except (EOFError, ConnectionError):
-                pass
-
-        def relay(self, client):
-            assert read_exact(client, 1) == b"\x05"
-            methods = read_exact(client, read_exact(client, 1)[0])
-            assert 0 in methods
-            client.sendall(b"\x05\x00")
-            assert read_exact(client, 4) == b"\x05\x01\x00\x03"
-            name = read_exact(client, read_exact(client, 1)[0]).decode()
-            target_port = struct.unpack("!H", read_exact(client, 2))[0]
-            assert (name, target_port) == (TARGET, 443)
-            names.append(name)
-            with socket.create_connection(("127.0.0.1", port), timeout=5) as upstream:
-                client.sendall(b"\x05\x00\x00\x01\x7f\x00\x00\x01\x00\x00")
-                tail = b""
-                while True:
-                    readable, _, _ = select.select([client, upstream], [], [], 5)
-                    if not readable:
-                        return
-                    for src in readable:
-                        data = src.recv(16384)
-                        if not data:
-                            return
-                        if src is client:
-                            plain = API.encode()
-                            assert plain not in tail + data
-                            tail = (tail + data)[-(len(plain) - 1):]
-                        (upstream if src is client else client).sendall(data)
-    return Socks
-
-
-@contextlib.contextmanager
-def mihomo(binary, directory, config, port):
-    path = directory / "mihomo.json"
-    path.write_text(json.dumps(config))
-    with (directory / "mihomo.log").open("w+") as log:
-        process = subprocess.Popen([binary, "-d", directory, "-f", path], stdout=log, stderr=log)
-        try:
-            for _ in range(100):
-                if process.poll() is not None:
-                    log.seek(0)
-                    raise RuntimeError(log.read())
-                try:
-                    socket.create_connection(("127.0.0.1", port), timeout=.1).close()
-                    break
-                except OSError:
-                    time.sleep(.05)
+            assert line.startswith(b'POST /custom/')
+            data=json.loads(read_exact(stream,int(f[b'content-length'])))
+            if name==SEARCH:
+                if b'/tavily ' in line:body=dict(results=[dict(title='Fixture weather',url='https://source.fixture.test/weather',content='sunny')])
+                elif b'/extract ' in line:body=dict(results=[dict(url='https://source.fixture.test/weather',raw_content='public page')])
+                else:body=dict(status='completed',output=[dict(content=[dict(type='output_text',text='sunny',annotations=[dict(type='url_citation',url='https://source.fixture.test/weather',title='Weather')])])])
             else:
-                raise TimeoutError("Mihomo listener")
-            yield process
-        except Exception:
-            log.seek(0)
-            print(log.read()[-4000:], file=sys.stderr)
-            raise
-        finally:
-            process.terminate()
+                chat=b'/chat ' in line
+                continued=any(x.get('role')=='tool' for x in data.get('messages',[])) if chat else any(x.get('type')=='function_call_output' for x in data.get('input',[]))
+                if continued:
+                    assert 'source.fixture.test' in json.dumps(data)
+                    body=dict(choices=[dict(finish_reason='stop',message=dict(role='assistant',content='Completed from actual tool results.'))]) if chat else dict(status='completed',output=[dict(type='message',role='assistant',content=[dict(type='output_text',text='Completed from actual tool results.')])])
+                else:
+                    functions=[dict(name='family_list',arguments=json.dumps(dict(group='shopping',operation='add',entry='fixture item'))),dict(name='web_search',arguments=json.dumps(dict(query='weather')))]
+                    calls=[dict(type='function',id='call-'+str(i),function=f) for i,f in enumerate(functions)] if chat else [dict(type='function_call',call_id='call-'+str(i),**f) for i,f in enumerate(functions)]
+                    body=dict(choices=[dict(finish_reason='tool_calls',message=dict(role='assistant',content=None,tool_calls=calls))]) if chat else dict(status='completed',output=calls)
+            send_response(stream,200,body,chunked=True)
+    return Handler
+
+def proxy_fixture(tls,ports):
+    class Handler(socketserver.BaseRequestHandler):
+        def handle(self):
             try:
-                process.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
-
-
-def client_context(cert):
-    return ssl.create_default_context(cafile=str(cert))
-
+                self.request.settimeout(5)
+                with tls.wrap_socket(self.request,server_side=True) as client:
+                    raw=header(client);f=fields(raw);seen[PROXY].append(f.get(b'proxy-authorization'));assert b'authorization' not in f
+                    if f.get(b'proxy-authorization')!=PROXY_AUTH:client.sendall(b'HTTP/1.1 407 Proxy Authentication Required\r\nContent-Length: 0\r\n\r\n');return
+                    target=raw.split(b' ')[1].decode();host,port=target.rsplit(':',1)
+                    if host not in ports or int(port)!=ports[host]:client.sendall(b'HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n');return
+                    with socket.create_connection(('127.0.0.1',ports[host]),timeout=5) as upstream:
+                        client.sendall(b'HTTP/1.1 200 Connection established\r\n\r\n');tail=b''
+                        while True:
+                            ready=[client] if client.pending() else select.select([client,upstream],[],[],5)[0]
+                            if not ready:return
+                            for src in ready:
+                                data=src.recv(16384)
+                                if not data:return
+                                if src is client:
+                                    assert not any(key.split(b' ',1)[1] in tail+data for key in KEYS.values());tail=(tail+data)[-32:]
+                                (upstream if src is client else client).sendall(data)
+            except (EOFError,ssl.SSLError,ConnectionError,OSError):pass
+            except Exception as e:errors.append(type(e).__name__+': '+str(e))
+    return Handler
 
 @contextlib.contextmanager
-def tunnel(proxy_port, proxy_ca, upstream_ca, metrics=None, authority=f"{TARGET}:443", auth=PROXY):
-    start = time.perf_counter()
-    with socket.create_connection(("127.0.0.1", proxy_port), timeout=5) as sock:
-        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        with proxy_ca.wrap_socket(sock, server_hostname="localhost") as proxy:
-            outer = time.perf_counter()
-            headers = f"CONNECT {authority} HTTP/1.1\r\nHost: {authority}\r\n".encode()
-            if auth:
-                headers += b"Proxy-Authorization: " + auth + b"\r\n"
-            proxy.sendall(headers + b"\r\n")
-            response = header(proxy)
-            status = int(response.split(b" ")[1])
-            connected = time.perf_counter()
-            if status != 200:
-                yield status, None
-                return
-            inner = NestedTLS(proxy, upstream_ca, TARGET)
-            if metrics is not None:
-                metrics.append([(outer - start) * 1000, (connected - outer) * 1000,
-                                (time.perf_counter() - connected) * 1000])
-            yield status, inner
+def connect(host,ports,contexts,proxy_port=None,proxy_auth=PROXY_AUTH,wrong_certificate=False,wrong_inner=False,metrics=None):
+    started=time.perf_counter();outer_host=PROXY if proxy_port else host
+    ca=ssl.create_default_context(cafile=str(contexts[outer_host][1]))
+    if wrong_certificate:ca=ssl.create_default_context(cafile=str(contexts[SEARCH if host!=SEARCH else VOICE][1]))
+    with socket.create_connection(('127.0.0.1',proxy_port or ports[host]),timeout=5) as raw:
+        raw.setsockopt(socket.IPPROTO_TCP,socket.TCP_NODELAY,1)
+        with ca.wrap_socket(raw,server_hostname=outer_host) as stream:
+            outer=time.perf_counter();connected=outer
+            if proxy_port:
+                stream.sendall(f'CONNECT {host}:{ports.get(host,443)} HTTP/1.1\r\nHost: {host}\r\nProxy-Authorization: '.encode()+proxy_auth+b'\r\n\r\n')
+                status=int(header(stream).split(b' ')[1]);connected=time.perf_counter()
+                if status!=200:yield status,None;return
+                inner=ssl.create_default_context(cafile=str(contexts[SEARCH if wrong_inner else host][1]));tunnel=NestedTLS(stream,inner,host)
+            else:tunnel=stream
+            if metrics is not None:metrics.append([(outer-started)*1000,(connected-outer)*1000,(time.perf_counter()-connected)*1000])
+            yield 200,tunnel
 
+def upgrade(stream,port,key=b'Bearer fake-voice-key'):
+    nonce=base64.b64encode(os.urandom(16))
+    stream.sendall(f'GET /custom/live HTTP/1.1\r\nHost: {VOICE}:{port}\r\nAuthorization: '.encode()+key+b'\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: '+nonce+b'\r\n\r\n')
+    raw=header(stream);status=int(raw.split(b' ')[1])
+    if status==101:assert base64.b64encode(hashlib.sha1(nonce+b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest()) in raw
+    return status
 
-def upgrade(stream, auth, partial=False):
-    key = base64.b64encode(os.urandom(16))
-    stream.sendall(f"GET /v1/live/sessions HTTP/1.1\r\nHost: {TARGET}\r\n"
-                   f"Authorization: Bearer {auth}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
-                   "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: ".encode() + key + b"\r\n" +
-                   (b"X-Pikoo-Fixture: partial\r\n" if partial else b"") + b"\r\n")
-    response = header(stream)
-    if response.startswith(b"HTTP/1.1 101 "):
-        expect = base64.b64encode(hashlib.sha1(key + b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11").digest())
-        assert b"Sec-WebSocket-Accept: " + expect + b"\r\n" in response
-    return int(response.split(b" ")[1])
+def http_call(core,r,ports,contexts,proxy_port):
+    u=urlsplit(r['url'])
+    with connect(u.hostname,ports,contexts,proxy_port) as (status,stream):
+        assert status==200;data=r['body'].encode()
+        stream.sendall(f'POST {u.path} HTTP/1.1\r\nHost: {u.netloc}\r\nAuthorization: {r["authorization"]}\r\nContent-Length: {len(data)}\r\nConnection: close\r\n\r\n'.encode()+data)
+        core.call('http_begin')
+        while True:
+            chunk=stream.recv(127)
+            out=core.call('http_feed',data=chunk.decode('ascii'),eof=not chunk)
+            assert out['ok']
+            if out['done']:break
+        return core.call('complete',token=r['token'],status=out['status'],body=out['body'],now=120)
 
-
-def wire_call(wire, op, **arguments):
-    wire.stdin.write(json.dumps({"op": op, **arguments}) + "\n")
-    wire.stdin.flush()
-    return json.loads(wire.stdout.readline())
-
-
-def rejection(action, exception):
-    try:
-        with action():
-            pass
-    except exception:
-        return
-    raise AssertionError("unexpected certificate acceptance")
-
-
-def run(args):
-    auths, destinations, metrics, first = [], [], [], []
-    with tempfile.TemporaryDirectory(prefix="pikoo-net-") as temp, \
-            subprocess.Popen([args.core, "--wire"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True) as wire:
-        directory = Path(temp)
-        upstream_tls, upstream_cert, _ = certificate(directory, TARGET)
-        _, proxy_cert, proxy_key = certificate(directory, "localhost")
-        with serve(live_fixture(upstream_tls, auths)) as live_port, serve(fixture_relay(live_port, destinations)) as socks:
-            with socket.socket() as available:
-                available.bind(("127.0.0.1", 0))
-                port = available.getsockname()[1]
-            config = {"mode": "rule", "log-level": "info",
-                      "listeners": [{"name": "pikoo-edge", "type": "http", "listen": "127.0.0.1", "port": port,
-                                     "certificate": str(proxy_cert), "private-key": str(proxy_key),
-                                     "users": [{"username": "fixture", "password": "proxy-only"}]}],
-                      "proxies": [{"name": "fixture", "type": "socks5", "server": "127.0.0.1", "port": socks}],
-                      "rules": [f"AND,((IN-NAME,pikoo-edge),(DOMAIN,{TARGET}),(DST-PORT,443)),fixture",
-                                "IN-NAME,pikoo-edge,REJECT", "MATCH,REJECT"]}
-            outer, inner = client_context(proxy_cert), client_context(upstream_cert)
-            with mihomo(args.mihomo, directory, config, port):
-                rejection(lambda: tunnel(port, inner, inner), ssl.SSLCertVerificationError)
-                rejection(lambda: tunnel(port, outer, outer), ssl.SSLCertVerificationError)
-                with tunnel(port, outer, inner, auth=b"") as (status, _):
-                    assert status == 407, status
-                with tunnel(port, outer, inner, auth=b"Basic " + base64.b64encode(b"fixture:incorrect")) as (status, _):
-                    assert status == 403, status
-                for authority in ("blocked.test:443", f"{TARGET}:444"):
-                    before = len(destinations)
-                    try:
-                        with tunnel(port, outer, inner, authority=authority) as (status, _):
-                            assert status != 200
-                    except (EOFError, ConnectionError):
-                        # Mihomo may accept CONNECT, then close when routing
-                        # rejects the destination. No mock egress was reached.
-                        pass
-                    assert len(destinations) == before
-                for credential, expected in (("incorrect-fixture", 401), ("busy-fixture", 429)):
-                    with tunnel(port, outer, inner) as (status, stream):
-                        assert status == 200 and upgrade(stream, credential) == expected
-                with tunnel(port, outer, inner) as (status, stream):
-                    assert status == 200 and upgrade(stream, API, partial=True) == 101
-                    outgoing, = wire_call(wire, "connect")["send"]
-                    frame(stream, outgoing.encode(), masked=True)
-                    _, message = read_frame(stream)
-                    assert wire_call(wire, "receive", message=message.decode())["ready"]
-                    try:
-                        read_frame(stream)
-                    except (EOFError, ssl.SSLError, ConnectionError):
-                        pass
-                    else:
-                        raise AssertionError("incomplete frame was accepted")
-                    assert not wire_call(wire, "close")["queued"]
-            # Verify a dead proxy refuses, then restart on the same listener.
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument('services');ap.add_argument('--cycles',type=int,default=100,choices=range(1,1001));args=ap.parse_args()
+    metrics=[];started=time.perf_counter();cycles=0
+    with tempfile.TemporaryDirectory(prefix='pikoo-service-network-') as temp,contextlib.ExitStack() as stack:
+        directory=Path(temp);contexts={name:certificate(directory,name) for name in (VOICE,REASON,SEARCH,PROXY)}
+        ports={name:stack.enter_context(serve(fixture(name,contexts[name][0]))) for name in (VOICE,REASON,SEARCH)}
+        proxy_port=stack.enter_context(serve(proxy_fixture(contexts[PROXY][0],ports)))
+        core=Core(args.services)
+        try:
+            for i in range(args.cycles):
+                proxied=i%2==1;chat=(i//2)%2==1;hosted=(i//4)%2==1
+                c=json.loads((Path(__file__).resolve().parents[1]/'examples/device.example.json').read_text())
+                c['live'].update(url=f'wss://{VOICE}:{ports[VOICE]}/custom/live',api_key='fake-voice-key',model='fixture-live')
+                c['llm'].update(protocol='openai_chat_completions' if chat else 'openai_responses',url=f'https://{REASON}:{ports[REASON]}/custom/'+('chat' if chat else 'responses'),api_key='fake-reason-key',model='fixture-reason')
+                c['search']=dict(enabled=True,protocol='openai_responses' if hosted else 'tavily',url=f'https://{SEARCH}:{ports[SEARCH]}/custom/'+('responses' if hosted else 'tavily'),api_key='fake-search-key',model='fixture-search')
+                assert core.call('configure',config=c)['valid']
+                with connect(VOICE,ports,contexts,proxy_port if proxied else None,metrics=metrics) as (status,stream):
+                    assert status==200 and upgrade(stream,ports[VOICE])==101
+                    out=core.call('live_start',now=100);frame(stream,out['send'][0].encode(),True)
+                    request=None
+                    for _ in range(5):
+                        _,payload=read_frame(stream);out=core.call('receive',message=json.loads(payload),now=110)
+                        if out['requests']:request=out['requests'][0]
+                    assert request
+                    for _ in range(4):
+                        out=http_call(core,request,ports,contexts,proxy_port if proxied else None)
+                        if out['replies']:break
+                        request=out['requests'][0]
+                    assert out['replies'] and not out['busy']
+                    assert json.loads(out['snapshot'])['shopping']==['fixture item']
+                    frame(stream,out['send'][0].encode(),True)
+                cycles+=1
+            for key,expected in [(b'Bearer wrong-key',401),(b'Bearer rate-fixture',429)]:
+                with connect(VOICE,ports,contexts,proxy_port) as (_,stream):assert upgrade(stream,ports[VOICE],key)==expected
+            with connect(VOICE,ports,contexts,proxy_port,proxy_auth=b'Basic wrong') as (status,_):assert status==407
+            with connect('blocked.fixture.test',ports,contexts,proxy_port) as (status,_):assert status==403
             try:
-                with tunnel(port, outer, inner):
-                    raise AssertionError("dead proxy accepted connection")
-            except OSError:
-                pass
-            with mihomo(args.mihomo, directory, config, port):
-                for cycle in range(args.cycles):
-                    start = time.perf_counter()
-                    if cycle % 25 == 0:
-                        print(f"connection cycle {cycle + 1}/{args.cycles}", file=sys.stderr)
-                    with tunnel(port, outer, inner, metrics) as (status, stream):
-                        assert status == 200 and upgrade(stream, API) == 101
-                        outgoing, = wire_call(wire, "connect")["send"]
-                        frame(stream, outgoing.encode(), masked=True)
-                        opcode, message = read_frame(stream)
-                        assert opcode == 0x81 and wire_call(wire, "receive", message=message.decode())["ready"]
-                        assert not wire_call(wire, "drain")["queued"]
-                        opcode, first_part = read_frame(stream)
-                        assert opcode == 0x01
-                        opcode, last_part = read_frame(stream)
-                        assert opcode == 0x80
-                        assert wire_call(wire, "receive", message=(first_part + last_part).decode())["queued"] == 640
-                        first.append((time.perf_counter() - start) * 1000)
-                    assert not wire_call(wire, "close")["queued"]
-        wire.stdin.close()
-        assert wire.wait(timeout=3) == 0
-    assert auths.count(f"Bearer {API}".encode()) == args.cycles + 1 and set(destinations) == {TARGET}
-    def percentiles(values):
-        values = sorted(values)
-        return {str(p): round(values[(len(values) * p + 99) // 100 - 1], 3) for p in (50, 95)}
-    print(json.dumps({"cycles_passed": args.cycles, "proxy_restart": True,
-                      "outer_tls_ms": percentiles([m[0] for m in metrics]),
-                      "connect_ms": percentiles([m[1] for m in metrics]),
-                      "inner_tls_ms": percentiles([m[2] for m in metrics]),
-                      "first_pcm_ms": percentiles(first),
-                      "credentials_separated": True}))
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("core")
-    parser.add_argument("--mihomo", required=True)
-    parser.add_argument("--cycles", type=int, default=100, choices=range(1, 1001), metavar="1..1000")
-    run(parser.parse_args())
+                with connect(VOICE,ports,contexts,wrong_certificate=True):raise AssertionError('certificate accepted')
+            except ssl.SSLCertVerificationError:pass
+            try:
+                with connect(VOICE,ports,contexts,proxy_port,wrong_inner=True):raise AssertionError('inner certificate accepted')
+            except ssl.SSLCertVerificationError:pass
+            # Actual reasoning HTTP 401/429 must not run a supplied tool batch.
+            for auth in ['Bearer wrong-key','Bearer rate-fixture']:
+                r=core.call('start',id='http-fault',history=[],now=100)['requests'][0];r['authorization']=auth
+                out=http_call(core,r,ports,contexts,proxy_port)
+                assert out['replies'] and not out['requests']
+            # Close a tunnel mid-frame and establish a fresh connection.
+            with connect(VOICE,ports,contexts,proxy_port) as (_,stream):assert upgrade(stream,ports[VOICE])==101
+            with connect(VOICE,ports,contexts,proxy_port) as (_,stream):assert upgrade(stream,ports[VOICE])==101
+        finally:core.close()
+    assert not errors,errors
+    assert all(v for v in seen.values())
+    result=dict(cycles_passed=cycles,independent_service_credentials=True,direct_and_https_connect=True,llm_protocols=2,search_protocols=2,certificate_auth_and_disconnect_faults=True,wall_seconds=round(time.perf_counter()-started,3))
+    for index,name in enumerate(('outer_tls_ms','connect_ms','inner_tls_ms')):
+        values=sorted(x[index] for x in metrics);result[name]={'p50':round(values[(len(values)-1)//2],3),'p95':round(values[int((len(values)-1)*.95)],3)}
+    print(json.dumps(result))
+if __name__=='__main__':main()

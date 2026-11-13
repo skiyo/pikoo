@@ -3,7 +3,7 @@
 """One explicitly requested, local-only four-second TEST recording.
 
 Requires an existing owned USB monitor with a private raw log. No flashing,
-server/volume/topic changes, old-model selection or automatic capture loop.
+service/volume/context changes, old-model selection or automatic capture loop.
 The microphone stays MUTED on exit, including cancellation/failure.
 """
 import argparse

@@ -2,8 +2,7 @@
 // Blind diagnostic listening to bounded NEW fictional TRAIN/DEV clips only.
 // Output is not ground truth, a training label or a reason to delete hard DEV.
 const fs=require('fs'),path=require('path'),https=require('https'),crypto=require('crypto');
-const {createRequire}=require('module');const requireServer=createRequire(path.join(__dirname,'../server/package.json'));
-const WebSocket=requireServer('ws');const {cost,reserve,RESERVATION,tunnel}=require('./hi_pikoo_generate.cjs');
+const {cost,reserve,RESERVATION,tunnel}=require('./hi_pikoo_generate.cjs');
 const a={};for(let i=2;i<process.argv.length;i+=2)a[process.argv[i].slice(2)]=process.argv[i+1];
 function write(file,v){fs.writeFileSync(file+'.partial',JSON.stringify(v,null,2),{mode:0o600});fs.renameSync(file+'.partial',file);}
 function pcm24(file){
@@ -15,6 +14,7 @@ function pcm24(file){
  return out.toString('base64');
 }
 async function listen(key,audio){
+ const WebSocket=require('ws');
  const socket=await tunnel();const agent=new https.Agent({keepAlive:false});agent.createConnection=()=>socket;
  return new Promise((resolve,reject)=>{let text='',started=false,settled=false;const ws=new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-realtime-2.1-mini',{headers:{Authorization:'Bearer '+key},agent,handshakeTimeout:15000});
  const timer=setTimeout(()=>done(Error('audio-audit-timeout')),60000);

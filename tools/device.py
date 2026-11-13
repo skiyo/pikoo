@@ -63,8 +63,10 @@ def build_files(build):
     nvs = table['nvs']
     for start, p in files:
         end = start+((p.stat().st_size+4095)//4096)*4096
-        if start < nvs['offset']+nvs['size'] and end > nvs['offset']:
-            raise ValueError('Build images would overwrite private NVS')
+        for name in ('nvs','agent_secret','agent_data'):
+            protected=table.get(name)
+            if protected and start<protected['offset']+protected['size'] and end>protected['offset']:
+                raise ValueError('Build images would overwrite private NVS')
     return files, table
 
 
@@ -94,8 +96,8 @@ def write(port, images, keep_download=False):
 
 
 def serial_command(port, command, seconds=3):
-    import serial
-    s = serial.Serial(port=None, baudrate=115200, timeout=.1)
+    from usb_serial import ConsoleSerial
+    s = ConsoleSerial(port=None, baudrate=115200, timeout=.1)
     s.dtr = False
     s.rts = False
     s.port = port
@@ -137,15 +139,28 @@ def release_monitor(port):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('action', choices=['install', 'upgrade', 'configure', 'restore', 'diagnose'])
+    p.add_argument('action', choices=['backup','install', 'upgrade', 'configure', 'restore', 'diagnose'])
     p.add_argument('--port', required=True)
     p.add_argument('--build', type=Path, default=ROOT/'firmware/build-dualeye')
     p.add_argument('--config', type=Path)
     p.add_argument('--backup', type=Path)
-    p.add_argument('--command', default='status', choices=['status', 'wake', 'stop', 'end', 'mute', 'unmute', 'takeover', 'tone', 'volume low', 'volume normal', 'volume higher','volume louder','volume full','rotate 90','rotate 270','companion on','companion off']+[f'volume {db}' for db in range(-50,1)])
+    p.add_argument('--command', default='status', choices=['status', 'wake', 'stop', 'end', 'mute', 'unmute', 'tone', 'volume low', 'volume normal', 'volume higher','volume louder','volume full','rotate 90','rotate 270']+[f'volume {db}' for db in range(-50,1)])
     p.add_argument('--dry-run', action='store_true')
     a = p.parse_args()
     os.umask(0o077)
+    if a.action=='backup':
+        if not a.backup:p.error('--backup must name a new private backup directory')
+        if a.backup.exists():p.error('Choose a new backup directory')
+        if a.dry_run:print('Backup destination validated; no device accessed.');return
+        release_monitor(a.port);a.backup.mkdir(parents=True,mode=0o700)
+        raw=a.backup/'factory-full.bin'
+        esptool(a.port,'read_flash','0x0',hex(FLASH_SIZE),raw,'--no-progress')
+        if raw.stat().st_size!=FLASH_SIZE:raise ValueError('Incomplete backup')
+        esptool(a.port,'verify_flash','0x0',raw)
+        raw.chmod(0o600)
+        (a.backup/'manifest.json').write_text(json.dumps({'full_backup_sha256':hashlib.sha256(raw.read_bytes()).hexdigest(),'bytes':FLASH_SIZE},indent=2)+'\n')
+        print('Full Flash backup saved and verified. It contains private data; keep it outside Git.')
+        return
     if a.action == 'diagnose':
         if not a.dry_run:
             monitor = registered_socket(a.port)
@@ -170,14 +185,19 @@ def main():
         esptool(a.port, '--before', 'no_reset', 'verify_flash', '0x0', backup)
         print('All 16 MiB restored and verified against the factory backup.')
         return
-    files, table = build_files(a.build)
-    if a.action in ('install', 'configure'):
+    if a.action in ('install','configure') or a.config:
         from configure import validate
-        if not a.config:
-            p.error('Private --config is required; create it with the local setup tool')
+        if not a.config:p.error('Private --config is required')
         validate(json.loads(a.config.read_text()))
+    if a.action=='configure':
+        if a.dry_run:print('Private configuration validated; no device accessed.');return
+        release_monitor(a.port)
+        subprocess.run([sys.executable,str(ROOT/'tools/local-agent-usb.py'),'--port',a.port,'provision','--config',str(a.config)],check=True)
+        subprocess.run([sys.executable,str(ROOT/'tools/local-agent-usb.py'),'--port',a.port,'reboot'],check=True)
+        return
+    files,table=build_files(a.build)
     if a.dry_run:
-        print('Dual-eye build, image ranges, partition layout and private inputs validated; no device accessed.')
+        print('Build, image ranges, partition layout and private inputs validated; no device accessed.')
         return
     release_monitor(a.port)
     # Both operations inspect the device layout first. Installation also proves
@@ -189,22 +209,16 @@ def main():
         if a.action in ('upgrade', 'configure'):
             if actual != table:
                 raise ValueError('Device partition layout differs. Use the backed-up first-install flow.')
-            if a.action == 'configure':
-                nvs = Path(tmp)/'private.nvs.bin'
-                subprocess.run([sys.executable, str(ROOT/'tools/configure.py'), '--config', str(a.config), '--output', str(nvs)], check=True, stdout=subprocess.DEVNULL)
-                write(a.port, [(table['nvs']['offset'], nvs)])
-                print('Private configuration updated; existing conversation identifier cleared.')
-                return
             application = [(offset, f) for offset, f in files if offset == table['factory']['offset']]
             if len(application) != 1 or application[0][1].stat().st_size > table['factory']['size']:
                 raise ValueError('Invalid application image')
             write(a.port, application)
         else:
             esptool(a.port, '--before', 'no_reset', '--after', 'no_reset', 'verify_flash', '0x0', backup)
-            nvs = Path(tmp)/'private.nvs.bin'
-            subprocess.run([sys.executable, str(ROOT/'tools/configure.py'), '--config', str(a.config), '--output', str(nvs)], check=True, stdout=subprocess.DEVNULL)
-            # All required images exist before entering the one write operation.
-            write(a.port, files+[(table['nvs']['offset'], nvs)])
+            write(a.port,files)
+    if a.config:
+        subprocess.run([sys.executable,str(ROOT/'tools/local-agent-usb.py'),'--port',a.port,'provision','--config',str(a.config)],check=True)
+        subprocess.run([sys.executable,str(ROOT/'tools/local-agent-usb.py'),'--port',a.port,'reboot'],check=True)
     print('Pikoo restarted. Run diagnose to inspect startup without exposing credentials.')
 
 

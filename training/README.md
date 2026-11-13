@@ -49,3 +49,6 @@ python3 tools/check_wake_policy.py --model /absolute/models/hi_pikoo.tflite --po
 ```
 
 Use the correct Micro backend for agreement. Device inference/arena numbers, full concurrent audio/display behavior, natural-rate family recall and continuous background false wakes are different checks. Do not reset the audio frontend between negative clips in a continuous playback trial. Formal real-child/8-hour/72-hour acceptance remains incomplete; see the model card.
+
+
+Optional Node-based synthesis and audit tools use their own locked dependency: run `npm ci --ignore-scripts` in `training/` before explicit generation. Importing planning/unit-test modules does not access providers.
