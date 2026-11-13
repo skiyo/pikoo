@@ -48,3 +48,5 @@ OpenAI Live/Responses and Google Gemini are external model services. DeepSeek Se
 The current weights are downloadable release assets with [separate non-commercial model terms](models/hi-pikoo/LICENSE.md), a [model card](models/hi-pikoo/MODEL_CARD.md) and [source attribution](models/hi-pikoo/ATTRIBUTION.md). ChildMandarin, LibriSpeech, ESC-50, reviewed public speech and synthetic provider outputs contribute to the current model; original audio is not redistributed. ChildMandarin's gated conditions do not expressly name trained weights. Do not interpret attribution as an assertion of all additional permissions.
 
 Original Pikoo code, graphics and documentation use Apache-2.0. This does not relicense third-party source, data, provider models or the published wake weights. Binary release packages include the actual bundled dependency license texts.
+
+Model redistribution clearance remains pending: no written authorization for publishing the ChildMandarin-trained weights has been obtained. See [distribution status](models/hi-pikoo/distribution-status.json). Non-commercial model terms are not an OSI open-source license and do not resolve upstream restrictions.

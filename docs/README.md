@@ -17,3 +17,5 @@
 - [Release verification](release.md)
 
 [Server deployment](../server/README.md) · [Model training](../training/README.md) · [Model card](../models/hi-pikoo/MODEL_CARD.md)
+
+[Public repository audit and licensing boundary](public-audit.md)

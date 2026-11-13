@@ -4,7 +4,7 @@
   "type": "module",
   "version": "2.0.0",
   "engines": {
-    "node": ">=24"
+    "node": "^24.15.0 || >=26.0.0"
   },
   "scripts": {
     "test": "node --test *.test.mjs",
@@ -23,5 +23,8 @@
   "homepage": "https://github.com/skiyo/pikoo",
   "bugs": {
     "url": "https://github.com/skiyo/pikoo/issues"
+  },
+  "overrides": {
+    "@modelcontextprotocol/sdk": "1.32.2"
   }
 }

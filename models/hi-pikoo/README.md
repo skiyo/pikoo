@@ -1,8 +1,8 @@
 # Hi Pikoo wake model · 唤醒模型
 
-The reviewed weights are included directly in this directory. Clone the repository or open a file below and choose **Download raw file**. Git LFS is not required.
+The weights are included directly in this directory. Technical checks do not establish redistribution permission. **Model publication clearance is pending**: no written permission for publishing weights trained using ChildMandarin has been obtained. Its access terms restrict research-derivative distribution and do not expressly name trained weights. See [distribution status](distribution-status.json); do not treat these weights or firmware embedding them as cleared for redistribution or commercial use.
 
-已审核权重直接保存在本目录。克隆仓库即可取得，也可打开文件后选择 **Download raw file** 下载，无须 Git LFS。
+权重直接保存在本目录，无须 Git LFS。技术校验不代表获得分发授权。**模型公开分发权限待确认**：尚未取得针对 ChildMandarin 训练权重公开发布的书面许可；其访问条款限制研究衍生物向研究组外分发，但未明确单列训练权重。见[分发状态](distribution-status.json)。不能将这些权重或内嵌权重的固件视为已获再分发或商用许可。
 
 | File / 文件 | Purpose / 用途 |
 |---|---|

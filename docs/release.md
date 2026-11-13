@@ -13,3 +13,5 @@ See [measurements and commands](local-agent.zh-CN.md) and [sanitized results](ve
 Build with the [firmware guide](firmware.md), with detailed Agent tracing disabled. The existing public model bundle remains compatible when its hash matches the policy. `tools/package-release.py` packages tracked source, firmware, USB tools, model, checkpoint, licenses and checksums; private inputs remain outside Git. Never publish private NVS, Wi-Fi, API/proxy credentials, family profiles or recordings. Original code/artwork uses Apache-2.0; model-containing firmware retains separate model and dependency terms.
 
 Export new family data before rollback. Keep a verified backup for the same board and the legacy connection configuration. Start the compatibility Gateway before selecting legacy mode over USB.
+
+Public model/firmware packaging is blocked while [model redistribution permission](../models/hi-pikoo/distribution-status.json) is pending. See the [publication audit](public-audit.md). Technical test success does not grant upstream rights.

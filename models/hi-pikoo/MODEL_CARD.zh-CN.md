@@ -2,6 +2,8 @@
 
 [English](MODEL_CARD.md) | **简体中文**
 
+**公开分发权限待确认。** 尚未取得 ChildMandarin 训练权重公开发布的书面许可。其访问条款限制研究衍生物在未经书面许可时向研究组外分发，但未明确单列训练权重。检查点、推理权重及内嵌权重的固件均受此次审核影响，见[分发状态](distribution-status.json)。技术测试结果不代表分发许可。
+
 当前模型用于完整的 **Hi + piku / piko**。完整 Hi Tikoo/Tiko 的偶发唤醒可接受，但不承诺召回。单独 Hi、单独名字、缺词和普通讲话不是目标。
 
 模型 98,064 字节，16kHz 单声道 PCM16，40 维 microfrontend；INT8 `[1,3,40]` 流式输入、UINT8 标量概率输出。每 30ms 推理，最近 3 次平均概率达到 0.90 触发。精确摘要与前端指纹见 [wake-policy.json](wake-policy.json)。

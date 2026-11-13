@@ -80,3 +80,5 @@ ESP 用 C++ 运行 Agent 会话、工具和持久化，通过两层 TLS 与 Open
 [贡献](CONTRIBUTING.zh-CN.md) · [安全](SECURITY.zh-CN.md) · [第三方来源](THIRD_PARTY.zh-CN.md) · [发布检查](docs/release.zh-CN.md)
 
 原创代码、眼睛图形及文档采用 **Apache-2.0**。唤醒权重和包含权重的固件附有[独立非商业模型条款](models/hi-pikoo/LICENSE.md)。第三方组件和训练数据保留各自条款，Apache 许可不替代这些条款。不分发训练音频、家庭录音、私人资料或凭证。
+
+**模型公开分发权限待确认。** ChildMandarin 训练权重及内嵌权重的固件，不能由源码许可证获得授权。见[公开审核](docs/public-audit.zh-CN.md)与[模型分发状态](models/hi-pikoo/distribution-status.json)。

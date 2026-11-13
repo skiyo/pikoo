@@ -80,3 +80,5 @@ Online speech requires your own server, model API access and network egress; mod
 [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Third-party sources](THIRD_PARTY.md) · [Release verification](docs/release.md)
 
 Original source, eye artwork and documentation: **Apache-2.0**. Wake weights and firmware containing them have [separate non-commercial model terms](models/hi-pikoo/LICENSE.md). Third-party components and training datasets retain their terms; the Apache license does not replace them. No training audio, family recordings, personal profiles or credentials are distributed.
+
+**Model redistribution permission is pending.** ChildMandarin-trained weights and firmware embedding them are not cleared by the source license. See the [public audit](docs/public-audit.md) and [model distribution status](models/hi-pikoo/distribution-status.json).

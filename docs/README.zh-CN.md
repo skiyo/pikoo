@@ -18,3 +18,5 @@
 - [发布检查](release.zh-CN.md)
 
 [服务端部署](../server/README.zh-CN.md) · [模型训练](../training/README.zh-CN.md) · [模型卡](../models/hi-pikoo/MODEL_CARD.zh-CN.md)
+
+[公开仓库审核与许可边界](public-audit.zh-CN.md)
