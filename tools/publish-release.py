@@ -74,6 +74,7 @@ def cleanup():
         api(ref,'DELETE');print('Removed merged branch:',b['name'])
 def publish():
     v=version();tag='v'+v;head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip();out=ROOT/'dist'
+    if api('branches/main')['commit']['sha']!=head:raise ValueError('Main changed; publish only the current checked revision')
     try:release=api('releases/tags/'+tag)
     except urllib.error.HTTPError as e:
         if e.code!=404:raise

@@ -149,7 +149,6 @@
     "Actual board services tested are OpenAI Live and Responses. Chat Completions/Tavily and independently hosted endpoints are covered by fake-provider fixtures, not additional paid production accounts.",
     "The eight-hour PCM and backend workload is accelerated desktop replay, not an eight-hour board soak. Final board stream window is 120 seconds with additional fault scenarios.",
     "Fixed synthetic wake/speech trials are not household/child recall, false-wake, subjective sound, enclosure acoustics, physical power-cut or long-duration family acceptance.",
-    "No new public model or firmware bundle or tag was created. Model redistribution permission is still pending.",
     "Transport variants and providers require validation in their target deployment."
   ],
   "firmware": {
@@ -175,5 +174,6 @@
       "device_flashed": false,
       "notes": "English default and bilingual interaction changes cross-compiled and tested natively; board measurements above identify the separately recorded board image."
     }
-  }
+  },
+  "model_publication_status": "maintainer_confirmed"
 }
