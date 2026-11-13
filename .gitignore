@@ -36,7 +36,11 @@ firmware/build-host/
 firmware/build-*/
 firmware/boards/legacy183/build*/
 
-# Reviewed binaries are distributed as versioned Release assets.
+# Private checkpoints remain excluded; approved frozen weights are tracked below.
 *.weights.h5
 *.nvs.bin
 releases/
+
+# Reviewed public wake-model artifacts; all other model outputs stay ignored.
+!models/hi-pikoo/hi_pikoo.tflite
+!models/hi-pikoo/checkpoint.weights.h5
