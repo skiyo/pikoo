@@ -21,6 +21,10 @@ The device owns its lifecycle, tool registry, task state, cancellation and persi
 
 Realtime audio never waits for HTTP work. One backend HTTP request runs at a time, with four model rounds and a 30-second overall task deadline; search has an eight-second deadline. Cancellation invalidates tokens, clears pending work and discards late results. HTTP responses are bounded to 64 KiB; normalized search results to 16 KiB. API redirects are not followed.
 
+Within one delegation, the worker may reuse one fully consumed HTTP connection to the same HTTPS origin and proxy configuration. Each round has a separate result token; the delegation scope stays stable across LLM/search rounds. A new task, cancellation, an incomplete response, `Connection: close` or 15 seconds of inactivity discards the connection. Every request constructs its own Authorization header; credentials are not inherited from an earlier request. Failed POSTs are not automatically replayed.
+
+On ESP32-S3, cJSON nodes and buffers prefer PSRAM, retaining internal memory for Wi-Fi, TLS and audio DMA. The USB status reports internal-heap low water, largest free block, backend stack headroom and observed audio-queue peaks. These are board measurements, separate from native simulator RSS and timings.
+
 Audio is PCM16 mono at 16 or 24 kHz, with a 900 ms prebuffer and bounded PSRAM queue. Epoch changes discard old playback. The microphone stays local while idle and is disabled while muted. Idle and farewell release the voice connection.
 
 ## Persistence

@@ -23,7 +23,7 @@ Resolving this requires written authorization covering model distribution, or re
 
 ## Firmware acceptance is separate
 
-The new service-configurable architecture remains on its development branch pending real-board resource checks. Prior firmware's physical tests do not certify the new architecture. No device was connected, flashed, recorded or played during this review. No new release or version tag was created.
+The service-configurable architecture has now completed the real-board scenarios documented in [verification and release](release.md), using configured HTTPS CONNECT. Direct OpenAI did not establish a session in this network, so direct board concurrency is not certified. Original family data was restored after synthetic speaker tests. No host microphone recording, new public binary asset or version tag was created. Hardware acceptance does not resolve the model permission gap.
 
 ## Repeat the technical checks
 

@@ -5,6 +5,7 @@ namespace pikoo {
 struct HttpRequest {
   uint64_t token = 0, deadline = 0;
   std::string url, authorization, body;
+  uint64_t scope = 0; // Stable across HTTP rounds; changes on new delegation.
 };
 struct HttpResult {
   uint64_t token = 0;
@@ -40,6 +41,7 @@ public:
   void cancel();
   bool busy() const { return !id_.empty(); }
   uint64_t token() const { return token_; }
+  uint64_t scope() const { return busy() ? scope_ : 0; }
   ToolRegistry &tools() { return tools_; }
   // Extensions deliver results on the session task with the captured token.
   bool complete_tool(uint64_t token, const std::string &id,
@@ -66,7 +68,7 @@ private:
   std::vector<Call> calls_;
   size_t call_ = 0;
   unsigned rounds_ = 0;
-  uint64_t token_ = 0, deadline_ = 0;
+  uint64_t token_ = 0, deadline_ = 0, scope_ = 0;
 };
 Json tool_schemas(bool search, bool extract);
 } // namespace pikoo

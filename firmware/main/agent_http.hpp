@@ -5,5 +5,8 @@
 namespace pikoo {
 HttpResult service_request(const HttpRequest &request,
                            const NetworkConfig &network,
-                           const std::atomic<uint64_t> &current);
+                           const std::atomic<uint64_t> &current,
+                           const std::atomic<uint64_t> &scope);
+// Called only by the single backend worker. Cancelled/idle connections expire.
+void service_request_idle(const std::atomic<uint64_t> &current);
 }

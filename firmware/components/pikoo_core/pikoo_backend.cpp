@@ -93,6 +93,7 @@ void BackendAgent::cancel() {
 void BackendAgent::start(const std::string &id, const std::string &history,
                          uint64_t now) {
   cancel();
+  scope_ = token_;
   if (id.empty() || id.size() > 128)
     return;
   id_ = id;
@@ -190,7 +191,7 @@ void BackendAgent::llm(uint64_t now) {
     return;
   }
   request_({++token_, deadline_, config_.llm.url, config_.llm.authorization(),
-            payload});
+            payload, scope_});
 }
 void BackendAgent::complete(const HttpResult &r, uint64_t now) {
   if (!busy() || r.token != token_)
@@ -421,6 +422,6 @@ void BackendAgent::search(const std::string &name, const std::string &arguments,
   waiting_ = extract ? Waiting::Extract : Waiting::Search;
   request_({++token_, std::min(deadline_, now + 8000),
             extract ? config_.extract_url : config_.search.url,
-            config_.search.authorization(), json(body.get())});
+            config_.search.authorization(), json(body.get()), scope_});
 }
 } // namespace pikoo

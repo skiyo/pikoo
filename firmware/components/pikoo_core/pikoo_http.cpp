@@ -25,6 +25,8 @@ bool HttpResponse::consume() {
     status_ = std::atoi(pending_.substr(9, 3).c_str());
     if (status_ < 200 || status_ > 599)
       return fail();
+    keep_alive_ = pending_.compare(0, 8, "HTTP/1.1") == 0;
+    bool connection_close = false;
     auto pos = pending_.find("\r\n") + 2;
     while (pos < end) {
       auto next = pending_.find("\r\n", pos);
@@ -60,10 +62,30 @@ bool HttpResponse::consume() {
       }
       if (name == "content-encoding" && value != "identity")
         return fail();
+      if (name == "connection") {
+        std::transform(value.begin(), value.end(), value.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+        size_t start = 0;
+        while (start < value.size()) {
+          auto end = value.find(',', start);
+          auto token = value.substr(start, end - start);
+          const auto first = token.find_first_not_of(" \t");
+          if (first != std::string::npos)
+            token = token.substr(first, token.find_last_not_of(" \t") - first + 1);
+          if (token == "close")
+            connection_close = true;
+          if (token == "keep-alive")
+            keep_alive_ = true;
+          if (end == std::string::npos)
+            break;
+          start = end + 1;
+        }
+      }
       pos = next + 2;
     }
     if (chunked_ && has_length_)
       return fail();
+    keep_alive_ = keep_alive_ && !connection_close;
     pending_.erase(0, end + 4);
     headers_ = true;
   }
@@ -121,6 +143,7 @@ bool HttpResponse::consume() {
   return true;
 }
 bool HttpResponse::eof() {
+  keep_alive_ = false;
   if (failed_ || !headers_ || (chunked_ && !done_) ||
       (has_length_ && body_.size() != length_))
     return fail();

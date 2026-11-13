@@ -47,16 +47,18 @@ class Services(unittest.TestCase):
                            tool(protocol,'web_search',dict(query='天气'),call='search-one')]
                     result=self.complete(r,response(protocol,tools));request=result['requests'][0]
                     self.assertEqual(request['url'],c['search']['url']);self.assertEqual(request['authorization'],'Bearer fake-search-key')
+                    self.assertEqual(request['scope'],r['scope']);self.assertNotEqual(request['token'],r['token'])
                     self.assertNotIn('fake-voice-key',json.dumps(request));self.assertNotIn('fake-reason-key',json.dumps(request))
                     self.assertEqual(json.loads(result['snapshot'])['shopping'],['测试条目'])
                     data=dict(results=[dict(title='天气',url='https://source.fixture.test/news',content='晴')]) if search=='tavily' else dict(output=[dict(content=[dict(type='output_text',text='晴',annotations=[dict(type='url_citation',url='https://source.fixture.test/news',title='天气')])])])
-                    next_request=self.complete(request,data)['requests'][0];self.assertIn('source.fixture.test',next_request['body'])
+                    next_request=self.complete(request,data)['requests'][0];self.assertIn('source.fixture.test',next_request['body']);self.assertEqual(next_request['scope'],r['scope'])
                     final=self.complete(next_request,response(protocol));self.assertEqual(len(final['replies']),1);self.assertFalse(final['busy'])
     def test_cancellation_drops_late_write_and_reply(self):
         r=self.start();self.core.call('cancel');out=self.complete(r,response('openai_responses',[tool('openai_responses','family_memory',dict(group='memory',operation='add',entry='不应写入'))]))
         self.assertEqual(json.loads(out['snapshot'])['memory'],[]);self.assertEqual(out['replies'],[])
     def test_new_task_supersedes_previous(self):
         old=self.start();new=self.core.call('start',id='new-task',history=history(),now=101)['requests'][0]
+        self.assertNotEqual(old['scope'],new['scope'])
         self.assertFalse(self.complete(old,response('openai_responses'))['replies']);self.assertTrue(self.complete(new,response('openai_responses'))['replies'])
     def test_error_status_never_runs_pending_tools(self):
         for status in (0,401,429,500):
@@ -151,5 +153,22 @@ class Services(unittest.TestCase):
             try:validate(c);valid=True
             except (ValueError,TypeError):valid=False
             self.assertEqual(self.core.call('validate',config=c)['valid'],valid)
+    def test_http_reuse_requires_complete_framing_and_persistent_connection(self):
+        for version,headers,reusable in [
+            ('1.1','',True),('1.0','',False),
+            ('1.0','Connection: Keep-Alive\r\n',True),
+            ('1.1','Connection: keep-alive, CLOSE\r\n',False),
+            ('1.1','Connection: close\r\nConnection: keep-alive\r\n',False)]:
+            self.core.call('http_begin')
+            out=self.core.call('http_feed',data=f'HTTP/{version} 200 OK\r\n{headers}Content-Length: 2\r\n\r\na')
+            self.assertFalse(out['reusable'])
+            out=self.core.call('http_feed',data='b')
+            self.assertTrue(out['ok']);self.assertEqual(out['reusable'],reusable)
+        self.core.call('http_begin')
+        out=self.core.call('http_feed',data='HTTP/1.1 200 OK\r\n\r\nab',eof=True)
+        self.assertTrue(out['done']);self.assertFalse(out['reusable'])
+        self.core.call('http_begin')
+        out=self.core.call('http_feed',data='HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n0\r\n\r\n')
+        self.assertTrue(out['done']);self.assertTrue(out['reusable'])
 
 if __name__=='__main__':unittest.main()

@@ -139,7 +139,8 @@ std::atomic<uint32_t> captured_samples{0}, processed_samples{0},
 std::atomic<float> processed_level{0};
 uint32_t boot_id;
 TaskHandle_t capture_handle = nullptr, process_handle = nullptr,
-             playback_handle = nullptr, sender_handle = nullptr;
+             playback_handle = nullptr, sender_handle = nullptr,
+             backend_handle = nullptr;
 const esp_afe_sr_iface_t *afe;
 esp_afe_sr_data_t *afe_data;
 uint64_t now() { return esp_timer_get_time() / 1000; }
@@ -207,10 +208,14 @@ std::mutex backend_mutex;
 std::deque<pikoo::HttpRequest> backend_requests;
 std::deque<pikoo::HttpResult> backend_results;
 std::atomic<uint64_t> backend_token{0};
+std::atomic<uint64_t> backend_scope{0};
+std::atomic<size_t> playback_peak_samples{0};
+std::atomic<size_t> upload_peak_frames{0};
 pikoo::BackendAgent backend(
     family,
     [](pikoo::HttpRequest request) {
       backend_token = request.token;
+      backend_scope = request.scope;
       std::lock_guard<std::mutex> lock(backend_mutex);
       backend_requests.clear();
       backend_requests.push_back(std::move(request));
@@ -221,6 +226,7 @@ pikoo::BackendAgent backend(
 void cancel_backend() {
   backend.cancel();
   backend_token = backend.token();
+  backend_scope = backend.scope();
   std::lock_guard<std::mutex> lock(backend_mutex);
   backend_requests.clear();
   backend_results.clear();
@@ -242,15 +248,26 @@ void backend_task(void *) {
       }
     }
     if (have) {
+      const auto started = now();
       auto result =
-          pikoo::service_request(request, agent_config.network, backend_token);
+          pikoo::service_request(request, agent_config.network, backend_token,
+                                 backend_scope);
+      ESP_LOGI("pikoo",
+               "backend http_status=%d duration_ms=%llu internal_min=%u "
+               "largest=%u cancelled=%d",
+               result.status, (unsigned long long)(now() - started),
+               unsigned(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL)),
+               unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)),
+               int(backend_token != request.token));
       mbedtls_platform_zeroize(request.authorization.data(),
                                request.authorization.size());
       std::lock_guard<std::mutex> lock(backend_mutex);
       if (backend_results.size() < 2)
         backend_results.push_back(std::move(result));
-    } else
+    } else {
+      pikoo::service_request_idle(backend_scope);
       vTaskDelay(pdMS_TO_TICKS(10));
+    }
   }
 }
 bool local_wake_test() { return now() < wake_test_until_ms.load(); }
@@ -572,6 +589,8 @@ void play_local_audio(const std::string &b64) {
   std::lock_guard<std::mutex> lock(play_mutex);
   if (!playback.append(live_stream.id, pcm.data(), bytes / 2))
     fail_queue(5);
+  playback_peak_samples =
+      std::max(playback_peak_samples.load(), playback.queued());
 }
 void playback_task(void *) {
   pikoo::Resampler converter;
@@ -814,6 +833,9 @@ void processing_task(void *) {
           used = 0;
           if (!xQueueSend(upload_queue, &u, 0))
             fail_queue(8);
+          upload_peak_frames =
+              std::max(upload_peak_frames.load(),
+                       size_t(uxQueueMessagesWaiting(upload_queue)));
         }
       }
     } else
@@ -924,7 +946,9 @@ void diagnostics() {
   ESP_LOGI(
       "diag",
       "board=%s version=%s state=%d wifi=%d muted=%d upload=%d frames=%lu "
-      "reconnects=%lu heap=%u min_heap=%u internal=%u psram=%u fps=%.1f "
+      "reconnects=%lu heap=%u min_heap=%u internal=%u internal_min=%u "
+      "largest=%u playback_peak_samples=%u upload_peak_frames=%u "
+      "backend_stack_free=%u psram=%u fps=%.1f "
       "mic=%.5f ref=%.5f output=%.5f rx_errors=%lu tx_errors=%lu reset=%d "
       "uptime_ms=%llu wake_max_us=%lu wake_calls=%lu capture_stack_free=%u "
       "process_stack_free=%u mic_peak=%.5f ref_peak=%.5f received_audio=%lu "
@@ -944,6 +968,11 @@ void diagnostics() {
       unsigned(esp_get_free_heap_size()),
       unsigned(esp_get_minimum_free_heap_size()),
       unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),
+      unsigned(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL)),
+      unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)),
+      unsigned(playback_peak_samples.load()),
+      unsigned(upload_peak_frames.load()),
+      unsigned(backend_handle ? uxTaskGetStackHighWaterMark(backend_handle) : 0),
       unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
       board::display_fps(), board::microphone_level(), board::reference_level(),
       board::output_level(), (unsigned long)board::capture_errors(),
@@ -1353,6 +1382,7 @@ void session_task(void *) {
     }
     backend.tick(now());
     backend_token = backend.token();
+    backend_scope = backend.scope();
     bool playing;
     {
       std::lock_guard<std::mutex> l(play_mutex);
@@ -1381,6 +1411,18 @@ void session_task(void *) {
 extern "C" void app_main() {
   // Keep decoded audio and graphics allocations out of scarce internal RAM.
   heap_caps_malloc_extmem_enable(512);
+  // cJSON nodes are smaller than the general external-allocation threshold.
+  // Keep backend response trees out of the internal heap needed by Wi-Fi,
+  // TLS and audio DMA. Install once, before any application task starts;
+  // heap_caps_free also accepts objects allocated before these hooks.
+  cJSON_Hooks json_hooks{
+      [](size_t size) -> void * {
+        return heap_caps_malloc_prefer(
+            size, 2, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT,
+            MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+      },
+      heap_caps_free};
+  cJSON_InitHooks(&json_hooks);
   vTaskPrioritySet(nullptr, 5);
   ESP_ERROR_CHECK(nvs_flash_init());
   // FreeRTOS dynamic queue storage uses internal RAM, even when ordinary
@@ -1504,7 +1546,7 @@ extern "C" void app_main() {
   xTaskCreatePinnedToCore(playback_task, "playback", 8192, nullptr, 6,
                           &playback_handle, 1);
 
-  xTaskCreatePinnedToCore(backend_task, "backend", 12288, nullptr, 3, nullptr,
+  xTaskCreatePinnedToCore(backend_task, "backend", 12288, nullptr, 3, &backend_handle,
                           1);
   xTaskCreatePinnedToCore(session_task, "session", 12288, nullptr, 5, nullptr,
                           1);

@@ -1,11 +1,11 @@
 {
   "version": "2.0.0",
   "implementation": "service-config-architecture",
-  "status": "awaiting_board_acceptance",
+  "status": "board_proxy_path_verified_with_documented_limits",
   "checked_on": "2026-11-13",
   "software": {
-    "service_behaviors": 16,
-    "python_tools": 61,
+    "service_behaviors": 17,
+    "python_tools": 66,
     "node_preview": 4,
     "node_training_planners": 19,
     "sanitizers": "ASan/UBSan passed",
@@ -16,18 +16,18 @@
       "llm_protocols": 2,
       "search_protocols": 2,
       "certificate_auth_and_disconnect_faults": true,
-      "wall_seconds": 3.968,
+      "wall_seconds": 3.364,
       "outer_tls_ms": {
-        "p50": 2.203,
-        "p95": 3.328
+        "p50": 1.929,
+        "p95": 2.09
       },
       "connect_ms": {
         "p50": 0.0,
-        "p95": 0.649
+        "p95": 0.403
       },
       "inner_tls_ms": {
-        "p50": 0.003,
-        "p95": 2.699
+        "p50": 0.001,
+        "p95": 2.156
       }
     },
     "accelerated_pcm": {
@@ -38,15 +38,16 @@
       "scripted_first_pcm_ms_p95": 30,
       "virtual_play_ms_p50": 910,
       "virtual_play_ms_p95": 910,
-      "edge_processing_us_p95": 2,
+      "edge_processing_us_p95": 5,
       "peak_samples": 14720,
       "underruns": 0,
       "backend_jobs": 28800,
       "backend_results": 28800,
-      "maxrss_warm_native_units": 3047424,
-      "cpu_seconds": 3.61131,
-      "maxrss_native_units": 3211264,
-      "eye_checksum": 1234787693
+      "maxrss_warm_native_units": 3080192,
+      "cpu_seconds": 3.62727,
+      "maxrss_native_units": 3244032,
+      "eye_checksum": 1234787693,
+      "rss_unit": "bytes (macOS getrusage)"
     },
     "optional_training_python": {
       "cases": 206,
@@ -56,33 +57,134 @@
       "notes": "Separate lightweight environment; Optional training-runtime or pinned-upstream cases skipped."
     },
     "github_actions": {
-      "push": "passed",
-      "pull_request": "passed",
-      "code_tree": "3dd50699c5bed07cd709e5fad51daa124c32c2e0",
-      "notes": "Source build/test commit passed; final lifecycle and evidence update reruns the same workflow."
+      "status": "see commit checks; refreshed on push",
+      "notes": "Public-artifact/history checks and software regressions run on the exact pushed tree."
     }
   },
   "hardware": {
-    "flashing_performed": false,
-    "new_architecture_on_board": false,
-    "tls_concurrency_heap": "pending",
-    "acoustic_validation": "not performed",
-    "existing_device_data": "device untouched"
+    "flashing_performed": true,
+    "new_architecture_on_board": true,
+    "board": "waveshare-dualeye-1.28",
+    "actual_services": {
+      "live": "openai_live",
+      "llm": "openai_responses",
+      "search": "openai_responses",
+      "optional_https_connect": "verified"
+    },
+    "direct_openai": {
+      "connected": false,
+      "observation_window_ms": 33349,
+      "notes": "Wi-Fi remained connected; no direct Live session was established in this network. Direct concurrent-TLS board resources are not certified."
+    },
+    "backup": {
+      "verified_flash_bytes": 16777216,
+      "verified_chunks": 64,
+      "application_only_flashes": true,
+      "protected_partitions_verified_unchanged_per_flash": true
+    },
+    "final_original_family_data_restored": true,
+    "final_muted": true,
+    "final_upload_disabled": true,
+    "volume_preserved": true,
+    "orientation_setting_not_modified": true,
+    "manual_usb_replugs_required": 0,
+    "wake": {
+      "completed_fixture_trials": 1,
+      "hits": 1,
+      "max_score": 0.96,
+      "model_or_policy_changed": false,
+      "notes": "Fixed complete English phrase via computer speaker; not a household recall or false-wake-rate estimate."
+    },
+    "storage": {
+      "list_write_readback": true,
+      "explicit_memory_write_readback": true,
+      "software_restart_exact_snapshot_match": true,
+      "physical_power_cut": "not tested"
+    },
+    "tools": {
+      "search_http_statuses": [
+        "200",
+        "200",
+        "200"
+      ],
+      "search_call_ms": 5166,
+      "search_deadline_ms": 8000,
+      "overall_task_deadline_ms": 30000,
+      "scope_bound_connection_reuse": true,
+      "invalid_llm_key_http": 401,
+      "invalid_key_no_data_mutation": true,
+      "key_replacement_and_memory_read_recovered": true
+    },
+    "cancellation": {
+      "late_network_result_discarded": true,
+      "no_cancelled_memory_write": true,
+      "active_speech_interrupted": true,
+      "quiet_after_interrupt": true,
+      "new_question_resumed": true
+    },
+    "privacy": {
+      "farewell_returns_to_local_standby": true,
+      "mute_capture_and_upload_unchanged_seconds": 10
+    },
+    "final_image_run": {
+      "combined_fault_and_stream_wall_seconds": 188.89,
+      "steady_stream_window_seconds": 120,
+      "diagnostic_samples": 71,
+      "internal_heap_min_bytes": 27308,
+      "smallest_sampled_largest_block_bytes": 23552,
+      "final_largest_block_bytes": 31744,
+      "backend_stack_free_bytes": 6256,
+      "playback_peak_samples_16khz": 14400,
+      "observed_upload_peak_frames": 46,
+      "upload_queue_capacity_frames": 80,
+      "injected_tx_pause_ms": 1500,
+      "upload_queue_after_recovery": 0,
+      "unexpected_reconnections": 0,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "frame_tx_errors": 0,
+      "playback_supply_gaps": 0,
+      "queue_overflows": 0
+    },
+    "tls_handshakes": {
+      "samples": 4,
+      "percentile_method": "nearest rank; small engineering sample, not 100 board connections",
+      "tcp_ms": {
+        "p50": 13,
+        "p95": 27
+      },
+      "proxy_tls_ms": {
+        "p50": 1774,
+        "p95": 3026
+      },
+      "connect_ms": {
+        "p50": 16,
+        "p95": 29
+      },
+      "service_tls_ms": {
+        "p50": 1484,
+        "p95": 2105
+      }
+    },
+    "acoustic_validation": "Speaker-to-device wake, speech, interruption and replies exercised. No host microphone recording or subjective human listening evaluation.",
+    "existing_device_data": "Original snapshot restored and re-read equal; synthetic test entries removed."
   },
   "limitations": [
-    "Desktop TLS uses Python SSL and the shared C++ HTTP/provider core; ESP mbedTLS transport is cross-compiled, not physically validated in this revision.",
-    "Eight-hour PCM and backend workload is accelerated, not an eight-hour wall-clock device soak.",
-    "Optional Python training suite requires its separate dependencies and is excluded from default runtime checks.",
-    "No microphone or speaker was opened. No live paid-provider calls were made."
+    "This network did not establish a direct OpenAI session; direct concurrent-TLS board resources remain unverified.",
+    "Actual board services tested are OpenAI Live and Responses. Chat Completions/Tavily and independently hosted endpoints are covered by fake-provider fixtures, not additional paid production accounts.",
+    "The eight-hour PCM and backend workload is accelerated desktop replay, not an eight-hour board soak. Final board stream window is 120 seconds with additional fault scenarios.",
+    "Fixed synthetic wake/speech trials are not household/child recall, false-wake, subjective sound, enclosure acoustics, physical power-cut or long-duration family acceptance.",
+    "Automatic review rejected host microphone recording due to possible private ambient audio. Tests used the authorized device path, device transcripts, data readback and output timing instead.",
+    "No new public model or firmware bundle or tag was created. Model redistribution permission is still pending."
   ],
   "firmware": {
     "target": "esp32s3",
     "idf": "5.5.5",
-    "configuration": "clean sdkconfig.defaults; Agent trace disabled",
+    "configuration": "sdkconfig.defaults; cJSON prefers PSRAM; Agent event trace disabled",
     "clean_source_build": "passed",
-    "bytes": 2736720,
-    "sha256": "2b954e4fdbc14ced7cd604f8b420442293136b809288309c63b993e854b87c0a",
-    "static_diram_bytes": 168779,
+    "bytes": 2740848,
+    "sha256": "f39762ffc7f417e04f3277479a2acc11a34c0ad17e2019d2833d85cac54ee469",
+    "static_diram_bytes": 168907,
     "app_partition_bytes": 6291456,
     "installer_dry_runs": [
       "install",
@@ -91,6 +193,6 @@
       "flash"
     ],
     "secrets_in_image": false,
-    "physical_memory_measurement": "pending"
+    "physical_memory_measurement": "verified on optional HTTPS CONNECT path"
   }
 }

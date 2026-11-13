@@ -92,6 +92,7 @@ int main() {
         ok = http.eof() && ok;
       cJSON_AddBoolToObject(out.get(), "ok", ok);
       cJSON_AddBoolToObject(out.get(), "done", http.done());
+      cJSON_AddBoolToObject(out.get(), "reusable", http.reusable());
       cJSON_AddNumberToObject(out.get(), "status", http.status());
       cJSON_AddStringToObject(out.get(), "body", http.body().c_str());
     }
@@ -99,6 +100,7 @@ int main() {
     for (const auto &r : requests) {
       auto o = pikoo::object();
       cJSON_AddNumberToObject(o.get(), "token", double(r.token));
+      cJSON_AddNumberToObject(o.get(), "scope", double(r.scope));
       cJSON_AddNumberToObject(o.get(), "deadline", double(r.deadline));
       cJSON_AddStringToObject(o.get(), "url", r.url.c_str());
       cJSON_AddStringToObject(o.get(), "authorization",
