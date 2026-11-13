@@ -9,10 +9,10 @@ Desktop silent checks are complete; this architecture awaits board acceptance. T
 - Shared C++ configuration, Live client delegation, both LLM/search protocols, cancellation and persistence behaviors pass ASan/UBSan.
 - 61 Python tooling checks, four eye-preview checks and 19 training-planner checks pass.
 - 100 loopback TLS/CONNECT/voice-and-backend combinations pass, including certificate, authentication, rate-limit and disconnect scenarios, using fake credentials.
-- Eight hours of synthetic PCM plus 28,800 backend tool jobs complete in accelerated time with zero virtual underruns. Desktop peak RSS is about 3.1 MiB, with about 160 KiB high-water increase after warmup. This is neither board memory evidence nor an eight-hour wall-clock run.
-- Firmware cross-compilation and isolated-source build results are recorded in [sanitized verification](verification.json).
+- Eight hours of synthetic PCM plus 28,800 backend tool jobs complete in accelerated time with zero virtual underruns. Desktop peak RSS is about 3.11 MiB, with about 160 KiB high-water increase after warmup. This is neither board memory evidence nor an eight-hour wall-clock run.
+- A clean-source ESP32-S3 build passes: image 2,736,624 bytes, static DIRAM 168,779 bytes. Installer dry-runs and GitHub push/PR checks pass. Exact results are recorded in [sanitized verification](verification.json).
 
-The host network driver uses Python SSL with the actual shared C++ HTTP/provider/Agent core. It does not validate ESP nested mbedTLS. Default runtime checks do not require TensorFlow; the optional Python training suite requires its separate environment.
+The host network driver uses Python SSL with the actual shared C++ HTTP/provider/Agent core. It does not validate ESP nested mbedTLS. Default runtime checks do not require TensorFlow. In a separate lightweight training environment, 138 of 206 Python cases passed, 68 cases requiring optional training runtimes or pinned upstream checkouts skipped, and none failed.
 
 ## Board gate
 

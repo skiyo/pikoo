@@ -16,18 +16,18 @@
       "llm_protocols": 2,
       "search_protocols": 2,
       "certificate_auth_and_disconnect_faults": true,
-      "wall_seconds": 4.397,
+      "wall_seconds": 3.547,
       "outer_tls_ms": {
-        "p50": 2.249,
-        "p95": 3.497
+        "p50": 2.19,
+        "p95": 2.48
       },
       "connect_ms": {
         "p50": 0.0,
-        "p95": 0.644
+        "p95": 0.521
       },
       "inner_tls_ms": {
-        "p50": 0.013,
-        "p95": 3.339
+        "p50": 0.001,
+        "p95": 2.578
       }
     },
     "accelerated_pcm": {
@@ -43,10 +43,22 @@
       "underruns": 0,
       "backend_jobs": 28800,
       "backend_results": 28800,
-      "maxrss_warm_native_units": 3031040,
-      "cpu_seconds": 3.47608,
-      "maxrss_native_units": 3194880,
+      "maxrss_warm_native_units": 3096576,
+      "cpu_seconds": 3.55831,
+      "maxrss_native_units": 3260416,
       "eye_checksum": 1234787693
+    },
+    "optional_training_python": {
+      "cases": 206,
+      "passed": 138,
+      "skipped": 68,
+      "failures": 0,
+      "notes": "Separate lightweight environment; Optional training-runtime or pinned-upstream cases skipped."
+    },
+    "github_actions": {
+      "push": "passed",
+      "pull_request": "passed",
+      "code_tree": "3dd50699c5bed07cd709e5fad51daa124c32c2e0"
     }
   },
   "hardware": {
@@ -61,5 +73,23 @@
     "Eight-hour PCM and backend workload is accelerated, not an eight-hour wall-clock device soak.",
     "Optional Python training suite requires its separate dependencies and is excluded from default runtime checks.",
     "No microphone or speaker was opened. No live paid-provider calls were made."
-  ]
+  ],
+  "firmware": {
+    "target": "esp32s3",
+    "idf": "5.5.5",
+    "configuration": "clean sdkconfig.defaults; Agent trace disabled",
+    "clean_source_build": "passed",
+    "bytes": 2736624,
+    "sha256": "225f3c757a3d8fe2962764425243ef710b57bf1340cee5c41de5be3f4a578259",
+    "static_diram_bytes": 168779,
+    "app_partition_bytes": 6291456,
+    "installer_dry_runs": [
+      "install",
+      "upgrade",
+      "configure",
+      "flash"
+    ],
+    "secrets_in_image": false,
+    "physical_memory_measurement": "pending"
+  }
 }
