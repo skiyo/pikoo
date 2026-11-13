@@ -52,3 +52,9 @@
 本目录的 Pikoo 原创外壳文件与说明遵循仓库 [Apache-2.0](../../LICENSE)。不包含供应商板卡 CAD 或其他硬件参考网格；硬件资料请从[微雪官方页面](https://www.waveshare.net/shop/ESP32-S3-DualEye-LCD-1.28.htm)获取。
 
 [English checklist](acceptance-checklist.csv) · [中文验收表](acceptance-checklist.zh-CN.csv)
+
+## 打印前
+
+先完整阅读离线图文指南，核对 STL 单位与尺寸，再先打印旋转锁验证配合。确认 USB 插头和扬声器尺寸符合预留空间，不要分别缩放零件。验收表针对每次实际装配；如记录了身份信息，应私密保存。
+
+固件安装与配置见[快速开始](../../docs/getting-started.zh-CN.md)。装配不能替代电气验收，合壳后应重复唤醒、低音量播放、插话和供电检查。

@@ -2,11 +2,11 @@
 
 **English** | [简体中文](README.zh-CN.md) · [Project](../../README.md) · [Website](https://pikoo.lol/)
 
-Three printed parts house the Waveshare ESP32-S3-DualEye-LCD-1.28 with its original transparent backplate and screws intact. Part 01 integrates the cat face, base and carrier; no separate spring latch or muzzle panel is needed. The release contains the three original printable parts.
+Three printed parts house the Waveshare ESP32-S3-DualEye-LCD-1.28 with its original transparent backplate and screws intact. Part 01 integrates the cat face, base and carrier; no separate spring latch or muzzle panel is needed. The release contains the three printable parts.
 
 Each printed build requires fit and functional acceptance. Dedicated drop resistance and long-duration reliability are not certified.
 
-## The three original STLs
+## Printable STL files
 
 | File | Function | Print envelope, millimetres X × Y × Z |
 |---|---|---|
@@ -24,13 +24,13 @@ Open a file for the GitHub preview, then use **Download raw file**. Cloning the 
 
 Use the **English / 中文** button at the top to switch in place. English is the default; a saved explicit choice takes priority; HTTP(S) uses the `pikoo_language` cookie and a local-storage fallback also supports offline files. If storage is blocked, switching still works for the current page. Switching preserves checklist entries and notes. Printing uses the current language; JSON keeps stable checklist IDs and your original notes, and records the selected language. Its filename is `pikoo-acceptance.json` in both languages. No translation service or network request is needed.
 
-For changes to this guide, run `node --test hardware/enclosure/tests/guide.test.cjs` from the repository root. The checks cover language selection, blocked storage, legacy record recovery, diagram translation coverage and JSON export; they do not perform hardware acceptance.
+For changes to this guide, run `node --test hardware/enclosure/tests/guide.test.cjs` from the repository root. The checks cover language selection, blocked storage, saved record recovery, diagram translation coverage and JSON export; they do not perform hardware acceptance.
 
 ## Print settings and order
 
 Print **03 rotary lock → 01 integrated main body → 02 rear cover**, one STL per run. Part 03 remains in the finished assembly.
 
-Designed around X-MAKER JOY AI+, PLA and a 0.4 mm nozzle. Select **fine quality, all supports, millimetres and 100% scale**. Keep the supplied orientation; disable auto scaling/reorientation. The original setup uses no raft. A brim differs from a raft: confirm all added brim/support margins fit inside the 120 × 120 mm bed. Inspect your slicer preview for actual toolpaths, time and material; these statistics have not been recorded here.
+Designed around X-MAKER JOY AI+, PLA and a 0.4 mm nozzle. Select **fine quality, all supports, millimetres and 100% scale**. Keep the supplied orientation; disable auto scaling/reorientation. The specified setup uses no raft. A brim differs from a raft: confirm all added brim/support margins fit inside the 120 × 120 mm bed. Inspect your slicer preview for actual toolpaths, time and material; these statistics have not been recorded here.
 
 Allow the bed and print to cool. Remove supports in small pieces as illustrated, keeping the structural ledges, guides and lock receiver intact. Stop if a lock lug, ear root, eye frame or receiver cracks or whitens.
 
@@ -49,3 +49,9 @@ To open, disconnect power, support the module/cover, reverse the lock approximat
 Pikoo-authored enclosure files and instructions follow the repository’s [Apache-2.0 license](../../LICENSE). No supplier CAD or reference hardware meshes are included; obtain board references from [Waveshare](https://www.waveshare.net/shop/ESP32-S3-DualEye-LCD-1.28.htm).
 
 [English checklist](acceptance-checklist.csv) · [中文验收表](acceptance-checklist.zh-CN.csv)
+
+## Before printing
+
+Read the offline illustrated guide through once, check STL units and dimensions, then print the rotary lock first as a fit check. Verify that the USB connector and speaker dimensions fit the specified clearances. Do not scale individual parts independently. The acceptance worksheet belongs to each physical build and should stay private if it includes identifying notes.
+
+Firmware installation and configuration are covered in the [quick start](../../docs/getting-started.md). Assembly does not replace electrical validation: repeat wake, low-volume playback, interruption and power checks after closing the enclosure.

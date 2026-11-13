@@ -6,7 +6,7 @@
 
 ## 当前模型
 
-[模型卡](../models/hi-pikoo/MODEL_CARD.zh-CN.md) · [权重及检查点](https://github.com/skiyo/pikoo/releases/tag/v1.0.0) · [条款及来源](../models/hi-pikoo/ATTRIBUTION.md)
+[模型卡](../models/hi-pikoo/MODEL_CARD.zh-CN.md) · [权重及检查点](https://github.com/skiyo/pikoo/releases/tag/v2.0.0) · [条款及来源](../models/hi-pikoo/ATTRIBUTION.md)
 
 包内包含 `hi_pikoo.tflite`、`checkpoint.weights.h5`、`model-config.json`、`wake-policy.json` 和摘要。推理权重 98,064 字节，不分发家庭录音和原始语料。网络配置：96 通道、64 单元分类头、72 步有序上下文、无 BatchNorm、种子 42。`hi_pikoo_model.build` 可重建结构；JSON 中的元数据不能全部直接当函数参数。
 
@@ -43,3 +43,11 @@ ChildMandarin 仅提供真实儿童普通讲话，并非目标词录音。合成
 
 
 可选 Node 合成与审核工具使用本目录独立依赖：显式生成前在 `training/` 运行 `npm ci --ignore-scripts`。导入计划与单元测试模块不会访问模型服务。
+
+## 选择工作流程
+
+- 直接使用 Pikoo：采用发布的 TFLite 与策略，不需要训练。
+- 检查 checkpoint：按 `model-config.json` 重建网络，载入权重，修改阈值前验证流式导出。
+- 训练替代模型：取得数据权限，准备审核后的 manifest，并在选模型前保留独立 TEST。
+
+语料目录、生成音频、API 凭证和实验输出放在公开仓库外。先查看各脚本 `--help`，不要把私人路径复制进公开命令。特征提取、浮点训练、量化、原生运行时一致性和板上调度是独立验证阶段，应报告跳过项和实际数据/评估范围。比较指标前阅读[模型卡](../models/hi-pikoo/MODEL_CARD.zh-CN.md)。

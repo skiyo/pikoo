@@ -13,7 +13,7 @@ This inventory describes the current 1.0.0 weights. No original or generated tra
 | [Qwen3-TTS VoiceDesign](https://github.com/QwenLM/Qwen3-TTS) | Local text-only synthetic childlike TRAIN phrases | Apache-2.0 model/code; preserve output-source provenance; no reference family voice |
 | [microWakeWord](https://github.com/OHF-Voice/micro-wake-word) | Streaming layers / conversion dependency | Apache-2.0; separately installed |
 
-The core prepared TRAIN grouping contains 2,940 legacy positive windows, 2,440 legacy negative windows, 1,268 ChildMandarin, 2,640 LibriSpeech, 1,200 ESC-50 and 424 public-speech windows. Reviewed additions and tempo descendants are present; window counts are not independent speakers or original recordings. Family recordings were not used for training, augmentation, calibration or model selection.
+The core prepared TRAIN grouping contains 2,940 prepared positive windows, 2,440 prepared negative windows, 1,268 ChildMandarin, 2,640 LibriSpeech, 1,200 ESC-50 and 424 public-speech windows. Reviewed additions and tempo descendants are present; window counts are not independent speakers or original recordings. Family recordings were not used for training, augmentation, calibration or model selection.
 
 ChildMandarin citation: Jiaming Zhou, Shiyao Wang, Shiwan Zhao, Jiabei He, Haoqin Sun, Hui Wang, Cheng Liu, Aobo Kong, Yujie Guo and Yong Qin. *ChildMandarin: A Comprehensive Mandarin Speech Dataset for Young Children Aged 3–5*. [Paper](https://aclanthology.org/2025.acl-long.614/), 2025; [original preprint](https://arxiv.org/abs/2409.18584), 2024.
 

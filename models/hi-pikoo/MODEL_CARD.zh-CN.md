@@ -12,4 +12,4 @@
 
 真实家庭正式验收、独立儿童召回、8 小时误唤醒和 72 小时稳定性仍未完成。1.0.0 是当前使用版本的发布，不代表全部准确率目标达标。
 
-权重直接保存在本目录：[hi_pikoo.tflite](hi_pikoo.tflite) 用于 ESP 推理，[checkpoint.weights.h5](checkpoint.weights.h5) 用于训练。克隆仓库即可取得，无须 Git LFS；使用 [SHA256SUMS](SHA256SUMS) 校验。[模型压缩包](https://github.com/skiyo/pikoo/releases/download/v1.0.0/hi-pikoo-model-1.0.0.zip)作为另一种下载方式。阅读[非商业模型条款](LICENSE.md)、[完整来源](ATTRIBUTION.md)及[英文技术参数](MODEL_CARD.md)。不分发原始数据、家庭录音和私密清单。模型条款与代码 Apache-2.0 分开。
+权重直接保存在本目录：[hi_pikoo.tflite](hi_pikoo.tflite) 用于 ESP 推理，[checkpoint.weights.h5](checkpoint.weights.h5) 用于训练。克隆仓库即可取得，无须 Git LFS；使用 [SHA256SUMS](SHA256SUMS) 校验。[模型压缩包](https://github.com/skiyo/pikoo/releases/download/v2.0.0/hi-pikoo-model-2.0.0.zip)作为另一种下载方式。阅读[非商业模型条款](LICENSE.md)、[完整来源](ATTRIBUTION.md)及[英文技术参数](MODEL_CARD.md)。不分发原始数据、家庭录音和私密清单。模型条款与代码 Apache-2.0 分开。

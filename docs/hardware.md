@@ -20,3 +20,23 @@ Connect the speaker only to the documented **speaker connector**, never a same-l
 The schematic maps the microphone to ES7210 MIC1 and attenuated output reference to MIC3. Firmware unpacks the configured ADC1/ADC3/ADC2/ADC4 order as mic/reference. ESP-SR processes the reference for AEC; the presence of a codec alone does not prove successful echo cancellation. Test with the final enclosure, normal volume and natural interruption.
 
 [USB installation](firmware.md) · [Enclosure and STLs](../hardware/enclosure/README.md)
+
+## Assembly and electrical checks
+
+## Before connecting power
+
+Inspect the board revision and confirm it is the non-touch target. Connect the speaker only while unpowered, following the connector label and vendor requirements. Do not infer polarity or purpose from connector shape. Keep exposed electronics on a non-conductive surface and provide cable strain relief. A charge-only USB cable cannot perform setup.
+
+## Bring-up sequence
+
+1. Verify USB enumeration and both displays before enclosing the board.
+2. Configure the device and check status without immediately raising volume.
+3. Unmute intentionally, test low-volume playback and full-phrase wake.
+4. Install the optional enclosure following its illustrated guide; avoid loading display glass or covering microphone openings.
+5. Repeat wake, interruption, playback and supply checks in the assembled enclosure.
+
+A software simulator does not verify speaker impedance, wiring, power integrity, thermal behavior or acoustics. Pin compatibility alone is insufficient for another board. Porting requires correct codec routing, microphone/reference channel order, display timing and PSRAM/Flash layout.
+
+## What to record
+
+Record board revision, speaker specification, cable/supply, enclosure material and firmware identity with any hardware result. Measure at normal intended volume, not only on an open bench. AEC behavior depends on the reference path and final acoustic geometry; inspect interruptions and first-syllable loss as well as whether any reply is audible.

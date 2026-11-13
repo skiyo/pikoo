@@ -2,69 +2,77 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-Pikoo is a hardware AI Agent on ESP32-S3. It wakes locally, manages sessions, executes tools and stores data on the device, using your configured cloud services for voice and reasoning.
+Pikoo is an ESP32-S3 voice companion with expressive dual eyes and a device-owned C++ Agent. It wakes locally, manages conversations, executes tools and saves lists and explicit memories on the device. Your configured services provide voice and language-model inference.
 
-[Quick start](docs/getting-started.md) · [Configuration](docs/configuration.md) · [Architecture](docs/architecture.md) · [Documentation](docs/README.md)
+**English is the default.** Set `agent.language` to `zh-CN` for Chinese dialogue; keep the complete English wake phrase **“Hi, Pikoo”**.
+
+[Quick start](docs/getting-started.md) · [User guide](docs/usage.md) · [FAQ](docs/faq.md) · [All documentation](docs/README.md)
 
 ![Pikoo enclosure concept](docs/images/pikoo-enclosure.webp)
 
-English is the default. Set `agent.language` to `zh-CN` for Chinese; documentation and offline guides include both languages.
+## What you can do
 
-## Capabilities
+| Capability | Behavior |
+|---|---|
+| Natural interaction | Local wake, realtime dialogue, follow-ups, interruption and farewell sleep |
+| Physical controls | Wake/stop/end/mute through BOOT; USB diagnostics and settings |
+| Local organization | Shopping list, todos and explicitly requested memory |
+| Information retrieval | Optional web search; webpage extraction with the supporting adapter |
+| Expression | Two 240 × 240 eyes driven by shared C++ rendering |
+| Maintenance | Replaceable service configuration, data export/import and checked USB installation |
 
-- Local **“Hi, Pikoo”** wake phrase, accepting both `piku` and `piko` pronunciations.
-- Realtime voice, interruption, mute, farewell sleep and reconnect.
-- Two 240 × 240 expressive eyes rendered by a shared C++ core.
-- Device-local shopping lists, todos, explicit memory and bounded conversation context.
-- Optional web search and public-page extraction when supported by the configured adapter.
-- Separate voice, LLM and search endpoints, keys and models; USB configuration and data backup.
+The device owns tool execution and persistence. Conversation requires network services; language models do not run on the ESP. There is no speaker identity system, automatic memory learning, cross-device sync or bundled home automation.
 
-## From configuration to device
+## What you need
 
-The target is the non-touch Waveshare ESP32-S3-DualEye-LCD-1.28 with 16 MiB Flash and 8 MiB PSRAM, microphones, a speaker, USB data cable and 2.4 GHz Wi-Fi. Supply your own API accounts and access; no Pikoo application server is required.
+- Non-touch **Waveshare ESP32-S3-DualEye-LCD-1.28**, 16 MiB Flash and 8 MiB PSRAM.
+- Compatible speaker, data-capable USB cable, stable power and 2.4 GHz Wi-Fi.
+- A Live-compatible voice service and a function-calling reasoning service. Search is optional.
+- Python for USB installation. ESP-IDF 5.5.5 is required only to build firmware from source.
 
-1. Copy `examples/device.example.json` outside the repository and fill in Wi-Fi and service settings.
-2. Use the included `models/hi-pikoo/hi_pikoo.tflite`, then follow the firmware guide to build and back up your device.
-3. Install firmware and configuration with one USB command. Later configuration changes require no rebuild.
+No Pikoo application server is required. Each service has an independent endpoint, protocol, credential and model. Compatibility depends on implemented protocol capabilities, not merely an “OpenAI-compatible” label. Read the [configuration reference](docs/configuration.md) before selecting services.
 
-```sh
-python tools/configure.py --config /private/pikoo.json --dry-run
-python tools/device.py install --port PORT --build firmware/build-dualeye \
-  --backup /private/factory-backup --config /private/pikoo.json
-```
+## Install and use
 
-Endpoints must implement the selected protocol. Connections are direct by default; standard HTTPS CONNECT is optional.
+1. Download the **firmware ZIP** from [Pikoo 2.0.0](https://github.com/skiyo/pikoo/releases/tag/v2.0.0) and verify its checksums.
+2. Create a private configuration from `examples/device.example.json`; fill your Wi-Fi, Live and LLM settings.
+3. List USB ports and create a verified full-Flash backup outside the repository.
+4. Run the install dry-run, then install firmware and configuration.
+5. Check status, unmute and say “Hi, Pikoo”. Try reading and updating a disposable list item.
 
-## Agent architecture
+The [step-by-step quick start](docs/getting-started.md) includes commands, expected outputs, source-build alternatives and the first-use checklist. Use [troubleshooting](docs/troubleshooting.md) for MIC OFF, USB, TLS or service errors.
+
+## Architecture and extension
 
 ```mermaid
 flowchart LR
     Hardware[Microphone / Speaker / Eyes / Button] <--> Agent[ESP32 C++ Agent]
-    Agent <--> Live[Configured Live service]
+    Agent <--> Voice[Configured Live service]
     Agent <--> LLM[Configured reasoning service]
     Agent <--> Search[Optional search service]
     Agent <--> Store[(Local lists / memory / context)]
 ```
 
-The ESP owns state and actions. Live handles voice, an independent LLM chooses reasoning and tools, and search adapters provide external information. Model inference does not run on the ESP.
+Live client delegation hands reasoning tasks to the device. The Agent calls the selected LLM, validates and executes registered tools, and returns results to Live. Background HTTPS work is isolated from realtime audio, with bounded queues, task deadlines and cancellation tokens.
 
-## Development
+[Architecture](docs/architecture.md) · [Tool contract](docs/family-tools.md) · [Development and silent tests](docs/development.md) · [Verification scope](docs/release.md)
 
-| Directory | Responsibility |
+| Directory | Contents |
 |---|---|
-| `firmware/components/pikoo_core` | Shared C++ Agent, configuration, service adapters and state |
-| `firmware/main` | ESP networking, NVS, audio, wake, displays and controls |
-| `firmware/simulator` | Silent native Agent driver and offline eye preview |
-| `tools` | Build, USB setup, checks and diagnostics |
-| `training` / `models` | Wake training, model policy, provenance and terms |
-| `hardware/enclosure` | Enclosure STL and assembly guide |
+| `firmware/components/pikoo_core` | Shared C++ session, configuration, tools and adapters |
+| `firmware/main` | ESP networking, storage, audio and board integration |
+| `firmware/simulator` | Native test driver and offline eye preview |
+| `tools` | Build, USB setup, validation and packaging |
+| `models/hi-pikoo` | TFLite weights, checkpoint, policy and model documentation |
+| `training` | Training and evaluation tooling |
+| `hardware/enclosure` | Printable STLs and bilingual offline assembly guide |
 
-[Developer guide](docs/development.md) · [Hardware](docs/hardware.md) · [Verification](docs/release.md)
+## Downloads, privacy and licenses
 
-## License
+The Release provides a firmware ZIP, model ZIP, application-only BIN, manifest and SHA256SUMS. Weights are also tracked directly in Git; Git LFS is not required. [Model documentation](models/hi-pikoo/README.md) explains which artifact to use.
 
-Original source, eye artwork and documentation use Apache-2.0. Wake weights and firmware containing them have separate non-commercial model terms. External API access, charges and terms are separate.
+Idle wake audio stays local; active conversations are processed by configured services. Ordinary NVS stores credentials and is not protected against physical Flash access. Exports omit credentials but still contain private content. See [security and privacy](SECURITY.md).
 
-[LICENSE](LICENSE) · [NOTICE](NOTICE) · [Model terms](models/hi-pikoo/LICENSE.md) · [Third-party sources](THIRD_PARTY.md) · [Security](SECURITY.md)
+Original source, documentation and Pikoo-authored artwork use **Apache-2.0**. Wake weights and firmware containing them retain **separate non-commercial model terms** and third-party restrictions. Preserve notices and attribution when redistributing.
 
-**Model publication permission is confirmed by the project maintainer.** Existing non-commercial terms and source attribution remain applicable. See [model permission](models/hi-pikoo/PERMISSION.md).
+[LICENSE](LICENSE) · [NOTICE](NOTICE) · [Model terms](models/hi-pikoo/LICENSE.md) · [Third-party sources](THIRD_PARTY.md) · [Contributing](CONTRIBUTING.md)

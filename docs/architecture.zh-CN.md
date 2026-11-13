@@ -2,33 +2,60 @@
 
 [English](architecture.md) | **简体中文**
 
+Pikoo 将设备决策与外部推理解耦。ESP32 负责会话生命周期及每次本地数据修改，远端服务返回模型输出或检索信息。凭证、工具和状态不依赖 Pikoo 应用服务器管理。
+
 ```mermaid
 flowchart LR
-    Hardware[Microphone / Speaker / Eyes / Button] <--> Agent[ESP32 C++ Agent]
-    Agent <--> Live[Configured Live service]
-    Agent <--> LLM[Configured reasoning service]
-    Agent <--> Search[Optional search service]
-    Agent <--> Store[(Local lists / memory / context)]
+    HW[麦克风 / 扬声器 / 双眼 / 按键] <--> Session[ESP 会话与音频任务]
+    Session <--> Core[共享 C++ Agent 核心]
+    Core <--> Live[实时语音适配器]
+    Core <--> Backend[推理与搜索适配器]
+    Live <--> Voice[配置的 WSS 服务]
+    Backend <--> Worker[有界 HTTPS 工作任务]
+    Worker <--> Services[配置的 LLM / 搜索]
+    Core <--> Store[设备存储]
 ```
 
-## 职责与数据流
+## 模块与职责
 
-设备负责生命周期、工具注册、任务状态、取消和持久化。Live 适配器连接配置的 WSS 服务，使用**客户端委派**。经互动分类的转写和有界上下文形成后台任务，由独立 LLM 选择工具；ESP 校验、执行并回传工具结果，最后以原委派 ID 向 Live 返回已确认事实。
+| 模块 | 职责 | 边界 |
+|---|---|---|
+| `pikoo_config` | 解析校验 AgentConfig 与完整地址 | 连接前拒绝未知协议 |
+| `LiveAgent` | 语音事件、委派、分类上下文 | 服务事件不能直接改 NVS |
+| `BackendAgent` | 推理轮次与工具编排 | 限制期限、轮次、结果大小 |
+| 服务适配器 | Responses、Chat Completions、搜索标准化 | 显式选择协议 |
+| `HttpResponse` | 增量解析有界 HTTP | 网络分片与 JSON 含义分开处理 |
+| ESP 网络工作任务 | 验证 TLS 并执行请求 | 返回带标识结果，不拥有家庭状态 |
+| 存储 | 配置与家庭数据双槽快照 | 分区、导出规则独立 |
+| 板级、音频、双眼 | I²S、唤醒前端、显示、按键 | 共享逻辑与 ESP 驱动分离 |
 
-`pikoo_core` 不依赖板卡：包含配置、Live 协议、推理与搜索适配、HTTP 解析和家庭状态。`firmware/main` 提供校验证书的 TLS、异步 HTTP 工作线程、NVS 和硬件。只有会话线程修改家庭数据，网络线程仅返回带请求令牌的结果。
+共享实现在 `firmware/components/pikoo_core`，ESP 集成在 `firmware/main`。原生测试使用同一核心，但桌面执行不能复现 ESP 调度、堆碎片和无线电行为。
 
-## 并发与资源边界
+## 一次委派的过程
 
-实时音频不等待 HTTP 请求。后台最多同时执行一个 HTTP 请求；每任务最多四轮模型调用、总期限 30 秒，搜索期限 8 秒。取消会失效请求令牌、清空待执行任务，迟到结果不写数据、不播报。HTTP 响应最多 64 KiB，标准化搜索结果最多 16 KiB；API 请求不自动跟随重定向。
+1. 本地唤醒启动语音连接，就绪后允许上传音频。
+2. Live 发出分类转写和客户端委派请求。
+3. Agent 使用有界上下文和委派标识创建后端任务。
+4. LLM 可以回答或调用注册工具。ESP 校验参数并执行本地修改；搜索由独立适配器处理。
+5. 工具结果在轮次与总期限限制内回传 LLM。
+6. 最终结果携带同一委派 ID 返回 Live 进行语音输出。失败如实传递，写入失败不能宣称成功。
 
-同一委派内，工作线程最多复用一个已完整读完响应、HTTPS 同源且代理配置相同的连接。每轮请求有独立结果令牌，委派作用域在 LLM／搜索轮次之间保持稳定。新任务、取消、响应不完整、`Connection: close` 或空闲 15 秒后会丢弃连接。每次请求独立构造 Authorization，不沿用上一次的鉴权；POST 失败不自动重放。
+已经提交成功的数据不会因后续语音失败自动撤回。调用 ID 回执在保留窗口内防止重复事件执行，不承诺对所有语义相同的请求全局去重。
 
-ESP32-S3 上的 cJSON 节点和缓冲优先使用 PSRAM，为 Wi-Fi、TLS 和音频 DMA 保留内部内存。USB 状态提供内部堆低水位、最大连续块、后台线程栈余量及观察到的音频队列峰值；这些板上指标与模拟器的 RSS、耗时分别报告。
+## 调度与取消
 
-音频为 16 或 24 kHz 单声道 PCM16，保留 900 ms 预缓冲和有界 PSRAM 播放队列；代次变化丢弃旧播放。待机麦克风数据不上云，静音时关闭采集。空闲和告别释放语音连接。
+实时音频任务不等待后端 HTTP。最多同时执行一个后端 HTTP 请求，每项任务最多四轮模型调用、总期限 30 秒，搜索期限 8 秒。HTTP 响应上限 64 KiB，标准化搜索结果上限 16 KiB。
 
-## 本地保存
+只有会话任务可以修改家庭状态。工作任务结果携带请求标识，取消时先使标识失效，再处理迟到数据。播放代次避免插话后重播旧样本。告别立即取消后端工作，同时允许告别音频排空。
 
-服务配置位于可覆盖的普通 `agent_secret` NVS。家庭数据在 `agent_data` 双槽保存：购物、待办、记忆每组最多 32 项，每项最多 512 UTF-8 字节；短期上下文最多 12 个文本片段，写入回执最多 32 个 ID，快照上限 24 KiB。USB 家庭数据导出不含凭证；音量与屏幕方向另行保留。
+## 网络与内存
 
-[Agent 行为](agent.zh-CN.md) · [服务配置](configuration.zh-CN.md) · [开发指南](development.zh-CN.md)
+所有服务验证 TLS 证书，默认直连。可选 HTTPS CONNECT 建立独立鉴权的外层连接，服务 TLS 仍端到端。API 不跟随重定向。同一委派内，完整消费后的连接仅在同源且代理配置一致时复用；取消、不完整响应、`Connection: close`、新任务或空闲 15 秒会丢弃连接。失败 POST 不自动重放。
+
+ESP32-S3 上 cJSON 优先分配 PSRAM，为 Wi-Fi、TLS 和 DMA 留出内部内存。音频为单声道 PCM16，支持 16/24 kHz，使用 900 ms 预缓冲与有界 PSRAM 队列。USB 状态提供内部堆低水位、最大连续块、后端栈余量和队列峰值；这些板上指标与桌面 RSS 不同。
+
+## 存储边界
+
+`agent_secret` 使用可替换的普通 NVS 保存服务设置；`agent_data` 使用双槽快照保存清单、记忆、有界上下文与回执。音量和方向是独立设备设置。容量见[上下文与记忆](context-memory.zh-CN.md)，物理访问和服务商边界见[安全说明](../SECURITY.zh-CN.md)。
+
+[生命周期](conversation-lifecycle.zh-CN.md) · [工具](family-tools.zh-CN.md) · [开发](development.zh-CN.md)

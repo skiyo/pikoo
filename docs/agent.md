@@ -15,3 +15,15 @@ The local Agent owns tasks rather than forwarding device events to an applicatio
 Tools declare a name, description and JSON argument schema. Their executor validates arguments and applies bounded operations. Write call IDs and state commit together. Clearing requires confirmation; ambiguous changes should be clarified. A successful saved mutation remains saved if later network work fails. Deduplication covers stored call IDs, not arbitrary semantically equivalent requests with different IDs.
 
 The device is shared, with no speaker identity inference, background automatic memory learning, multi-device synchronization or pre-integrated home automation. Network model access is required for conversation.
+
+## Choosing a task
+
+Use this page as the feature contract. Start with [everyday examples](usage.md), then consult [tool semantics](family-tools.md) before extending behavior. A model can describe many actions, but the device can execute only registered tools. Ask for clarification when the requested mutation is ambiguous; an answer is not proof of a committed write.
+
+## Availability and cost
+
+Wake and display behavior are local; conversation consumes the configured voice/reasoning services. Backend work is limited to four rounds and 30 seconds, so a complex open-ended task may end with a timeout instead of completing. Search has its own eight-second budget. API prices and access are controlled by providers, not by the firmware. Configure project limits with your provider and start with search disabled if it is unnecessary.
+
+## Acceptance examples
+
+A useful functional check reads a list, adds a disposable entry, reads it back, removes it and verifies it is absent. Separately check memory, cancellation and search. Use a fresh snapshot for tests; never assume examples are safe to run against valuable data. The [FAQ](faq.md) explains offline use, identities and repeated requests.

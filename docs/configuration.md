@@ -1,39 +1,83 @@
-# Service configuration
+# Configuration reference
 
 **English** | [简体中文](configuration.zh-CN.md)
 
-Copy [the example](../examples/device.example.json) outside Git. Configuration version is `1`; filenames and paths are yours. Validate without touching hardware:
+Configuration is a complete versioned JSON document, stored privately outside Git and provisioned over USB. Start from [device.example.json](../examples/device.example.json). Example domains and `YOUR_...` strings are placeholders, not operational service settings.
 
-```sh
-python tools/configure.py --config /private/pikoo.json --dry-run
-python tools/device.py configure --port PORT --config /private/pikoo.json
+## Lifecycle
+
+1. Copy the example or run `python tools/configure.py --init /absolute/private/device.json`.
+2. Fill Wi-Fi, Live and reasoning settings. Leave search disabled until needed.
+3. Run `python tools/configure.py --config /absolute/private/device.json --dry-run`.
+4. Run `python tools/device.py configure --port PORT --config /absolute/private/device.json`.
+5. Inspect status and unmute when ready. This command provisions and reboots without reflashing the application.
+
+Supply the complete configuration on each update; this is not a partial JSON patch. Store the source file securely so key rotation or network changes are repeatable. Validation makes no API calls. Settings use ordinary replaceable `agent_secret` NVS; family exports exclude them.
+
+## Fields and limits
+
+Limits on ordinary strings are UTF-8 bytes unless stated otherwise. The normalized complete document is limited to 16 KiB.
+
+| Field | Meaning and constraint |
+|---|---|
+| `version` | Integer `1` |
+| `wifi.ssid` | Required, 1–32 bytes; use 2.4 GHz Wi-Fi |
+| `wifi.password` | Empty for open network; otherwise 8–63 bytes |
+| `agent.name` | 1–64 bytes; default Pikoo when the whole agent section is omitted |
+| `agent.language` | 1–32 bytes; default `en`; use `zh-CN` for Chinese |
+| `agent.instructions` | Optional role instructions, at most 2048 bytes |
+| `live.protocol` | `openai_live` |
+| `live.url` | Complete WSS endpoint, at most 2048 characters |
+| `live.api_key` | Service credential; empty omits Authorization |
+| `live.model` | Required provider model ID, at most 128 bytes |
+| `live.voice` | Voice ID, default `marin`, at most 64 bytes |
+| `live.audio_rate` | Integer `16000` or `24000`; default 16000 |
+| `llm.protocol` | `openai_responses` or `openai_chat_completions` |
+| `llm.url`, `api_key`, `model` | Independent full HTTPS endpoint, credential and model |
+| `search.enabled` | Boolean, default false |
+| `search.protocol` | When enabled: `tavily` or `openai_responses` |
+| `search.url`, `api_key` | Independent full HTTPS endpoint and credential |
+| `search.model` | Required for Responses search |
+| `search.extract_url` | Optional Tavily extraction endpoint, same HTTPS origin as search |
+| `network.proxy_url` | Optional HTTPS proxy origin, without path/query |
+| `network.proxy_basic` | Optional Base64 of username:password; requires proxy URL |
+
+API keys/proxy credentials are bounded to 1024 non-whitespace printable ASCII characters. URLs cannot embed a username/password or fragment. Do not place keys in URL query parameters. There is no custom-header or custom-CA setting. Keep the example's complete `agent` section when editing individual fields.
+
+## Adapter compatibility
+
+| Role | Protocol | Required behavior |
+|---|---|---|
+| Voice | `openai_live` | WSS, client delegation, input/output transcripts, PCM16 mono, Decisions interaction events |
+| Reasoning | `openai_responses` | Responses requests, function calls, completed output and tool results |
+| Reasoning | `openai_chat_completions` | Non-streamed Chat Completions, function tools and tool-result messages |
+| Search | `tavily` | Search results; optional extraction configured separately |
+| Search | `openai_responses` | Responses with hosted `web_search` capability and available citations |
+
+The firmware uses the **full endpoint exactly as configured**. It does not append `/v1`, infer a protocol from a hostname or follow API redirects. A text-chat provider is not automatically a Live provider. Confirm model/voice availability and capabilities with the selected deployment; model names are intentionally not hardcoded into the example.
+
+## Reasoning and search examples
+
+Replace only the corresponding section of the complete private configuration. These are fragments, not complete installable files:
+
+```json
+{"llm":{"protocol":"openai_chat_completions","url":"https://llm.example.com/v1/chat/completions","api_key":"YOUR_LLM_KEY","model":"YOUR_LLM_MODEL"}}
 ```
 
-`device.py configure` sends the full configuration through USB and reboots. It does not reflash the application or overwrite the volume, orientation or family partitions. `configure.py --init /private/pikoo.json` is an optional interactive creator; secrets are entered without echo. Never commit a completed configuration.
+```json
+{"search":{"enabled":true,"protocol":"tavily","url":"https://api.tavily.com/search","extract_url":"https://api.tavily.com/extract","api_key":"YOUR_SEARCH_KEY"}}
+```
 
-| Section | Fields |
-|---|---|
-| `wifi` | `ssid`, `password` (empty for an open network) |
-| `agent` | `name`, `language`, `instructions`; defaults to Pikoo / en when omitted |
-| `live` | `protocol`, full `url`, `api_key`, `model`, `voice` (marin), `audio_rate` (16000 or 24000) |
-| `llm` | `protocol`, full `url`, `api_key`, `model` |
-| `search` | `enabled`; if enabled: `protocol`, full `url`, `api_key`, and `model` for Responses; optional Tavily `extract_url` |
-| `network` | Optional `proxy_url` (HTTPS origin) and `proxy_basic` (Base64 username:password) |
+```json
+{"search":{"enabled":true,"protocol":"openai_responses","url":"https://search.example.com/v1/responses","api_key":"YOUR_SEARCH_KEY","model":"YOUR_SEARCH_MODEL"}}
+```
 
-No API paths are appended. Empty `api_key` omits Authorization for services that intentionally require no authentication; otherwise Bearer authentication is used. Keys are independent and are never copied from one service to another. Proxy Basic authentication is separate. All service connections use certificate verification. There is no insecure-TLS switch.
+Omit Tavily `extract_url` to offer search only. Disabling search removes its tool capability; no search key is required. Responses search does not register arbitrary webpage extraction.
 
-## Supported protocols
+## Transport, credentials and language
 
-- `live.protocol = openai_live`: primary Live WebSocket, client delegation, input/output transcript events, PCM16 audio and Decisions interaction triggers. OpenAI's endpoint is `wss://api.openai.com/v1/live/sessions`; compatible endpoints must support these capabilities. Configure the account's Live model and voice explicitly.
-- `llm.protocol = openai_responses`: Responses API with function calls and completed output; OpenAI's endpoint is `https://api.openai.com/v1/responses`.
-- `llm.protocol = openai_chat_completions`: Chat Completions with function tools, tool result messages and non-streamed responses. A service merely accepting chat messages is insufficient.
-- `search.protocol = tavily`: Search API; typical endpoint `https://api.tavily.com/search`. Set `extract_url` to `https://api.tavily.com/extract` to enable webpage extraction. It must have the same origin as the search endpoint because it uses that key.
-- `search.protocol = openai_responses`: an independently configured Responses endpoint/model with hosted `web_search` capability. Results include available source citations; this adapter does not expose arbitrary webpage extraction.
+Use `network: {}` for direct verified TLS. An optional standard HTTPS CONNECT proxy can be supplied as an HTTPS origin. Proxy credentials authenticate only the outer connection; service credentials travel inside the service TLS connection. Each request builds authentication for its own service. API redirect handling is intentionally disabled to avoid forwarding credentials elsewhere.
 
-Search is off in the example and requires no key until enabled. URL changes select a compatible deployment, not a different wire protocol. Unknown protocol IDs are rejected. Custom CA and alternative authentication header schemes are not implemented.
+Set `agent.language` to `zh-CN` for Chinese dialogue; leave `en` for the default English experience. The `--language` option of the interactive setup tools changes their UI prompts, independently of the configuration value. Changing a display name does not retrain the English wake phrase. Role instructions guide responses but cannot add an unimplemented tool or protocol.
 
-[Official Live delegation](https://developers.openai.com/api/docs/guides/live-delegation) · [Responses search](https://developers.openai.com/api/docs/guides/tools-web-search) · [Tavily API](https://docs.tavily.com/)
-
-The default conversation language is English (`en`). Set `agent.language` to `zh-CN` for Chinese, then update the configuration over USB; no firmware rebuild is required.
-
-`tools/usb-setup.py --language zh-CN` / `tools/configure.py --init /private/pikoo.json --language zh-CN`: Chinese setup prompts; the default UI language is English.
+[Quick start](getting-started.md) · [FAQ](faq.md) · [Security](../SECURITY.md)

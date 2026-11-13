@@ -1,25 +1,21 @@
-# Hi Pikoo wake model · 唤醒模型
+# Hi Pikoo wake model
 
-The weights are included in this directory. Publication permission is confirmed by the project maintainer in [PERMISSION.md](PERMISSION.md); existing non-commercial model terms and source restrictions remain applicable.
+**English** | [简体中文](README.zh-CN.md)
 
-权重保存在本目录，无须 Git LFS。维护者确认的发布许可见 [PERMISSION.md](PERMISSION.md)，继续适用非商业模型条款及来源要求。
+This directory contains the local full-phrase “Hi, Pikoo” wake artifacts. Dialogue inference is provided by configured external services; these files do not contain a conversational language model.
 
-| File / 文件 | Purpose / 用途 |
+| File | Use |
 |---|---|
-| [hi_pikoo.tflite](hi_pikoo.tflite) | ESP32 inference / ESP32 推理权重，98,064 bytes |
-| [checkpoint.weights.h5](checkpoint.weights.h5) | Training checkpoint / 训练检查点，279,208 bytes |
-| [model-config.json](model-config.json) | Architecture settings / 网络结构参数 |
-| [wake-policy.json](wake-policy.json) | Frozen inference policy / 冻结推理策略 |
-| [SHA256SUMS](SHA256SUMS) | File checksums / 文件校验值 |
+| `hi_pikoo.tflite` | Quantized streaming inference model embedded by firmware |
+| `checkpoint.weights.h5` | Training weights; requires the matching Python architecture |
+| `model-config.json` | Checkpoint architecture/configuration metadata |
+| `wake-policy.json` | Frozen frontend/decision policy bound to the model hash |
+| `SHA256SUMS` | Integrity checks for distributed files |
+| `MODEL_CARD.md` | Input/output contract, measurements and limitations |
+| `LICENSE.md`, `ATTRIBUTION.md`, `PERMISSION.md` | Model terms, sources and publication record |
 
-```sh
-cd models/hi-pikoo
-sha256sum -c SHA256SUMS
-# macOS: shasum -a 256 -c SHA256SUMS
-```
+Clone the repository or download the [2.0.0 model ZIP](https://github.com/skiyo/pikoo/releases/download/v2.0.0/hi-pikoo-model-2.0.0.zip). Git LFS is not needed. In this directory run `shasum -a 256 -c SHA256SUMS` on macOS or `sha256sum -c SHA256SUMS` on Linux. Keep the model and policy together; changing one independently causes build validation to fail.
 
-These are wake-model weights. Flashable firmware is a separate build artifact; see [firmware setup](../../docs/firmware.md).
+To build firmware, follow [Quick start](../../docs/getting-started.md). To reconstruct or train a network, read [Training](../../training/README.md) and the [model card](MODEL_CARD.md). Checkpoint metadata includes descriptive fields; do not blindly pass every JSON key as a constructor argument.
 
-这里是唤醒模型权重。可烧录固件是另一个构建产物，见[固件安装](../../docs/firmware.zh-CN.md)。
-
-[Model card / 模型卡](MODEL_CARD.md) · [中文模型卡](MODEL_CARD.zh-CN.md) · [Non-commercial model terms / 非商业模型条款](LICENSE.md) · [Attribution / 来源](ATTRIBUTION.md)
+The model artifact has its own version, independent of the Pikoo application version. Weights and model-containing firmware retain non-commercial terms; source code uses Apache-2.0. Raw datasets and private recordings are not included. A published checkpoint does not imply that all natural-speaker or endurance acceptance targets have been established.

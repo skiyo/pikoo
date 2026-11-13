@@ -6,7 +6,7 @@ Target: complete **Hi + piku / piko**, naturally connected or spoken with Chines
 
 ## Use the published model
 
-[Model card](../models/hi-pikoo/MODEL_CARD.md) · [Weights and checkpoint](https://github.com/skiyo/pikoo/releases/tag/v1.0.0) · [Terms and sources](../models/hi-pikoo/ATTRIBUTION.md)
+[Model card](../models/hi-pikoo/MODEL_CARD.md) · [Weights and checkpoint](https://github.com/skiyo/pikoo/releases/tag/v2.0.0) · [Terms and sources](../models/hi-pikoo/ATTRIBUTION.md)
 
 The package contains `hi_pikoo.tflite`, `checkpoint.weights.h5`, `model-config.json`, `wake-policy.json` and checksums. Source weights are 98,064 bytes; family recordings and raw datasets are excluded. The checkpoint configuration is 96 channels, 64 head units, 72 ordered context steps, no batch normalization, seed 42. Reconstruct with `hi_pikoo_model.build(upstream, **configuration)` using only its supported arguments; the JSON also contains metadata, not all fields are function arguments.
 
@@ -52,3 +52,11 @@ Use the correct Micro backend for agreement. Device inference/arena numbers, ful
 
 
 Optional Node-based synthesis and audit tools use their own locked dependency: run `npm ci --ignore-scripts` in `training/` before explicit generation. Importing planning/unit-test modules does not access providers.
+
+## Choose a workflow
+
+- To use Pikoo, use the published TFLite/policy pair; training is unnecessary.
+- To inspect a checkpoint, reconstruct the architecture described in `model-config.json`, load weights and verify stateful export before changing thresholds.
+- To train a replacement, obtain authorized data, create the required reviewed manifests and reserve independent TEST before selection.
+
+Keep corpus roots, generated audio, API credentials and experiment outputs outside the public repository. Start with each script's `--help`; do not copy private paths into public commands. Feature extraction, floating-point training, quantization, native runtime agreement and board scheduling are separate validation stages. Report skips and the actual data/evaluation scope. Read the [model card](../models/hi-pikoo/MODEL_CARD.md) before comparing metrics.

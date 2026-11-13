@@ -1,17 +1,28 @@
-# Public repository checks
+# Public repository quality
 
 **English** | [简体中文](public-audit.zh-CN.md)
 
-Original source and documentation use Apache-2.0. Model weights and third-party components have separate terms.
+Public documentation describes the product, its interfaces and reproducible workflows. Examples use placeholders. Personal deployment details, private endpoints, credentials, device backups, recordings and user snapshots do not belong in source or release packages.
 
-## Technical checks
+## Technical review
 
-`tools/check-public-repo.py` validates tracked artifacts, example placeholders, local Markdown links and model checksums. CI runs redacted Gitleaks history scanning. Never commit credentials, device backups, recordings or user data. A passing scan is not a guarantee that every possible secret has been detected.
+Run `python tools/check-public-repo.py` from the repository root. It checks tracked artifacts, placeholder secrets in examples, local Markdown targets and the model checksum set. CI adds redacted Gitleaks history scanning. Review findings without printing the matching secret. A clean result covers implemented patterns, not every possible private value.
 
-## Model permission
+Before publishing, inspect the exact tracked diff and archive file list. Ensure English/Chinese navigation and commands agree, binary downloads point to the intended release, and examples are structurally valid. Keep generated build outputs out of source commits. A private full-Flash backup remains private even if it is useful for reproducing a device failure.
 
-The inference weights and training checkpoint are tracked in [models/hi-pikoo](../models/hi-pikoo/README.md). [ChildMandarin access terms](https://huggingface.co/datasets/BAAI/ChildMandarin) restrict distributing research derivatives outside a research group without written permission and do not expressly name trained weights. Publication permission is confirmed by the project maintainer and recorded in [PERMISSION.md](../models/hi-pikoo/PERMISSION.md). Availability in Git is not proof of clearance.
+## Licensing boundaries
 
-[distribution-status.json](../models/hi-pikoo/distribution-status.json) binds the status to the model hash. Packaging verifies the hash-bound permission record before producing model-containing artifacts. Source Apache-2.0 does not override upstream restrictions; non-commercial model terms are not an OSI open-source license. Retain [source attribution](../models/hi-pikoo/ATTRIBUTION.md) and dependency notices.
+Original source and documentation use Apache-2.0. Model weights have separate non-commercial terms; dependencies retain their own licenses. See [third-party attribution](../THIRD_PARTY.md), [model terms](../models/hi-pikoo/LICENSE.md) and the [publication record](../models/hi-pikoo/PERMISSION.md). Preserve those documents in redistribution.
 
-[Engineering verification](release.md) is separate from redistribution permission.
+`distribution-status.json` binds publication metadata to the model hash. The package tool checks the record and file integrity before creating model-containing artifacts. This does not grant a new commercial license or rights to redistribute raw training recordings. Non-commercial model terms are not an OSI open-source license.
+
+## Review checklist
+
+- Source and examples contain no personal credentials or data.
+- All advertised capabilities map to implemented adapters/tools.
+- English is the default; Chinese instructions describe the same configuration and behavior.
+- Links, artifact names and checksums resolve to actual files.
+- Software and hardware results identify their environment and limitations.
+- License, source attribution and model terms accompany relevant assets.
+
+[Security](../SECURITY.md) · [Release process](release.md) · [Contributing](../CONTRIBUTING.md)
