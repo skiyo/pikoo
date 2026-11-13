@@ -29,4 +29,6 @@ Formal family acceptance, independent real-child recall, 8-hour mixed background
 
 ## Download and terms
 
+**Publication permission remains unresolved.** No written authorization for publishing these ChildMandarin-trained weights has been obtained. Its gated terms restrict sharing research derivatives without prior written permission and do not expressly name trained weights. This affects the checkpoint, inference weights and firmware embedding them. See [distribution status](distribution-status.json). Technical evidence above is independent of permission to redistribute.
+
 The weights are tracked directly in this directory: [hi_pikoo.tflite](hi_pikoo.tflite) for ESP inference and [checkpoint.weights.h5](checkpoint.weights.h5) for training. Clone the repository to obtain both; Git LFS is not required. Verify [SHA256SUMS](SHA256SUMS). The [model package](https://github.com/skiyo/pikoo/releases/download/v1.0.0/hi-pikoo-model-1.0.0.zip) is an alternative download. Read [model terms](LICENSE.md) and [source attribution](ATTRIBUTION.md). Raw datasets, family audio and private manifests are excluded. Original source code remains Apache-2.0; model terms are separate.

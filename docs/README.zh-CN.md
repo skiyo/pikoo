@@ -16,3 +16,5 @@
 - [验证与发布](release.zh-CN.md)
 
 [Wake model](../models/hi-pikoo/MODEL_CARD.md) · [Enclosure](../hardware/enclosure/README.md)
+
+[公开仓库审核与许可边界](public-audit.zh-CN.md)

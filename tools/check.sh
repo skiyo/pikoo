@@ -9,6 +9,7 @@ fi
 if [ ! -d firmware/simulator/node_modules/ws ]; then
   echo 'Install dependencies first: (cd firmware/simulator && npm ci --ignore-scripts)'; exit 1
 fi
+"$python_bin" tools/check-public-repo.py
 echo 'Checking native audio/session core and eyes'
 bash tools/test-core.sh
 bash tools/test-eyes.sh

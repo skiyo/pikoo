@@ -23,3 +23,5 @@ No board was flashed in this work; existing family data, volume and orientation 
 ## Packaging
 
 `tools/package-release.py` produces source/firmware and model bundles, license texts, provenance and SHA256SUMS from tracked source, the matching model policy and checked build images. Never include NVS, configuration, credentials, family data or recordings. Verify checksums and executable permissions before separately publishing. Retain source and model terms independently.
+
+Public model/firmware packaging is blocked while [model redistribution permission](../models/hi-pikoo/distribution-status.json) is pending. See the [publication audit](public-audit.md). Technical test success does not grant upstream rights.

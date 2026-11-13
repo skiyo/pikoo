@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "status": "pending_permission",
+  "reviewed_on": "2026-11-13",
+  "model_sha256": "5efc03a7bbe992eb66ccefb1e1d14a81e071fceb45df3c2d6c2caa3df251ca50",
+  "reason": "ChildMandarin access terms restrict research-derivative redistribution beyond the research group. They do not expressly name trained weights. No written authorization for publishing these weights has been obtained.",
+  "applies_to": ["hi_pikoo.tflite", "checkpoint.weights.h5", "firmware embedding the model"],
+  "clearance_evidence": [],
+  "upstream_terms": "https://huggingface.co/datasets/BAAI/ChildMandarin"
+}

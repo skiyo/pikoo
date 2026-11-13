@@ -7,7 +7,6 @@ import argparse
 import hashlib
 import json
 import os
-import os
 from pathlib import Path
 import struct
 import subprocess
@@ -162,7 +161,6 @@ def main():
         (a.backup/'manifest.json').write_text(json.dumps({'full_backup_sha256':hashlib.sha256(raw.read_bytes()).hexdigest(),'bytes':FLASH_SIZE},indent=2)+'\n')
         print('Full Flash backup saved and verified. It contains private data; keep it outside Git.')
         return
-    os.umask(0o077)
     if a.action == 'diagnose':
         if not a.dry_run:
             monitor = registered_socket(a.port)

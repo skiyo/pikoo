@@ -19,7 +19,7 @@ headers and firmware/components/pikoo_features/kissfft/COPYING.
 Installed dependencies retain their upstream licenses and attribution.
 Binary distributors must include notices for the dependencies they bundle.
 No Muse code or Jollybot assets are incorporated.
-Wake-model release assets carry separate non-commercial terms and source
+Wake-model files and release assets carry separate non-commercial terms and source
 attribution in models/hi-pikoo/. The source Apache license does not cover them.
 
 This NOTICE is informational and does not modify any license.

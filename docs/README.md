@@ -16,3 +16,5 @@
 - [Verification and release](release.md)
 
 [Wake model](../models/hi-pikoo/MODEL_CARD.md) · [Enclosure](../hardware/enclosure/README.md)
+
+[Public repository audit and licensing boundary](public-audit.md)

@@ -22,10 +22,16 @@ def zip_tree(root,path):
     with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED) as z:
         for p in sorted(root.rglob('*')):
             if p.is_file():z.write(p,p.relative_to(root))
+def require_model_clearance(root):
+    status=json.loads((root/'models/hi-pikoo/distribution-status.json').read_text())
+    model=root/'models/hi-pikoo/hi_pikoo.tflite'
+    if (status.get('status')!='cleared' or not status.get('clearance_evidence')
+        or status.get('model_sha256')!=sha(model)):
+        raise ValueError('Model redistribution permission is unresolved; public model/firmware packaging is blocked. See models/hi-pikoo/distribution-status.json')
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     for n in ('build','model','checkpoint','idf','output'):ap.add_argument('--'+n,type=Path,required=True)
-    a=ap.parse_args();version=(ROOT/'VERSION').read_text().strip()
+    a=ap.parse_args();require_model_clearance(ROOT);version=(ROOT/'VERSION').read_text().strip()
     description=json.loads((a.build/'project_description.json').read_text())
     if description.get('project_version')!=version:raise ValueError('Firmware version differs from VERSION')
     images,_=build_files(a.build)
