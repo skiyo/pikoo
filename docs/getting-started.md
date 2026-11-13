@@ -4,14 +4,14 @@
 
 ## Device setup
 
-Prepare the [hardware](hardware.md), ESP-IDF 5.5.5 and Python 3.11. Download a compatible [wake model bundle](https://github.com/skiyo/pikoo/releases/tag/v1.0.0), check its SHA256SUMS and model terms, and keep the weights/checkpoint outside Git. The build verifies its frozen policy hash.
+Prepare the [hardware](hardware.md), ESP-IDF 5.5.5 and Python 3.11. The reviewed weights and training checkpoint are included in [models/hi-pikoo](../models/hi-pikoo/MODEL_CARD.md). Verify its SHA256SUMS and read the model terms. The build verifies the frozen model/policy hash.
 
 ```sh
 git clone https://github.com/skiyo/pikoo.git
 cd pikoo
 . /path/to/esp-idf/export.sh
 PIKOO_WAKE_POLICY="$PWD/models/hi-pikoo/wake-policy.json" \
-  bash tools/build-device.sh /private/hi_pikoo.tflite
+  bash tools/build-device.sh "$PWD/models/hi-pikoo/hi_pikoo.tflite"
 ```
 
 Copy the example outside Git, fill the [service configuration](configuration.md), create and verify a full device backup, then follow the [USB installation guide](firmware.md). Service accounts, networking and inference are supplied by you; running a Pikoo application server is unnecessary.

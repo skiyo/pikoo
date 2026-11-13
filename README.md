@@ -22,7 +22,7 @@ Pikoo is a hardware AI Agent on ESP32-S3. It wakes locally, manages sessions, ex
 The target is the non-touch Waveshare ESP32-S3-DualEye-LCD-1.28 with 16 MiB Flash and 8 MiB PSRAM, microphones, a speaker, USB data cable and 2.4 GHz Wi-Fi. Supply your own API accounts and access; no Pikoo application server is required.
 
 1. Copy `examples/device.example.json` outside the repository and fill in Wi-Fi and service settings.
-2. Follow the firmware guide to obtain a matching wake model, build and back up your device.
+2. Use the included `models/hi-pikoo/hi_pikoo.tflite`, then follow the firmware guide to build and back up your device.
 3. Install firmware and configuration with one USB command. Later configuration changes require no rebuild.
 
 ```sh

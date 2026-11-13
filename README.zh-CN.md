@@ -22,7 +22,7 @@ Pikoo 是一个运行在 ESP32-S3 上的硬件 AI Agent：在本地唤醒、管�
 目标硬件为微雪 ESP32-S3-DualEye-LCD-1.28 非触摸版，16 MiB Flash、8 MiB PSRAM，配套麦克风、喇叭、USB 数据线与 2.4 GHz Wi-Fi。联网对话需要自己的服务账号和 API 权限，不需要部署 Pikoo 服务端。
 
 1. 复制 `examples/device.example.json` 到仓库外，填写 Wi-Fi 和服务参数。
-2. 按固件指南下载匹配的唤醒模型、构建固件并备份设备。
+2. 使用仓库内 `models/hi-pikoo/hi_pikoo.tflite`，按固件指南构建并备份设备。
 3. 使用 USB 安装器一次完成刷写和配置；之后可只更新配置。
 
 ```sh
