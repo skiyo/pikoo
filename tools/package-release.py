@@ -25,7 +25,10 @@ def zip_tree(root,path):
 def require_model_clearance(root):
     status=json.loads((root/'models/hi-pikoo/distribution-status.json').read_text())
     model=root/'models/hi-pikoo/hi_pikoo.tflite'
-    if (status.get('status')!='cleared' or not status.get('clearance_evidence')
+    evidence=status.get('clearance_evidence',[])
+    permitted=status.get('status') in ('cleared','maintainer_confirmed')
+    if (not permitted or not evidence
+        or not all(Path(x).name==x and (root/'models/hi-pikoo'/x).is_file() for x in evidence)
         or status.get('model_sha256')!=sha(model)):
         raise ValueError('Model redistribution permission is unresolved; public model/firmware packaging is blocked. See models/hi-pikoo/distribution-status.json')
 def main():
@@ -42,7 +45,7 @@ def main():
     a.output.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='pikoo-release-') as tmp:
         tmp=Path(tmp);firmware=tmp/'firmware';model=tmp/'model';firmware.mkdir();model.mkdir()
-        files=subprocess.check_output(['git','ls-files','--cached','--deduplicate'],cwd=ROOT,text=True).splitlines()
+        files=subprocess.check_output(['git','ls-files','-z','--cached','--deduplicate'],cwd=ROOT).decode().split('\0')[:-1]
         for f in files:
             p=ROOT/f
             if not p.is_file():continue

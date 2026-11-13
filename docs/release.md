@@ -19,6 +19,6 @@ Synthetic speech does not establish household/child wake rates, subjective sound
 
 Validate configuration, run `tools/check.sh`, cross-build the target board, verify image/partition ranges, run board acceptance and check license notices and checksums. Packages must exclude NVS, credentials, recordings and user data.
 
-Public model/firmware packaging remains blocked while [model redistribution permission](../models/hi-pikoo/distribution-status.json) is pending. Technical test success does not grant upstream rights. See [public repository checks](public-audit.md).
+The current release uses [maintainer-confirmed publication permission](../models/hi-pikoo/PERMISSION.md); non-commercial terms and source attribution remain applicable.
 
 English defaults and bilingual stop commands pass native tests and cross-compilation. Board metrics identify the tested image; changing language defaults does not re-certify acoustic behavior.

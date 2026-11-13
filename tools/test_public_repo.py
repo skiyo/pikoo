@@ -39,5 +39,8 @@ class PublicArtifacts(unittest.TestCase):
      with self.assertRaisesRegex(ValueError,'redistribution permission is unresolved'):
       release.require_model_clearance(root)
     status.update(status='cleared',clearance_evidence=['documented-permission'],model_sha256=release.sha(model))
+    (folder/'documented-permission').write_text('Fixture permission record')
+    (folder/'distribution-status.json').write_text(json.dumps(status));release.require_model_clearance(root)
+    status['status']='maintainer_confirmed'
     (folder/'distribution-status.json').write_text(json.dumps(status));release.require_model_clearance(root)
   finally:sys.path.pop(0)

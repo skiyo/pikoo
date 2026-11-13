@@ -10,8 +10,8 @@
 
 ## 模型权限
 
-推理权重和训练检查点保存在 [models/hi-pikoo](../models/hi-pikoo/README.md)。[ChildMandarin 访问条款](https://huggingface.co/datasets/BAAI/ChildMandarin)要求研究衍生物向研究组外分发前取得书面许可，但未明确单列训练权重。目前模型分发书面许可待确认，Git 中可以下载不代表授权已满足。
+推理权重和训练检查点保存在 [models/hi-pikoo](../models/hi-pikoo/README.md)。[ChildMandarin 访问条款](https://huggingface.co/datasets/BAAI/ChildMandarin)要求研究衍生物向研究组外分发前取得书面许可，但未明确单列训练权重。维护者确认的发布许可已记录于 [PERMISSION.md](../models/hi-pikoo/PERMISSION.md)；Git 可下载本身不代表授权依据。
 
-[distribution-status.json](../models/hi-pikoo/distribution-status.json)将状态绑定至模型摘要。取得并记录许可依据前，公开模型与固件打包被阻止。源码 Apache-2.0 不覆盖上游限制；非商业模型条款也不属于 OSI 定义的开源许可证。保留[数据来源](../models/hi-pikoo/ATTRIBUTION.md)和依赖许可。
+[distribution-status.json](../models/hi-pikoo/distribution-status.json)将状态绑定至模型摘要。打包前检查绑定模型摘要的许可记录。源码 Apache-2.0 不覆盖上游限制；非商业模型条款也不属于 OSI 定义的开源许可证。保留[数据来源](../models/hi-pikoo/ATTRIBUTION.md)和依赖许可。
 
 [工程验证](release.zh-CN.md)与分发权限分开判断。

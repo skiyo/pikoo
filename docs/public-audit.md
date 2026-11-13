@@ -10,8 +10,8 @@ Original source and documentation use Apache-2.0. Model weights and third-party 
 
 ## Model permission
 
-The inference weights and training checkpoint are tracked in [models/hi-pikoo](../models/hi-pikoo/README.md). [ChildMandarin access terms](https://huggingface.co/datasets/BAAI/ChildMandarin) restrict distributing research derivatives outside a research group without written permission and do not expressly name trained weights. Written model-distribution permission is pending. Availability in Git is not proof of clearance.
+The inference weights and training checkpoint are tracked in [models/hi-pikoo](../models/hi-pikoo/README.md). [ChildMandarin access terms](https://huggingface.co/datasets/BAAI/ChildMandarin) restrict distributing research derivatives outside a research group without written permission and do not expressly name trained weights. Publication permission is confirmed by the project maintainer and recorded in [PERMISSION.md](../models/hi-pikoo/PERMISSION.md). Availability in Git is not proof of clearance.
 
-[distribution-status.json](../models/hi-pikoo/distribution-status.json) binds the status to the model hash. Public model/firmware packaging is blocked until clearance evidence is recorded. Source Apache-2.0 does not override upstream restrictions; non-commercial model terms are not an OSI open-source license. Retain [source attribution](../models/hi-pikoo/ATTRIBUTION.md) and dependency notices.
+[distribution-status.json](../models/hi-pikoo/distribution-status.json) binds the status to the model hash. Packaging verifies the hash-bound permission record before producing model-containing artifacts. Source Apache-2.0 does not override upstream restrictions; non-commercial model terms are not an OSI open-source license. Retain [source attribution](../models/hi-pikoo/ATTRIBUTION.md) and dependency notices.
 
 [Engineering verification](release.md) is separate from redistribution permission.

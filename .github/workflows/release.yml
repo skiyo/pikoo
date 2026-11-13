@@ -1,0 +1,44 @@
+name: Publish release
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [release-plan.json, .github/workflows/release.yml]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.5
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Wait for software and public repository checks
+        run: python3 tools/publish-release.py wait
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Build ESP32-S3 firmware
+        shell: bash
+        run: |
+          set -euo pipefail
+          source "$IDF_PATH/export.sh"
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          bash tools/build-device.sh "$GITHUB_WORKSPACE/models/hi-pikoo/hi_pikoo.tflite"
+      - name: Package and verify release
+        shell: bash
+        run: |
+          set -euo pipefail
+          source "$IDF_PATH/export.sh"
+          python tools/package-release.py --build firmware/build-dualeye --model models/hi-pikoo/hi_pikoo.tflite --checkpoint models/hi-pikoo/checkpoint.weights.h5 --idf "$IDF_PATH" --output dist
+          python tools/publish-release.py prepare
+      - name: Publish verified assets and remove merged development branches
+        run: python3 tools/publish-release.py publish
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

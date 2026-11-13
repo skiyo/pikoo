@@ -1,8 +1,8 @@
 # Hi Pikoo wake model · 唤醒模型
 
-The weights are included directly in this directory. Technical checks do not establish redistribution permission. **Model publication clearance is pending**: no written permission for publishing weights trained using ChildMandarin has been obtained. Its access terms restrict research-derivative distribution and do not expressly name trained weights. See [distribution status](distribution-status.json); do not treat these weights or firmware embedding them as cleared for redistribution or commercial use.
+The weights are included in this directory. Publication permission is confirmed by the project maintainer in [PERMISSION.md](PERMISSION.md); existing non-commercial model terms and source restrictions remain applicable.
 
-权重直接保存在本目录，无须 Git LFS。技术校验不代表获得分发授权。**模型公开分发权限待确认**：尚未取得针对 ChildMandarin 训练权重公开发布的书面许可；其访问条款限制研究衍生物向研究组外分发，但未明确单列训练权重。见[分发状态](distribution-status.json)。不能将这些权重或内嵌权重的固件视为已获再分发或商用许可。
+权重保存在本目录，无须 Git LFS。维护者确认的发布许可见 [PERMISSION.md](PERMISSION.md)，继续适用非商业模型条款及来源要求。
 
 | File / 文件 | Purpose / 用途 |
 |---|---|

@@ -67,4 +67,4 @@ Original source, eye artwork and documentation use Apache-2.0. Wake weights and 
 
 [LICENSE](LICENSE) · [NOTICE](NOTICE) · [Model terms](models/hi-pikoo/LICENSE.md) · [Third-party sources](THIRD_PARTY.md) · [Security](SECURITY.md)
 
-**Model redistribution permission is pending.** ChildMandarin-trained weights and firmware embedding them are not cleared by the source license. See the [public audit](docs/public-audit.md) and [model distribution status](models/hi-pikoo/distribution-status.json).
+**Model publication permission is confirmed by the project maintainer.** Existing non-commercial terms and source attribution remain applicable. See [model permission](models/hi-pikoo/PERMISSION.md).

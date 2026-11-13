@@ -47,4 +47,4 @@ The current weights are tracked in Git and available as release assets with [sep
 
 Original Pikoo code, graphics and documentation use Apache-2.0. This does not relicense third-party source, data, provider models or the published wake weights. Binary release packages include the actual bundled dependency license texts.
 
-Model redistribution clearance remains pending: no written authorization for publishing the ChildMandarin-trained weights has been obtained. See [distribution status](models/hi-pikoo/distribution-status.json). Non-commercial model terms are not an OSI open-source license and do not resolve upstream restrictions.
+Model publication permission is confirmed by the project maintainer; see models/hi-pikoo/PERMISSION.md. Existing source and non-commercial terms remain applicable.

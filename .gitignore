@@ -44,3 +44,5 @@ releases/
 # Reviewed public wake-model artifacts; all other model outputs stay ignored.
 !models/hi-pikoo/hi_pikoo.tflite
 !models/hi-pikoo/checkpoint.weights.h5
+!docs/releases/
+!docs/releases/*.md

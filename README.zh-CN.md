@@ -67,4 +67,4 @@ ESP 负责状态和动作，Live 负责听说，独立 LLM 负责推理与工具
 
 [LICENSE](LICENSE) · [NOTICE](NOTICE) · [模型条款](models/hi-pikoo/LICENSE.md) · [第三方来源](THIRD_PARTY.zh-CN.md) · [Security](SECURITY.zh-CN.md)
 
-**模型公开分发权限待确认。** ChildMandarin 训练权重及内嵌权重的固件，不能由源码许可证获得授权。见[公开审核](docs/public-audit.zh-CN.md)与[模型分发状态](models/hi-pikoo/distribution-status.json)。
+**项目维护者已确认模型发布许可。** 继续适用现有非商业模型条款及来源署名，见[许可记录](models/hi-pikoo/PERMISSION.md)。

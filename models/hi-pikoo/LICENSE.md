@@ -2,7 +2,7 @@
 
 Copyright 2026 Pikoo contributors, for rights held by the project.
 
-**Distribution clearance pending (2026-11-13).** No written authorization for publishing the ChildMandarin-trained weights has been obtained. The project's notice below cannot resolve or override upstream restrictions. See [distribution-status.json](distribution-status.json). Model-containing firmware is affected as well. Do not interpret availability in Git or existing downloads as proof of clearance.
+**Publication permission is confirmed by the project maintainer.** See [PERMISSION.md](PERMISSION.md). Existing non-commercial model terms and attribution remain applicable.
 
 The project permits copying, running, studying and modifying the released wake-model weights for non-commercial research, educational and personal use, provided this notice, the model card and the dataset/source attribution accompany redistribution. No commercial permission is granted by this notice. The source-code Apache-2.0 license does not apply to these weights.
 
