@@ -35,3 +35,5 @@ python tools/device.py configure --port PORT --config /private/pikoo.json
 [Live 委派协议](https://developers.openai.com/api/docs/guides/live-delegation) · [Responses 搜索](https://developers.openai.com/api/docs/guides/tools-web-search) · [Tavily API](https://docs.tavily.com/)
 
 默认对话语言为英文（`en`）。将 `agent.language` 改为 `zh-CN` 并经 USB 更新配置即可切换中文，无须重编固件。
+
+`tools/usb-setup.py --language zh-CN` / `tools/configure.py --init /private/pikoo.json --language zh-CN`: 可使用中文设置提示；界面默认英文。

@@ -63,6 +63,6 @@
     "embedded_translations": true,
     "translation_network_requests": false,
     "preserves_checklist_IDs_and_notes": true,
-    "translation_entries": 166
+    "translation_entries": 164
   }
 }

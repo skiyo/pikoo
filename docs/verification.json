@@ -5,7 +5,7 @@
   "checked_on": "2026-11-13",
   "software": {
     "service_behaviors": 18,
-    "python_tools": 66,
+    "python_tools": 67,
     "node_preview": 5,
     "node_training_planners": 19,
     "sanitizers": "ASan/UBSan passed",

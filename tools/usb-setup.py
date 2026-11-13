@@ -26,7 +26,7 @@ print(tr('Pikoo USB assistant\n1. Install\n2. Upgrade (preserve configuration)\n
 choice=input(tr('Choose [3]: ','选择 / Choose [3]: ')).strip() or '3'
 config=private/'device-config.json'
 if choice in ('1','5') and (not config.exists() or choice=='5'):
-    c=prompt_config()
+    c=prompt_config(ui)
     validate(c);config.write_text(json.dumps(c));config.chmod(0o600)
 action={'1':'install','2':'upgrade','3':'diagnose','4':'restore','5':'configure','6':'diagnose','7':'diagnose'}.get(choice)
 if not action:raise SystemExit(tr('Invalid selection','无效选择'))

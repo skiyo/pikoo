@@ -126,6 +126,9 @@ test('every Chinese text/attribute has a translation, including native diagram c
   assert.equal((html.match(/class="guide-diagram"/g) || []).length, 2);
   assert.equal((html.match(/data:image\/(?:png|jpeg|webp);base64,/g) || []).length, 10);
   assert.equal(ids.length, 15);
+  const manifest = JSON.parse(readFileSync(path.join(__dirname, '../manifest.json'), 'utf8'));
+  assert.equal(manifest.guide.translation_entries, Object.keys(dictionary).length);
+  assert.equal(manifest.guide.languages[0], 'en');
   assert(!/fetch\(|XMLHttpRequest|<script[^>]+src=|<link[^>]+rel="stylesheet"/.test(html));
   for (const name of ['01_main_body.stl', '02_rear_cover.stl', '03_rotary_lock.stl']) assert(html.includes(`href="stl/${name}"`));
 });

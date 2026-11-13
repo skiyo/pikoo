@@ -63,19 +63,20 @@ def validate(c):
     if not secret(network.get('proxy_basic','')) or network.get('proxy_basic') and not network.get('proxy_url'):raise ValueError('Invalid proxy settings')
     return c
 
-def prompt_config():
-    c=dict(version=1,wifi=dict(ssid=input('2.4 GHz Wi-Fi SSID: '),password=getpass.getpass('Wi-Fi password: ')),agent=dict(name='Pikoo',language=input('Agent language [en; zh-CN for Chinese]: ').strip() or 'en',instructions=''))
-    c['live']=dict(protocol='openai_live',url=input('Live WSS endpoint: ').strip(),api_key=getpass.getpass('Live API key: '),model=input('Live model: ').strip(),voice=input('Voice [marin]: ').strip() or 'marin',audio_rate=16000)
-    protocol=input('LLM protocol: responses / chat [responses]: ').strip() or 'responses'
-    c['llm']=dict(protocol={'responses':'openai_responses','chat':'openai_chat_completions'}.get(protocol,protocol),url=input('LLM HTTPS endpoint: ').strip(),api_key=getpass.getpass('LLM API key: '),model=input('LLM model: ').strip())
+def prompt_config(ui_language="en"):
+    def tr(en,zh):return zh if ui_language=="zh-CN" else en
+    c=dict(version=1,wifi=dict(ssid=input(tr('2.4 GHz Wi-Fi SSID: ','2.4 GHz 无线网络名称：')),password=getpass.getpass(tr('Wi-Fi password: ','无线网络密码：'))),agent=dict(name='Pikoo',language=input(tr('Agent language [en; zh-CN for Chinese]: ','Agent 语言 [en；中文填 zh-CN]：')).strip() or 'en',instructions=''))
+    c['live']=dict(protocol='openai_live',url=input(tr('Live WSS endpoint: ','实时语音 WSS 地址：')).strip(),api_key=getpass.getpass(tr('Live API key: ','实时语音密钥：')),model=input(tr('Live model: ','实时语音模型：')).strip(),voice=input(tr('Voice [marin]: ','音色 [marin]：')).strip() or 'marin',audio_rate=16000)
+    protocol=input(tr('LLM protocol: responses / chat [responses]: ','LLM 协议：responses / chat [responses]：')).strip() or 'responses'
+    c['llm']=dict(protocol={'responses':'openai_responses','chat':'openai_chat_completions'}.get(protocol,protocol),url=input(tr('LLM HTTPS endpoint: ','LLM HTTPS 地址：')).strip(),api_key=getpass.getpass(tr('LLM API key: ','LLM 密钥：')),model=input(tr('LLM model: ','LLM 模型：')).strip())
     c['search']=dict(enabled=False);c['network']={}
     validate(c);return c
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--config',type=Path);p.add_argument('--init',type=Path);p.add_argument('--dry-run',action='store_true');a=p.parse_args();os.umask(0o077)
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--language',choices=['en','zh-CN'],default='en');p.add_argument('--config',type=Path);p.add_argument('--init',type=Path);p.add_argument('--dry-run',action='store_true');a=p.parse_args();os.umask(0o077)
     if bool(a.config)==bool(a.init):p.error('choose --config to validate or --init to create a private configuration')
     if a.init:
-        c=prompt_config();fd=os.open(a.init,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        c=prompt_config(a.language);fd=os.open(a.init,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
         with os.fdopen(fd,'w') as f:json.dump(c,f,ensure_ascii=False,indent=2);f.write('\n')
         print('Private configuration saved. No USB or provider calls were made.')
     else:

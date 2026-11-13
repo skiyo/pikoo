@@ -35,3 +35,5 @@ Search is off in the example and requires no key until enabled. URL changes sele
 [Official Live delegation](https://developers.openai.com/api/docs/guides/live-delegation) · [Responses search](https://developers.openai.com/api/docs/guides/tools-web-search) · [Tavily API](https://docs.tavily.com/)
 
 The default conversation language is English (`en`). Set `agent.language` to `zh-CN` for Chinese, then update the configuration over USB; no firmware rebuild is required.
+
+`tools/usb-setup.py --language zh-CN` / `tools/configure.py --init /private/pikoo.json --language zh-CN`: Chinese setup prompts; the default UI language is English.

@@ -6,7 +6,7 @@ Pikoo 2.0.0 engineering checks cover the shared C++ core and the ESP32-S3 board.
 
 ## Verification scope
 
-- Native playback, session and eyes; 18 service behaviors under ASan/UBSan; 66 Python tooling checks; five preview and 19 planner checks.
+- Native playback, session and eyes; 18 service behaviors under ASan/UBSan; 67 Python tooling checks; five preview and 19 planner checks.
 - 100 local TLS/service fault combinations with independent fake credentials and both LLM/search protocols.
 - Accelerated eight-hour equivalent PCM and 28,800 backend jobs with zero virtual underruns; this is a desktop workload, not an eight-hour board soak.
 - Board speaker wake, voice, list and explicit-memory tool writes, restart readback, search, interruption, cancellation, authentication failure/recovery, farewell and mute.

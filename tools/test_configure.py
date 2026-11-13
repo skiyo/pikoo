@@ -1,7 +1,15 @@
 import copy,json,unittest
 from pathlib import Path
 from configure import validate
+from configure import prompt_config
+from unittest.mock import patch
 class ConfigTest(unittest.TestCase):
+ def test_prompt_language_does_not_override_agent_language(self):
+  for language in ('en','zh-CN'):
+   with patch('builtins.input',side_effect=['fixture-wifi','','wss://voice.fixture.test/live','fixture-live','','','https://llm.fixture.test/reason','fixture-reason']) as ask,patch('getpass.getpass',side_effect=['fixture-password','fake-live-key','fake-llm-key']):
+    value=prompt_config(language)
+   self.assertEqual(value['agent']['language'],'en');validate(value)
+   self.assertIn('无线' if language=='zh-CN' else 'Wi-Fi',ask.call_args_list[0].args[0])
  def setUp(self):self.c=json.loads((Path(__file__).resolve().parents[1]/'examples/device.example.json').read_text())
  def test_valid(self):self.assertEqual(validate(self.c),self.c)
  def test_independent_keys_and_urls(self):
