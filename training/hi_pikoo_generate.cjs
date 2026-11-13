@@ -1,8 +1,7 @@
 // Copyright 2026 Pikoo contributors. SPDX-License-Identifier: Apache-2.0
 // Explicit synthetic generation; no microphone, household corpus or model access.
 const fs=require('fs'),path=require('path'),http=require('http'),https=require('https'),tls=require('tls'),crypto=require('crypto');
-const {createRequire}=require('module');
-const req=createRequire(path.join(__dirname,'../server/package.json')); const WebSocket=req('ws');
+// The optional generation tool owns its ws dependency; planning tests need none.
 const MODEL='gpt-realtime-2.1-mini', CAP=2, RESERVATION=.012;
 const VOICES={train:['marin','cedar','coral','alloy'],validation:['ash','sage'],test:['ballad','verse']};
 const NATIVE_TEST_COHORTS=['adult:standard:piku','adult:standard:piko','adult:Chinese-accent:piku','adult:Chinese-accent:piko','childlike:Chinese-accent:piku','childlike:Chinese-accent:piko'];
@@ -152,6 +151,7 @@ async function generate([name,voice,style,text],options={}){
   if(options.literalTargetOnly&&(cached.generation_request_policy!==requestPolicy||cached.text!==text||cached.voice!==voice||cached.style!==style||cached.model!==model||cached.sha256!==crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')))throw Error('Cached audio belongs to a different generation request or hash; never replace it silently');
   console.log(JSON.stringify({clip:name,cached:true}));return cached;
  }
+ const WebSocket=require('ws');
  console.log(JSON.stringify({clip:name,status:'requesting',model}));
  const socket=await tunnel(); const agent=new https.Agent({keepAlive:false}); agent.createConnection=()=>socket;
  return new Promise((resolve,reject)=>{let settled=false,chunks=[],size=0,transcript='',started=false;

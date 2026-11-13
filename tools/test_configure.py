@@ -1,21 +1,24 @@
-import unittest
+import copy,json,unittest
+from pathlib import Path
 from configure import validate
 class ConfigTest(unittest.TestCase):
- def setUp(self):self.c=dict(ssid='测试网络',password='example-pass',endpoint='wss://203.0.113.10/api/realtime',token='example-device-token')
+ def setUp(self):self.c=json.loads((Path(__file__).resolve().parents[1]/'examples/device.example.json').read_text())
  def test_valid(self):self.assertEqual(validate(self.c),self.c)
- def test_local_without_gateway(self):
-  c=dict(mode='local',ssid='测试网络',password='example-pass')
-  self.assertEqual(validate(c),c)
- def test_local_rejects_secret_image(self):
-  with self.assertRaises(ValueError):validate(dict(mode='local',ssid='家',password='',api_key='fake-key'))
- def test_unknown_mode(self):
-  with self.assertRaises(ValueError):validate({**self.c,'mode':'other'})
- def test_local_validates_optional_legacy_credentials(self):
-  with self.assertRaises(ValueError):validate({**self.c,'mode':'local','token':'bad\nheader'})
+ def test_independent_keys_and_urls(self):
+  self.c['llm'].update(protocol='openai_chat_completions',url='https://another.example:9443/custom',api_key='different-key');validate(self.c)
+ def test_unknown_protocol(self):
+  self.c['llm']['protocol']='guess'
+  with self.assertRaises(ValueError):validate(self.c)
  def test_utf8_limit(self):
-  with self.assertRaises(ValueError):validate({**self.c,'ssid':'网'*11})
+  self.c['wifi']['ssid']='网'*11
+  with self.assertRaises(ValueError):validate(self.c)
  def test_url_credential(self):
-  with self.assertRaises(ValueError):validate({**self.c,'endpoint':'wss://secret@host/api/realtime'})
- def test_token_injection(self):
-  with self.assertRaises(ValueError):validate({**self.c,'token':'abc\r\nHeader:value'})
-if __name__=='__main__':unittest.main()
+  self.c['live']['url']='wss://secret@host/path'
+  with self.assertRaises(ValueError):validate(self.c)
+ def test_key_injection(self):
+  self.c['llm']['api_key']='bad\r\nHeader:value'
+  with self.assertRaises(ValueError):validate(self.c)
+ def test_optional_search(self):validate(self.c)
+ def test_extract_origin(self):
+  self.c['search']=dict(enabled=True,protocol='tavily',url='https://search.example/search',extract_url='https://other.example/extract',api_key='fake')
+  with self.assertRaises(ValueError):validate(self.c)

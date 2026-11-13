@@ -2,41 +2,24 @@
 
 **English** | [简体中文](development.zh-CN.md)
 
-## Environment and checks
+## Layout and extension
 
-Node.js 24+, npm, Bash and C++17 are enough for the offline simulator. Python 3.11 is used for USB/training tooling. Install `training/requirements.txt` only when training/inference is needed. Firmware requires ESP-IDF 5.5.5. Keep upstream versions pinned.
+`pikoo_config` validates versioned settings and complete endpoints. `LiveAgent` implements the selected voice protocol and classified context. `BackendAgent` owns bounded model/tool loops; provider adapters normalize Responses, Chat Completions and search results. `HttpResponse` incrementally decodes bounded HTTP. The ESP network worker uses verified TLS, optionally through HTTPS CONNECT, and returns tagged results to the session task. NVS and board APIs stay outside the shared core.
+
+Add protocols explicitly rather than guessing from domains. Add tool schemas and executors together. Keep audio deadlines independent of networking, and invalidate cancelled task tokens before handling results. Do not log headers, raw API bodies, configuration or family snapshots.
+
+## Silent checks
+
+Activate ESP-IDF so `IDF_PATH` locates cJSON. The host needs C++17, OpenSSL development libraries and Python; on macOS set `OPENSSL_PREFIX` to the Homebrew OpenSSL prefix.
 
 ```sh
-(cd server && npm ci --ignore-scripts)
+PIKOO_SANITIZE=1 tools/test-local-agent.sh --services
+tools/test-local-agent.sh --network --cycles 100
+tools/test-local-agent.sh 28800
+(cd firmware/simulator && npm ci --ignore-scripts)
 bash tools/check.sh
 ```
 
-The checks exercise native audio/session/eye cores, simulator/server behavior and Python tooling. Optional runtimes may skip checks when not installed; do not interpret a skip as success. No tests should open a family microphone or call a paid API implicitly.
+Tests use synthetic PCM and in-memory sinks. They never open an audio device. The graphical eye preview is separate from the native Agent simulator. Rebuild the ESP firmware and report image/static memory separately from desktop CPU/RSS. Board TLS concurrency, AEC and acoustic behavior require board evidence; see [verification](release.md).
 
-## Change an expression
-
-Edit `firmware/components/pikoo_eyes/`, retain the platform-independent C++ API and 240 × 240 RGB565 output. Use `bash tools/test-eyes.sh`, then `bash tools/start-dualeye.sh`. Keep rendering lower priority than audio and drop stale frames.
-
-## Add a board
-
-Introduce an explicit board adapter for display, audio, amplifier and controls. Start from `firmware/main/board_display.cpp` and `board_audio.cpp`; preserve the device state machine in `pikoo_core`. Verify microphone/reference order and DMA timing before enabling full duplex. Never reuse a different board's flash layout without migration and backup checks.
-
-## ESP local Agent
-
-Sessions/tools live in `firmware/components/pikoo_core/pikoo_agent.cpp`; ESP storage and transport adapters are `firmware/main/agent_storage.cpp` and `agent_tunnel.cpp`. Update schemas, durable validation, call-ID deduplication and native regressions together. Run silent shared-core tests with `tools/test-local-agent.sh`. The Node tool/Provider sections below apply to the retained Gateway.
-
-## Add a tool
-
-Start at `server/family-tools.mjs` and `deepseek-search.mjs`. Register tool schemas with the runtime, validate input, retain owner scope, enforce timeouts and return factual errors. Follow the durable call-ID handling in `openai-live.mjs`; late results must not speak into closed sessions. Extend `*.test.mjs` before making external calls.
-
-## Replace a voice Provider
-
-Use the registry in `server/host.mjs` and the native Provider in `server/openai-live.mjs`. Preserve continuous-audio capability negotiation, rate metadata, cancellation generations, playback feedback, text history and authentication. Verify real provider access separately from offline tests. Do not change only a model-name string between incompatible APIs.
-
-## Train/export a wake model
-
-See [training](../training/README.md). Keep family recordings outside training, augmentation, calibration and model selection. Bind every export to its policy hash and frontend fingerprint; keep host and firmware smoothing identical. Evaluate natural fast speech without shifting pitch and continuous speech negatives without resetting frontend state per clip.
-
-## Release changes
-
-Update `VERSION`, package metadata, firmware project version and the model card together. Use the [release checklist](release.md). Include third-party license texts for redistributed binaries. Do not commit NVS, generated audio, credentials or personal memory.
+Optional Python training tests require the separate training environment. Run `PIKOO_CHECK_TRAINING=1 bash tools/check.sh` after installing its requirements. Runtime checks do not require TensorFlow.

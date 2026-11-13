@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 from serial.tools import list_ports
-from configure import validate
+from configure import validate,prompt_config
 
 root=Path(__file__).resolve().parents[1]
 os.umask(0o077)
@@ -20,9 +20,7 @@ print('Pikoo USB 助手 / USB assistant\n1. 首次安装\n2. 升级固件（保�
 choice=input('选择 / Choose [3]: ').strip() or '3'
 config=private/'device-config.json'
 if choice in ('1','5') and (not config.exists() or choice=='5'):
-    print('密码和凭证不会回显，不会上传。设备凭证使用配对链接 #d. 后 URL 解码的内容。')
-    c={'ssid':input('2.4GHz Wi-Fi: '),'password':getpass.getpass('Wi-Fi password: '),
-       'endpoint':input('WSS endpoint: '),'token':getpass.getpass('Device token: ')}
+    c=prompt_config()
     validate(c);config.write_text(json.dumps(c));config.chmod(0o600)
 action={'1':'install','2':'upgrade','3':'diagnose','4':'restore','5':'configure','6':'diagnose','7':'diagnose'}.get(choice)
 if not action:raise SystemExit('无效选择')
@@ -40,6 +38,8 @@ if choice=='7':
 if action in ('install','configure'):args+=['--config',str(config)]
 if action in ('install','restore'):
     backup=private/'factory-backup'
-    if not backup.exists():backup=Path(input('已校验的原厂备份目录 / Factory backup folder: ').strip()).expanduser()
+    if not backup.exists():
+        if action=='restore':raise SystemExit('Choose an existing verified backup for recovery.')
+        subprocess.run([sys.executable,str(root/'tools/device.py'),'backup','--port',ports[0],'--backup',str(backup)],check=True)
     args+=['--backup',str(backup)]
 subprocess.run(args,check=True)

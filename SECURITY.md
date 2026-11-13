@@ -1,9 +1,9 @@
-# Security
+# Security and privacy
 
-**English** | [简体中文](SECURITY.zh-CN.md)
+Never commit Wi-Fi passwords, API/proxy credentials, family data, recordings or full Flash backups. Update private device configuration over USB; family export excludes service credentials. Revoke exposed keys at the relevant provider and replace them.
 
-Report sensitive vulnerabilities through [GitHub private vulnerability reporting](https://github.com/skiyo/pikoo/security/advisories/new), not a public issue containing an exploit against a household deployment or credentials. Include affected version, impact and a minimal sanitized reproduction.
+TLS certificates are verified. Each service receives only its own Bearer credential; proxy authentication is separate. Idle microphone data is not uploaded and mute disables capture. Providers process active-session content under their own terms.
 
-Never publish provider keys, pairing fragments, device tokens, NVS backups, family memory or source recordings. Rotate exposed credentials at their provider. Use trusted HTTPS/WSS, per-device revocable credentials, fixed allowed origins and local-only admin/proxy endpoints.
+This version uses replaceable ordinary NVS without secure boot or Flash encryption. Physical access may expose configuration. USB maintenance requires muted standby. Retrieved and stored text is data, never new system instructions.
 
-The development firmware does not enable secure boot or Flash/NVS encryption. Physical access can expose device credentials. Standby wake audio stays local; local mode establishes end-to-end OpenAI TLS inside a Mihomo tunnel. Provider credentials are sent only inside that TLS connection, stored in ordinary NVS and replaceable/removable over USB. The legacy Gateway mode remains separate. The marketing site's local eye animation does not access a microphone.
+Use GitHub private vulnerability reporting for reproducible security issues. Do not paste credentials or family data into public issues.

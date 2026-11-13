@@ -1,0 +1,65 @@
+{
+  "version": "2.0.0",
+  "implementation": "service-config-architecture",
+  "status": "awaiting_board_acceptance",
+  "checked_on": "2026-11-13",
+  "software": {
+    "service_behaviors": 15,
+    "python_tools": 61,
+    "node_preview": 4,
+    "node_training_planners": 19,
+    "sanitizers": "ASan/UBSan passed",
+    "network": {
+      "cycles_passed": 100,
+      "independent_service_credentials": true,
+      "direct_and_https_connect": true,
+      "llm_protocols": 2,
+      "search_protocols": 2,
+      "certificate_auth_and_disconnect_faults": true,
+      "wall_seconds": 4.397,
+      "outer_tls_ms": {
+        "p50": 2.249,
+        "p95": 3.497
+      },
+      "connect_ms": {
+        "p50": 0.0,
+        "p95": 0.644
+      },
+      "inner_tls_ms": {
+        "p50": 0.013,
+        "p95": 3.339
+      }
+    },
+    "accelerated_pcm": {
+      "reconnections": 100,
+      "stream_seconds": 28800,
+      "real_time": false,
+      "scripted_first_pcm_ms_p50": 30,
+      "scripted_first_pcm_ms_p95": 30,
+      "virtual_play_ms_p50": 910,
+      "virtual_play_ms_p95": 910,
+      "edge_processing_us_p95": 4,
+      "peak_samples": 14720,
+      "underruns": 0,
+      "backend_jobs": 28800,
+      "backend_results": 28800,
+      "maxrss_warm_native_units": 3031040,
+      "cpu_seconds": 3.47608,
+      "maxrss_native_units": 3194880,
+      "eye_checksum": 1234787693
+    }
+  },
+  "hardware": {
+    "flashing_performed": false,
+    "new_architecture_on_board": false,
+    "tls_concurrency_heap": "pending",
+    "acoustic_validation": "not performed",
+    "existing_device_data": "device untouched"
+  },
+  "limitations": [
+    "Desktop TLS uses Python SSL and the shared C++ HTTP/provider core; ESP mbedTLS transport is cross-compiled, not physically validated in this revision.",
+    "Eight-hour PCM and backend workload is accelerated, not an eight-hour wall-clock device soak.",
+    "Optional Python training suite requires its separate dependencies and is excluded from default runtime checks.",
+    "No microphone or speaker was opened. No live paid-provider calls were made."
+  ]
+}

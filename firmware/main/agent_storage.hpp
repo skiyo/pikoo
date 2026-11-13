@@ -5,15 +5,7 @@
 #include <string>
 
 namespace pikoo {
-struct AgentCredentials {
-  std::string proxy_host, proxy_basic, api_key;
-  uint16_t proxy_port = 0;
-  unsigned audio_rate = pikoo::LiveAgent::Rate;
-  bool valid() const;
-};
-bool agent_enabled();
-bool set_agent_mode(bool enabled);
-bool load_agent_credentials(AgentCredentials &out);
+bool load_agent_config(AgentConfig &out);
 bool provision_agent(const std::string &payload);
 bool forget_agent_credentials();
 bool init_family_store(FamilyStore &store);

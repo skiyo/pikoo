@@ -27,9 +27,8 @@ function connect(){
     $('screen').dataset.visualState=visual.state;
     socket.send(JSON.stringify({type:'eyes.ack'}));
   };
-  socket.onclose=()=>{ready=false;$('graphics-warning').hidden=false;$('renderer').classList.add('error');$('renderer').textContent='画面进程暂不可用，语音控制仍可使用。正在重试…';retry=setTimeout(connect,3000);};
+  socket.onclose=()=>{ready=false;$('graphics-warning').hidden=false;$('renderer').classList.add('error');$('renderer').textContent='画面进程暂不可用，本页不运行语音。正在重试…';retry=setTimeout(connect,3000);};
 }
 setInterval(()=>{if(!ready||socket?.readyState!==1||socket.bufferedAmount>1024||document.hidden)return;const now=performance.now();if(now-requested<45)return;requested=now;socket.send(JSON.stringify({state:visual.state,time_ms:now,seed:42,level:Math.max(0,Math.min(1,level)),gaze_x:gazeX,gaze_y:gazeY}));},50);
-fetch('/mode').then(r=>r.json()).then(x=>{$('model-info').textContent=x.wakeModel?`${x.wakeModel.label} · ${x.wakeModel.bytes.toLocaleString()} 字节 · 本地推理`:'未启用本地唤醒，可点击唤醒';});
 window.addEventListener('pagehide',()=>{clearTimeout(retry);if(socket){socket.onclose=null;socket.close();}});
 connect();showDemo();

@@ -2,7 +2,7 @@
 import {spawn,execFileSync} from 'node:child_process';
 import {once} from 'node:events';
 import fs from 'node:fs';
-import {WebSocket} from '../server/node_modules/ws/wrapper.mjs';
+import {WebSocket} from '../firmware/simulator/node_modules/ws/wrapper.mjs';
 import {DeviceSession} from '../firmware/simulator/session.mjs';
 const seconds=Number(process.argv[2]||1800),port=Number(process.env.PIKOO_STRESS_PORT||8794);
 const origin=`http://127.0.0.1:${port}`,started=Date.now(),samples=[],errors=[];

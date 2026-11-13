@@ -15,19 +15,26 @@ constexpr auto Write = NVS_READWRITE;
 
 struct Handle {
   nvs_handle_t value = 0;
-  ~Handle() { if (value) nvs_close(value); }
+  ~Handle() {
+    if (value)
+      nvs_close(value);
+  }
   bool open(const char *part, nvs_open_mode_t mode) {
     return nvs_open_from_partition(part, Namespace, mode, &value) == ESP_OK;
   }
   std::string blob(const char *key, size_t limit) {
     size_t size = 0;
-    if (nvs_get_blob(value, key, nullptr, &size) != ESP_OK || !size || size > limit) return {};
+    if (nvs_get_blob(value, key, nullptr, &size) != ESP_OK || !size ||
+        size > limit)
+      return {};
     std::string result(size, '\0');
-    return nvs_get_blob(value, key, result.data(), &size) == ESP_OK ? result : std::string{};
+    return nvs_get_blob(value, key, result.data(), &size) == ESP_OK
+               ? result
+               : std::string{};
   }
   bool save(const char *key, const std::string &payload) {
     return nvs_set_blob(value, key, payload.data(), payload.size()) == ESP_OK &&
-      nvs_commit(value) == ESP_OK;
+           nvs_commit(value) == ESP_OK;
   }
 };
 
@@ -35,97 +42,69 @@ bool init_secrets() {
   return nvs_flash_init_partition(SecretPartition) == ESP_OK;
 }
 
-bool decode(const std::string &payload, AgentCredentials &credentials) {
-  auto data = parse(payload);
-  auto port = field(data.get(), "proxy_port");
-  if (!cJSON_IsNumber(port) || port->valuedouble < 1 || port->valuedouble > 65535 ||
-      port->valueint != port->valuedouble) return false;
-  const auto rate = field(data.get(), "audio_rate");
-  if (rate && (!cJSON_IsNumber(rate) || (rate->valuedouble != 16000 && rate->valuedouble != 24000)))
-    return false;
-  credentials = {text(data.get(), "proxy_host"), text(data.get(), "proxy_basic"),
-                 text(data.get(), "api_key"), uint16_t(port->valueint),
-                 rate ? unsigned(rate->valueint) : LiveAgent::Rate};
-  if (auto value = field(data.get(), "api_key"); cJSON_IsString(value))
-    mbedtls_platform_zeroize(value->valuestring, credentials.api_key.size());
-  if (auto value = field(data.get(), "proxy_basic"); cJSON_IsString(value))
-    mbedtls_platform_zeroize(value->valuestring, credentials.proxy_basic.size());
-  return credentials.valid();
-}
-
 bool use_slot(Handle &h, uint8_t &slot) {
   return nvs_get_u8(h.value, "current", &slot) == ESP_OK && slot < 2;
 }
-}
+} // namespace
 
-bool AgentCredentials::valid() const {
-  return proxy_port && !proxy_host.empty() && proxy_host.size() <= 253 &&
-    std::all_of(proxy_host.begin(), proxy_host.end(), [](unsigned char ch) {
-      return std::isalnum(ch) || ch == '.' || ch == '-';
-    }) && safe_header(proxy_basic) && safe_header(api_key);
-}
-
-bool agent_enabled() {
+bool load_agent_config(AgentConfig &out) {
   Handle h;
-  uint8_t enabled = 0;
-  return h.open("nvs", ReadOnly) && nvs_get_u8(h.value, "local_agent", &enabled) == ESP_OK && enabled == 1;
-}
-
-bool set_agent_mode(bool enabled) {
-  Handle h;
-  return h.open("nvs", Write) && nvs_set_u8(h.value, "local_agent", enabled) == ESP_OK &&
-    nvs_commit(h.value) == ESP_OK;
-}
-
-bool load_agent_credentials(AgentCredentials &out) {
-  Handle h;
-  if (!init_secrets() || !h.open(SecretPartition, ReadOnly)) return false;
-  auto payload = h.blob("credentials", 4096);
-  const bool ok = decode(payload, out);
+  if (!init_secrets() || !h.open(SecretPartition, ReadOnly))
+    return false;
+  auto payload = h.blob("config", AgentConfig::Limit);
+  std::string error;
+  const bool ok = decode_config(payload, out, error);
   mbedtls_platform_zeroize(payload.data(), payload.size());
   return ok;
 }
-
 bool provision_agent(const std::string &payload) {
-  if (payload.size() > 4096) return false;
-  AgentCredentials credentials;
-  const bool valid = decode(payload, credentials);
-  mbedtls_platform_zeroize(credentials.api_key.data(), credentials.api_key.size());
-  mbedtls_platform_zeroize(credentials.proxy_basic.data(), credentials.proxy_basic.size());
+  AgentConfig config;
+  std::string error;
+  if (!decode_config(payload, config, error))
+    return false;
   Handle h;
-  return valid && init_secrets() && h.open(SecretPartition, Write) &&
-    h.save("credentials", payload) && set_agent_mode(true);
+  return init_secrets() && h.open(SecretPartition, Write) &&
+         h.save("config", payload);
 }
-
 bool forget_agent_credentials() {
   Handle h;
-  if (!init_secrets() || !h.open(SecretPartition, Write)) return false;
-  const auto result = nvs_erase_key(h.value, "credentials");
-  return (result == ESP_OK || result == ESP_ERR_NVS_NOT_FOUND) &&
-    nvs_commit(h.value) == ESP_OK && set_agent_mode(false);
+  if (!init_secrets() || !h.open(SecretPartition, Write))
+    return false;
+  for (const char *key : {"config", "credentials"}) {
+    auto r = nvs_erase_key(h.value, key);
+    if (r != ESP_OK && r != ESP_ERR_NVS_NOT_FOUND)
+      return false;
+  }
+  return nvs_commit(h.value) == ESP_OK;
 }
 
 bool init_family_store(FamilyStore &store) {
   Handle h;
-  if (nvs_flash_init_partition(DataPartition) != ESP_OK || !h.open(DataPartition, Write)) return false;
+  if (nvs_flash_init_partition(DataPartition) != ESP_OK ||
+      !h.open(DataPartition, Write))
+    return false;
   uint8_t slot = 0;
-  if (!use_slot(h, slot)) return true;
+  if (!use_slot(h, slot))
+    return true;
   return store.load(h.blob(slot ? "b" : "a", FamilyStore::Capacity)) ||
-    store.load(h.blob(slot ? "a" : "b", FamilyStore::Capacity));
+         store.load(h.blob(slot ? "a" : "b", FamilyStore::Capacity));
 }
 
 bool write_family_snapshot(const std::string &snapshot) {
   Handle h;
-  if (!h.open(DataPartition, Write)) return false;
+  if (!h.open(DataPartition, Write))
+    return false;
   uint8_t slot = 1;
   use_slot(h, slot);
   slot ^= 1;
   return h.save(slot ? "b" : "a", snapshot) &&
-    nvs_set_u8(h.value, "current", slot) == ESP_OK && nvs_commit(h.value) == ESP_OK;
+         nvs_set_u8(h.value, "current", slot) == ESP_OK &&
+         nvs_commit(h.value) == ESP_OK;
 }
 
 bool import_family_snapshot(FamilyStore &store, const std::string &snapshot) {
   FamilyStore test(write_family_snapshot);
-  return test.load(snapshot) && write_family_snapshot(test.snapshot()) && store.load(test.snapshot());
+  return test.load(snapshot) && write_family_snapshot(test.snapshot()) &&
+         store.load(test.snapshot());
 }
-}
+} // namespace pikoo

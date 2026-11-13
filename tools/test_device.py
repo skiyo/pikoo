@@ -50,4 +50,15 @@ class DeviceSafetyTests(unittest.TestCase):
             (b/'flasher_args.json').write_text(json.dumps({'flash_files':{'0x20000':'../escape.bin'}}))
             with self.assertRaises(ValueError):device.build_files(b)
 
+    def test_configuration_only_does_not_require_build_or_overwrite_nvs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config=Path(tmp)/'device.json'
+            config.write_text((Path(__file__).resolve().parents[1]/'examples/device.example.json').read_text())
+            with patch('sys.argv',['device.py','configure','--port','/dev/fake','--config',str(config)]),patch.object(device,'release_monitor'),patch.object(device,'build_files',side_effect=AssertionError('must not inspect build')),patch.object(device.subprocess,'run') as run:
+                device.main()
+            commands=[c.args[0] for c in run.call_args_list]
+            self.assertEqual(len(commands),2)
+            self.assertIn('provision',commands[0]);self.assertIn('reboot',commands[1])
+            self.assertNotIn('write_flash',str(commands));self.assertNotIn('YOUR_LIVE_KEY',str(commands))
+
 if __name__=='__main__':unittest.main()

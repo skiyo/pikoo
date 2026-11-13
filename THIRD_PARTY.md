@@ -12,7 +12,6 @@ Versions below describe the current pinned integration, not a claim that all com
 
 | Component and source | Version / revision | Used for / relationship | License |
 |---|---|---|---|
-| [qwen-audio-agent](https://github.com/QwenAudio/qwen-audio-agent/tree/v2.0.1) | 2.0.1 | Installed server dependency; authentication, realtime provider and memory/session framework; Pikoo adapters are separate | Apache-2.0; retain upstream notices |
 | [ESP-IDF](https://github.com/espressif/esp-idf/tree/v5.5.5) | 5.5.5 / `b774170ff46c393eeb5e495ea37936038d3f4f4f` | Firmware framework dependency | Apache-2.0 for framework; bundled third-party components have separate terms |
 | [ESP-SR](https://github.com/espressif/esp-sr) | 2.5.3 | AFE/AEC dependency; built-in WakeNet disabled | ESPRESSIF MIT License, with ESPRESSIF-product limitation; not generic MIT or Pikoo Apache-2.0 |
 | [ESP-TFLite-Micro](https://github.com/espressif/esp-tflite-micro) | 1.4.1 | Embedded INT8 inference dependency | Apache-2.0 plus retained third-party notices |
@@ -22,7 +21,7 @@ Versions below describe the current pinned integration, not a claim that all com
 | [esp_codec_dev](https://github.com/espressif/esp-adf-libs/tree/master/esp_codec_dev) | 1.5.11 | Installed ES8311/ES7210 codec dependency | Apache-2.0 |
 | [esp_lcd_gc9a01](https://components.espressif.com/components/espressif/esp_lcd_gc9a01/versions/2.0.4) | 2.0.4 | Installed dual circular panel driver; Pikoo board integration is original | Apache-2.0 |
 | [ESP-NN](https://github.com/espressif/esp-nn) | 1.4.1 | Resolved optimized inference dependency; physical acceptance remains workload-specific | Apache-2.0 |
-| [ws](https://github.com/websockets/ws) | 8.22.0 in server lockfile | Installed Node WebSocket dependency used by local simulator | MIT |
+| [ws](https://github.com/websockets/ws) | 8.22.0 in simulator lockfile | Installed Node WebSocket dependency used by local simulator | MIT |
 | [TensorFlow](https://github.com/tensorflow/tensorflow) | 2.18.1 | Optional training/inference dependency | Apache-2.0 plus bundled third-party notices |
 | [NumPy](https://github.com/numpy/numpy) | 2.0.2 | Optional training dependency | BSD-3-Clause core plus bundled dependencies |
 | [Apache Arrow / PyArrow](https://github.com/apache/arrow) | 19.0.1 | Optional importer for the pinned MInDS-14 Parquet data | Apache-2.0; retain bundled dependency notices |
@@ -32,8 +31,7 @@ Versions below describe the current pinned integration, not a claim that all com
 | [PyYAML](https://github.com/yaml/pyyaml) | 6.0.2 | Optional training configuration dependency | MIT |
 | [pypinyin](https://github.com/mozillazg/python-pinyin) | 0.55.0 | Optional research-only transcript-to-phoneme training labels; installed separately | MIT |
 | [webrtcvad-wheels](https://github.com/daanzu/py-webrtcvad-wheels) | 2.0.14 | Optional voice-activity dependency | MIT wrapper; bundled WebRTC VAD retains upstream BSD-style terms |
-| [Node.js](https://github.com/nodejs/node) | Runtime requirement 24+ | Server/simulator runtime; not bundled in Pikoo | MIT and bundled dependency notices |
-| [Nginx](https://nginx.org/en/) / [Certbot](https://github.com/certbot/certbot) / [mihomo](https://github.com/MetaCubeX/mihomo) | Operator-installed; Certbot ≥5.4 for documented IP certificate flow | Deployment integration templates, no binaries or source vendored | Nginx BSD-2-Clause; Certbot Apache-2.0; mihomo GPL-3.0. Their own distribution terms apply |
+| [Node.js](https://github.com/nodejs/node) | Runtime requirement 24+ | Optional simulator runtime; not bundled in Pikoo | MIT and bundled dependency notices |
 
 Software binaries, firmware images or containers must include the license texts/notices for the exact dependencies they redistribute. This attribution table is not a substitute for that release-specific bundle. Do not overwrite vendored license headers with Pikoo's license.
 
@@ -41,7 +39,7 @@ Software binaries, firmware images or containers must include the license texts/
 
 Muse Gadget SDK is a reference for visual pacing and simulator organization. No Muse code or Jollybot assets are included. Waveshare's [DualEye documentation and examples](https://docs.waveshare.net/ESP32-S3-DualEye-LCD-1.28/) are the hardware integration reference; vendor rights are retained.
 
-OpenAI Live/Responses and Google Gemini are external model services. DeepSeek Search is an external search API, not an additional dialogue model. Their terms, access and pricing are separate from this repository's source license. Nginx, Certbot and mihomo are installed by operators and are not bundled.
+External voice, reasoning and search APIs are configured by the operator; their access, fees and terms are separate from the source license.
 
 ## Current wake weights and data
 

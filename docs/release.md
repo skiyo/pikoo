@@ -1,15 +1,25 @@
-# Release verification — 2.0.0
+# Verification and release
 
 **English** | [简体中文](release.zh-CN.md)
 
-Repository, firmware and compatibility package versions are 2.0.0. The ESP C++ Agent connects to OpenAI through Mihomo and keeps replaceable credentials, lists, explicit memory and bounded text context locally. The old Gateway remains available for rollback.
+Desktop silent checks are complete; this architecture awaits board acceptance. The project version remains 2.0.0. This work creates no new tag and replaces no published assets.
 
-Status: 2.0.0 is built and flashed. The migrated shopping list was read correctly in a human voice test. The owner accepted the audio and authorized submission and main integration after silent regression. The device is left muted; the old remote Agent is stopped and disabled, while the Mihomo device proxy is active and enabled.
+## Current evidence
 
-Validation completed: 93 simulator/server tests, 60 Python tooling tests, ASan/UBSan core regressions, accelerated eight-hour PCM playback with zero underruns, and 100 actual Mihomo/mock-OpenAI nested TLS/CONNECT/WebSocket cases. Earlier 30-minute/eight-hour wall-clock soaks used the initial streaming core. Board tests cover 100 USB reopen cycles, 20 control-line resets, credential replacement/recovery, 16/24 kHz speech and persistent write/reboot readback. Interruption, stale tool results and split transcript constraints have regression coverage.
+- Shared C++ configuration, Live client delegation, both LLM/search protocols, cancellation and persistence behaviors pass ASan/UBSan.
+- 61 Python tooling checks, four eye-preview checks and 19 training-planner checks pass.
+- 100 loopback TLS/CONNECT/voice-and-backend combinations pass, including certificate, authentication, rate-limit and disconnect scenarios, using fake credentials.
+- Eight hours of synthetic PCM plus 28,800 backend tool jobs complete in accelerated time with zero virtual underruns. Desktop peak RSS is about 3.1 MiB, with about 160 KiB high-water increase after warmup. This is neither board memory evidence nor an eight-hour wall-clock run.
+- Firmware cross-compilation and isolated-source build results are recorded in [sanitized verification](verification.json).
 
-See [measurements and commands](local-agent.zh-CN.md) and [sanitized results](verification-2.0.0.json). Occasional speech discontinuity was reported before the owner requested no more audible tests; its acoustic cause is unconfirmed. This does not certify all family acoustics, real-child wake recall, physical zero-underrun behavior or 24-hour board endurance.
+The host network driver uses Python SSL with the actual shared C++ HTTP/provider/Agent core. It does not validate ESP nested mbedTLS. Default runtime checks do not require TensorFlow; the optional Python training suite requires its separate environment.
 
-Build with the [firmware guide](firmware.md), with detailed Agent tracing disabled. The existing public model bundle remains compatible when its hash matches the policy. `tools/package-release.py` packages tracked source, firmware, USB tools, model, checkpoint, licenses and checksums; private inputs remain outside Git. Never publish private NVS, Wi-Fi, API/proxy credentials, family profiles or recordings. Original code/artwork uses Apache-2.0; model-containing firmware retains separate model and dependency terms.
+## Board gate
 
-Export new family data before rollback. Keep a verified backup for the same board and the legacy connection configuration. Start the compatibility Gateway before selecting legacy mode over USB.
+After connecting a board, back it up, verify the backup, provision the new format and keep it muted. Measure internal-heap low water, largest block, queue peaks and reconnect while Live and backend HTTPS coexist. Allocation failures, duplicate writes and old playback replay fail acceptance. Human acoustics, AEC, enclosure wake behavior and household use are separate checks.
+
+No board was flashed in this work; existing family data, volume and orientation are untouched. Main integration requires board-resource acceptance. Earlier firmware's physical results cannot certify this architecture.
+
+## Packaging
+
+`tools/package-release.py` produces source/firmware and model bundles, license texts, provenance and SHA256SUMS from tracked source, the matching model policy and checked build images. Never include NVS, configuration, credentials, family data or recordings. Verify checksums and executable permissions before separately publishing. Retain source and model terms independently.
