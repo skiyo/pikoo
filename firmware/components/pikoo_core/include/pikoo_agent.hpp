@@ -61,6 +61,7 @@ public:
   void configure(const AgentConfig &config) { config_ = config; }
   void start(uint64_t now, bool greet, unsigned rate = Rate);
   void result(const std::string &id, const std::string &content);
+  void body_progress(const std::string &receipt);
   void receive(const std::string &message, uint64_t now);
   void tick(uint64_t now);
   bool sleep_due(uint64_t now, bool playing) const;
@@ -79,6 +80,9 @@ private:
   Output output_;
   AgentConfig config_;
   std::string delegation_;
+  std::string body_turn_, local_body_id_, local_body_provider_,
+      local_body_result_;
+  uint64_t body_turn_at_ = 0, body_routed_serial_ = 0, body_routed_at_ = 0;
   std::set<std::string> seen_delegations_;
   std::vector<std::string> delegation_order_;
   uint64_t addressed_serial_ = 0, dispatched_serial_ = 0;

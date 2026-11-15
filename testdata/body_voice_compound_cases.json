@@ -1,0 +1,6 @@
+[
+  {"text":"Pikoo, first turn your volume up a little, then smile.","voice":"Samantha","expected_calls":[{"tool":"body_set_audio","expected":{"gain_db":-9}},{"tool":"body_perform","expected":{"action":"happy"}}]},
+  {"text":"Pikoo, first turn your volume down a little, then dim your eyes a little.","voice":"Samantha","expected_calls":[{"tool":"body_set_audio","expected":{"gain_db":-15}},{"tool":"body_set_display","expected":{"brightness_percent":40}}]},
+  {"text":"Pikoo, first wink your left eye, then look right.","voice":"Samantha","expected_calls":[{"tool":"body_perform","expected":{"action":"blink_left"}},{"tool":"body_perform","expected":{"action":"look_right"}}]},
+  {"text":"Pikoo, first make your eyes brighter, then wink your right eye.","voice":"Samantha","expected_calls":[{"tool":"body_set_display","expected":{"brightness_percent":60}},{"tool":"body_perform","expected":{"action":"blink_right"}}]}
+]

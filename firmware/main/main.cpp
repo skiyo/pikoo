@@ -34,6 +34,7 @@
 #include "mbedtls/platform_util.h"
 #include "nvs_flash.h"
 #include "pikoo_backend.hpp"
+#include "pikoo_body.hpp"
 #include "pikoo_button.hpp"
 #include "pikoo_core.hpp"
 #include "pikoo_interaction.hpp"
@@ -45,6 +46,8 @@
 #endif
 #include "pikoo_continuous.hpp"
 #include <atomic>
+#include <cstdarg>
+#include <cstdio>
 #include <cstring>
 #include <ctime>
 #include <deque>
@@ -54,6 +57,23 @@
 #include <vector>
 
 namespace {
+// Diagnostics must never hold up a voice session when the USB reader is absent.
+std::mutex usb_output_mutex;
+char *usb_log_buffer = nullptr;
+int usb_log_write(const char *format, va_list args) {
+  std::unique_lock<std::mutex> lock(usb_output_mutex, std::try_to_lock);
+  if (!lock.owns_lock() || !usb_log_buffer)
+    return 0;
+  int size = vsnprintf(usb_log_buffer, 4096, format, args);
+  if (size <= 0)
+    return size;
+  return usb_serial_jtag_write_bytes(usb_log_buffer, std::min(size, 4095), 0);
+}
+void usb_body_reply(const std::string &result) {
+  const auto wire = "PIKOO_BODY_RESULT " + result + "\n";
+  std::lock_guard<std::mutex> lock(usb_output_mutex);
+  usb_serial_jtag_write_bytes(wire.data(), wire.size(), pdMS_TO_TICKS(100));
+}
 using State = pikoo::Session::State;
 pikoo::Playback playback;
 pikoo::Session session;
@@ -179,7 +199,10 @@ pikoo::LiveAgent
 #else
                      if (!strcmp(type, "edge.tool.ok") ||
                          !strcmp(type, "edge.tool.error") ||
-                         !strncmp(type, "edge.interrupt", 14))
+                         !strncmp(type, "edge.interrupt", 14) ||
+                         !strncmp(type, "edge.delegation", 15) ||
+                         !strcmp(type, "edge.decision.received") ||
+                         !strncmp(type, "edge.body", 9))
                        ESP_LOGI("pikoo", "edge event=%s", type);
 #endif
                    },
@@ -221,9 +244,73 @@ pikoo::BackendAgent backend(
       backend_requests.push_back(std::move(request));
     },
     [](const std::string &id, const std::string &result) {
-      agent.result(id, result);
+      if (id.rfind("usb-body-probe-", 0) == 0) {
+        auto o = pikoo::object();
+        cJSON_AddStringToObject(o.get(), "probe_result", result.c_str());
+        ESP_LOGI("body", "%s", pikoo::json(o.get()).c_str());
+      } else
+        agent.result(id, result);
+    },
+    [](const std::string &, const std::string &result) {
+      agent.body_progress(result);
     });
+void gate_off();
+std::mutex body_mutex;
+pikoo::Body body(
+    [](int db) {
+      auto e = board::set_volume(db);
+      return pikoo::Body::Applied{e == ESP_OK, board::volume_saved(),
+                                  board::volume_db()};
+    },
+    [](int percent) {
+      auto e = board::set_brightness(percent);
+      return pikoo::Body::Applied{e == ESP_OK, board::brightness_saved(),
+                                  board::brightness()};
+    },
+    [](const std::string &action) {
+      board::silence();
+      if (action == "stop_speaking")
+        cancel_request = true;
+      else if (action == "sleep") {
+        gate_off();
+        finish_request = true;
+        stop_request = true;
+      } else if (action == "mute_microphone") {
+        muted = true;
+        gate_off();
+        board::capture_enabled(false);
+        stop_request = true;
+      }
+      return true;
+    });
+std::mutex body_queue_mutex;
+struct BodyRequest {
+  std::string name, args, id;
+};
+std::deque<BodyRequest> body_queue;
+void queue_body(std::string name, std::string args, std::string id = {}) {
+  std::lock_guard<std::mutex> lock(body_queue_mutex);
+  if (body_queue.size() < 16)
+    body_queue.push_back({std::move(name), std::move(args), std::move(id)});
+  else
+    ESP_LOGW("body", "queue_full");
+}
+std::string execute_body(const std::string &id, const std::string &name,
+                         const std::string &args, uint64_t at) {
+  std::lock_guard<std::mutex> lock(body_mutex);
+  static const char *states[] = {"idle",     "connecting", "listening",
+                                 "speaking", "thinking",   "muted",
+                                 "offline",  "occupied",   "auth_error"};
+  auto index = static_cast<unsigned>(visual_state.load());
+  body.context(muted, index < 9 ? states[index] : "unknown");
+  const auto started = esp_timer_get_time();
+  auto result = pikoo::parse(body.call(id, name, args, at));
+  cJSON_AddNumberToObject(result.get(), "execution_us",
+                          esp_timer_get_time() - started);
+  return pikoo::json(result.get());
+}
 void cancel_backend() {
+  // Cancelling unexecuted inference does not undo an already applied pose.
   backend.cancel();
   backend_token = backend.token();
   backend_scope = backend.scope();
@@ -233,6 +320,8 @@ void cancel_backend() {
 }
 void enqueue_backend(const std::string &id, const std::string &history,
                      uint64_t at) {
+  ESP_LOGI("body_trace", "delegation dispatched context_bytes=%u",
+           unsigned(history.size()));
   backend.start(id, history, at);
 }
 void backend_task(void *) {
@@ -249,9 +338,8 @@ void backend_task(void *) {
     }
     if (have) {
       const auto started = now();
-      auto result =
-          pikoo::service_request(request, agent_config.network, backend_token,
-                                 backend_scope);
+      auto result = pikoo::service_request(request, agent_config.network,
+                                           backend_token, backend_scope);
       ESP_LOGI("pikoo",
                "backend http_status=%d duration_ms=%llu internal_min=%u "
                "largest=%u cancelled=%d",
@@ -367,6 +455,10 @@ void gate_off() {
   xQueueReset(upload_queue);
 }
 void end_socket() {
+  {
+    std::lock_guard<std::mutex> lock(body_mutex);
+    body.cancel();
+  }
   const auto stopping_at = esp_timer_get_time();
   tx_enabled = false;
   ++connection_epoch;
@@ -901,8 +993,15 @@ void graphics_task(void *) {
       label = "CONNECTING";
     else if (state == State::AuthError)
       label = "CHECK CONFIG";
+    pikoo::eyes::Pose pose;
+    {
+      std::lock_guard<std::mutex> lock(body_mutex);
+      body.input(input, started);
+      pose = animator.update(input);
+      body.pose(pose, started);
+    }
     if (display_ready)
-      board::display_frame(animator.update(input), label);
+      board::display_frame(pose, label);
     auto elapsed = now() - started;
     vTaskDelay(pdMS_TO_TICKS(elapsed < 50 ? 50 - elapsed : 1));
   }
@@ -913,13 +1012,12 @@ void control_action(pikoo::Button::Action action) {
   if (action == pikoo::Button::Double) {
     board::silence();
     gate_off();
-    finish_request = true;
-    stop_request = true;
+    queue_body("body_perform", R"({"action":"sleep"})");
   } else if (action == pikoo::Button::Press) {
     auto state = visual_state.load();
     if (state == State::Speaking || state == State::Thinking) {
       board::silence();
-      cancel_request = true;
+      queue_body("body_perform", R"({"action":"stop_speaking"})");
     } else if (state == State::Idle || state == State::Offline)
       wake_request = true;
   } else if (action == pikoo::Button::Hold) {
@@ -972,7 +1070,8 @@ void diagnostics() {
       unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)),
       unsigned(playback_peak_samples.load()),
       unsigned(upload_peak_frames.load()),
-      unsigned(backend_handle ? uxTaskGetStackHighWaterMark(backend_handle) : 0),
+      unsigned(backend_handle ? uxTaskGetStackHighWaterMark(backend_handle)
+                              : 0),
       unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
       board::display_fps(), board::microphone_level(), board::reference_level(),
       board::output_level(), (unsigned long)board::capture_errors(),
@@ -1018,7 +1117,7 @@ void diagnostics() {
 }
 void controls_task(void *) {
   pikoo::Button button;
-  char command[32]{};
+  char command[512]{};
   size_t used = 0;
   // ESP32-S3 can boot normally after a USJ control-line reset while its USB
   // peripheral stops responding (esp-idf#18996). Reattach once on startup,
@@ -1035,6 +1134,10 @@ void controls_task(void *) {
   // Share the installed driver's FIFO ownership with stdout. The default
   // console writes directly to the hardware and busy-waits for large exports.
   usb_serial_jtag_vfs_use_driver();
+  usb_log_buffer = static_cast<char *>(
+      heap_caps_malloc(4096, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  configASSERT(usb_log_buffer);
+  esp_log_set_vprintf(usb_log_write);
   uint64_t report = 0, last_tone = 0;
   enum class Transfer { None, Credentials, Import };
   Transfer transfer = Transfer::None;
@@ -1085,7 +1188,16 @@ void controls_task(void *) {
         }
         command[used] = 0;
         int requested_db = 0;
-        if (!strcmp(command, "status"))
+        if (!strncmp(command, "body ", 5)) {
+          auto request = pikoo::parse(command + 5);
+          auto name = pikoo::text(request.get(), "tool");
+          auto args = pikoo::field(request.get(), "arguments");
+          if (name.rfind("body_", 0) == 0 && args)
+            queue_body(name, pikoo::json(args),
+                       pikoo::text(request.get(), "id"));
+          else
+            ESP_LOGW("body", "invalid_usb_request");
+        } else if (!strcmp(command, "status"))
           diagnostics();
         else if (usb_safe && (!strcmp(command, "agent provision") ||
                               !strcmp(command, "agent import"))) {
@@ -1110,9 +1222,7 @@ void controls_task(void *) {
           ESP_LOGI("pikoo", "agent usb result=%s",
                    ok ? "ok_reboot" : "rejected");
         } else if (!config_ready) {
-          if (!strcmp(command, "status"))
-            diagnostics();
-          else if (!strcmp(command, "mute")) {
+          if (!strcmp(command, "mute")) {
             muted = true;
             session.mute();
             publish_state();
@@ -1163,27 +1273,22 @@ void controls_task(void *) {
             board::capture_enabled(true);
           stop_request = true;
         } else if (!strcmp(command, "tone") && visual_state == State::Idle &&
-                 now() - last_tone > 5000) {
+                   now() - last_tone > 5000) {
           last_tone = now();
           diagnostic_tone = true;
         } else if (!strcmp(command, "volume low"))
-          board::set_volume(-36);
+          queue_body("body_set_audio", "{\"gain_db\":-36}");
         else if (!strcmp(command, "volume normal"))
-          board::set_volume(-24);
+          queue_body("body_set_audio", "{\"gain_db\":-24}");
         else if (!strcmp(command, "volume higher"))
-          board::set_volume(-12);
+          queue_body("body_set_audio", "{\"gain_db\":-12}");
         else if (!strcmp(command, "volume louder"))
-          board::set_volume(-6);
+          queue_body("body_set_audio", "{\"gain_db\":-6}");
         else if (!strcmp(command, "volume full"))
-          board::set_volume(0);
+          queue_body("body_set_audio", "{\"gain_db\":0}");
         else if (pikoo::volume_command(command, requested_db)) {
-          const auto result = board::set_volume(requested_db);
-          if (result == ESP_OK)
-            ESP_LOGI("audio", "volume_db=%d dac_reg=%d", board::volume_db(),
-                     board::volume_register());
-          else
-            ESP_LOGW("audio", "Volume update failed: %s",
-                     esp_err_to_name(result));
+          queue_body("body_set_audio",
+                     "{\"gain_db\":" + std::to_string(requested_db) + "}");
         } else if (!strcmp(command, "rotate 90") ||
                    !strcmp(command, "rotate 270")) {
           int angle = !strcmp(command, "rotate 90") ? 90 : 270;
@@ -1380,6 +1485,35 @@ void session_task(void *) {
       for (const auto &result : results)
         backend.complete(result, now());
     }
+    {
+      std::deque<BodyRequest> requests;
+      {
+        std::lock_guard<std::mutex> lock(body_queue_mutex);
+        requests.swap(body_queue);
+      }
+      for (const auto &r : requests) {
+        if (r.name == "body_probe") {
+          auto a = pikoo::parse(r.args);
+          auto phrase = pikoo::text(a.get(), "text");
+          if (!phrase.empty() && phrase.size() < 256) {
+            auto history = pikoo::Json(cJSON_CreateArray(), cJSON_Delete);
+            auto turn = pikoo::object();
+            cJSON_AddStringToObject(turn.get(), "role", "user");
+            auto content = cJSON_AddArrayToObject(turn.get(), "content");
+            auto part = cJSON_CreateObject();
+            cJSON_AddStringToObject(part, "type", "input_text");
+            cJSON_AddStringToObject(part, "text", phrase.c_str());
+            cJSON_AddItemToArray(content, part);
+            cJSON_AddItemToArray(history.get(), turn.release());
+            backend.start("usb-body-probe-" + std::to_string(now()),
+                          pikoo::json(history.get()), now());
+          }
+        } else {
+          auto result = execute_body(r.id, r.name, r.args, now());
+          usb_body_reply(result);
+        }
+      }
+    }
     backend.tick(now());
     backend_token = backend.token();
     backend_scope = backend.scope();
@@ -1415,13 +1549,12 @@ extern "C" void app_main() {
   // Keep backend response trees out of the internal heap needed by Wi-Fi,
   // TLS and audio DMA. Install once, before any application task starts;
   // heap_caps_free also accepts objects allocated before these hooks.
-  cJSON_Hooks json_hooks{
-      [](size_t size) -> void * {
-        return heap_caps_malloc_prefer(
-            size, 2, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT,
-            MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-      },
-      heap_caps_free};
+  cJSON_Hooks json_hooks{[](size_t size) -> void * {
+                           return heap_caps_malloc_prefer(
+                               size, 2, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT,
+                               MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+                         },
+                         heap_caps_free};
   cJSON_InitHooks(&json_hooks);
   vTaskPrioritySet(nullptr, 5);
   ESP_ERROR_CHECK(nvs_flash_init());
@@ -1458,7 +1591,7 @@ extern "C" void app_main() {
   esp_log_level_set("transport_ws", ESP_LOG_NONE);
   esp_log_level_set("websocket_client", ESP_LOG_NONE);
   agent_ready = pikoo::load_agent_config(agent_config) &&
-                      pikoo::init_family_store(family);
+                pikoo::init_family_store(family);
   if (!agent_ready) {
     muted = true;
     session.mute();
@@ -1468,6 +1601,22 @@ extern "C" void app_main() {
   }
   agent.configure(agent_config);
   backend.configure(agent_config);
+  for (const auto &definition : pikoo::Body::definitions()) {
+    auto schema = pikoo::parse(definition);
+    auto name = pikoo::text(schema.get(), "name");
+    if (!backend.tools().add(definition, [name](const std::string &id,
+                                                const std::string &args,
+                                                uint64_t at) {
+          auto token = backend.token();
+          auto result = execute_body(id, name, args, at);
+          ESP_LOGI("body_trace", "tool=%s result=%s", name.c_str(),
+                   result.c_str());
+          const bool delivered =
+              backend.complete_tool(token, id, result, now());
+          ESP_LOGI("body_trace", "tool_result_delivered=%d", int(delivered));
+        }))
+      ESP_LOGE("body", "tool registration failed");
+  }
   ssid = agent_config.ssid;
   password = agent_config.password;
   uint8_t mac[6];
@@ -1499,6 +1648,10 @@ extern "C" void app_main() {
   esp_sntp_setservername(1, const_cast<char *>("pool.ntp.org"));
   esp_sntp_init();
   ESP_ERROR_CHECK(board::audio_init());
+  {
+    std::lock_guard<std::mutex> lock(body_mutex);
+    body.initialize(board::volume_db(), board::brightness());
+  }
   config_ready = true;
   if (muted)
     board::capture_enabled(false);
@@ -1546,8 +1699,8 @@ extern "C" void app_main() {
   xTaskCreatePinnedToCore(playback_task, "playback", 8192, nullptr, 6,
                           &playback_handle, 1);
 
-  xTaskCreatePinnedToCore(backend_task, "backend", 12288, nullptr, 3, &backend_handle,
-                          1);
+  xTaskCreatePinnedToCore(backend_task, "backend", 12288, nullptr, 3,
+                          &backend_handle, 1);
   xTaskCreatePinnedToCore(session_task, "session", 12288, nullptr, 5, nullptr,
                           1);
   xTaskCreatePinnedToCore(sender_task, "sender", 8192, nullptr, 5,

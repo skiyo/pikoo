@@ -33,7 +33,10 @@ class BackendAgent {
 public:
   using Request = std::function<void(HttpRequest)>;
   using Reply = std::function<void(const std::string &, const std::string &)>;
-  BackendAgent(FamilyStore &store, Request request, Reply reply);
+  using Progress =
+      std::function<void(const std::string &, const std::string &)>;
+  BackendAgent(FamilyStore &store, Request request, Reply reply,
+               Progress progress = {});
   void configure(const AgentConfig &config);
   void start(const std::string &id, const std::string &history, uint64_t now);
   void complete(const HttpResult &result, uint64_t now);
@@ -57,15 +60,18 @@ private:
   void search(const std::string &name, const std::string &arguments,
               uint64_t now);
   void result(const std::string &value, uint64_t now);
+  void record_body_receipt(const std::string &name, const std::string &value);
   void finish(const std::string &message);
   FamilyStore &store_;
   Request request_;
   Reply reply_;
+  Progress progress_;
   AgentConfig config_;
   ToolRegistry tools_;
   std::string id_;
   Json input_{nullptr, cJSON_Delete};
   std::vector<Call> calls_;
+  std::vector<std::string> body_receipts_;
   size_t call_ = 0;
   unsigned rounds_ = 0;
   uint64_t token_ = 0, deadline_ = 0, scope_ = 0;

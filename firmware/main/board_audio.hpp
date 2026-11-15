@@ -18,6 +18,7 @@ float output_level();
 uint32_t capture_errors();
 uint32_t playback_errors();
 esp_err_t set_volume(int db);
+bool volume_saved();
 int volume_db();
 int volume_register();
 bool play(const int16_t *mono, size_t samples, uint32_t epoch);

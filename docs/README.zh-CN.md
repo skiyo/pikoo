@@ -35,3 +35,5 @@
 [外壳与打印](../hardware/enclosure/README.zh-CN.md) · [唤醒模型](../models/hi-pikoo/README.zh-CN.md) · [训练](../training/README.zh-CN.md) · [安全](../SECURITY.zh-CN.md) · [贡献](../CONTRIBUTING.zh-CN.md)
 
 产品和文档默认英文，每篇指南提供中文对应页。命令里的 `PORT`、`/absolute/private/device.json` 是需要本地替换的占位值。除非特别说明，都在仓库或软件包根目录执行命令。文档列出的功能代表已实现支持，不代表兼容所有供应商或开发板。
+
+[身体控制](body-control.zh-CN.md)

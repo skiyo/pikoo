@@ -35,3 +35,5 @@ Choose a route rather than reading every page in order.
 [Enclosure and printing](../hardware/enclosure/README.md) · [Wake model](../models/hi-pikoo/README.md) · [Training](../training/README.md) · [Security](../SECURITY.md) · [Contributing](../CONTRIBUTING.md)
 
 English is the default product/documentation language; each guide links to its Chinese counterpart. Commands use placeholders such as `PORT` and `/absolute/private/device.json`; replace them locally. Run commands from the repository/package root unless specified otherwise. A documented feature means implemented support, not compatibility with every provider or board.
+
+[Body control](body-control.md)

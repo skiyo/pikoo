@@ -73,13 +73,13 @@ bool render(const Pose &p,int side,uint16_t *out,std::size_t count) {
   if (!out || count<EyePixels || side<0 || side>1 ||
       !std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.open) ||
       !std::isfinite(p.pupil) || !std::isfinite(p.tilt) || !std::isfinite(p.smile) ||
-      !std::isfinite(p.blink) || !std::isfinite(p.saturation) || !std::isfinite(p.ring) ||
+      !std::isfinite(p.command_blink)||!std::isfinite(p.blink) || !std::isfinite(p.saturation) || !std::isfinite(p.ring) ||
       !std::isfinite(p.time_ms)) return false;
   Color bg=color(0x252427), white=color(0xFFF8EB), iris=color(0xEDBD70), pupil=color(0x332A29);
   Color a=accent(p.state);
   float cx=119.5f+clamp(p.x,-28,28)+(side?-.7f:.7f);
   float cy=119.5f+clamp(p.y,-22,22)+clamp(p.tilt,-.1f,.1f)*(side?35:-35);
-  float open=clamp(p.open,0,1)*(1-clamp(p.blink,0,1));
+  float open=clamp(p.open,0,1)*(1-clamp(std::max(p.blink,(p.blink_side<0||p.blink_side==side)?p.command_blink:0.f),0,1));
   float radius=clamp(p.pupil,40,58);
   for (int y=0;y<Height;y++) for(int x=0;x<Width;x++) {
     float dx=x-119.5f,dy=y-119.5f,disc=std::sqrt(dx*dx+dy*dy);

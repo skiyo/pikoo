@@ -62,9 +62,9 @@ bool render_fast_rows(const Pose &p,int side,uint16_t *out,std::size_t count,int
   if(!out||count<EyePixels||side<0||side>1||
      first_row<0||last_row>240||first_row>=last_row||
      !std::isfinite(p.x)||!std::isfinite(p.y)||!std::isfinite(p.open)||!std::isfinite(p.pupil)||
-     !std::isfinite(p.tilt)||!std::isfinite(p.smile)||!std::isfinite(p.blink)||
+     !std::isfinite(p.tilt)||!std::isfinite(p.smile)||!std::isfinite(p.command_blink)||!std::isfinite(p.blink)||
      !std::isfinite(p.saturation)||!std::isfinite(p.ring)||!std::isfinite(p.time_ms))return false;
-  const float sat=cap(p.saturation,0,1),opening=cap(p.open,0,1)*(1-cap(p.blink,0,1));
+  const float sat=cap(p.saturation,0,1),opening=cap(p.open,0,1)*(1-cap(std::max(p.blink,(p.blink_side<0||p.blink_side==side)?p.command_blink:0.f),0,1));
   auto bg=rgb(0x252427,sat),white=rgb(0xFFF8EB,sat),amber=rgb(0xEDBD70,sat),dark=rgb(0x332A29,sat),shine=rgb(0xFFFCF3,sat);
   float cx=119.5f+cap(p.x,-28,28)+(side?-.7f:.7f);
   float cy=119.5f+cap(p.y,-22,22)+cap(p.tilt,-.1f,.1f)*(side?35:-35);
