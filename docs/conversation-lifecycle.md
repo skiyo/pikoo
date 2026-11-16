@@ -23,6 +23,8 @@ Farewell cancels backend work immediately while allowing the goodbye playback to
 
 Cancellation has two parts: invalidate backend result tokens and change playback generation. This prevents an old network response or queued audio from reappearing in a new turn. It does not undo a mutation already committed before cancellation.
 
+Session state is separate from decorative actions: a smile sets only a temporary eye expression; stop-speaking cancels the reply while remaining available; sleep ends the session, closes the eyes and returns to local wake; microphone-off disables capture until restored by button or USB. Zero backlight brightness changes neither microphone nor session state and can be restored by voice or USB. Session end/reconnect clears temporary actions while retaining gain and brightness preferences.
+
 ## Reconnection and errors
 
 A recoverable disconnect can re-establish the configured session; old playback must not resume. Permanent credential/configuration errors require configuration repair. A brief successful connection is not proof of uninterrupted playback. Use redacted status counters for repeated failures and test both cancellation-before-write and disconnect-after-write separately.

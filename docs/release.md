@@ -20,6 +20,8 @@ Board evidence includes voice/list/memory/search operations, restart readback, c
 
 Natural child/household wake performance, subjective listening, final-enclosure AEC, real power-cut recovery and long-duration operation require their own acceptance. Production-provider coverage and fixture-only adapters are listed separately in the evidence.
 
+The current-main [body and voice acceptance record](body-verification.md) identifies each image, actual results and incomplete work, including 11/11 completed voice cases on the latest tested firmware and retained earlier failures. Partial command coverage, eight-hour muted standby and full mixed-dialogue endurance are separate evidence. The product remains 2.0.0; merging current main did not replace the existing same-version release assets. Build main for body controls and record the image hash.
+
 ## Prepare a release
 
 1. Check version agreement between `VERSION`, the firmware build and `release-plan.json`.

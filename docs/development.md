@@ -34,9 +34,24 @@ bash tools/test-local-agent.sh --network --cycles 100
 bash tools/test-local-agent.sh 28800
 ```
 
-`check.sh` covers publication/link checks, native audio/session/eyes, preview/guide tests, generation planners, sanitized service tests and Python tooling. The explicit service command is useful during focused development; it need not be repeated after an unchanged passing full suite. Network fixtures use fake credentials and local TLS services. The last command accelerates 28,800 seconds of synthetic PCM; it is not eight hours of real elapsed-time board operation. These tests do not open microphones or speakers.
+`check.sh` covers publication/link checks, native body control/inference retry/audio/session/eyes, preview/guide tests, generation planners, sanitized service tests and Python tooling. The explicit service command is useful during focused development; it need not be repeated after an unchanged passing full suite. Network fixtures use fake credentials and local TLS services. The last command accelerates 28,800 seconds of synthetic PCM; it is not eight hours of real elapsed-time board operation. These tests do not open microphones or speakers.
 
 To preview eyes, run `bash tools/start-dualeye.sh` and open `http://127.0.0.1:8793/dualeye`. Stop with Ctrl+C or `bash tools/stop-dualeye.sh`. Preview poses exercise rendering, not live provider behavior.
+
+## Targeted checks and real speech
+
+Select the smallest relevant checks for a change and retain passing, unaffected evidence. Use `bash tools/test-body.sh` for body control, `bash tools/test-body-http.sh` for inference retry, and `bash tools/test-eyes.sh` for mounted direction/rendering. Do not repeat the same subset after an unchanged passing full suite. Broaden regression only when changed code or a new failure justifies it.
+
+Real-speech tests play through Mac speakers and call configured services. Run them only when audible testing is explicitly allowed; silent checks never start them:
+
+```sh
+python tools/generate-body-voice.py --cases testdata/body_voice_cases.json --out /tmp/pikoo-voice-fixtures
+python tools/test-body-voice.py --port PORT --cases testdata/body_voice_cases.json --audio-dir /tmp/pikoo-voice-fixtures --out /absolute/private/voice-results.json
+```
+
+Tingting and Samantha voices, unmuted system output and clear microphone pickup are required. Verification checks actual results, write counts and receipts. Negative/quoted cases additionally require decision evidence and no unintended session closure. Normal batches retain the session; opt-in `--snapshot-every N` separately stresses mute/export/unmute reconnection and defaults off. Exported history may include ambient transcripts and must remain private.
+
+Compound fixtures are in `testdata/body_voice_compound_cases.json`. For a focused change, create a private fixture file containing only affected cases, generate its matching speech files, then run it. Optional `tools/test-body-semantics.py --config /absolute/private/device.json --out /absolute/private/semantic-results.json` uses the paid reasoning service to check tool selection through the shared C++ executor without operating hardware. It does not establish real microphone, acoustic or endurance acceptance. See [verification and publishing](release.md) for evidence scope and records.
 
 ## Extend an adapter or tool
 

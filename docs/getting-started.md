@@ -2,7 +2,7 @@
 
 **English** | [简体中文](getting-started.zh-CN.md)
 
-This guide installs Pikoo on the **non-touch Waveshare ESP32-S3-DualEye-LCD-1.28**. Start with the firmware ZIP if you want to use the device; build from source if you intend to change firmware. All terminal commands run from the extracted package or repository root. Examples use a macOS/Linux shell; replace paths and `PORT` for your computer.
+This guide installs Pikoo on the **non-touch Waveshare ESP32-S3-DualEye-LCD-1.28**. Current main includes volume, brightness, expression and gaze control; build main using the source section below for those features. The published 2.0.0 ZIP is an earlier packaged baseline and has not been replaced; use its release manifest to identify packaged functionality. All terminal commands run from the extracted package or repository root. Examples use a macOS/Linux shell; replace paths and `PORT` for your computer.
 
 ## 1. Prepare hardware and service access
 

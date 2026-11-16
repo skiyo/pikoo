@@ -28,6 +28,8 @@ Record the firmware version, state, muted/upload state and error code. Keep API 
 | Cannot read a webpage | Tavily extraction enabled, same origin, HTTPS target | Check `extract_url`; unsupported adapters cannot read arbitrary URLs |
 | Broken speech | Wi-Fi jitter, streaming errors, playback queues, heap | Lower concurrent load; collect counters; test at low volume |
 | Silent speaker | Mute, volume, connector and supply | Verify wiring/power, unmute; acoustic check only when appropriate |
+| Eyes dark but voice works | Saved brightness, separate microphone state | Query `body_get_state`; set `body_set_display` to `{"percent":100}` |
+| Body command not applied | Actual tool receipt, Live routing and reasoning errors | Query actual state before retry; use a stable USB call ID for relative retries |
 | Wrong display orientation | Saved mounting direction | Use `rotate 90` or `rotate 270` |
 | Installation says backup mismatch | Backup does not match present device contents | Stop; retain old backup and create a new verified backup if intentional |
 | Upgrade says partition mismatch | Image/layout not appropriate for this device | Use the documented backed-up installation flow |

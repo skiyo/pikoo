@@ -22,7 +22,7 @@ Build using ESP-IDF 5.5.5 and `bash tools/build-device.sh "$PWD/models/hi-pikoo/
 
 | Partition | Purpose |
 |---|---|
-| `nvs` | Device settings such as volume/orientation |
+| `nvs` | Device settings such as volume/brightness/orientation |
 | `phy_init` | Radio initialization data |
 | `factory` | Application, 6 MiB, offset `0x20000` |
 | `model` | Model resources, 4 MiB |
@@ -43,7 +43,7 @@ python tools/device.py diagnose --port PORT --command status
 python tools/device.py diagnose --port PORT --command unmute
 ```
 
-Only run `configure` if settings need updating. Same-layout upgrades retain configuration, family data, volume and orientation. A layout mismatch is a stop condition, not permission to erase the device. Inspect the intended board/build and follow the backed-up installation procedure.
+Only run `configure` if settings need updating. Same-layout upgrades retain configuration, family data, volume, brightness and orientation. A layout mismatch is a stop condition, not permission to erase the device. Inspect the intended board/build and follow the backed-up installation procedure.
 
 ## Export and import data
 
@@ -73,6 +73,8 @@ python tools/device.py restore --port PORT --backup /absolute/private/board-back
 Restore overwrites all Flash, including newly created data and credentials. The command verifies the restored bytes; reset the board if it remains in download mode. Keep backups private. No automatic family-data merge or cross-board full-Flash migration is provided.
 
 ## Diagnostic commands
+
+`tools/body.py` queries and controls the body through the shared executor. See the [user guide](usage.md) for commands and [tool contract](family-tools.md) for arguments and receipts.
 
 `device.py diagnose` supports `status`, `wake`, `stop`, `end`, `mute`, `unmute`, `tone`, volume and orientation commands. `wake` can open a paid service session and `tone` produces sound; neither belongs in a silent check. Maintenance tools use muted standby and preserve USB control-line handling. If a port changes after reboot, list devices again instead of repeatedly writing to the old name.
 

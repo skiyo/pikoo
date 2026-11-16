@@ -22,6 +22,7 @@ flowchart LR
 |---|---|---|
 | `pikoo_config` | Parse and validate AgentConfig and full endpoints | Reject unsupported protocols before connecting |
 | `LiveAgent` | Voice events, delegation and classified context | Provider messages cannot directly mutate NVS |
+| `Body` | Body argument validation, receipts and temporary action scheduling | Shared by Agent, USB and buttons; separate from driver execution |
 | `BackendAgent` | Reasoning rounds and tool orchestration | Bounded deadline, rounds and result sizes |
 | Provider adapters | Responses, Chat Completions, search normalization | Protocol selection is explicit |
 | `HttpResponse` | Incremental bounded HTTP parsing | Handles network fragments independently of JSON meaning |
@@ -37,10 +38,12 @@ Shared implementation is in `firmware/components/pikoo_core`; ESP integration is
 2. Live emits classified transcripts and a client delegation request.
 3. The Agent creates a backend task from bounded context, using the delegation identity.
 4. The configured LLM can answer or request a registered tool. The ESP validates arguments and executes local mutations; search is delegated to the selected search adapter.
-5. Tool results return to the LLM within the task's round/deadline budget.
+5. Tool results return to the LLM within the task's budget. Each applied body step also sends immediate verified progress while the task continues remaining actions.
 6. The completed result returns to Live under the same delegation ID for speech. Errors remain errors; a failed write is not reported as success.
 
 A successful persisted write is not rolled back when subsequent speech fails. Call-ID receipts protect retried events within the retained window. The architecture does not promise global semantic deduplication.
+
+Body routing accumulates transcript fragments, handles coalesced/out-of-order decisions and retains negation/quotation tails as context. Body delegation waits for a 2.5-second quiet window before foreground reasoning validates the full intent. Keywords never drive hardware directly; no background model is added.
 
 ## Scheduling and cancellation
 
@@ -50,12 +53,12 @@ Only the session task changes family state. Worker results carry request tokens;
 
 ## Transport and memory
 
-All service connections verify TLS certificates. Direct networking is the default. Optional HTTPS CONNECT adds a separately authenticated outer connection; service TLS remains end-to-end. Redirects are not followed. Within one delegation, a fully consumed HTTP connection may be reused only for the same origin and proxy settings. Cancellation, incomplete responses, `Connection: close`, a new task or 15 seconds idle discard it. Failed POSTs are not automatically replayed.
+All service connections verify TLS certificates. Direct networking is the default. Optional HTTPS CONNECT adds a separately authenticated outer connection; service TLS remains end-to-end. Redirects are not followed. Within one delegation, a fully consumed HTTP connection may be reused only for the same origin and proxy settings. Cancellation, incomplete responses, `Connection: close`, a new task or 15 seconds idle discard it. A transport failure before a complete inference response permits one same-request retry within the original deadline. Cancellation, HTTP errors and expiry are not retried; tools execute only after a complete response.
 
 cJSON allocations prefer PSRAM on ESP32-S3, reserving internal memory for Wi-Fi, TLS and DMA. PCM16 mono supports 16/24 kHz with a 900 ms prebuffer and bounded PSRAM queue. USB status exposes internal-heap low water, largest free block, backend stack headroom and queue peaks. These are board metrics, distinct from host RSS.
 
 ## Storage boundaries
 
-`agent_secret` contains replaceable ordinary-NVS service settings. `agent_data` uses two snapshot slots for lists, memories, bounded context and receipts. Volume/orientation are separate device settings. See [context and memory](context-memory.md) for limits and [security](../SECURITY.md) for physical-access and provider boundaries.
+`agent_secret` contains replaceable ordinary-NVS service settings. `agent_data` uses two snapshot slots for lists, memories, bounded context and receipts. Volume, brightness and mounting orientation are separate device settings; temporary expressions and gaze do not write Flash. See [context and memory](context-memory.md) for limits and [security](../SECURITY.md) for physical-access and provider boundaries.
 
 [Lifecycle](conversation-lifecycle.md) · [Tools](family-tools.md) · [Development](development.md)

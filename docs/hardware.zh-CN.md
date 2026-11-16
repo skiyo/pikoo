@@ -8,14 +8,14 @@
 
 喇叭只能接官方标明的 **扬声器接口**，不能因外观相似接到电源接口。通电前按官方资料或商家确认插座和阻抗，先低音量测试。
 
-| Interface | Pins |
+| 接口 | 引脚 |
 |---|---|
-| Display SPI | MOSI42 / SCLK41 / DC45 |
-| Left screen | CS47 / RST48 / BL46 |
-| Right screen | CS38 / RST8 / BL39 |
+| 显示 SPI | MOSI42 / SCLK41 / DC45 |
+| 显示通道 0 | CS47 / RST48 / BL46 |
+| 显示通道 1 | CS38 / RST8 / BL39 |
 | I2C | SDA11 / SCL10 |
 | I2S | MCLK12 / BCLK13 / WS14 / ADC15 / DAC16 |
-| Amplifier / BOOT | GPIO9 / GPIO0 |
+| 功放 / BOOT | GPIO9 / GPIO0 |
 
 原理图中麦克风为 ES7210 MIC1，衰减的播放参考为 MIC3；固件按已配置的 ADC1/ADC3/ADC2/ADC4 通道次序提取麦克风与参考。ESP-SR 使用参考做 AEC，板上有编解码芯片不等于已经完成回声验收；需要装壳、正常音量和自然插话实测。
 

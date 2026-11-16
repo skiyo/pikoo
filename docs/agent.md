@@ -8,7 +8,8 @@ The local Agent owns tasks rather than forwarding device events to an applicatio
 |---|---|
 | Wake and privacy | Full local wake phrase; no idle audio upload; mute disables capture |
 | Conversation | Greeting, follow-up context, interrupt/cancel, 60-second idle timeout and farewell drain |
-| Local actions | Shopping/todo lists and explicitly requested memory changes |
+| Local organization | Shopping/todo lists and explicitly requested memory changes |
+| Body control | Explicit gain/backlight adjustments, timed expressions, single-eye blinks and gaze, reported from actual receipts |
 | Retrieval | Optional search; source links; extraction only with the corresponding adapter |
 | Recovery | Reconnect without old audio replay; USB configuration and snapshot transfer |
 
@@ -19,6 +20,8 @@ The device is shared, with no speaker identity inference, background automatic m
 ## Choosing a task
 
 Use this page as the feature contract. Start with [everyday examples](usage.md), then consult [tool semantics](family-tools.md) before extending behavior. A model can describe many actions, but the device can execute only registered tools. Ask for clarification when the requested mutation is ambiguous; an answer is not proof of a committed write.
+
+Body capabilities use the existing eyes, speaker, microphones and button; no camera, IMU, touch or mechanical movement is included. Expressions do not change the real session state, and necessary status indications have priority. Volume and brightness change only on explicit requests. Body receipts are process-local; list receipts persist with data. See the [tool contract](family-tools.md).
 
 ## Availability and cost
 

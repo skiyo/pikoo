@@ -34,9 +34,24 @@ bash tools/test-local-agent.sh --network --cycles 100
 bash tools/test-local-agent.sh 28800
 ```
 
-`check.sh` 覆盖公开内容与链接、原生音频/会话/双眼、预览和装配指南、生成规划器、启用 sanitizer 的服务测试及 Python 工具。单独服务命令适合开发时定向验证，完整检查通过且没有修改后无需重复运行。网络夹具使用假凭证和本地 TLS。最后一条加速处理 28,800 秒合成 PCM，不代表真实耗时八小时的板上运行。这些测试不打开麦克风或扬声器。
+`check.sh` 覆盖公开内容与链接、原生身体控制/推理重试/音频/会话/双眼、预览和装配指南、生成规划器、启用 sanitizer 的服务测试及 Python 工具。单独服务命令适合开发时定向验证，完整检查通过且没有修改后无需重复运行。网络夹具使用假凭证和本地 TLS。最后一条加速处理 28,800 秒合成 PCM，不代表真实耗时八小时的板上运行。这些测试不打开麦克风或扬声器。
 
 预览双眼：执行 `bash tools/start-dualeye.sh`，访问 `http://127.0.0.1:8793/dualeye`；用 Ctrl+C 或 `bash tools/stop-dualeye.sh` 停止。预览验证渲染，不验证真实服务。
+
+## 定向验证与真实语音
+
+根据改动选择最小相关检查，复用已通过且未受影响的结果。身体控制用 `bash tools/test-body.sh`，传输重试用 `bash tools/test-body-http.sh`，安装方向和绘制用 `bash tools/test-eyes.sh`。完整软件检查通过后不重复运行相同子集。代码或出现的新失败确实影响多个模块时，再扩大回归范围。
+
+真实语音测试会通过 Mac 扬声器发声并调用已配置服务，只在明确允许时执行；不会随静默检查自动运行：
+
+```sh
+python tools/generate-body-voice.py --cases testdata/body_voice_cases.json --out /tmp/pikoo-voice-fixtures
+python tools/test-body-voice.py --port PORT --cases testdata/body_voice_cases.json --audio-dir /tmp/pikoo-voice-fixtures --out /absolute/private/voice-results.json
+```
+
+需要 Tingting、Samantha 系统语音、已解除静音的系统输出和清晰收音。判定检查实际结果、写入次数与回执；否定/引用用例还要求识别判定证据及会话未被误关闭。正常批次保持会话；`--snapshot-every N` 单独用于静音/导出/恢复的重连压力测试，默认关闭。导出历史可能包含环境转写，必须留在私有目录。
+
+组合用例使用 `testdata/body_voice_compound_cases.json`。可按改动创建仅包含相关条目的私有用例文件，先生成对应语音再执行。`tools/test-body-semantics.py --config /absolute/private/device.json --out /absolute/private/semantic-results.json` 可用真实付费推理服务验证工具选择和共享 C++ 执行器，不操作设备；结果不能替代真实麦克风、声学或长稳验收。证据范围与实际记录见[验证与发布](release.zh-CN.md)。
 
 ## 扩展适配器或工具
 

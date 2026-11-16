@@ -15,6 +15,21 @@ bash tools/start-dualeye.sh
 
 Open `http://127.0.0.1:8793/dualeye`. Use state/expression controls to compare idle, listening, thinking and speaking poses. English is the default UI; use its language control for Chinese. Stop with Ctrl+C or `bash tools/stop-dualeye.sh`. The preview runs locally and uses no microphone, speaker or model key.
 
+## Expressions, gaze and mounting
+
+Session state supplies natural expressions; the body controller independently schedules temporary expressions, blinks and gaze. Expiry restores the current conversation appearance. An explicit single-eye blink overrides automatic binocular blinking; necessary states such as microphone-off retain priority. Directions follow a person facing the screens. Board-level `mounted_pose` reverses horizontal gaze and swaps the commanded blink side for the current wiring/mounting; the common renderer retains logical coordinates.
+
+Both backlights use synchronized 20 kHz PWM from 0 to 100%, saved as a device preference. Zero switches off backlights without ending the conversation. See the [user guide](usage.md) for commands and recovery.
+
+Preview body actions offline using the same C++ controller and renderer:
+
+```sh
+bash tools/build-body-host.sh
+python tools/body-preview.py --out /tmp/pikoo-body-preview
+```
+
+Open the generated `index.html` to compare single-eye blinks, gaze and expiry restoration. The preview does not establish physical mounting direction, brightness, acoustics or hardware latency.
+
 ## Change expressions carefully
 
 Keep pose/state mapping separate from provider messages. A decorative expression does not confirm network readiness or a saved tool action. Check both panels, clipping at the circular boundary and transitions at different expression intensities. Use the shared renderer to avoid platform drift.

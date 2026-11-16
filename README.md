@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-Pikoo is an ESP32-S3 voice companion with expressive dual eyes and a device-owned C++ Agent. It wakes locally, manages conversations, executes tools and saves lists and explicit memories on the device. Your configured services provide voice and language-model inference.
+Pikoo is an ESP32-S3 voice companion with expressive dual eyes and a device-owned C++ Agent. It wakes locally, manages conversations, executes tools, controls its speaker and eyes, and saves lists and explicit memories on the device. Your configured services provide voice and language-model inference.
 
 **English is the default.** Set `agent.language` to `zh-CN` for Chinese dialogue; keep the complete English wake phrase **“Hi, Pikoo”**.
 
@@ -18,7 +18,7 @@ Pikoo is an ESP32-S3 voice companion with expressive dual eyes and a device-owne
 | Physical controls | Wake/stop/end/mute through BOOT; USB diagnostics and settings |
 | Local organization | Shopping list, todos and explicitly requested memory |
 | Information retrieval | Optional web search; webpage extraction with the supporting adapter |
-| Expression | Two 240 × 240 eyes driven by shared C++ rendering |
+| Body control | Voice-controlled volume and dual-eye brightness, smiles, single-eye blinks and gaze, with execution receipts |
 | Maintenance | Replaceable service configuration, data export/import and checked USB installation |
 
 The device owns tool execution and persistence. Conversation requires network services; language models do not run on the ESP. There is no speaker identity system, automatic memory learning, cross-device sync or bundled home automation.
@@ -34,11 +34,11 @@ No Pikoo application server is required. Each service has an independent endpoin
 
 ## Install and use
 
-1. Download the **firmware ZIP** from [Pikoo 2.0.0](https://github.com/skiyo/pikoo/releases/tag/v2.0.0) and verify its checksums.
+1. Follow the [quick start](docs/getting-started.md) to build current main or install the published [2.0.0 firmware package](https://github.com/skiyo/pikoo/releases/tag/v2.0.0), and verify the artifacts.
 2. Create a private configuration from `examples/device.example.json`; fill your Wi-Fi, Live and LLM settings.
 3. List USB ports and create a verified full-Flash backup outside the repository.
 4. Run the install dry-run, then install firmware and configuration.
-5. Check status, unmute and say “Hi, Pikoo”. Try reading and updating a disposable list item.
+5. Check status, unmute and say “Hi, Pikoo”. Try “turn your volume down a little” and “smile”, then read and update a disposable list item.
 
 The [step-by-step quick start](docs/getting-started.md) includes commands, expected outputs, source-build alternatives and the first-use checklist. Use [troubleshooting](docs/troubleshooting.md) for MIC OFF, USB, TLS or service errors.
 
@@ -76,5 +76,3 @@ Idle wake audio stays local; active conversations are processed by configured se
 Original source, documentation and Pikoo-authored artwork use **Apache-2.0**. Wake weights and firmware containing them retain **separate non-commercial model terms** and third-party restrictions. Preserve notices and attribution when redistributing.
 
 [LICENSE](LICENSE) · [NOTICE](NOTICE) · [Model terms](models/hi-pikoo/LICENSE.md) · [Third-party sources](THIRD_PARTY.md) · [Contributing](CONTRIBUTING.md)
-
-[Body control](docs/body-control.md)

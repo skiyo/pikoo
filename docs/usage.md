@@ -27,16 +27,40 @@ Natural-language recognition is probabilistic. Use BOOT or USB `stop`/`end` when
 
 Check the reply before assuming a write succeeded. A network failure after a successful local commit does not undo that commit; read the list before repeating a request. Clear-all operations require confirmation. Lists are shared by the device; Pikoo does not recognize speakers or maintain separate accounts.
 
-## Volume and display orientation
+## Control the speaker and eyes
 
-A new device starts at -24 dB. Set volume conservatively and test with the connected speaker:
+After waking Pikoo, use the commands below. Volume and brightness change and persist only on explicit requests; expressions, blinks and gaze are temporary.
+
+| Command | Actual behavior |
+|---|---|
+| “Turn your volume up / down a little” | Increase / decrease codec gain by 3 dB; report limits honestly |
+| “Set volume to fifty percent” | Set the control scale to 50%, equivalent to −25 dB gain |
+| “Make your eyes brighter / dimmer” | Adjust both backlights by 10 percentage points |
+| “Turn your eye backlights off” | Set brightness to zero without changing microphone or session state |
+| “Smile / look curious / look sleepy” | Hold the expression for 3 seconds, then restore the conversation expression |
+| “Blink / wink your left eye / wink your right eye” | One binocular or single-eye action, about 350 ms |
+| “Look left / right / forward” | Change rendered gaze for 2 seconds, then restore it |
+| “Stop speaking” | Stop playback and cancel the current reply, remaining available |
+| “Go to sleep” | End the conversation, close the eyes and return to local wake standby |
+| “Turn off your microphone” | Disable capture; restore with BOOT hold or USB `unmute` |
+
+Directions follow the view of a person facing the screens. Explicit expression and gaze durations are limited to 10 seconds; a new action replaces the same channel. Requested actions override natural expressions, while microphone-off, connection and error states remain visible. A smile changes only the eyes; explicitly request laughter for sound. The displays are not cameras, and gaze does not imply seeing an object.
+
+Codec gain ranges from −50 to 0 dB; 0 dB is the highest setting, not mute. The percentage is a control scale, not a sound-pressure ratio or dB SPL measurement. New devices start at −24 dB; upgrades retain existing preferences. Backlight brightness ranges from 0 to 100%. With the lights off, wake Pikoo and request “set eye brightness to one hundred percent”. Reducing volume or brightness does not disable the microphone.
+
+## USB settings and recovery
+
+When voice services are unavailable, use USB to query actual state or restore brightness:
 
 ```sh
-python tools/device.py diagnose --port PORT --command 'volume -24'
+python tools/body.py --port PORT body_get_state
+python tools/body.py --port PORT body_set_audio '{"gain_db":-24}'
+python tools/body.py --port PORT body_set_display '{"percent":100}'
+python tools/device.py diagnose --port PORT --command 'unmute'
 python tools/device.py diagnose --port PORT --command 'rotate 90'
 ```
 
-Volume accepts integer dB values from -50 to 0; 0 is the highest setting, not mute. Supported orientation commands are `rotate 90` and `rotate 270`. Saved settings survive same-layout upgrades. Speaker volume does not control microphone privacy; use mute for that.
+Orientation supports `rotate 90` and `rotate 270`. Same-layout upgrades retain volume, brightness and mounting orientation. Rotation calibrates the installation; everyday left/right commands move only the gaze. USB and voice share the body executor; see the [tool contract](family-tools.md) for interfaces and receipts.
 
 ## Everyday expectations
 

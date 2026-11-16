@@ -22,7 +22,7 @@
 
 | 分区 | 用途 |
 |---|---|
-| `nvs` | 音量、屏幕方向等设备设置 |
+| `nvs` | 音量、亮度、屏幕方向等设备设置 |
 | `phy_init` | 射频初始化数据 |
 | `factory` | 应用，6 MiB，偏移 `0x20000` |
 | `model` | 模型资源，4 MiB |
@@ -43,7 +43,7 @@ python tools/device.py diagnose --port PORT --command status
 python tools/device.py diagnose --port PORT --command unmute
 ```
 
-只有需要更新设置时才执行 `configure`。同分区升级保留配置、家庭数据、音量和方向。布局不一致应停止，核对板型和构建，按已备份的首次安装流程处理，不要直接擦除。
+只有需要更新设置时才执行 `configure`。同分区升级保留配置、家庭数据、音量、亮度和方向。布局不一致应停止，核对板型和构建，按已备份的首次安装流程处理，不要直接擦除。
 
 ## 导出与导入数据
 
@@ -73,6 +73,8 @@ python tools/device.py restore --port PORT --backup /absolute/private/board-back
 恢复会覆盖全部 Flash，包括新增数据和凭证。工具会验证写回内容；如停留在下载模式，完成后复位设备。备份应私密保管，不提供自动家庭数据合并或跨设备整片迁移。
 
 ## 诊断命令
+
+`tools/body.py` 通过相同执行器查询和控制身体，命令见[使用指南](usage.zh-CN.md)，参数与回执见[工具契约](family-tools.zh-CN.md)。
 
 `device.py diagnose` 支持 `status`、`wake`、`stop`、`end`、`mute`、`unmute`、`tone`、音量与方向命令。`wake` 可能打开付费服务会话，`tone` 会发声，静默测试不要使用。维护工具使用静音待机并处理 USB 控制线路。重启后端口变化时应重新查询，不要反复向旧名称发送命令。
 

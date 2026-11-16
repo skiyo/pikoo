@@ -11,8 +11,8 @@ Connect the speaker only to the documented **speaker connector**, never a same-l
 | Interface | Pins |
 |---|---|
 | Display SPI | MOSI42 / SCLK41 / DC45 |
-| Left screen | CS47 / RST48 / BL46 |
-| Right screen | CS38 / RST8 / BL39 |
+| Display channel 0 | CS47 / RST48 / BL46 |
+| Display channel 1 | CS38 / RST8 / BL39 |
 | I2C | SDA11 / SCL10 |
 | I2S | MCLK12 / BCLK13 / WS14 / ADC15 / DAC16 |
 | Amplifier / BOOT | GPIO9 / GPIO0 |

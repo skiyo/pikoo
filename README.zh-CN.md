@@ -2,7 +2,7 @@
 
 [English](README.md) | **简体中文**
 
-Pikoo 是基于 ESP32-S3 的语音伙伴，拥有双眼表情和在设备上运行的 C++ Agent。设备负责本地唤醒、会话管理、工具执行，以及清单和显式记忆保存；配置的外部服务提供语音与语言模型推理。
+Pikoo 是基于 ESP32-S3 的语音伙伴，拥有双眼表情和在设备上运行的 C++ Agent。设备负责本地唤醒、会话管理、工具执行、音量与双眼控制，以及清单和显式记忆保存；配置的外部服务提供语音与语言模型推理。
 
 **默认语言为英文。** 将 `agent.language` 设为 `zh-CN` 可使用中文对话，完整英文唤醒词仍为 **“Hi, Pikoo”**。
 
@@ -18,7 +18,7 @@ Pikoo 是基于 ESP32-S3 的语音伙伴，拥有双眼表情和在设备上运�
 | 物理控制 | BOOT 唤醒/停止/结束/静音，USB 诊断和设置 |
 | 本地整理 | 购物清单、待办、明确要求保存的记忆 |
 | 信息检索 | 可选联网搜索，适配器支持时提供网页提取 |
-| 表情 | 共享 C++ 渲染驱动两块 240 × 240 双眼屏幕 |
+| 身体控制 | 语音调整音量、双眼亮度，微笑、单眼眨眼和改变视线；按实际回执反馈 |
 | 维护 | 可更新服务配置、数据导入导出、经过检查的 USB 安装 |
 
 工具执行和持久化由设备负责，对话需要网络服务，ESP 内不运行大语言模型。不提供声纹身份、自动记忆学习、跨设备同步或内置智能家居集成。
@@ -34,11 +34,11 @@ Pikoo 是基于 ESP32-S3 的语音伙伴，拥有双眼表情和在设备上运�
 
 ## 安装与使用
 
-1. 从 [Pikoo 2.0.0](https://github.com/skiyo/pikoo/releases/tag/v2.0.0) 下载 **firmware ZIP** 并校验文件。
+1. 按[快速开始](docs/getting-started.zh-CN.md)选择构建当前主干或安装已发布的 [2.0.0 固件包](https://github.com/skiyo/pikoo/releases/tag/v2.0.0)，并校验产物。
 2. 根据 `examples/device.example.json` 创建私有配置，填写 Wi-Fi、Live 和 LLM。
 3. 查询 USB 串口，在仓库外创建完整且经过验证的 Flash 备份。
 4. 运行安装预检查，再写入固件和配置。
-5. 查询状态、取消静音，说出“Hi, Pikoo”，尝试读取和修改一条临时清单项。
+5. 查询状态、取消静音，说出“Hi, Pikoo”，试说“声音小一点”“笑一笑”，再读取和修改一条临时清单项。
 
 [逐步快速开始](docs/getting-started.zh-CN.md)提供命令、预期输出、源码构建替代路径和首次验收步骤。MIC OFF、USB、TLS 或服务问题见[故障排查](docs/troubleshooting.zh-CN.md)。
 
@@ -76,5 +76,3 @@ Release 提供固件 ZIP、模型 ZIP、仅应用 BIN、清单和 SHA256SUMS。�
 原创源码、文档和 Pikoo 原创图形采用 **Apache-2.0**；唤醒权重及包含权重的固件另受**非商业模型条款**和第三方限制约束。再分发时保留声明和署名。
 
 [LICENSE](LICENSE) · [NOTICE](NOTICE) · [模型条款](models/hi-pikoo/LICENSE.md) · [第三方来源](THIRD_PARTY.zh-CN.md) · [贡献指南](CONTRIBUTING.zh-CN.md)
-
-[身体控制](docs/body-control.zh-CN.md)
