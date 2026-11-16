@@ -2,6 +2,8 @@
 
 2.0.0 fixes conflicting model arguments and voice routing/result delivery. Model settings use explicit `mode` and `value`; USB retains the legacy single-field format.
 
+Directions follow the view of a person facing Pikoo: left/right commands select that side of the installed screens. The board maps logical eye selection and horizontal gaze to its wiring and mounting.
+
 ## Automated real-speech acceptance
 
 On macOS, play synthetic speech through the computer speakers into the real Pikoo microphone:

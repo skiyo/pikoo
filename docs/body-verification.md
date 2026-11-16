@@ -4,9 +4,11 @@ Product version: 2.0.0. No IMU is included. Body control is tracked by commit an
 
 ## Candidate status
 
-The source and release plan retain version 2.0.0. ESP-IDF 5.5.5 compilation and software checks passed. Deployment and audible acceptance of the latest per-step progress/multi-action changes are pending under a quiet-operation constraint.
+The source, installed application and release plan retain version 2.0.0. The direction-corrected application SHA256 is `160dafc346599386caf56c9a157c55ef017ad2e3f35774e26ef0858470df22cc`. Its application digest was verified after flashing, and every non-application partition digest remained unchanged. Full local software checks and ESP-IDF 5.5.5 compilation passed.
 
-The previously installed test binary used the temporary label 2.1.1 and SHA256 `f9b318771d090a955e5e5bfbd10c63a15d439d5c6098d153931ede970fcbee5a`. Hardware results below apply to that binary, not to the latest source. It has not been reflashed merely to change its displayed version. The published 2.0.0 release assets and tag have not been replaced.
+On-device observation identified reversed left/right winks and horizontal gaze in the earlier candidate. The installed correction swaps the commanded blink side and reverses horizontal gaze at the board rendering boundary. A dedicated board-mapping regression covers both directions and unchanged vertical/opening values. Directions follow the user's view facing the screens. Fresh voice regression on this binary is in progress.
+
+Earlier measurements below apply to the previous test application, labelled 2.1.1 (SHA256 `f9b318771d090a955e5e5bfbd10c63a15d439d5c6098d153931ede970fcbee5a`). Its logical receipts did not establish physical left/right correctness. The existing published 2.0.0 release assets and tag have not been replaced.
 
 ## Measured hardware evidence
 
@@ -23,7 +25,7 @@ The previously installed test binary used the temporary label 2.1.1 and SHA256 `
 | Upgrade preservation | Application digest checked; non-application partitions unchanged across each application flash |
 | Recovery | Original 16 MiB Flash backup verified in 64 chunks and by local SHA256; private backup excluded from public artifacts |
 
-The voice figures apply to the installed binary above. The latest candidate's changed progress/composite behavior still requires hardware voice acceptance. Preview images and tool receipts do not certify physical flicker, distortion, acoustic dB SPL or AEC.
+The earlier voice figures apply to the previous binary identified above. Fresh microphone and compound-action results are required for the direction-corrected binary. Preview images and tool receipts do not certify physical flicker, distortion, acoustic dB SPL or AEC.
 
 ## Latest candidate software checks
 
@@ -34,4 +36,4 @@ The voice figures apply to the installed binary above. The latest candidate's ch
 
 ## Remaining acceptance
 
-Deploy the latest candidate after quiet-operation restrictions are lifted; run its microphone regressions and compound cases, negation/quotation, upper-limit feedback and disconnected-USB-reader checks. Verify physical sound/eyes and preserve non-test state. Two-hour/eight-hour mixed voice endurance has not been completed. The separate eight-hour muted standby run passed; it does not establish mixed voice endurance.
+The latest candidate has been deployed with audible testing authorized. Complete its fresh microphone regressions and compound cases, negation/quotation, upper-limit feedback and disconnected-USB-reader checks. Verify physical sound/eyes and preserve non-test state. Two-hour/eight-hour mixed voice endurance has not been completed. The separate eight-hour muted standby run passed; it does not establish mixed voice endurance.

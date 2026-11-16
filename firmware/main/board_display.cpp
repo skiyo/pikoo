@@ -1,3 +1,4 @@
+#include "board_display_mapping.hpp"
 // Original board integration; pin assignments follow the Waveshare non-touch
 // board.
 #include "board.hpp"
@@ -158,7 +159,8 @@ esp_err_t display_init() {
   backlight = initial;
   return ESP_OK;
 }
-void display_frame(const pikoo::eyes::Pose &pose, const char *label) {
+void display_frame(const pikoo::eyes::Pose &logical_pose, const char *label) {
+  const auto pose = mounted_pose(logical_pose);
   auto selected = rotation.load();
   const bool rotation_changed = selected != applied_rotation;
   if (selected != applied_rotation) {

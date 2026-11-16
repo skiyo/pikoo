@@ -5,6 +5,7 @@ from usb_serial import ConsoleSerial
 p=argparse.ArgumentParser(description='Opt-in synthetic speech test using Mac speakers and the real Pikoo microphone. Uses configured voice/reasoning services.')
 p.add_argument('--port',required=True);p.add_argument('--cases',type=Path,default=Path(__file__).resolve().parents[1]/'testdata/body_voice_cases.json');p.add_argument('--audio-dir',type=Path,required=True);p.add_argument('--out',type=Path,required=True)
 a=p.parse_args();os.umask(0o077);a.out.parent.mkdir(parents=True,exist_ok=True)
+if subprocess.check_output(['osascript','-e','output muted of (get volume settings)'],text=True).strip()=='true':raise RuntimeError('Mac output is muted; no acoustic tests started. Unmute explicitly before running.')
 cases=json.loads(a.cases.read_text());out=a.out;results=[];events=[];pending=b'';status={};histories=[];original={}
 for n in range(len(cases)):
  if not (a.audio_dir/(str(n)+'.aiff')).is_file() or (a.audio_dir/(str(n)+'.aiff')).stat().st_size<=4096:raise RuntimeError('Missing or empty synthetic speech file: '+str(n))
@@ -55,8 +56,10 @@ try:
   start_index=len(events);started=time.monotonic();player=subprocess.Popen(['afplay','-v','1.5',str(a.audio_dir/(str(n)+'.aiff'))])
   while player.poll() is None:pump(.1)
   if player.wait()!=0:raise RuntimeError('Synthetic audio playback failed')
-  requested=c['expected_calls'] if 'expected_calls' in c else [{'tool':c['tool'],'expected':c.get('expected',requested)}]
-  found=[None]*len(requested);receipt=None;deadline=time.monotonic()+40
+  requested=c['expected_calls'] if 'expected_calls' in c else [{'tool':c['tool'],'expected':c['expected']}]
+  found=[None]*len(requested);receipt=None
+  if not requested:pump(40)  # Observe delayed forbidden actions before accepting a negative case.
+  deadline=time.monotonic()+40
   while time.monotonic()<deadline:
    pump(.2)
    for line in events[start_index:]:
