@@ -316,6 +316,39 @@ int main() {
       2200);
   live.tick(3300);
   assert(delegations == 1);
+  // Provider delegation must wait for the body utterance's trailing value.
+  LiveAgent::Output split_out = out;
+  unsigned split_calls = 0;
+  split_out.delegate = [&](const std::string &, const std::string &history,
+                           uint64_t) {
+    ++split_calls;
+    assert(history.find("eyes") != std::string::npos);
+    assert(history.find("little") != std::string::npos);
+  };
+  LiveAgent split(routed_store, split_out);
+  split.configure(config);
+  split.start(100, false);
+  split.receive(R"({"type":"session.started"})", 101);
+  split.receive(
+      R"({"type":"session.input_transcript.delta","event_id":"head","delta":"dim your eyes"})",
+      200);
+  split.receive(
+      R"({"type":"decision.event","source_event_id":"head","source_event_type":"session.input_transcript.delta","event":{"type":"decision.completed","decision":{"answers":[{"name":"interaction","choice":"addressed"}]}}})",
+      300);
+  split.receive(
+      R"({"type":"session.delegation.created","delegation":{"id":"early-provider","target":"client"}})",
+      350);
+  assert(split_calls == 0);
+  split.receive(
+      R"({"type":"session.input_transcript.delta","event_id":"tail","delta":" a little"})",
+      2200);
+  split.receive(
+      R"({"type":"decision.event","source_event_id":"tail","source_event_type":"session.input_transcript.delta","event":{"type":"decision.completed","decision":{"answers":[{"name":"interaction","choice":"addressed"}]}}})",
+      2300);
+  split.tick(4700);
+  assert(split_calls == 0);
+  split.tick(4801);
+  assert(split_calls == 1);
   std::cout << "Body control boundary, receipts, expiry, priority, failures "
                "and both protocol schemas passed\n";
 }

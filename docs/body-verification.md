@@ -4,11 +4,13 @@ Product version: 2.0.0. No IMU is included. Body control is tracked by commit an
 
 ## Candidate status
 
-The source, installed application and release plan retain version 2.0.0. The direction-corrected application SHA256 is `160dafc346599386caf56c9a157c55ef017ad2e3f35774e26ef0858470df22cc`. Its application digest was verified after flashing, and every non-application partition digest remained unchanged. Full local software checks and ESP-IDF 5.5.5 compilation passed.
+The source, installed application and release plan retain version 2.0.0. The direction-corrected application SHA256 is `dafbed45e1bb69b3efc1b868f4f618994c831e6f56582ba87ef0d183f2963b78`. Its application digest was verified after flashing, and every non-application partition digest remained unchanged. Full local software checks and ESP-IDF 5.5.5 compilation passed.
 
-On-device observation identified reversed left/right winks and horizontal gaze in the earlier candidate. The installed correction swaps the commanded blink side and reverses horizontal gaze at the board rendering boundary. A dedicated board-mapping regression covers both directions and unchanged vertical/opening values. Directions follow the user's view facing the screens. Fresh voice regression on this binary is in progress.
+On-device observation identified reversed left/right winks and horizontal gaze in the earlier candidate. The installed correction swaps the commanded blink side and reverses horizontal gaze at the board rendering boundary. A dedicated board-mapping regression covers both directions and unchanged vertical/opening values. Directions follow the user's view facing the screens. The targeted voice regression on this binary passed 3/6 cases (Chinese/English 50% volume and Chinese dimming passed; English dimming and two left-wink cases had no applied receipt). A separate English dimming diagnostic queued a provider delegation but received no interaction-decision event, and the delegation expired. Full voice acceptance remains failed/pending. The revision also holds early provider body delegations until the 2.5-second quiet boundary, keeps trailing transcript fragments across that window, and routes English eye requests such as "dim your eyes". A split-transcript test verifies that an early provider delegation cannot dispatch before the trailing phrase arrives.
 
 Earlier measurements below apply to the previous test application, labelled 2.1.1 (SHA256 `f9b318771d090a955e5e5bfbd10c63a15d439d5c6098d153931ede970fcbee5a`). Its logical receipts did not establish physical left/right correctness. The existing published 2.0.0 release assets and tag have not been replaced.
+
+An intermediate direction-only build failed acceptance: 10/16 completed synthetic voice cases passed before the run was stopped. Failures included unexecuted requests and an incorrect percentage; an eye request also received success wording without an action receipt. These results are retained and are not counted as an accepted 30-case run.
 
 ## Measured hardware evidence
 

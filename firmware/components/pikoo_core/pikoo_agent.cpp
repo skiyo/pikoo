@@ -42,11 +42,11 @@ bool body_candidate(std::string text) {
   std::transform(text.begin(), text.end(), text.begin(),
                  [](unsigned char c) { return std::tolower(c); });
   for (const auto term :
-       {"音量",       "声音",         "亮度",       "眼睛",       "左眼",
-        "右眼",       "眨",           "笑",         "表情",       "麦克风",
-        "休息",       "volume",       "louder",     "quieter",    "brighter",
-        "dimmer",     "smile",        "wink",       "blink",      "look left",
-        "look right", "look forward", "microphone", "go to sleep"})
+       {"音量",      "声音",       "亮度",         "眼睛",       "左眼",
+        "右眼",      "眨",         "笑",           "表情",       "麦克风",
+        "休息",      "volume",     "louder",       "quieter",    "brighter",
+        "dimmer",    "eyes",       "smile",        "wink",       "blink",
+        "look left", "look right", "look forward", "microphone", "go to sleep"})
     if (text.find(term) != std::string::npos)
       return true;
   return false;
@@ -557,6 +557,10 @@ void LiveAgent::dispatch(uint64_t now) {
   }
   if (delegation_.empty() || !inputs_.empty())
     return;
+  // A provider may delegate on a partial transcript before the numeric value
+  // arrives. Body requests share the same quiet boundary as local fallback.
+  if (body_turn_at_ && body_candidate(body_turn_) && now - body_turn_at_ < 2500)
+    return;
   if (!addressed_at_ || now - addressed_at_ > 5000 ||
       addressed_serial_ <= dispatched_serial_)
     return;
@@ -633,7 +637,7 @@ void LiveAgent::classify(const cJSON *message, uint64_t now) {
       effective_ = now;
       addressed_at_ = now;
       ++addressed_serial_;
-      if (body_turn_at_ && now - body_turn_at_ > 1500)
+      if (body_turn_at_ && now - body_turn_at_ >= 2500)
         body_turn_.clear();
       body_turn_ += input->fragment;
       if (body_turn_.size() > 1024)
@@ -740,7 +744,7 @@ void LiveAgent::tick(uint64_t now) {
       body_routed_serial_ = addressed_serial_;
       body_routed_at_ = now;
       local_body_id_ = "local-body-" + std::to_string(++serial_);
-      local_body_provider_.clear();
+      local_body_provider_ = delegation_;
       local_body_result_.clear();
       delegation_.clear();
       flush_turn();
