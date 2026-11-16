@@ -11,3 +11,8 @@ ASAN_OPTIONS=detect_leaks=0 firmware/build-host/test-eyes
   firmware/components/pikoo_eyes/eyes.cpp firmware/components/pikoo_eyes/eyes_fast.cpp \
   firmware/simulator/eyes-core.test.cpp -o firmware/build-host/test-eyes-fast
 ASAN_OPTIONS=detect_leaks=0 firmware/build-host/test-eyes-fast
+
+"${CXX:-c++}" -std=c++17 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined \
+  -Ifirmware/components/pikoo_eyes/include firmware/simulator/board-mapping.test.cpp \
+  -o firmware/build-host/test-board-mapping
+ASAN_OPTIONS=detect_leaks=0 firmware/build-host/test-board-mapping

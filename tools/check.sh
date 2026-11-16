@@ -11,6 +11,8 @@ if [ ! -d firmware/simulator/node_modules/ws ]; then
 fi
 "$python_bin" tools/check-public-repo.py
 echo 'Checking native audio/session core and eyes'
+bash tools/test-body.sh
+bash tools/test-body-http.sh
 bash tools/test-core.sh
 bash tools/test-eyes.sh
 echo 'Checking the offline eye preview'

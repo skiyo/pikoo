@@ -76,3 +76,5 @@ Release 提供固件 ZIP、模型 ZIP、仅应用 BIN、清单和 SHA256SUMS。�
 原创源码、文档和 Pikoo 原创图形采用 **Apache-2.0**；唤醒权重及包含权重的固件另受**非商业模型条款**和第三方限制约束。再分发时保留声明和署名。
 
 [LICENSE](LICENSE) · [NOTICE](NOTICE) · [模型条款](models/hi-pikoo/LICENSE.md) · [第三方来源](THIRD_PARTY.zh-CN.md) · [贡献指南](CONTRIBUTING.zh-CN.md)
+
+[身体控制](docs/body-control.zh-CN.md)

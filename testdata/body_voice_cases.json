@@ -1,0 +1,232 @@
+[
+  {
+    "text": "你好Pikoo，请把你的声音调大一点。",
+    "tool": "body_set_audio",
+    "expected": {
+      "gain_db": -9
+    }
+  },
+  {
+    "text": "你好Pikoo，请把你的声音调小一点。",
+    "tool": "body_set_audio",
+    "expected": {
+      "gain_db": -15
+    }
+  },
+  {
+    "text": "你好Pikoo，把你的音量设置为百分之五十。",
+    "tool": "body_set_audio",
+    "expected": {
+      "gain_db": -25
+    }
+  },
+  {
+    "text": "你好Pikoo，请把你的眼睛调亮一点。",
+    "tool": "body_set_display",
+    "expected": {
+      "brightness_percent": 60
+    }
+  },
+  {
+    "text": "你好Pikoo，请把你的眼睛调暗一点。",
+    "tool": "body_set_display",
+    "expected": {
+      "brightness_percent": 40
+    }
+  },
+  {
+    "text": "你好Pikoo，请笑一笑。",
+    "tool": "body_perform",
+    "expected": {
+      "action": "happy"
+    }
+  },
+  {
+    "text": "你好Pikoo，请眨一下你的左眼。",
+    "tool": "body_perform",
+    "expected": {
+      "action": "blink_left"
+    }
+  },
+  {
+    "text": "你好Pikoo，请眨一下你的右眼。",
+    "tool": "body_perform",
+    "expected": {
+      "action": "blink_right"
+    }
+  },
+  {
+    "text": "你好Pikoo，请把眼睛看向左边。",
+    "tool": "body_perform",
+    "expected": {
+      "action": "look_left"
+    }
+  },
+  {
+    "text": "你好Pikoo，请把眼睛看向右边。",
+    "tool": "body_perform",
+    "expected": {
+      "action": "look_right"
+    }
+  },
+  {
+    "text": "Pikoo, turn your speaker volume up a little.",
+    "tool": "body_set_audio",
+    "expected": {
+      "gain_db": -9
+    },
+    "voice": "Samantha"
+  },
+  {
+    "text": "Pikoo, turn your volume down a little.",
+    "tool": "body_set_audio",
+    "expected": {
+      "gain_db": -15
+    },
+    "voice": "Samantha"
+  },
+  {
+    "text": "Pikoo, set your volume to fifty percent.",
+    "tool": "body_set_audio",
+    "expected": {
+      "gain_db": -25
+    },
+    "voice": "Samantha"
+  },
+  {
+    "text": "Pikoo, make your eyes brighter.",
+    "tool": "body_set_display",
+    "expected": {
+      "brightness_percent": 60
+    },
+    "voice": "Samantha"
+  },
+  {
+    "text": "Pikoo, dim your eyes a little.",
+    "tool": "body_set_display",
+    "expected": {
+      "brightness_percent": 40
+    },
+    "voice": "Samantha"
+  },
+  {
+    "text": "Pikoo, smile for me.",
+    "tool": "body_perform",
+    "expected": {
+      "action": "happy"
+    },
+    "voice": "Samantha"
+  },
+  {
+    "text": "Pikoo, wink your left eye.",
+    "tool": "body_perform",
+    "expected": {
+      "action": "blink_left"
+    },
+    "voice": "Samantha"
+  },
+  {
+    "text": "Pikoo, wink your right eye.",
+    "tool": "body_perform",
+    "expected": {
+      "action": "blink_right"
+    },
+    "voice": "Samantha"
+  },
+  {
+    "text": "Pikoo, look left.",
+    "tool": "body_perform",
+    "expected": {
+      "action": "look_left"
+    },
+    "voice": "Samantha"
+  },
+  {
+    "text": "Pikoo, look right.",
+    "tool": "body_perform",
+    "expected": {
+      "action": "look_right"
+    },
+    "voice": "Samantha"
+  },
+  {
+    "text": "Pikoo，音量调高一点。",
+    "tool": "body_set_audio",
+    "expected": {
+      "gain_db": -9
+    },
+    "voice": "Tingting"
+  },
+  {
+    "text": "Pikoo，音量调低一点。",
+    "tool": "body_set_audio",
+    "expected": {
+      "gain_db": -15
+    },
+    "voice": "Tingting"
+  },
+  {
+    "text": "Pikoo，音量调整到一半。",
+    "tool": "body_set_audio",
+    "expected": {
+      "gain_db": -25
+    },
+    "voice": "Tingting"
+  },
+  {
+    "text": "Pikoo，眼睛亮一点。",
+    "tool": "body_set_display",
+    "expected": {
+      "brightness_percent": 60
+    },
+    "voice": "Tingting"
+  },
+  {
+    "text": "Pikoo，眼睛暗一点。",
+    "tool": "body_set_display",
+    "expected": {
+      "brightness_percent": 40
+    },
+    "voice": "Tingting"
+  },
+  {
+    "text": "Pikoo，你笑一笑。",
+    "tool": "body_perform",
+    "expected": {
+      "action": "happy"
+    },
+    "voice": "Tingting"
+  },
+  {
+    "text": "Pikoo，眨左眼。",
+    "tool": "body_perform",
+    "expected": {
+      "action": "blink_left"
+    },
+    "voice": "Tingting"
+  },
+  {
+    "text": "Pikoo，眨右眼。",
+    "tool": "body_perform",
+    "expected": {
+      "action": "blink_right"
+    },
+    "voice": "Tingting"
+  },
+  {
+    "text": "Pikoo，把眼睛看向左边。",
+    "tool": "body_perform",
+    "expected": {
+      "action": "look_left"
+    },
+    "voice": "Tingting"
+  },
+  {
+    "text": "Pikoo，把眼睛看向右边。",
+    "tool": "body_perform",
+    "expected": {
+      "action": "look_right"
+    },
+    "voice": "Tingting"
+  }
+]

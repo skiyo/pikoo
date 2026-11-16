@@ -18,6 +18,8 @@ struct Input {
 struct Pose {
   float x = 0, y = 0, open = 0, pupil = 49, tilt = 0,
         smile = 0, blink = 0, saturation = 1, ring = 0;
+  float command_blink = 0;
+  int blink_side = -1; // -1 both, 0 physical left, 1 physical right
   State state = State::Idle;
   double time_ms = 0;
 };

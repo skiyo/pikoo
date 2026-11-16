@@ -1,8 +1,8 @@
 // Copyright 2026 Pikoo contributors. SPDX-License-Identifier: Apache-2.0
 #include "agent_http.hpp"
 #include "agent_tunnel.hpp"
-#include "esp_timer.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "mbedtls/platform_util.h"
 #include "pikoo_http.hpp"
 #include <algorithm>
@@ -33,9 +33,10 @@ void service_request_idle(const std::atomic<uint64_t> &current) {
        uint64_t(esp_timer_get_time() / 1000) >= connection.expires))
     connection.reset();
 }
-HttpResult service_request(const HttpRequest &r, const NetworkConfig &network,
-                           const std::atomic<uint64_t> &current,
-                           const std::atomic<uint64_t> &scope) {
+static HttpResult service_request_once(const HttpRequest &r,
+                                       const NetworkConfig &network,
+                                       const std::atomic<uint64_t> &current,
+                                       const std::atomic<uint64_t> &scope) {
   HttpResult result{r.token, 0, {}};
   auto url = endpoint(r.url, "https");
   if (!url.valid)
@@ -66,7 +67,8 @@ HttpResult service_request(const HttpRequest &r, const NetworkConfig &network,
   std::string wire =
       "POST " + url.path + " HTTP/1.1\r\nHost: " + host +
       "\r\nContent-Type: application/json\r\nAccept: "
-      "application/json\r\nAccept-Encoding: identity\r\nConnection: keep-alive\r\n" +
+      "application/json\r\nAccept-Encoding: identity\r\nConnection: "
+      "keep-alive\r\n" +
       (r.authorization.empty() ? ""
                                : "Authorization: " + r.authorization + "\r\n") +
       "Content-Length: " + std::to_string(r.body.size()) + "\r\n\r\n" + r.body;
@@ -124,6 +126,22 @@ HttpResult service_request(const HttpRequest &r, const NetworkConfig &network,
     connection.reset();
   } else {
     esp_transport_destroy(transport);
+  }
+  return result;
+}
+HttpResult service_request(const HttpRequest &r, const NetworkConfig &network,
+                           const std::atomic<uint64_t> &current,
+                           const std::atomic<uint64_t> &scope) {
+  auto result = service_request_once(r, network, current, scope);
+  const auto now = uint64_t(esp_timer_get_time() / 1000);
+  // No complete inference response has been delivered and no tool from this
+  // response has executed. Retry transport failure once using the same request.
+  // Never retry a cancellation, an HTTP error, or an expired task.
+  if (result.status == 0 && current == r.token && now < r.deadline &&
+      r.deadline - now > 1500) {
+    ESP_LOGW("pikoo", "backend transport retry=1");
+    connection.reset();
+    result = service_request_once(r, network, current, scope);
   }
   return result;
 }

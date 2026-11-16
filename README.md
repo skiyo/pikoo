@@ -76,3 +76,5 @@ Idle wake audio stays local; active conversations are processed by configured se
 Original source, documentation and Pikoo-authored artwork use **Apache-2.0**. Wake weights and firmware containing them retain **separate non-commercial model terms** and third-party restrictions. Preserve notices and attribution when redistributing.
 
 [LICENSE](LICENSE) · [NOTICE](NOTICE) · [Model terms](models/hi-pikoo/LICENSE.md) · [Third-party sources](THIRD_PARTY.md) · [Contributing](CONTRIBUTING.md)
+
+[Body control](docs/body-control.md)

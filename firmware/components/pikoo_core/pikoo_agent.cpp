@@ -3,9 +3,10 @@
 #include "pikoo_backend.hpp"
 
 #include <algorithm>
-#include <cstring>
 #include <cctype>
+#include <cstring>
 #include <ctime>
+#include <iterator>
 #include <utility>
 
 namespace pikoo {
@@ -21,6 +22,14 @@ constexpr char Persona[] =
     "interrupted. Delegate substantive questions and tasks to the client. "
     "Always delegate EVERY read or change of shopping lists, todos and "
     "persistent memory, including requests to remember a preference or fact. "
+    "Always delegate requests to change or inspect speaker volume, eye "
+    "brightness, "
+    "expressions, blinking, gaze or microphone state. For "
+    "声音大一点、笑一笑、眨眼、眼睛暗一点, "
+    "delegate a body tool action rather than merely speaking a promise. "
+    "Do not execute negated or quoted requests. A smile is silent unless "
+    "laughter is requested. "
+    "The rendered eyes are not cameras. No IMU is installed. "
     "You cannot save, add, change, delete or verify device data yourself. "
     "Before the client returns a successful result, only acknowledge that you "
     "will try; never say the action is done or remembered. A spoken promise "
@@ -28,6 +37,21 @@ constexpr char Persona[] =
     "For Chinese requests such as 记住、记一下、加入清单、删除或读出清单, "
     "delegate first and report only the verified result. ";
 
+// Candidate routing only: the reasoning Agent must validate intent and tool
+// args. Negated/quoted candidates are never executed directly from keywords.
+bool body_candidate(std::string text) {
+  std::transform(text.begin(), text.end(), text.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  for (const auto term :
+       {"音量",      "声音",       "亮度",         "眼睛",       "左眼",
+        "右眼",      "眨",         "笑",           "表情",       "麦克风",
+        "休息",      "volume",     "louder",       "quieter",    "brighter",
+        "dimmer",    "eyes",       "smile",        "wink",       "blink",
+        "look left", "look right", "look forward", "microphone", "go to sleep"})
+    if (text.find(term) != std::string::npos)
+      return true;
+  return false;
+}
 void set_text(cJSON *o, const char *key, const std::string &value) {
   cJSON_AddStringToObject(o, key, value.c_str());
 }
@@ -451,13 +475,16 @@ void LiveAgent::receive(const std::string &message, uint64_t now) {
       std::string english = input_window_;
       std::transform(english.begin(), english.end(), english.begin(),
                      [](unsigned char c) { return std::tolower(c); });
-      for (const auto phrase : {"stop", "pause", "wait", "hold on", "don't continue",
-                                 "do not continue", "that's wrong"}) {
+      for (const auto phrase :
+           {"stop", "pause", "wait", "hold on", "don't continue",
+            "do not continue", "that's wrong"}) {
         size_t pos = 0;
         while ((pos = english.find(phrase, pos)) != std::string::npos) {
           const auto end = pos + std::strlen(phrase);
-          if ((pos == 0 || !std::isalpha(static_cast<unsigned char>(english[pos-1]))) &&
-              (end == english.size() || !std::isalpha(static_cast<unsigned char>(english[end]))))
+          if ((pos == 0 ||
+               !std::isalpha(static_cast<unsigned char>(english[pos - 1]))) &&
+              (end == english.size() ||
+               !std::isalpha(static_cast<unsigned char>(english[end]))))
             stop_phrase = true;
           pos = end;
         }
@@ -504,8 +531,20 @@ void LiveAgent::receive(const std::string &message, uint64_t now) {
       }
       seen_delegations_.insert(id);
       delegation_order_.push_back(id);
+      if (!local_body_id_.empty() &&
+          (local_body_result_.empty() ||
+           body_routed_serial_ == addressed_serial_ ||
+           (now >= body_routed_at_ && now - body_routed_at_ < 5000))) {
+        dispatched_serial_ = addressed_serial_;
+        local_body_provider_ = id;
+        output_.diagnostic("edge.body.provider_joined");
+        if (!local_body_result_.empty())
+          result(local_body_id_, local_body_result_);
+        return;
+      }
       output_.cancel();
       delegation_ = id;
+      output_.diagnostic("edge.delegation.queued");
       delegation_at_ = now;
       dispatch(now);
     }
@@ -519,6 +558,10 @@ void LiveAgent::dispatch(uint64_t now) {
   }
   if (delegation_.empty() || !inputs_.empty())
     return;
+  // A provider may delegate on a partial transcript before the numeric value
+  // arrives. Body requests share the same quiet boundary as local fallback.
+  if (body_turn_at_ && body_candidate(body_turn_) && now - body_turn_at_ < 2500)
+    return;
   if (!addressed_at_ || now - addressed_at_ > 5000 ||
       addressed_serial_ <= dispatched_serial_)
     return;
@@ -526,14 +569,44 @@ void LiveAgent::dispatch(uint64_t now) {
   flush_turn();
   auto id = delegation_;
   delegation_.clear();
+  output_.diagnostic("edge.delegation.dispatched");
   output_.delegate(id, json(store_.history().get()), now);
+}
+void LiveAgent::body_progress(const std::string &receipt) {
+  if (!ready_ || farewell_at_)
+    return;
+  auto message = event("session.commentary.append");
+  cJSON_AddNullToObject(message.get(), "delegation_id");
+  set_text(message.get(), "content",
+           "Verified completed body step (do not read JSON aloud): " + receipt +
+               " Briefly acknowledge only this completed step; other requested "
+               "steps may still be pending. applied=true is success. "
+               "saved=false is normal for temporary expressions. If "
+               "changed=false and at_limit=true, say already at the limit. Do "
+               "not execute this step again.");
+  send(std::move(message));
+  output_.diagnostic("edge.body.progress");
 }
 void LiveAgent::result(const std::string &id, const std::string &content) {
   if (!ready_ || farewell_at_)
     return;
   auto message = event("session.commentary.append");
-  set_text(message.get(), "delegation_id", id);
-  set_text(message.get(), "content", content);
+  if (id == local_body_id_) {
+    local_body_result_ = content;
+    if (local_body_provider_.empty())
+      cJSON_AddNullToObject(message.get(), "delegation_id");
+    else
+      set_text(message.get(), "delegation_id", local_body_provider_);
+    set_text(message.get(), "content",
+             "Verified device result for the user's latest body request: " +
+                 content +
+                 " Report this result accurately; do not claim uncertainty "
+                 "when success is verified. Do not execute the request again.");
+    output_.diagnostic("edge.body.result");
+  } else {
+    set_text(message.get(), "delegation_id", id);
+    set_text(message.get(), "content", content);
+  }
   send(std::move(message));
 }
 
@@ -545,6 +618,23 @@ void LiveAgent::classify(const cJSON *message, uint64_t now) {
   if (input == inputs_.end() || now - input->at > 5000 ||
       text(message, "source_event_type") != "session.input_transcript.delta")
     return;
+  // Trigger results may coalesce deltas and arrive out of order. Consume the
+  // pending prefix through their source, preserving the complete utterance.
+  std::string recognized;
+  uint64_t previous_at = 0;
+  for (auto it = inputs_.begin();; ++it) {
+    if (previous_at && it->at - previous_at >= 2500)
+      recognized.clear();
+    previous_at = it->at;
+    if (recognized.size() + it->fragment.size() > MaxText) {
+      inputs_.erase(inputs_.begin(), std::next(input));
+      output_.diagnostic("edge.input.too_long");
+      return;
+    }
+    recognized += it->fragment;
+    if (it == input)
+      break;
+  }
   auto e = field(message, "event");
   if (text(e, "type") != "decision.completed")
     return;
@@ -565,6 +655,12 @@ void LiveAgent::classify(const cJSON *message, uint64_t now) {
       effective_ = now;
       addressed_at_ = now;
       ++addressed_serial_;
+      if (body_turn_at_ && now - body_turn_at_ >= 2500)
+        body_turn_.clear();
+      body_turn_ += recognized;
+      if (body_turn_.size() > 1024)
+        body_turn_.erase(0, body_turn_.size() - 1024);
+      body_turn_at_ = now;
       // A partial "不要" is not a stop command: it may become "不要修改".
       // Require both semantic authorization and a complete stop/correction
       // phrase, including phrases split over several transcript deltas.
@@ -574,25 +670,40 @@ void LiveAgent::classify(const cJSON *message, uint64_t now) {
       else
         flush_turn();
       reply_continuation_ = false;
-      store_.remember_turn("user", input->fragment, true);
+      store_.remember_turn("user", recognized, true);
       if (interrupt && (!interrupt_at_ || now - interrupt_at_ >= 2000)) {
         interrupt_at_ = now;
         awaiting_new_speech_ = false;
         input_window_.clear();
         delegation_.clear();
+        local_body_id_.clear();
+        local_body_provider_.clear();
+        local_body_result_.clear();
         output_.cancel();
         output_.interrupt();
         output_.diagnostic("edge.interrupt");
         auto instruction = event("session.instructions.append");
         cJSON_AddNullToObject(instruction.get(), "delegation_id");
-        set_text(instruction.get(), "content",
-                 "The user is interrupting. Stop the previous answer immediately. "
-                 "Follow the latest instruction briefly in the configured language. "
-                 "If asked only to stop, remain quiet.");
+        set_text(
+            instruction.get(), "content",
+            "The user is interrupting. Stop the previous answer immediately. "
+            "Follow the latest instruction briefly in the configured language. "
+            "If asked only to stop, remain quiet.");
         interrupt_event_ = send(std::move(instruction));
       }
     }
-    inputs_.erase(input);
+    // An ignored trailing fragment may contain a negation or quotation suffix.
+    // Preserve it as context for an already addressed body turn; it grants no
+    // new authorization and the reasoning model still validates the full text.
+    if (choice == "ignore" && body_turn_at_ && now - body_turn_at_ < 2500 &&
+        body_candidate(body_turn_)) {
+      body_turn_ += recognized;
+      if (body_turn_.size() > 1024)
+        body_turn_.erase(0, body_turn_.size() - 1024);
+      body_turn_at_ = now;
+      store_.remember_turn("user", recognized, true);
+    }
+    inputs_.erase(inputs_.begin(), std::next(input));
     dispatch(now);
     break;
   }
@@ -650,14 +761,36 @@ void LiveAgent::tick(uint64_t now) {
     ready_ = false;
     output_.failed(0);
   }
+  if (ready_ && !farewell_at_ && body_turn_at_ && now - body_turn_at_ >= 2500 &&
+      inputs_.empty()) {
+    const bool route =
+        body_candidate(body_turn_) && dispatched_serial_ < addressed_serial_;
+    body_turn_.clear();
+    body_turn_at_ = 0;
+    if (route) {
+      output_.cancel();
+      dispatched_serial_ = addressed_serial_;
+      body_routed_serial_ = addressed_serial_;
+      body_routed_at_ = now;
+      local_body_id_ = "local-body-" + std::to_string(++serial_);
+      local_body_provider_ = delegation_;
+      local_body_result_.clear();
+      delegation_.clear();
+      flush_turn();
+      output_.diagnostic("edge.body.routed");
+      output_.delegate(local_body_id_, json(store_.history().get()), now);
+    }
+  }
   if (turn_at_ && now - turn_at_ >= 900)
     flush_turn();
   inputs_.erase(
       std::remove_if(inputs_.begin(), inputs_.end(),
                      [now](const Input &i) { return now - i.at > 5000; }),
       inputs_.end());
-  if (!delegation_.empty() && now - delegation_at_ >= 5000)
+  if (!delegation_.empty() && now - delegation_at_ >= 5000) {
+    output_.diagnostic("edge.delegation.expired");
     delegation_.clear();
+  }
   dispatch(now);
   if (ready_ && expires_at_ &&
       uint64_t(std::time(nullptr)) + 5 >= expires_at_) {
@@ -678,6 +811,11 @@ bool LiveAgent::sleep_due(uint64_t now, bool playing) const {
 }
 void LiveAgent::reset() {
   ready_ = false;
+  body_turn_.clear();
+  local_body_id_.clear();
+  local_body_provider_.clear();
+  local_body_result_.clear();
+  body_turn_at_ = body_routed_serial_ = body_routed_at_ = 0;
   delegation_.clear();
   seen_delegations_.clear();
   delegation_order_.clear();
