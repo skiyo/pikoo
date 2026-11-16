@@ -28,7 +28,7 @@ def pump(seconds):
    if any(k in text for k in ['PIKOO_BODY_RESULT ','body:','body_trace:','edge event=','backend http_status=','service_tls ']):events.append(text)
 def ready():
  global status
- deadline=time.monotonic()+45;quiet_since=None;wake_sent=False;greeting_baseline=None;last_audio=None
+ deadline=time.monotonic()+45;quiet_since=None;wake_sent=False;greeting_baseline=None;warm_since=None
  while time.monotonic()<deadline:
   status={};raw('status');pump(.5)
   if not status:continue
@@ -39,12 +39,13 @@ def ready():
    quiet_since=None;continue
   received=int(status.get('received_audio','0'))
   if greeting_baseline is not None and received<=greeting_baseline:continue
-  if received!=last_audio:quiet_since=None;last_audio=received
+  if warm_since is None:warm_since=time.monotonic()
+  if greeting_baseline is not None and time.monotonic()-warm_since<5:continue
   if status.get('state')=='2' and float(status.get('output','1'))<.003:
    if quiet_since is None:quiet_since=time.monotonic()
    if time.monotonic()-quiet_since>=2:return
   else:quiet_since=None
- raise RuntimeError('Voice channel never reached stable listening readiness')
+ raise RuntimeError('Voice channel never reached stable listening readiness: '+str({k:status.get(k) for k in ['state','wifi','muted','upload','output','received_audio']}))
 
 try:
  body('body_get_state',{});pump(1)
@@ -57,11 +58,12 @@ try:
    except ValueError:pass
  if not original:raise RuntimeError('Could not read original body preferences; no tests started')
  for n,c in enumerate(cases):
+  requested=c['expected_calls'] if 'expected_calls' in c else [{'tool':c['tool'],'expected':c['expected']}]
+  if not requested:raw('stop');pump(1)  # Fresh session keeps idle expiry separate from quoted sleep.
   ready();body('body_set_audio',{'gain_db':-12});body('body_set_display',{'percent':50});pump(.5)
   start_index=len(events);started=time.monotonic();player=subprocess.Popen(['afplay','-v','1.5',str(a.audio_dir/(str(n)+'.aiff'))])
   while player.poll() is None:pump(.1)
   if player.wait()!=0:raise RuntimeError('Synthetic audio playback failed')
-  requested=c['expected_calls'] if 'expected_calls' in c else [{'tool':c['tool'],'expected':c['expected']}]
   found=[None]*len(requested);receipt=None
   if not requested:pump(40)  # Observe delayed forbidden actions before accepting a negative case.
   deadline=time.monotonic()+40
