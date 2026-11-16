@@ -4,6 +4,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parent))
 from usb_serial import ConsoleSerial
 p=argparse.ArgumentParser(description='Opt-in synthetic speech test using Mac speakers and the real Pikoo microphone. Uses configured voice/reasoning services.')
 p.add_argument('--port',required=True);p.add_argument('--cases',type=Path,default=Path(__file__).resolve().parents[1]/'testdata/body_voice_cases.json');p.add_argument('--audio-dir',type=Path,required=True);p.add_argument('--out',type=Path,required=True)
+p.add_argument('--snapshot-every',type=int,default=0,help='Opt-in mute/export/unmute stress interval; zero preserves the voice session during normal acoustic tests')
 a=p.parse_args();os.umask(0o077);a.out.parent.mkdir(parents=True,exist_ok=True)
 if subprocess.check_output(['osascript','-e','output muted of (get volume settings)'],text=True).strip()=='true':raise RuntimeError('Mac output is muted; no acoustic tests started. Unmute explicitly before running.')
 cases=json.loads(a.cases.read_text());out=a.out;results=[];events=[];pending=b'';status={};histories=[];original={}
@@ -27,14 +28,18 @@ def pump(seconds):
    if any(k in text for k in ['PIKOO_BODY_RESULT ','body:','body_trace:','edge event=','backend http_status=','service_tls ']):events.append(text)
 def ready():
  global status
- deadline=time.monotonic()+45;quiet_since=None;wake_sent=False
+ deadline=time.monotonic()+45;quiet_since=None;wake_sent=False;greeting_baseline=None;last_audio=None
  while time.monotonic()<deadline:
   status={};raw('status');pump(.5)
   if not status:continue
   if status.get('muted')=='1':raw('unmute');pump(1);continue
   if status.get('upload')!='1':
-   if status.get('state') in ['0','6'] and not wake_sent:raw('wake');wake_sent=True
+   if status.get('state') in ['0','6'] and not wake_sent:
+    greeting_baseline=int(status.get('received_audio','0'));raw('wake');wake_sent=True
    quiet_since=None;continue
+  received=int(status.get('received_audio','0'))
+  if greeting_baseline is not None and received<=greeting_baseline:continue
+  if received!=last_audio:quiet_since=None;last_audio=received
   if status.get('state')=='2' and float(status.get('output','1'))<.003:
    if quiet_since is None:quiet_since=time.monotonic()
    if time.monotonic()-quiet_since>=2:return
@@ -73,12 +78,14 @@ try:
    if all(r is not None for r in found):receipt=found[0] if len(found)==1 else found
    if receipt is not None:break
   pump(7)
+  if not requested:raw('status');pump(.5)
   call_events=[e for e in events[start_index:] if 'body_trace:' in e or 'edge event=' in e or 'backend http_status=' in e]
   writes=[e for e in call_events if 'body_trace: tool=body_' in e and 'tool=body_get_state ' not in e and '"applied":true' in e]
   result_sent=sum('tool_result_delivered=1' in e for e in call_events)>=len(requested)
-  result={'index':n,'prompt':c['text'],'expected':c.get('expected',requested),'pass':receipt is not None and len(writes)==len(requested) and result_sent,'write_count':len(writes),'result_sent':result_sent,'receipt':receipt,'elapsed_seconds':round(time.monotonic()-started,2),'events':call_events}
+  negative_verified=bool(requested) or (any('edge.decision.received' in e for e in call_events) and status.get('upload')=='1' and status.get('muted')=='0')
+  result={'index':n,'prompt':c['text'],'expected':c.get('expected',requested),'pass':receipt is not None and len(writes)==len(requested) and result_sent and negative_verified,'negative_verified':negative_verified,'write_count':len(writes),'result_sent':result_sent,'receipt':receipt,'elapsed_seconds':round(time.monotonic()-started,2),'events':call_events}
   results.append(result);out.write_text(json.dumps(results,ensure_ascii=False,indent=2));print(json.dumps({'case':n,'pass':result['pass'],'elapsed_seconds':result['elapsed_seconds'],'receipt':receipt},ensure_ascii=False),flush=True)
-  if (n+1)%3==0:
+  if a.snapshot_every>0 and (n+1)%a.snapshot_every==0:
    raw('mute');pump(1);raw('agent export');pump(1);raw('unmute');pump(1)
    out.with_name(out.stem+'-history.private.json').write_text(json.dumps(histories,ensure_ascii=False,indent=2))
   # A stalled voice session is reset for the next independent case.

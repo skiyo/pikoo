@@ -6,6 +6,7 @@
 #include <cctype>
 #include <cstring>
 #include <ctime>
+#include <iterator>
 #include <utility>
 
 namespace pikoo {
@@ -617,6 +618,23 @@ void LiveAgent::classify(const cJSON *message, uint64_t now) {
   if (input == inputs_.end() || now - input->at > 5000 ||
       text(message, "source_event_type") != "session.input_transcript.delta")
     return;
+  // Trigger results may coalesce deltas and arrive out of order. Consume the
+  // pending prefix through their source, preserving the complete utterance.
+  std::string recognized;
+  uint64_t previous_at = 0;
+  for (auto it = inputs_.begin();; ++it) {
+    if (previous_at && it->at - previous_at >= 2500)
+      recognized.clear();
+    previous_at = it->at;
+    if (recognized.size() + it->fragment.size() > MaxText) {
+      inputs_.erase(inputs_.begin(), std::next(input));
+      output_.diagnostic("edge.input.too_long");
+      return;
+    }
+    recognized += it->fragment;
+    if (it == input)
+      break;
+  }
   auto e = field(message, "event");
   if (text(e, "type") != "decision.completed")
     return;
@@ -639,7 +657,7 @@ void LiveAgent::classify(const cJSON *message, uint64_t now) {
       ++addressed_serial_;
       if (body_turn_at_ && now - body_turn_at_ >= 2500)
         body_turn_.clear();
-      body_turn_ += input->fragment;
+      body_turn_ += recognized;
       if (body_turn_.size() > 1024)
         body_turn_.erase(0, body_turn_.size() - 1024);
       body_turn_at_ = now;
@@ -652,7 +670,7 @@ void LiveAgent::classify(const cJSON *message, uint64_t now) {
       else
         flush_turn();
       reply_continuation_ = false;
-      store_.remember_turn("user", input->fragment, true);
+      store_.remember_turn("user", recognized, true);
       if (interrupt && (!interrupt_at_ || now - interrupt_at_ >= 2000)) {
         interrupt_at_ = now;
         awaiting_new_speech_ = false;
@@ -674,7 +692,18 @@ void LiveAgent::classify(const cJSON *message, uint64_t now) {
         interrupt_event_ = send(std::move(instruction));
       }
     }
-    inputs_.erase(input);
+    // An ignored trailing fragment may contain a negation or quotation suffix.
+    // Preserve it as context for an already addressed body turn; it grants no
+    // new authorization and the reasoning model still validates the full text.
+    if (choice == "ignore" && body_turn_at_ && now - body_turn_at_ < 2500 &&
+        body_candidate(body_turn_)) {
+      body_turn_ += recognized;
+      if (body_turn_.size() > 1024)
+        body_turn_.erase(0, body_turn_.size() - 1024);
+      body_turn_at_ = now;
+      store_.remember_turn("user", recognized, true);
+    }
+    inputs_.erase(inputs_.begin(), std::next(input));
     dispatch(now);
     break;
   }

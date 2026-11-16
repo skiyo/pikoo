@@ -349,6 +349,57 @@ int main() {
   assert(split_calls == 0);
   split.tick(4801);
   assert(split_calls == 1);
+  // A single decision for the tail can represent a coalesced whole utterance.
+  unsigned coalesced_calls = 0;
+  split_out.delegate = [&](const std::string &, const std::string &history,
+                           uint64_t) {
+    ++coalesced_calls;
+    assert(history.find("set volume to fifty percent") != std::string::npos);
+  };
+  LiveAgent coalesced(routed_store, split_out);
+  coalesced.configure(config);
+  coalesced.start(100, false);
+  coalesced.receive(R"({"type":"session.started"})", 101);
+  coalesced.receive(
+      R"({"type":"session.input_transcript.delta","event_id":"head","delta":"set volume to "})",
+      200);
+  coalesced.receive(
+      R"({"type":"session.input_transcript.delta","event_id":"tail","delta":"fifty percent"})",
+      300);
+  coalesced.receive(
+      R"({"type":"decision.event","source_event_id":"tail","source_event_type":"session.input_transcript.delta","event":{"type":"decision.completed","decision":{"answers":[{"name":"interaction","choice":"addressed"}]}}})",
+      400);
+  coalesced.tick(2901);
+  assert(coalesced_calls == 1);
+  coalesced.receive(
+      R"({"type":"decision.event","source_event_id":"head","source_event_type":"session.input_transcript.delta","event":{"type":"decision.completed","decision":{"answers":[{"name":"interaction","choice":"ignore"}]}}})",
+      3000);
+  coalesced.tick(6000);
+  assert(coalesced_calls == 1);
+  unsigned quoted_calls = 0;
+  split_out.delegate = [&](const std::string &, const std::string &history,
+                           uint64_t) {
+    ++quoted_calls;
+    assert(history.find("do not execute") != std::string::npos);
+  };
+  LiveAgent quoted(routed_store, split_out);
+  quoted.configure(config);
+  quoted.start(100, false);
+  quoted.receive(R"({"type":"session.started"})", 101);
+  quoted.receive(
+      R"({"type":"session.input_transcript.delta","event_id":"head","delta":"turn volume up"})",
+      200);
+  quoted.receive(
+      R"({"type":"decision.event","source_event_id":"head","source_event_type":"session.input_transcript.delta","event":{"type":"decision.completed","decision":{"answers":[{"name":"interaction","choice":"addressed"}]}}})",
+      300);
+  quoted.receive(
+      R"({"type":"session.input_transcript.delta","event_id":"tail","delta":"; this is a quote, do not execute"})",
+      2000);
+  quoted.receive(
+      R"({"type":"decision.event","source_event_id":"tail","source_event_type":"session.input_transcript.delta","event":{"type":"decision.completed","decision":{"answers":[{"name":"interaction","choice":"ignore"}]}}})",
+      2100);
+  quoted.tick(4601);
+  assert(quoted_calls == 1);
   std::cout << "Body control boundary, receipts, expiry, priority, failures "
                "and both protocol schemas passed\n";
 }
